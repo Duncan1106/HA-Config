@@ -1,0 +1,452 @@
+esphome:
+  name: esp32relayboard
+  friendly_name: ESP32 X8 Relay Board
+
+esp32:
+  board: esp32dev
+  framework: 
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: VERBOSE
+  initial_level: INFO
+
+select:
+  - platform: logger
+    name: Logger Level 
+    id: logger_select
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "IvriLmLg0wr1qbjcyDo6VTGAMUovlf9m6MXTcgv/aZ0="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    dns1: 192.168.2.1
+    static_ip: 192.168.2.4
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Boiler Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+output:
+  - platform: ledc
+    pin: GPIO21
+    frequency: 19531Hz
+    id: light_one
+    
+# Status LED
+light:
+  - platform: status_led
+    name: "RelayBoard Led"
+    restore_mode: RESTORE_AND_OFF
+    pin:
+      number: GPIO23
+
+  - platform: monochromatic
+    output: light_one
+    name: Ambient Light Strip
+
+# 8 relay outputs, exposed as switches in Home Assistant
+switch:
+  - platform: gpio
+    pin: GPIO32
+    name: Relay1
+    id: relay1
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        # - if:
+        #     condition:
+        #       and:
+        #         - switch.is_off: relay2
+        #         - switch.is_off: relay3
+        #         - switch.is_off: relay4
+        #     then: 
+        #       - switch.turn_off: relay5
+        #       - switch.turn_off: relay6
+        #       - switch.turn_off: relay7
+        #       - switch.turn_off: relay8
+        # - if:
+        #     condition:
+        #       - switch.is_on: relay2
+        #       - switch.is_off: relay3
+        #       - switch.is_off: relay4
+        #     then:
+        #       - switch.turn_off: relay6
+        #       - switch.turn_off: relay7
+        #       - switch.turn_off: relay8
+        # - if:
+        #     condition:
+        #       - switch.is_on: relay3
+        #       - switch.is_off: relay2
+        #       - switch.is_off: relay4
+        #     then:
+        #       - switch.turn_off: relay5
+        #       - switch.turn_off: relay6
+        #       - switch.turn_off: relay7
+        - if: 
+            condition: 
+              - switch.is_on: relay2
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay1 
+              - delay: 5ms
+              - switch.turn_on: relay5
+        - if: 
+            condition: 
+              - switch.is_on: relay3
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay1
+              - delay: 5ms
+              - switch.turn_on: relay8
+        - delay: 1s
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay2
+                - switch.is_on: relay5
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay1
+              - delay: 5ms
+              - switch.turn_off: relay5
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay3
+                - switch.is_on: relay8
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay1 
+              - delay: 5ms
+              - switch.turn_off: relay8
+        - delay: 1s
+  - platform: gpio
+    pin: GPIO33
+    name: Relay2
+    id: relay2
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        # - if:
+        #     condition:
+        #       and:
+        #         - switch.is_off: relay1
+        #         - switch.is_off: relay3
+        #         - switch.is_off: relay4
+        #     then: 
+        #       - switch.turn_off: relay5
+        #       - switch.turn_off: relay6
+        #       - switch.turn_off: relay7
+        #       - switch.turn_off: relay8
+        # - if:
+        #     condition:
+        #       - switch.is_on: relay1
+        #     then:
+        #       - switch.turn_off: relay6
+        #       - switch.turn_off: relay7
+        #       - switch.turn_off: relay8
+        # - if:
+        #     condition:
+        #       - switch.is_on: relay4
+        #       - switch.is_off: relay3
+        #       - switch.is_off: relay1
+        #     then:
+        #       - switch.turn_off: relay5
+        #       - switch.turn_off: relay7
+        #       - switch.turn_off: relay8
+        - if: 
+            condition: 
+              - switch.is_on: relay1
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay2
+              - delay: 5ms
+              - switch.turn_on: relay5
+        - if: 
+            condition: 
+              - switch.is_on: relay4
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay2
+              - delay: 5ms
+              - switch.turn_on: relay6
+        - delay: 1s
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay1
+                - switch.is_on: relay5
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay2
+              - delay: 5ms
+              - switch.turn_off: relay5
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay4
+                - switch.is_on: relay6
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay2
+              - delay: 5ms
+              - switch.turn_off: relay6
+        - delay: 1s
+  - platform: gpio
+    pin: GPIO25
+    name: Relay3
+    id: relay3
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition: 
+              - switch.is_on: relay1
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay3
+              - delay: 5ms
+              - switch.turn_on: relay8
+        - if: 
+            condition: 
+              - switch.is_on: relay4
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay3
+              - delay: 5ms
+              - switch.turn_on: relay7
+        - delay: 1s
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay1
+                - switch.is_on: relay8
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay3
+              - delay: 5ms
+              - switch.turn_off: relay8
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay4
+                - switch.is_on: relay7
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay3
+              - delay: 5ms
+              - switch.turn_off: relay7
+        - delay: 1s
+  - platform: gpio
+    pin: GPIO26
+    name: Relay4
+    id: relay4
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition: 
+              - switch.is_on: relay2
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay4
+              - delay: 5ms
+              - switch.turn_on: relay6
+        - if: 
+            condition: 
+              - switch.is_on: relay3
+            then:
+              - delay: 5ms
+              - switch.turn_on: relay4
+              - delay: 5ms
+              - switch.turn_on: relay7
+        - delay: 1s
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay2
+                - switch.is_on: relay6
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay4
+              - delay: 5ms
+              - switch.turn_off: relay6
+        - if: 
+            condition: 
+              or:
+                - switch.is_on: relay3
+                - switch.is_on: relay7
+            then:
+              - delay: 5ms
+              - switch.turn_off: relay4
+              - delay: 5ms
+              - switch.turn_off: relay7
+        - delay: 1s
+
+## Filler Lights
+  - platform: gpio
+    pin: GPIO27
+    name: Relay5
+    id: relay5
+    on_turn_on: 
+      then:
+        - if: 
+            condition:
+              - and:
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_on: relay5
+              - switch.turn_on: relay6
+              - switch.turn_on: relay7
+              - switch.turn_on: relay8
+    on_turn_off:
+      then:
+        - if: 
+            condition: 
+              and: 
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_off: relay5
+              - switch.turn_off: relay6
+              - switch.turn_off: relay7
+              - switch.turn_off: relay8
+    restore_mode: RESTORE_DEFAULT_OFF
+  - platform: gpio
+    pin: GPIO14
+    name: Relay6
+    id: relay6
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition:
+              - and:
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_on: relay5
+              - switch.turn_on: relay6
+              - switch.turn_on: relay7
+              - switch.turn_on: relay8
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              and: 
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_off: relay5
+              - switch.turn_off: relay6
+              - switch.turn_off: relay7
+              - switch.turn_off: relay8
+
+  - platform: gpio
+    pin: 
+      number: GPIO12
+      ignore_strapping_warning: true
+    name: Relay7
+    id: relay7
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition:
+              - and:
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4   
+            then:
+              - switch.turn_on: relay5
+              - switch.turn_on: relay6
+              - switch.turn_on: relay7
+              - switch.turn_on: relay8
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              and: 
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_off: relay5
+              - switch.turn_off: relay6
+              - switch.turn_off: relay7
+              - switch.turn_off: relay8
+
+  - platform: gpio
+    pin: GPIO13
+    name: Relay8
+    id: relay8
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition:
+              - and:
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4    
+            then:
+              - switch.turn_on: relay5
+              - switch.turn_on: relay6
+              - switch.turn_on: relay7
+              - switch.turn_on: relay8
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              and: 
+                - switch.is_off: relay1
+                - switch.is_off: relay2
+                - switch.is_off: relay3
+                - switch.is_off: relay4
+            then:
+              - switch.turn_off: relay5
+              - switch.turn_off: relay6
+              - switch.turn_off: relay7
+              - switch.turn_off: relay8
+
+  - platform: gpio
+    pin: GPIO22
+    name: Relay9
+    id: relay9
+    restore_mode: RESTORE_DEFAULT_OFF

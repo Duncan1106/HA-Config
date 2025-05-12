@@ -1,0 +1,1484 @@
+auto_boiler_off_300s:
+  alias: Auto_Boiler_off_180s
+  sequence:
+  - if:
+    - condition: device
+      type: is_off
+      device_id: 2d4856e9b534472fb57e5601a3f5110e
+      entity_id: 4537b8f00f743d73e53e52b828f58d2c
+      domain: switch
+    then:
+    - type: turn_on
+      device_id: 2d4856e9b534472fb57e5601a3f5110e
+      entity_id: 4537b8f00f743d73e53e52b828f58d2c
+      domain: switch
+    - action: timer.start
+      metadata: {}
+      data: {}
+      target:
+        entity_id: timer.boiler_on_demand
+    - delay:
+        hours: 0
+        minutes: 3
+        seconds: 0
+        milliseconds: 0
+    - type: turn_off
+      device_id: 2d4856e9b534472fb57e5601a3f5110e
+      entity_id: 4537b8f00f743d73e53e52b828f58d2c
+      domain: switch
+  mode: single
+'1704873353963':
+  alias: Ashley’s Light Fader
+  description: 'Fades a lamp over time. If you have any questions or comments about
+    this script, feel free to tweet Ashley Bischoff at @FriendlyAshley. Released under
+    the Apache 2.0 license. (v1.1)
+
+    '
+  fields:
+    light:
+      name: "\U0001F4A1 Light"
+      description: entity_id of the lamp.
+      selector:
+        entity:
+          domain: light
+      required: true
+    lampBrightnessScale:
+      name: The lamp’s internal brightness scale
+      description: 'Most lamps seem to internally use a 0 to 255 brightness scale,
+        but some lamps internally use a 0% to 100% brightness scale. Either of these
+        settings will still fade the lamp, but if you happen to match this setting
+        to the lamp’s internal brightness scale, the resulting fade may be smoother.
+        (If you’re not sure, you can just leave this as is.)
+
+        '
+      advanced: true
+      required: true
+      selector:
+        select:
+          options:
+          - label: 0% to 100%
+            value: zeroToOneHundred
+          - label: 0 to 255
+            value: zeroToTwoFiftyFive
+      default: zeroToTwoFiftyFive
+    transitionTime:
+      name: ⏱ Fade time
+      description: Fade duration.
+      selector:
+        duration:
+      required: true
+    easingTypeInput:
+      name: Easing type
+      description: The easing function that you’d like the fade to use. As a starting
+        point—you can’t go wrong with any of the “Ease-In-Out X” easings as those
+        will always look pretty good whenever you’re fading between two nonzero brightness
+        values. As well, the “Ease-Out X” easings often tend to look good if you might
+        be fading up very quickly from zero to another brightness, and the “Ease-In
+        X” easings are mostly only included for completeness as those tend to only
+        look good if you might be fading down to zero very quickly. (See also https://easings.net
+        for visual demos of each of these easing types.)
+      selector:
+        select:
+          mode: list
+          options:
+          - label: Try to automatically select the easing type
+            value: auto
+          - label: Ease-In-Out Sine [a good all-rounder]
+            value: easeInOutSine
+          - label: Ease-In-Out Quad
+            value: easeInOutQuad
+          - label: Ease-In-Out Cubic
+            value: easeInOutCubic
+          - label: Ease-In-Out Quart
+            value: easeInOutQuart
+          - label: Ease-Out Sine
+            value: easeOutSine
+          - label: Ease-Out Quad
+            value: easeOutCubic
+          - label: Ease-Out Cubic
+            value: easeOutCubic
+          - label: Ease-Out Quart
+            value: easeOutQuart
+          - label: Ease-In Sine
+            value: easeInSine
+          - label: Ease-In Quad
+            value: easeInCubic
+          - label: Ease-In Cubic
+            value: easeInCubic
+          - label: Ease-In Quart
+            value: easeInQuart
+          - label: Linear [somewhat unnatural to the human eye; not recommended]
+            value: linear
+      default: auto
+      required: true
+    endBrightnessPercent:
+      name: End brightness level
+      description: Percentage from 0 to 100 representing the final brightness level.
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: '%'
+      default: 50
+      example: '50'
+      required: true
+    autoCancelThreshold:
+      name: "\U0001F6AB (optional) Brightness-change threshold that auto-cancels the
+        fade"
+      description: You can optionally have the script automatically cancel its fade
+        if the lamp’s brightness were to be manually changed by a certain amount.
+        For example, let’s suppose that you were to set this value to 5% and then
+        you were to run this script. If there comes a point within the fade where
+        this script is expecting the lamp to be at, say, 22% brightness—but you’ve
+        just manually set that lamp to 30% brightness—this script will automatically
+        cancel its fade since that 8% difference is >= 5%. Note—if you use this, Ashley
+        doesn’t recommend setting this to anything less than about 3; that’s just
+        because it can be normal for there to be an occasional difference of 1 or
+        2 since not all lamps instantly reflect newly assigned brightness values due
+        to processing lag and other factors. In Ashley’s home, she personally uses
+        a value of about 5 for this.
+      selector:
+        number:
+          min: 2
+          max: 100
+          step: 1
+          mode: slider
+          unit_of_measurement: '%'
+      default: 10
+      example: '10'
+      required: false
+    endBrightnessEntity:
+      name: (optional) Use an entity instead for the end-brightness value?
+      description: You can optionally have the script ignore the end-brightness value
+        above and instead use the numeric value of another entity that you select
+        here, such as an input-number helper, an input-select helper, an input-text
+        helper, or a numeric sensor.
+      selector:
+        entity:
+          domain:
+          - input_number
+          - input_select
+          - input_text
+          - sensor
+      required: false
+      advanced: true
+    endBrightnessEntityScale:
+      name: The end-brightness entity’s brightness scale (if used)
+      description: If you enable the “Use an entity for the end-brightness value instead”
+        option, select here whether your chosen entity represents brightness with
+        a 0% to 100% scale or a 0 to 255 scale. (Note—in either case, this script
+        will expect that entity to solely have an integer value without any nonnumeric
+        characters such as “%”.)
+      advanced: true
+      selector:
+        select:
+          options:
+          - label: 0% to 100%
+            value: zeroToOneHundred
+          - label: 0 to 255
+            value: zeroToTwoFiftyFive
+      default: zeroToOneHundred
+      required: true
+    stopEntity:
+      name: "\U0001F6D1 (optional) Stop if a certain entity is turned on during the
+        fade?"
+      description: 'You can optionally have the script keep an eye on an input boolean
+        or a binary sensor. And if that entity is then turned on during the fade,
+        the script will automatically stop. So for example, if you create a “Stop
+        Everything” input boolean, and if you set that entity here, you can stop your
+        fade at any time by turning on that “Stop Everything” entity. '
+      selector:
+        entity:
+          domain:
+          - input_boolean
+          - binary_sensor
+      required: false
+      advanced: true
+    shouldResetTheStopEntityToOffAtStart:
+      name: (optional) Reset that stop entity to “off” just before starting the fade?
+      description: If you make use of the stop entity (above), you can also optionally
+        have the script automatically reset that entity to “off” at the start of the
+        fade. (By default, the script won’t change the value of the stop entity.)
+      selector:
+        boolean:
+      advanced: true
+      required: true
+      default: false
+    minimumStepDelayInMilliseconds:
+      name: Minimum delay per step
+      description: The minimum delay between sending each brightness command. Some
+        lamps only accept commands every X milliseconds—so while you can probably
+        leave this as is, if by chance your lamp were to behave strangely, you might
+        try bumping up this number by another ten or twenty milliseconds.
+      advanced: true
+      required: true
+      selector:
+        number:
+          min: 50
+          max: 1000
+          step: 10
+          mode: slider
+          unit_of_measurement: ms
+      default: 100
+      example: '100'
+    isDebugMode:
+      name: "\U0001F41B Enable debugging mode?"
+      description: If this is enabled, the script will output status messages to your
+        Home Assistant log along the way. Unless something were to be acting weirdly,
+        you can leave this off.
+      selector:
+        boolean:
+      advanced: true
+      required: true
+      default: false
+  mode: parallel
+  sequence:
+  - variables:
+      lightFriendlyName: '{{ state_attr(light, ''friendly_name'') }}'
+      startTimestamp: '{{ as_timestamp(now()) }}'
+      transitionTimeInSeconds: '{{ ((transitionTime.hours | int) * 60 * 60) + ((transitionTime.minutes
+        | int) * 60) + (transitionTime.seconds | int) }}
+
+        '
+      endTimestamp: '{{ startTimestamp + transitionTimeInSeconds }}'
+      transitionTimeInMilliseconds: '{{ transitionTimeInSeconds * 1000 }}'
+      ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead: "{% if
+        (endBrightnessEntity is defined) and (has_value(endBrightnessEntity)) %}\n
+        \ {{ true }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
+      stopEntityIsEnabled: "{% if (stopEntity is defined) and (has_value(stopEntity))
+        %}\n  {{ true }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
+      stopEntityIsEditable: "{% if stopEntityIsEnabled %}\n  {% set stopEntityEditableAttribute
+        = state_attr(stopEntity, 'editable') %}\n  {% if stopEntityEditableAttribute
+        %}\n    {{ true}}\n  {% else %}\n    {{ false }}\n  {% endif %}\n{% else %}\n
+        \ {{ false }}\n{% endif %}\n"
+      stopEntityFriendlyName: "{% if stopEntityIsEnabled %}\n  {{ state_attr(stopEntity,
+        'friendly_name') }}\n{% else %}\n  {{ \"\" }}\n{% endif %}\n"
+      startBrightness: "{% set rawLightLevel = state_attr(light, 'brightness') %}\n{##
+        If a light is off, its brightness will return \"None\"? So first check if
+        there's a valid brightness before setting the value ##} {% if rawLightLevel
+        %}\n\t{% set currentLightLevel = rawLightLevel | int %}\n{% else %}\n\t{%
+        set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale == \"zeroToOneHundred\"
+        %}\n  {% set currentLightLevel = (currentLightLevel / 2.55) | round(0) %}\n{%
+        endif %} {{ currentLightLevel }}\n"
+      endBrightness: "{% if ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead
+        %}\n\n  {% set entityBrightnessValue = states(endBrightnessEntity) | round
+        (0) %}\n  {% if (endBrightnessEntityScale == lampBrightnessScale) %}\n    {%
+        set endBrightness = entityBrightnessValue %}\n  {% elif (lampBrightnessScale
+        == \"zeroToTwoFiftyFive\") and (endBrightnessEntityScale == \"zeroToOneHundred\")
+        %}\n    {% set endBrightness = (entityBrightnessValue * 2.55) | round(0) %}\n
+        \ {% elif (lampBrightnessScale == \"zeroToOneHundred\") and (endBrightnessEntityScale
+        == \"zeroToTwoFiftyFive\") %}\n    {% set endBrightness = (entityBrightnessValue
+        / 2.55) | round(0) %}\n  {% endif %}\n{% else %}\n  {## branch for ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead
+        being off ##}\n  {% if lampBrightnessScale == \"zeroToOneHundred\" %}\n  \t{%
+        set endBrightness = endBrightnessPercent %}\n  {% else %}\n    {% set endBrightness
+        = (endBrightnessPercent * 2.55) | round(0) %}\n  {% endif %}\n{% endif %}
+        {{ endBrightness }}\n"
+      brightnessSpan: '{{ endBrightness - startBrightness }}'
+      absoluteBrightnessSpan: '{{ brightnessSpan | abs }}'
+      autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged: "{% if (autoCancelThreshold
+        is defined) and (is_number(autoCancelThreshold)) %}\n  {{ true }}\n{% else
+        %}\n  {{ false }}\n{% endif %}\n"
+      normalizedAutoCancelThreshold: "{% if not autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
+        %}\n  {## exit early if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
+        isn’t even enabled ##}\n  {{ 255 }}\n{% elif (lampBrightnessScale == \"zeroToTwoFiftyFive\")
+        %}\n  {{ (autoCancelThreshold * 2.55) | round (0) }}\n{% else %}\n  {{ autoCancelThreshold
+        }}\n{% endif %}\n"
+      expectedBrightness: '{{ startBrightness }}'
+  - if:
+    - condition: template
+      value_template: "{{ stopEntityIsEnabled and stopEntityIsEditable and shouldResetTheStopEntityToOffAtStart
+        }}        \n"
+    then:
+    - service: input_boolean.turn_off
+      data: {}
+      target:
+        entity_id: '{{ stopEntity }}'
+  - if:
+    - condition: template
+      value_template: "{{ (absoluteBrightnessSpan | int) == 0 }}        \n"
+    then:
+    - variables:
+        stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " + (lightFriendlyName
+          | string) + "’s starting brightness is the same as its ending brightness."
+          %} {{ stopMessage }}
+
+          '
+    - if:
+      - condition: template
+        value_template: '{{ isDebugMode }}
+
+          '
+      then:
+      - service: system_log.write
+        data_template:
+          message: '{{ stopMessage }}
+
+            '
+          level: warning
+    - stop: '{{ stopMessage }}
+
+        '
+  - if:
+    - condition: template
+      value_template: "{## init ##} {% set stopEntityStatus = false %} {% if stopEntityIsEnabled
+        %}\n  {% if bool(states(stopEntity), false) %}\n    {% set stopEntityStatus
+        = true %}\n  {% endif %}\n{% endif %} {{ stopEntityStatus }}\n"
+    then:
+    - variables:
+        stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " + (stopEntityFriendlyName
+          | string) + " is on." %} {{ stopMessage }}
+
+          '
+    - if:
+      - condition: template
+        value_template: '{{ isDebugMode }}
+
+          '
+      then:
+      - service: system_log.write
+        data_template:
+          message: '{{ stopMessage }}
+
+            '
+          level: warning
+    - stop: '{{ stopMessage }}
+
+        '
+  - variables:
+      timestampBeforeServiceCall: '{{ as_timestamp(now()) }}'
+  - if:
+    - condition: template
+      value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
+
+        '
+    then:
+    - service: light.turn_on
+      target:
+        entity_id: '{{ light }}'
+      data:
+        brightness: '{{ expectedBrightness }}'
+    else:
+    - service: light.turn_on
+      target:
+        entity_id: '{{ light }}'
+      data:
+        brightness_pct: '{{ expectedBrightness }}'
+  - variables:
+      processingDelayInMilliseconds: '{{ (as_timestamp(now()) -  timestampBeforeServiceCall)
+        * 1000 }}'
+      easingType: "{% if \"auto\" in easingTypeInput %}\n  {% if (startBrightness
+        == 0) and (transitionTimeInSeconds <= 20) %}\n    {{ \"easeOutCubic\" }}\n
+        \ {% elif (startBrightness == 0) and (transitionTimeInSeconds <= 55) %}\n
+        \   {{ \"easeOutQuad\" }}\n  {% elif (endBrightness == 0) and (transitionTimeInSeconds
+        <= 20) %}\n    {{ \"easeInCubic\" }}\n  {% elif (endBrightness == 0) and (transitionTimeInSeconds
+        <= 55) %}\n    {{ \"easeInQuad\" }}\n  {% else %}\n    {{ \"easeInOutSine\"
+        }}\n  {% endif %}\n{% else %}\n  {{ easingTypeInput }}\n{% endif %}\n"
+      remainingTimeInMilliseconds: '{% set nowTimestamp = as_timestamp(now()) %} {{
+        (endTimestamp - nowTimestamp) * 1000 }}
+
+        '
+      delayInMilliseconds: "{% set totalExpectedRemainingProcessingDelay = processingDelayInMilliseconds
+        * absoluteBrightnessSpan %} {% set idealDelay = ((remainingTimeInMilliseconds
+        - totalExpectedRemainingProcessingDelay) / absoluteBrightnessSpan) | round(0)
+        %}\n{% if \"auto\" in easingType %}\n  {% if (startBrightness == 0) and (transitionTimeInSeconds
+        < 20) %}\n    {% set easingType = \"easeOutCubic\" %}\n  {% elif (endBrightness
+        == 0) and (transitionTimeInSeconds < 20) %}\n    {% set easingType = \"easeInCubic\"
+        %}\n  {% else %}\n    {% set easingType = \"easeInOutQuad\" %}\n  {% endif
+        %}\n{% endif %}\n{% if \"Circ\" in easingType %}\n  {## Four as many frames
+        for Circ-type easing ##}\n  {% set idealDelay = (idealDelay / 4) | round(0)
+        %}\n{% elif (\"Cubic\" in easingType) or (\"Quart\" in easingType) %}\n  {##
+        Three as many frames for Cubic-type or Quart-type easing ##}\n  {% set idealDelay
+        = (idealDelay / 3) | round(0) %}\n{% elif \"ease\" in easingType %}\n  {##
+        Twice as many frames for other easing types ##}\n  {% set idealDelay = (idealDelay
+        / 2) | round(0) %}\n{% endif %}\n{## Make sure that the delay isn’t below
+        the minimum delay ##} {% if idealDelay < minimumStepDelayInMilliseconds %}\n
+        \ {{ minimumStepDelayInMilliseconds }}\n{% else %}\n  {{ idealDelay }}\n{%
+        endif %}\n"
+  - if:
+    - condition: template
+      value_template: '{{ isDebugMode }}
+
+        '
+    then:
+    - service: system_log.write
+      data_template:
+        message: '{{ easingType }} easing type with {{ delayInMilliseconds | int }}
+          ms delay. remainingTimeInMilliseconds = {{ remainingTimeInMilliseconds |
+          round(0) }}, and absoluteBrightnessSpan = {{ absoluteBrightnessSpan }}
+
+          '
+        level: warning
+    - service: system_log.write
+      data_template:
+        message: 'startBrightness = {{ startBrightness }}, endBrightness = {{ endBrightness
+          }}, and  processingDelayInMilliseconds = {{ processingDelayInMilliseconds
+          | int }}
+
+          '
+        level: warning
+  - repeat:
+      sequence:
+      - variables:
+          timestampBeforeServiceCall: '{{ as_timestamp(now()) }}'
+          percentageOfTimeCompleted: "{% set nowTimestamp = as_timestamp(now()) %}
+            {% set percentageOfTimeCompleted = ((nowTimestamp - startTimestamp) /
+            transitionTimeInSeconds) %} {% if (percentageOfTimeCompleted < 0) %}\n
+            \ {% set percentageOfTimeCompleted = 0 %}\n{% elif (percentageOfTimeCompleted
+            > 1) %}\n  {% set percentageOfTimeCompleted = 1 %}\n{% endif %} {{ percentageOfTimeCompleted
+            }}\n"
+          easingAdjustedPercentageCompleted: "{% set percentageOfTimeCompleted = percentageOfTimeCompleted
+            | float(0) %} {% if easingType == \"easeInSine\" %}\n  {## https://easings.net/#easeInSine
+            ##}\n  {{  1 - cos((percentageOfTimeCompleted * pi) / 2) }}\n\n{% elif
+            easingType == \"easeInQuad\" %}\n  {## https://easings.net/#easeInQuad
+            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted }} \n\n{%
+            elif easingType == \"easeInCubic\" %}\n  {## https://easings.net/#easeInCubic
+            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted * percentageOfTimeCompleted
+            }}\n\n{% elif easingType == \"easeInQuart\" %}\n  {## https://easings.net/#easeInQuart
+            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted * percentageOfTimeCompleted
+            * percentageOfTimeCompleted }}\n  \n{% elif easingType == \"easeOutSine\"
+            %}\n  {## https://easings.net/#easeOutSine ##}\n  {{ sin((percentageOfTimeCompleted
+            * pi) / 2) }}\n\n{% elif easingType == \"easeOutQuad\" %}\n  {## https://easings.net/#easeOutQuad
+            ##}\n  {{ 1 - (1 - percentageOfTimeCompleted)* (1 - percentageOfTimeCompleted)
+            }} \n\n{% elif easingType == \"easeOutCubic\" %}\n  {## https://easings.net/#easeOutCubic
+            ##}\n  {{ 1 - ((1 - percentageOfTimeCompleted) ** 3) }}\n\n{% elif easingType
+            == \"easeOutQuart\" %}\n  {## https://easings.net/#easeOutQuart ##}\n
+            \ {{ 1 - ((1 - percentageOfTimeCompleted) ** 4) }}\n\n{% elif easingType
+            == \"easeInOutSine\" %}\n  {## https://easings.net/#easeInOutSine ##}\n
+            \ {{ -1 * ((cos(pi * percentageOfTimeCompleted) - 1) / 2) }}\n  \n{% elif
+            easingType == \"easeInOutQuad\" %}\n  {## https://easings.net/#easeInOutQuad
+            ##}\n  {% if (percentageOfTimeCompleted < 0.5) %}\n    {{ 2 * percentageOfTimeCompleted
+            * percentageOfTimeCompleted }} \n  {% else %}\n    {{ 1- (((-2 * percentageOfTimeCompleted
+            + 2) ** 2) / 2) }} \n  {% endif %}\n  \n{% elif easingType == \"easeInOutCubic\"
+            %}\n  {## https://easings.net/#easeInOutCubic ##}\n  {% if (percentageOfTimeCompleted
+            < 0.5) %}\n    {{ 4 * percentageOfTimeCompleted * percentageOfTimeCompleted
+            * percentageOfTimeCompleted }} \n  {% else %}\n    {{ 1- (((-2 * percentageOfTimeCompleted
+            + 2) ** 3) / 2) }} \n  {% endif %}\n    \n{% elif easingType == \"easeInOutQuart\"
+            %}\n  {## https://easings.net/#easeInOutQuart ##}\n  {% if (percentageOfTimeCompleted
+            < 0.5) %}\n    {{ 8 * percentageOfTimeCompleted * percentageOfTimeCompleted
+            * percentageOfTimeCompleted * percentageOfTimeCompleted }} \n  {% else
+            %}\n    {{ 1 - (((-2 * percentageOfTimeCompleted + 2) ** 4) / 2) }} \n
+            \ {% endif %}\n{% else %}\n  {## linear ##}\n  {{ percentageOfTimeCompleted
+            }}\n{% endif %}\n"
+          expectedBrightness: "{% set startBrightness = startBrightness | int %} {%
+            set brightnessSpan = brightnessSpan | int %} {% set easingAdjustedPercentageCompleted
+            = easingAdjustedPercentageCompleted | float(0) %}\n{% set calculatedBrightness
+            = (startBrightness + (brightnessSpan * easingAdjustedPercentageCompleted))
+            | round(0) %}\n{% if (calculatedBrightness < 0) %}\n  {% set calculatedBrightness
+            = 0 %}\n{% elif (calculatedBrightness > 255) %}\n  {% set calculatedBrightness
+            = 255 %}\n{% endif %}\n{% if (endBrightness >= startBrightness) and (calculatedBrightness
+            > endBrightness) %}\n  {% set calculatedBrightness = endBrightness %}\n{%
+            elif (endBrightness < startBrightness) and (calculatedBrightness < endBrightness)
+            %}\n  {% set calculatedBrightness = endBrightness %}\n{% endif %}\n{{
+            calculatedBrightness }}\n"
+          linearExpectedBrightness: "{% set startBrightness = startBrightness | int
+            %} {% set brightnessSpan = brightnessSpan | int %} {% set percentageOfTimeCompleted
+            = percentageOfTimeCompleted | float(0) %}\n{% set calculatedBrightness
+            = (startBrightness + (brightnessSpan * percentageOfTimeCompleted)) | round(0)
+            %} \n{% if (calculatedBrightness < 0) %}\n  {% set calculatedBrightness
+            = 0 %}\n{% elif (calculatedBrightness > 255) %}\n  {% set calculatedBrightness
+            = 255 %}\n{% endif %}\n{% if (endBrightness >= startBrightness) and (calculatedBrightness
+            > endBrightness) %}\n  {% set calculatedBrightness = endBrightness %}\n{%
+            elif (endBrightness < startBrightness) and (calculatedBrightness < endBrightness)
+            %}\n  {% set calculatedBrightness = endBrightness %}\n{% endif %}\n{{
+            calculatedBrightness }}\n"
+          currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness')
+            %}\n{## If a light is off, its brightness will return 'None'. So first
+            check if there's a valid brightness before getting the value ##}\n{% if
+            rawLightLevel %}\n  {% set currentLightLevel = rawLightLevel | int %}\n{%
+            else %}\n  {% set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale
+            == \"zeroToOneHundred\" %}\n  {% set currentLightLevel = (currentLightLevel
+            / 2.55) | round(0) %}\n{% endif %} {{ currentLightLevel }}\n"
+      - if:
+        - condition: template
+          value_template: '{{ (currentBrightness | int) != (endBrightness | int) }}
+
+            '
+        then:
+        - if:
+          - condition: template
+            value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
+
+              '
+          then:
+          - service: light.turn_on
+            target:
+              entity_id: '{{ light }}'
+            data:
+              brightness: '{{ expectedBrightness }}'
+          else:
+          - service: light.turn_on
+            target:
+              entity_id: '{{ light }}'
+            data:
+              brightness_pct: '{{ expectedBrightness }}'
+        - if:
+          - condition: template
+            value_template: '{{ isDebugMode }}
+
+              '
+          then:
+          - service: system_log.write
+            data_template:
+              message: 'Set {{ lightFriendlyName }} to {{ expectedBrightness | int
+                }} brightness. (Linear brightness would have been {{ linearExpectedBrightness
+                | int }}.) Delay is {{ delayInMilliseconds | int }} ms. Elapsed time
+                is {{ (as_timestamp(now()) - startTimestamp) | round(2) }} seconds.
+                (endBrightness is {{ endBrightness}}.)
+
+                '
+              level: warning
+      - delay:
+          milliseconds: '{{ delayInMilliseconds | float(0) }}'
+      - variables:
+          currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness')
+            %} {## If a light is off, its brightness will return \"None\"? So first
+            check if there's a valid brightness before getting the value ##} {% if
+            rawLightLevel %}\n\t{% set currentLightLevel = rawLightLevel | int %}\n{%
+            else %}\n\t{% set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale
+            == \"zeroToOneHundred\" %}\n  {% set currentLightLevel = (currentLightLevel
+            / 2.55) | round(0) %}\n{% endif %} {{ currentLightLevel }}\n"
+          brightnessDifferenceFromExpected: '{{ ( (currentBrightness | int) - (expectedBrightness
+            | int) ) | abs }}
+
+            '
+          isBrightnessDifferenceAboveAutoCancelThreshold: "{% if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
+            %}\n  {{ (brightnessDifferenceFromExpected | int) >= (normalizedAutoCancelThreshold
+            | int) }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
+      - if:
+        - condition: template
+          value_template: '{{ autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
+            and isBrightnessDifferenceAboveAutoCancelThreshold }}
+
+            '
+        then:
+        - variables:
+            stopMessage: "{% if lampBrightnessScale == \"zeroToTwoFiftyFive\" %}\n
+              \ {% set currentBrightnessAsPercentage = (currentBrightness / 2.55)
+              | round(0) %}\n  {% set expectedBrightnessAsPercentage = (expectedBrightness
+              / 2.55) | round(0) %}\n  {% set differenceFromExpectedAsPercentage =
+              (brightnessDifferenceFromExpected / 2.55) | round(0) %}\n{% else %}\n
+              \ {% set currentBrightnessAsPercentage = currentBrightness %}\n  {%
+              set expectedBrightnessAsPercentage = expectedBrightness %}\n  {% set
+              differenceFromExpectedAsPercentage = brightnessDifferenceFromExpected
+              %}\n{% endif %}\n{% set stopMessage = \"Stopped Ashley’s Fader because
+              \" + (lightFriendlyName | string) + \" was found to be at \" + (currentBrightnessAsPercentage
+              | string) + \"%, a difference of \" + (differenceFromExpectedAsPercentage
+              | string) + \" percentage points from the expected brightness of \"
+              + (expectedBrightnessAsPercentage | string) + \"%, which is higher than
+              the auto-cancel threshold of \" + (autoCancelThreshold | string) + \"
+              percentage points.\" %} {{ stopMessage }}\n"
+        - if:
+          - condition: template
+            value_template: '{{ isDebugMode }}
+
+              '
+          then:
+          - service: system_log.write
+            data_template:
+              message: '{{ stopMessage }}
+
+                '
+              level: warning
+        - stop: '{{ stopMessage }}
+
+            '
+      - if:
+        - condition: template
+          value_template: "{## init ##} {% set stopEntityStatus = false %} {% if stopEntityIsEnabled
+            %}\n  {% if bool(states(stopEntity), false) %}\n    {% set stopEntityStatus
+            = true %}\n  {% endif %}\n{% endif %} {{ stopEntityStatus }}\n"
+        then:
+        - variables:
+            stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " +
+              (stopEntityFriendlyName | string) + " is on." %} {{ stopMessage }}
+
+              '
+        - if:
+          - condition: template
+            value_template: '{{ isDebugMode }}
+
+              '
+          then:
+          - service: system_log.write
+            data_template:
+              message: '{{ stopMessage }}
+
+                '
+              level: warning
+        - stop: '{{ stopMessage }}
+
+            '
+      until:
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) >= endTimestamp) \n  or ((endBrightness
+          >= startBrightness) and (expectedBrightness >= endBrightness))\n  or ((endBrightness
+          < startBrightness) and (expectedBrightness <= endBrightness)) }}\n"
+  - variables:
+      currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness') %}\n{##
+        If a light is off, its brightness will return 'None'. So first check if there's
+        a valid brightness before getting the value ##} {% if rawLightLevel %}\n\t{%
+        set currentLightLevel = rawLightLevel | int %}\n{% else %}\n\t{% set currentLightLevel
+        = 0 %}\n{% endif %} {% if lampBrightnessScale == \"zeroToOneHundred\" %}\n
+        \ {% set currentLightLevel = (currentLightLevel / 2.55) | round(0) %}\n{%
+        endif %} {{ currentLightLevel }}\n"
+      brightnessDifferenceFromExpected: '{{ ( (currentBrightness | int) - (endBrightness
+        | int) ) | abs }}
+
+        '
+      isBrightnessDifferenceAboveAutoCancelThreshold: "{% if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
+        %}\n  {{ (brightnessDifferenceFromExpected | int) > (normalizedAutoCancelThreshold
+        | int) }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
+  - if:
+    - condition: template
+      value_template: '{{ ((currentBrightness | int) != (endBrightness | int))  and
+        ((not autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged) or (not isBrightnessDifferenceAboveAutoCancelThreshold))
+        }}
+
+        '
+    then:
+    - if:
+      - condition: template
+        value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
+
+          '
+      then:
+      - service: light.turn_on
+        target:
+          entity_id: '{{ light }}'
+        data:
+          brightness: '{{ endBrightness }}'
+      else:
+      - service: light.turn_on
+        target:
+          entity_id: '{{ light }}'
+        data:
+          brightness_pct: '{{ endBrightness }}'
+  max: 10
+  icon: mdi:lightbulb-on-50
+terra_sunrise:
+  alias: Terra sunrise
+  sequence:
+  - sequence:
+    - target:
+        entity_id: input_boolean.terrarium_on
+      data: {}
+      action: input_boolean.turn_on
+      continue_on_error: true
+    - type: turn_on
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: d2af83dd14b0c3b04e2c8cdaf17b7d6b
+      domain: switch
+      continue_on_error: true
+    - data: {}
+      action: script.luftbefeuchter
+      continue_on_error: true
+    - delay:
+        hours: 0
+        minutes: 1
+        seconds: 0
+    - repeat:
+        count: 100
+        sequence:
+        - action: light.turn_on
+          metadata: {}
+          data: {}
+          continue_on_error: true
+          target:
+            entity_id: light.terrarrium_light_bar_light
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 15
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 15
+    - type: turn_on
+      device_id: 3262fc2fbd4b74787921196150cb23ca
+      entity_id: 3152b52e9f540e2de8ee64906e1d9768
+      domain: light
+      brightness_pct: 100
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+    - type: turn_on
+      device_id: 3262fc2fbd4b74787921196150cb23ca
+      entity_id: 3152b52e9f540e2de8ee64906e1d9768
+      domain: light
+      brightness_pct: 100
+    - type: turn_on
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+      domain: switch
+      continue_on_error: true
+  mode: single
+luftbefeuchter:
+  alias: Luftbefeuchter
+  sequence:
+  - if:
+    - condition: and
+      conditions:
+      - condition: sun
+        after: sunrise
+        before: sunset
+        before_offset: -01:00:00
+        after_offset: +01:00:00
+      - condition: state
+        entity_id: input_boolean.terrarium_on
+        state: 'on'
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_mini_terra_terrarium_humidity_average
+        below: input_number.terrarium_humidity_control_threshold
+        enabled: true
+      - condition: device
+        type: is_off
+        device_id: cb754e11257e7b140e732b51b3457d49
+        entity_id: 0da0445bb1137737a147e4ab96e26655
+        domain: switch
+    then:
+    - alias: Reset
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_18F373/pulsetime3
+        payload: '0'
+      action: mqtt.publish
+    - alias: '10 Minuten '
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_18F373/pulsetime3
+        payload: '700'
+      action: mqtt.publish
+    - type: turn_on
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 0da0445bb1137737a147e4ab96e26655
+      domain: switch
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.luftbefeuchter
+      action: counter.increment
+    alias: If air dry -> humidifier on
+  - if:
+    - condition: template
+      value_template: '{% set hum = states(''sensor.esp32_c3_mini_terra_terrarium_humidity_average'')
+        | float(0) %}
+
+        {% set offset = states(''input_number.terrarium_humidity_control_threshold_offset'')
+        | float(0) %}
+
+        {% set threshold = (states(''input_number.terrarium_humidity_control_threshold'')
+        | float(0) ) %}
+
+        {% set compare = threshold + offset %}
+
+        {{ hum >= compare}}'
+    then:
+    - type: turn_off
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 0da0445bb1137737a147e4ab96e26655
+      domain: switch
+    - alias: '0 Minuten '
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_18F373/pulsetime3
+        payload: '0'
+      action: mqtt.publish
+    alias: If air moist -> humidifier off
+  mode: single
+terra_sunset:
+  alias: Terra sunset
+  sequence:
+  - target:
+      entity_id: input_boolean.terrarium_on
+    data: {}
+    action: input_boolean.turn_off
+    continue_on_error: true
+  - type: turn_off
+    device_id: cb754e11257e7b140e732b51b3457d49
+    entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+    domain: switch
+    continue_on_error: true
+  - data: {}
+    action: script.luftbefeuchter
+    continue_on_error: true
+  - repeat:
+      sequence:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          brightness_step_pct: -1
+        target:
+          entity_id:
+          - light.terrarrium_light_bar_light
+        continue_on_error: true
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
+      count: 150
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 10
+      milliseconds: 0
+  - type: turn_off
+    device_id: 3262fc2fbd4b74787921196150cb23ca
+    entity_id: 3152b52e9f540e2de8ee64906e1d9768
+    domain: light
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 10
+  - type: turn_off
+    device_id: cb754e11257e7b140e732b51b3457d49
+    entity_id: d2af83dd14b0c3b04e2c8cdaf17b7d6b
+    domain: switch
+    continue_on_error: true
+  mode: single
+warmelampe:
+  alias: Wärmelampe
+  sequence:
+  - if:
+    - condition: numeric_state
+      entity_id: sensor.esp32_c3_mini_terra_terrarium_temperature_average
+      below: 24
+    then:
+    - type: turn_on
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+      domain: switch
+    alias: If Temp < 24 -> heat on
+  - if:
+    - condition: numeric_state
+      entity_id: sensor.esp32_c3_mini_terra_terrarium_temperature_average
+      above: 32
+    then:
+    - type: turn_off
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+      domain: switch
+    else: []
+    alias: If Temp > 32 -> heat off
+  mode: queued
+'1707895746671':
+  sequence:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: sensor.speedtest_download
+      state: unavailable
+    enabled: true
+  - metadata: {}
+    data:
+      addon: 6b87c29e_speedtest_addon
+    enabled: true
+    action: hassio.addon_start
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 15
+      milliseconds: 0
+  - metadata: {}
+    data: {}
+    target:
+      entity_id: counter.speedtest
+    action: counter.increment
+  alias: Speedtest update
+  mode: single
+folding_home:
+  alias: Toggle Folding@Home
+  sequence:
+  - if:
+    - condition: state
+      entity_id: sensor.192_168_2_205_00_status
+      state: PAUSED
+    then:
+    - service: foldingathomecontrol.unpause
+      data:
+        address: 192.168.2.205
+    else:
+    - service: foldingathomecontrol.pause
+      data:
+        address: 192.168.2.205
+    alias: Toggle Folding@Home
+  mode: single
+'1716068747270':
+  alias: Ambient daytime based Lighting
+  sequence:
+  - alias: Daytime
+    if:
+    - condition: sun
+      before: sunset
+      after: sunrise
+    then:
+    - if:
+      - condition: and
+        conditions:
+        - type: is_on
+          condition: device
+          device_id: ffc86bfcc740ddde767208e2a0031ecd
+          entity_id: c029525ed2ebb07c129190168fe249a6
+          domain: binary_sensor
+        - condition: or
+          conditions:
+          - condition: device
+            type: is_off
+            device_id: 5ed65099ff7c1b63e0f69717f9e71af1
+            entity_id: 310233a130d9ea8be012253a75f60f15
+            domain: light
+          - type: is_not_occupied
+            condition: device
+            device_id: 8d90a3db9282aaec047e6d784c3c33ea
+            entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+            domain: binary_sensor
+      then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - light.esp32_c3_mini_picture_light_licht
+        action: light.turn_on
+      - metadata: {}
+        data:
+          brightness_pct: 80
+        target:
+          entity_id:
+          - light.esp32_c3_mini_kallax_light_kallax_licht
+        action: light.turn_on
+      else:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - light.esp32_c3_mini_picture_light_licht
+          - light.esp32_c3_mini_kallax_light_kallax_licht
+        action: light.turn_off
+  - alias: Nightime
+    if:
+    - condition: and
+      conditions:
+      - condition: sun
+        before: sunrise
+        after: sunset
+      - condition: device
+        type: is_off
+        device_id: 8d90a3db9282aaec047e6d784c3c33ea
+        entity_id: b4f1ebab5a3e2a26b29eed4b78278bb4
+        domain: switch
+    then:
+    - if:
+      - condition: and
+        conditions:
+        - type: is_on
+          condition: device
+          device_id: ffc86bfcc740ddde767208e2a0031ecd
+          entity_id: c029525ed2ebb07c129190168fe249a6
+          domain: binary_sensor
+        - condition: or
+          conditions:
+          - condition: device
+            type: is_off
+            device_id: 8d90a3db9282aaec047e6d784c3c33ea
+            entity_id: 0a519193061df96ff6bb7345b0904519
+            domain: light
+          - type: is_not_occupied
+            condition: device
+            device_id: 8d90a3db9282aaec047e6d784c3c33ea
+            entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+            domain: binary_sensor
+      then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: light.esp32_s3_zero_lichtschranke_big_led
+        action: light.turn_on
+      - metadata: {}
+        data:
+          brightness_pct: 90
+        target:
+          entity_id:
+          - light.esp32_c3_mini_kallax_light_kallax_licht
+        action: light.turn_on
+      - action: light.turn_on
+        metadata: {}
+        data:
+          brightness_pct: 40
+        target:
+          entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
+      else:
+      - metadata: {}
+        data:
+          transition: 2
+        target:
+          entity_id:
+          - light.esp32_c3_mini_picture_light_licht
+          - light.esp32_c3_mini_kallax_light_kallax_licht
+          - light.esp32_c3_mini_bett_nachtlicht_bettlicht
+        action: light.turn_off
+  - alias: 'Bedtime '
+    if:
+    - condition: and
+      conditions:
+      - condition: sun
+        before: sunrise
+        after: sunset
+      - condition: device
+        type: is_on
+        device_id: 8d90a3db9282aaec047e6d784c3c33ea
+        entity_id: b4f1ebab5a3e2a26b29eed4b78278bb4
+        domain: switch
+    then:
+    - if:
+      - condition: and
+        conditions:
+        - condition: device
+          type: is_off
+          device_id: 8d90a3db9282aaec047e6d784c3c33ea
+          entity_id: 0a519193061df96ff6bb7345b0904519
+          domain: light
+        - type: is_not_occupied
+          condition: device
+          device_id: 8d90a3db9282aaec047e6d784c3c33ea
+          entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+          domain: binary_sensor
+        - type: is_on
+          condition: device
+          device_id: ffc86bfcc740ddde767208e2a0031ecd
+          entity_id: c029525ed2ebb07c129190168fe249a6
+          domain: binary_sensor
+      then:
+      - action: light.turn_on
+        metadata: {}
+        data:
+          brightness_pct: 25
+        target:
+          entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
+      else:
+      - metadata: {}
+        data:
+          transition: 5
+        target:
+          entity_id:
+          - light.esp32_c3_mini_picture_light_licht
+          - light.esp32_c3_mini_kallax_light_kallax_licht
+          - light.esp32_c3_mini_bett_nachtlicht_bettlicht
+        action: light.turn_off
+    enabled: true
+  mode: queued
+  icon: mdi:television-ambient-light
+charge_ev_message_with_optional_disable:
+  alias: Charge EV Message with optional Disable Poco f6
+  use_blueprint:
+    path: homeassistant/confirmable_notification.yaml
+    input:
+      notify_device: 1acbf8ccc41c43655002000aa5b1cd46
+      title: ☀️ EV Charging ☀️
+      message: Plug in a Car to charge with Solar
+      dismiss_text: Car Full or no Car
+      dismiss_action:
+      - metadata: {}
+        data:
+          value: 10
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.set_value
+      confirm_text: Will do
+      confirm_action:
+      - type: turn_on
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 92b751a10b775683b1b0d030710be105
+        domain: switch
+  description: ''
+charge_ev_message_with_optional_disable_stephan_iphone:
+  alias: Charge EV Message with optional Disable Stephan Iphone
+  use_blueprint:
+    path: homeassistant/confirmable_notification.yaml
+    input:
+      notify_device: 3b177c6db2b7618a07b7cf691b4a3a9c
+      title: ☀️ E-Auto Laden ☀️
+      message: Lade dein Auto mit Solar
+      dismiss_text: Kein Auto oder alle voll
+      dismiss_action:
+      - metadata: {}
+        data:
+          value: 10
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.set_value
+      confirm_text: Mach ich
+      confirm_action:
+      - type: turn_on
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 92b751a10b775683b1b0d030710be105
+        domain: switch
+  description: ''
+create_timelapse:
+  alias: Create Timelapse
+  sequence:
+  - action: shell_command.call_timelapse_script
+    data:
+      output_filename: '{{ states(''sensor.job_name_2'') }}'
+  - delay:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    enabled: true
+  - action: shell_command.delete_files_webcam1
+    metadata: {}
+    data: {}
+    enabled: true
+  description: ''
+  mode: queued
+  max: 10
+wintergarten_dachfenster_rolladen_close:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: B9YB4gTiBHoBQAPAC0AH4AcDAeIE4A0X4BUnCKRn1gHiBOIEeiAFAXoBwAtAB+AHAwHiBOANF+ASJwIE1gE=
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Rolladen Close
+  description: ''
+wintergarten_dachfenster_rolladen_open:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: A9sB4gRAAwPiBHIB4AMHQAvgAwMB4gSAH+ADE+ALCwPiBHIBQANAGwPiBINkQAdAAwHiBMATgAdAE+ADAwHiBOANF+ADI0ALDeIEcgHiBHIB2wHiBOIE
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Rolladen Open
+  description: ''
+wintergarten_dachfenster_rolladen_stop:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: EdUEegFYAtUEMQV6AdwB1QTVBIAHQAvgAwMB1QTgDRfgAyPAC0BLgAMFdGTVBHoBQBcB1QTgBQdAE+ADAwExBYAf4AMT4A8LCdUEegHVBHoBMQU=
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Rolladen Stop
+  description: ''
+wintergarten_dachfenster_close:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: BX8B5ATkBEAFBX8B3AHkBEADAeQE4AELQA9AAwHkBOAJE0AX4AcDAuQEfyBFAX8BQBcD5ARTZIAHAX8BQANAC0ADAeQE4AELQA9AAwHkBOAJE0AX4AcDDeQEfwHkBH8B3AHkBOQE
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Close
+  description: ''
+wintergarten_dachfenster_open:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: C30B3ATYAdwE3AR9AUAHQAMB3ATgAQtAD0ADAdwE4AkTQBfgBwMB3ATgAycFu2fYAdwEQAMB3ATgARcB3ATgAQtAG0ADAdwE4AkTQBfgBwMN3AR9AdgB3ATYAdwE2AE=
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Open
+  description: ''
+wintergarten_dachfenster_stop:
+  sequence:
+  - action: text.set_value
+    metadata: {}
+    data:
+      value: CeEEcwHaAeEE4QSAB+AHC0APQAMB4QTgAR9AD+AXAwHhBEAvAb9ngAcD4QThBEAPAeEEQAMB4QTgAQtAD0ADAeEE4AkTQBfgDwMF4QRzAdoB
+    target:
+      entity_id:
+      - text.white_ir_sender_ir_code_to_send
+  alias: Wintergarten Dachfenster Stop
+  description: ''
+wohnzimmer_radio:
+  sequence:
+  - alias: ON/OFF
+    action: text.set_value
+    metadata: {}
+    data:
+      value: B+YjqhFoAg4C4BUDAXIG4B0DQEdAK0AH4AsDwBtAB+ADAw+jneYjzAhoAv//5iPMCGgC
+    target:
+      entity_id: text.white_ir_sender_ir_code_to_send
+  - alias: Vol+
+    action: text.set_value
+    metadata: {}
+    data:
+      value: B9MjqhFnAhcC4BUDAXIG4BkDQEPAJ0AL4AcDQBvAE0ALAnIGFyADQAcJZwK2ndMjtQhnAg==
+    target:
+      entity_id: text.white_ir_sender_ir_code_to_send
+  - alias: Vol-
+    action: text.set_value
+    metadata: {}
+    data:
+      value: B9AjqBFsAicC4AcDQAHgARMBdAbAAwAnoAvgBQcAJyABAnQGbOAAAwEnAsADQAEJbAJ0BicCJwJsAsADAXQG4AUDB5ud0CPPCCcC
+    target:
+      entity_id: text.white_ir_sender_ir_code_to_send
+  - alias: Play/Pause
+    action: text.set_value
+    metadata: {}
+    data:
+      value: B8cjrBFrAjIC4AMDQAFAD0ABQAcDawJ2BuADAwAyoA/AB4AbADIgAUALADJgAYAH4AMPBXYGMgIyAoAHAXYGgAcBMgKABweMnccjuAhrAg==
+    target:
+      entity_id: text.white_ir_sender_ir_code_to_send
+  - alias: Mute/Unmute
+    action: text.set_value
+    metadata: {}
+    data:
+      value: BuMjsRFoAhtgAUAH4AsDBBsCcQZo4BQDARsC4AUDQC/gAxNAD+ADA0Ab4AMPB5Sd4yO6CGgC
+    target:
+      entity_id: text.white_ir_sender_ir_code_to_send
+  alias: Wohnzimmer Radio
+  description: ''
+boiler_save_energy_script:
+  sequence:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.zirkulationspumpe_zigbee
+  - delay:
+      hours: 0
+      minutes: 3
+      seconds: 0
+      milliseconds: 0
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.zirkulationspumpe_zigbee
+  - delay:
+      hours: 0
+      minutes: 7
+      seconds: 0
+      milliseconds: 0
+  alias: Boiler Save Energy Script
+  description: ''
+notify_people_who_are_present:
+  alias: Notify people who are present
+  sequence:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ is_state(''person.stephan'', ''home'') }}'
+      sequence:
+      - data:
+          title: '{{ title }}'
+          message: '{{ message }}'
+        action: notify.mobile_app_stephan_iphone
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ is_state(''person.katalin'', ''home'') }}'
+      sequence:
+      - data:
+          title: '{{ title }}'
+          message: '{{ message }}'
+        action: notify.mobile_app_fp4
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ is_state(''person.enya'', ''home'') }}'
+      sequence:
+      - data:
+          title: '{{ title }}'
+          message: '{{ message }}'
+        action: notify.mobile_app_iphone_von_enya
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ is_state(''person.duncan'', ''home'') }}'
+      sequence:
+      - data:
+          title: '{{ title }}'
+          message: '{{ message }}'
+        action: notify.mobile_app_24069pc21g
+  description: ''
+restart_internet:
+  sequence:
+  - sequence:
+    - action: automation.turn_off
+      metadata: {}
+      data:
+        stop_actions: true
+      target:
+        entity_id: automation.restart_o2_router_if_internet_down_for_5_minutes
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.o2_router
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 20
+        milliseconds: 0
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.o2_router
+    - wait_for_trigger:
+      - entity_id:
+        - binary_sensor.internet_connection
+        from: 'off'
+        to: 'on'
+        for:
+          hours: 0
+          minutes: 0
+          seconds: 30
+        trigger: state
+      timeout:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        milliseconds: 0
+      continue_on_timeout: false
+    - action: notify.duncan
+      metadata: {}
+      data:
+        title: Internet
+        message: Connection restored
+    - action: automation.turn_on
+      metadata: {}
+      target:
+        entity_id: automation.restart_o2_router_if_internet_down_for_5_minutes
+  alias: Restart Internet
+  description: ''
+paludarium_rechts_turm_mister:
+  sequence:
+  - sequence:
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_rechts_l2
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_rechts_l2
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_turm_rechts_l2
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_turm_rechts_l2
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_rechts_l2
+    - delay:
+        hours: 0
+        minutes: 1
+        seconds: 10
+        milliseconds: 0
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_turm_rechts_l2
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 20
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.desk_paludarium_turm_rechts_l2
+  alias: Paludarium Rechts Turm Mister
+  description: ''
+  icon: mdi:weather-fog
+5_min_turn_off_ganglicht:
+  sequence:
+  - sequence:
+    - wait_for_trigger:
+      - type: turned_on
+        device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+        entity_id: 564e927e962a99447ddb8d55d189ca32
+        domain: light
+        trigger: device
+      timeout:
+        hours: 0
+        minutes: 0
+        seconds: 10
+        milliseconds: 0
+      continue_on_timeout: true
+    - alias: Wait 5min if light is on and turn off
+      if:
+      - condition: device
+        type: is_on
+        device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+        entity_id: 564e927e962a99447ddb8d55d189ca32
+        domain: light
+      then:
+      - delay:
+          hours: 0
+          minutes: 4
+          seconds: 50
+          milliseconds: 0
+      - if:
+        - condition: template
+          enabled: true
+          value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+            int(1) < 28 }}'
+        then:
+        - action: light.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id: light.esp32_c3_mini_treppenhaus_licht
+        - repeat:
+            sequence:
+            - type: turn_off
+              device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+              entity_id: 564e927e962a99447ddb8d55d189ca32
+              domain: light
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 5
+                milliseconds: 0
+            until:
+            - condition: state
+              entity_id: light.ganglicht_zigbee_led
+              state: 'off'
+  alias: 5 Min Turn Off Ganglicht
+  description: ''
+  mode: restart
+  max_exceeded: silent

@@ -1,0 +1,1100 @@
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "Bx/CVee4FXuG3rdAxwGJaESkEdW0/mCbpbJtmS5iPbc="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    subnet: 255.255.255.0
+    dns1: 192.168.2.1
+    static_ip: 192.168.2.42
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32-C3-Zero--Epever"
+    password: !secret ap_password
+
+captive_portal:
+
+button:
+  - platform: restart
+    name: Restart
+
+esphome:
+  name: esp32-c3-zero--epever
+  friendly_name: esp32 c3 zero - epever
+
+  # platformio_options:
+    ## larger stack size required with all registers enable_load_test
+    ## reduce registers or wait for integration of 2.0.0 arduinoespressif32
+    ## not yet working needs 2.0
+    # build_flags:
+    #   - CONFIG_ARDUINO_LOOP_STACK_SIZE=32768
+  on_boot:
+    ## configure controller settings at setup
+    ## make sure priority is lower than setup_priority of modbus_controller
+    priority: -100
+    then:
+      - lambda: |-
+          // get local time and sync to controller
+          time_t now = ::time(nullptr);
+          struct tm *time_info = ::localtime(&now);
+          int seconds = time_info->tm_sec;
+          int minutes = time_info->tm_min;
+          int hour = time_info->tm_hour;
+          int day = time_info->tm_mday;
+          int month = time_info->tm_mon + 1;
+          int year = time_info->tm_year % 100;
+          esphome::modbus_controller::ModbusController *controller = id(epever);
+          // if there is no internet connection localtime returns year 70
+          if (year != 70) {
+            // create the payload
+            std::vector<uint16_t> rtc_data = {uint16_t((minutes << 8) | seconds), uint16_t((day << 8) | hour),
+                                              uint16_t((year << 8) | month)};
+            // Create a modbus command item with the time information as the payload
+            esphome::modbus_controller::ModbusCommandItem set_rtc_command =
+                esphome::modbus_controller::ModbusCommandItem::create_write_multiple_command(controller, 0x9013, 3, rtc_data);
+            // Submit the command to the send queue
+            epever->queue_command(set_rtc_command);
+            ESP_LOGI("ModbusLambda", "EPSOLAR RTC set to %02d:%02d:%02d %02d.%02d.%04d", hour, minutes, seconds, day, month,
+                    year + 2000);
+          }
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+light:
+  - platform: esp32_rmt_led_strip
+    pin: GPIO10
+    id: led_status
+    chipset: WS2812
+    rgb_order: RGB
+    rmt_channel: 0
+    num_leds: 1
+    name: Status LED
+
+time:
+  - platform: sntp
+    id: sntp_time
+    servers: "pool.ntp.org"
+
+uart:
+  id: mod_bus
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 115200
+  stop_bits: 1
+
+modbus:
+  #flow_control_pin: 23
+  send_wait_time: 200ms
+  id: mod_bus_epever
+
+modbus_controller:
+  - id: epever
+    ## the Modbus device addr
+    address: 0x1
+    modbus_id: mod_bus_epever
+    command_throttle: 200ms
+    setup_priority: -10
+    update_interval: 2.5s
+
+number:
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: backlight_time
+    address: 0x9063
+    name: "Backlight time"
+    register_type: holding
+    unit_of_measurement: "s"
+    value_type: U_WORD  
+    entity_category: config
+    disabled_by_default: True
+
+  ## BATTERY PARAMS
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_capacity
+    address: 0x9001
+    name: "Battery Capacity"
+    unit_of_measurement: "Ah"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: equalize_duration
+    address: 0x906B
+    name: "Equalize duration"
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "min"
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: boost_duration
+    address: 0x906C
+    name: "Boost duration"
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "min"
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+  # "The percentage of battery's remaining capacity when stop charging" description modbus epever
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_discharge
+    address: 0x906D
+    name: "Battery Discharge"
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+   # Battery depth of Charge
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_charge
+    address: 0x906E
+    name: "Battery Charge"
+    register_type: holding
+    value_type: U_WORD
+    unit_of_measurement: "%"
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_type
+    address: 0x9000
+    name: "Battery Type"
+    register_type: holding
+    value_type: U_WORD
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+  # Disconnects
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: high_voltage_disconnect
+    address: 0x9003
+    name: "High Voltage disconnect"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: low_voltage_disconnect
+    address: 0x900D
+    name: "Low voltage disconnect"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: discharging_limit_voltage
+    address: 0x900E
+    name: "Discharging limit voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  # Charging Voltage Stages
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: charging_limit_voltage
+    address: 0x9004
+    name: "Charging limit voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: equalization_voltage
+    address: 0x9006
+    name: "Equalization voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: boost_voltage
+    address: 0x9007
+    name: "Boost voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: float_voltage
+    address: 0x9008
+    name: "Float voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  # Reconnects
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: over_voltage_reconnect
+    address: 0x9005
+    name: "Over voltage reconnect"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: boost_reconnect_voltage
+    address: 0x9009
+    name: "Boost reconnect voltage"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: low_voltage_reconnect
+    address: 0x900A
+    name: "Low voltage reconnect"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: under_voltage_recover
+    address: 0x900B
+    name: "Under voltage recover"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  # Voltage Warnings
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: under_voltage_warning
+    address: 0x900C
+    name: "Under voltage warning"
+    unit_of_measurement: "V"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  ## TEMPERATURE LIMITS
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_temperature_warning_upper_limit
+    address: 0x9017
+    name: "Battery temperature warning upper limit"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    # new range add 'skip_updates' again
+    skip_updates: 50
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_temperature_warning_lower_limit
+    address: 0x9018
+    name: "Battery temperature warning lower limit"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: controller_inner_temperature_upper_limit
+    address: 0x9019
+    name: "Controller inner temperature upper limit"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: power_component_temperature_upper_limit
+    address: 0x901B
+    name: "Power component temperature upper limit"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  # Temperature Limit Recovers
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: controller_inner_temperature_upper_limit_recover
+    address: 0x901A
+    name: "Controller inner temperature upper limit recover"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    entity_category: config
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: power_component_temperature_upper_limit_recover
+    address: 0x901C
+    name: "Power component temperature upper limit recover"
+    unit_of_measurement: "°C"
+    register_type: holding
+    value_type: S_WORD
+    entity_category: config
+    disabled_by_default: True  
+
+i2c:
+  sda: GPIO6 #green
+  scl: GPIO7 # yellow
+  scan: False
+  id: bus_a
+
+sensor:
+  ## BME280
+  - platform: bme280_i2c
+    temperature:
+      name: "BME280 Temperature"
+      id: bme280_temperature
+      filters: 
+        - or: 
+          - delta: 2%
+          - throttle: 30s
+    pressure:
+      name: "BME280 Pressure"
+      id: bme280_pressure
+      filters: 
+        - or: 
+          - delta: 2%
+          - throttle: 30s
+    humidity:
+      name: "BME280 Relative Humidity"
+      id: bme280_humidity
+      filters: 
+        - or: 
+          - delta: 2%
+          - throttle: 30s
+    address: 0x76
+    iir_filter: 16x
+    update_interval: 10s
+
+  ## DIAGNOSTICS
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 5s
+  - platform: uptime
+    name: Uptime
+    update_interval: 5s
+    filters: 
+      - or:
+        - throttle: 60s
+        - delta: 5%
+
+  ## LOAD DATA
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: load_voltage
+    name: "Load voltage"
+    address: 0x310C
+    unit_of_measurement: "V"
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: load_current
+    name: "Load Current"
+    address: 0x310D
+    unit_of_measurement: "A"
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: load_power
+    name: "Load power"
+    address: 0x310E
+    unit_of_measurement: "W"
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+      - throttle_average: 20s 
+          
+  ## PV DATA
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: pv_input_voltage
+    name: "PV array input voltage"
+    address: 0x3100
+    unit_of_measurement: "V" ## for any other unit the value is returned in minutes
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: pv_input_current
+    name: "PV array input current"
+    address: 0x3101
+    unit_of_measurement: "A" ## for any other unit the value is returned in minutes
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: current
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: pv_input_power
+    name: "PV array input power"
+    address: 0x3102
+    unit_of_measurement: "W" ## for any other unit the value is returned in minutes
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: power
+
+  ## CHARGER DATA
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: charging_voltage
+    name: "Charging voltage"
+    address: 0x3104
+    unit_of_measurement: "V"
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: charging_current
+    name: "Charging current"
+    address: 0x3105
+    unit_of_measurement: "A"
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: current
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: charging_power
+    name: "Charging power"
+    address: 0x3106
+    unit_of_measurement: "W"
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+    device_class: power
+
+  ## TEMPERATURES
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_temperature
+    name: "Battery temperature"
+    address: 0x3110
+    unit_of_measurement: °C
+    state_class: measurement
+    device_class: temperature
+    register_type: read
+    value_type: S_WORD
+    accuracy_decimals: 1
+    entity_category: "diagnostic"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: device_temperature
+    name: "Device temperature"
+    address: 0x3111
+    unit_of_measurement: °C
+    register_type: read
+    value_type: S_WORD
+    accuracy_decimals: 1
+    entity_category: "diagnostic"
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: power_components_temperature
+    name: "Power components temperature"
+    entity_category: "diagnostic"
+    address: 0x3112
+    unit_of_measurement: °C
+    register_type: read
+    value_type: S_WORD
+    accuracy_decimals: 1
+    filters:
+      - multiply: 0.01
+
+  ## BATTERY
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_soc
+    name: "Battery SOC"
+    address: 0x311A
+    unit_of_measurement: "%"
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 0
+    device_class: battery
+    on_value_range: 
+      below: 10
+      then:
+        - switch.turn_off: manual_control_load
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_voltage
+    name: "Battery voltage"
+    address: 0x331A
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 2
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_current
+    name: "Battery current"
+    address: 0x331B
+    register_type: read
+    value_type: S_DWORD_R
+    register_count: 2
+    accuracy_decimals: 2
+    unit_of_measurement: "A"
+    filters:
+      - multiply: 0.01
+    device_class: current
+
+  - platform: template
+    device_class: power
+    accuracy_decimals: 2
+    name: Battery Power
+    id: battery_power
+    unit_of_measurement: W
+    update_interval: 5s
+    lambda: !lambda return (id(battery_current).state * id(battery_voltage).state);
+    filters:
+      - round: 2
+      - multiply: -1
+          
+  ## MINs & MAXs
+  # min & Max Voltage PV
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: max_pv_voltage_today
+    name: "Maximum PV voltage today"
+    address: 0x3300
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+    entity_category: "diagnostic"
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: min_pv_voltage_today
+    name: "Minimum PV voltage today"
+    address: 0x3301
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+    entity_category: "diagnostic"
+
+  # Min & Max Battery Voltage
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: max_battery_voltage_today
+    name: "Maximum battery voltage today"
+    address: 0x3302
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+    entity_category: "diagnostic"
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: min_battery_today
+    name: "Minimum battery voltage today"
+    address: 0x3303
+    register_type: read
+    value_type: U_WORD
+    accuracy_decimals: 1
+    unit_of_measurement: "V"
+    filters:
+      - multiply: 0.01
+    device_class: voltage
+    entity_category: "diagnostic"
+
+  ## ENERGY
+  # Consumed Energy
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_today
+    name: "Consumed energy today"
+    address: 0x3304
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 2
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_month
+    name: "Consumed Energy Month"
+    address: 0x3306
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 2
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_year
+    name: "Consumed energy year"
+    address: 0x3308
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    filters:
+      - multiply: 0.01
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: consumed_energy_total
+    name: "Consumed energy total"
+    address: 0x330A
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    filters:
+      - multiply: 0.01
+
+  # Generated Energy
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_today
+    name: "Generated energy today"
+    address: 0x330C
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 2
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    filters:
+      - multiply: 0.01
+    device_class: energy
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_month
+    name: "Generated energy month"
+    address: 0x330E
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 2
+    unit_of_measurement: "kWh"
+    filters:
+      - multiply: 0.01
+    device_class: energy
+    state_class: total_increasing
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_year
+    name: "Generated energy year"
+    address: 0x3310
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    filters:
+      - multiply: 0.01
+    device_class: energy
+    state_class: total_increasing
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: generated_energy_total
+    name: "Generated energy total"
+    address: 0x3312
+    register_type: read
+    value_type: U_DWORD_R
+    accuracy_decimals: 1
+    unit_of_measurement: "kWh"
+    device_class: "energy"
+    state_class: "total_increasing"
+    filters:
+      - multiply: 0.01
+
+  #Length of night
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: length_of_night_minutes
+    address: 0x9065
+    internal: True
+    bitmask: 0xFF
+    unit_of_measurement: m
+    name: "Length of night-mins"
+    register_type: holding
+    value_type: U_WORD
+    entity_category: "diagnostic"
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: length_of_night
+    address: 0x9065
+    bitmask: 0xFF00
+    internal: False
+    unit_of_measurement: h
+    name: "Length of night"
+    register_type: holding
+    device_class: duration
+    state_class: total
+    value_type: U_WORD
+    skip_updates: 50
+    accuracy_decimals: 2
+    filters:
+      - lambda: return (id(length_of_night_minutes).state  + ( 60 * x)) / 60;
+    entity_category: "diagnostic"
+
+binary_sensor:
+  - platform: status
+    name: Status
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: charging_input_volt_failure
+    name: "Charging Input Volt Failure"
+    register_type: read
+    address: 0x3201
+    bitmask: 0xC000
+    entity_category: "diagnostic"
+
+select:
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    name: "Charging Mode"
+    id: charging_mode
+    address: 0x9070
+    value_type: U_WORD
+    entity_category: config
+    optionsmap:
+      "Voltage Compensation": 0
+      "SOC Compensation": 1
+
+switch:
+  #- platform: modbus_controller
+  #  modbus_controller_id: epever
+  #  id: charging_device_on_off
+  #  register_type: holding
+  #  address: 0x0000
+  #  name: "Charging Device"
+  #  bitmask: 1
+
+  #- platform: modbus_controller
+  #  modbus_controller_id: epever
+  #  id: output_control_manual_or_automatic
+  #  register_type: coil
+  #  address: 1
+  #  name: "Output Control manual/automatic"
+  #  bitmask: 1
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: default_control_the_load
+    register_type: coil
+    address: 3
+    name: "default control the load"
+    bitmask: 1
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: manual_control_load
+    register_type: coil
+    address: 2
+    name: "manual control the load"
+    bitmask: 1
+
+text_sensor:
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    name: "rtc_clock"
+    id: rtc_clock
+    internal: true
+    register_type: holding
+    address: 0x9013
+    register_count: 3
+    raw_encode: HEXBYTES
+    response_size: 6
+    #                /*
+    #                E20 Real time clock 9013 D7-0 Sec, D15-8 Min
+    #                E21 Real time clock 9014 D7-0 Hour, D15-8 Day
+    #                E22 Real time clock 9015 D7-0 Month, D15-8 Year
+    #                */
+    on_value:
+      then:
+        - lambda: |-
+            ESP_LOGV("main", "decoding rtc hex encoded raw data: %s", x.c_str());
+            uint8_t h=0,m=0,s=0,d=0,month_=0,y = 0 ;
+            m = esphome::modbus_controller::byte_from_hex_str(x,0);
+            s = esphome::modbus_controller::byte_from_hex_str(x,1);
+            d = esphome::modbus_controller::byte_from_hex_str(x,2);
+            h = esphome::modbus_controller::byte_from_hex_str(x,3);
+            y = esphome::modbus_controller::byte_from_hex_str(x,4);
+            month_ = esphome::modbus_controller::byte_from_hex_str(x,5);
+            // Now check if the rtc time of the controller is ok and correct it
+            time_t now = ::time(nullptr);
+            struct tm *time_info = ::localtime(&now);
+            int seconds = time_info->tm_sec;
+            int minutes = time_info->tm_min;
+            int hour = time_info->tm_hour;
+            int day = time_info->tm_mday;
+            int month = time_info->tm_mon + 1;
+            int year = time_info->tm_year % 100;
+            // correct time if needed (ignore seconds)
+            if (d != day || month_ != month || y != year || h != hour || m != minutes) {
+              // create the payload
+              std::vector<uint16_t> rtc_data = {uint16_t((minutes << 8) | seconds), uint16_t((day << 8) | hour),
+                                                uint16_t((year << 8) | month)};
+              // Create a modbus command item with the time information as the payload
+              esphome::modbus_controller::ModbusCommandItem set_rtc_command = esphome::modbus_controller::ModbusCommandItem::create_write_multiple_command(epever, 0x9013, 3, rtc_data);
+              // Submit the command to the send queue
+              epever->queue_command(set_rtc_command);
+              ESP_LOGI("ModbusLambda", "EPSOLAR RTC set to %02d:%02d:%02d %02d.%02d.%04d", hour, minutes, seconds, day, month, year + 2000);
+            }
+            char buffer[20];
+            // format time as YYYY-mm-dd hh:mm:ss
+            sprintf(buffer,"%04d-%02d-%02d %02d:%02d:%02d",y+2000,month_,d,h,m,s);
+            id(template_rtc).publish_state(buffer);
+
+  - platform: template
+    name: "RTC Time Sensor"
+    id: template_rtc
+    disabled_by_default: True
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: Battery_status_volt_text
+    bitmask: 7
+    register_type: read
+    address: 0x3200
+    raw_encode: HEXBYTES
+    name: Battery status voltage
+    entity_category: "diagnostic"
+    lambda: |-
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      switch (value) {
+        case 0: return std::string("Normal");
+        case 1: return std::string("Overvolt");
+        case 2: return std::string("Undervolt");
+        case 3: return std::string("Overdischarge");
+        case 4: return std::string("Fault");
+        default: return std::string("Unknown");
+      }
+      return x;
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: Battery_status_temp
+    name: "Battery status temerature"
+    address: 0x3200
+    register_type: read
+    raw_encode: HEXBYTES
+    bitmask: 0x38  #(Bits 4-7)
+    entity_category: "diagnostic"
+    lambda: |-
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      switch (value) {
+        case 0: return std::string("Normal");
+        case 1: return std::string("Over Temperature");
+        case 2: return std::string("Under Temperature");
+        default: return std::string("Unknown");
+      }
+      return x;
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: Charger_status
+    name: "Charger status"
+    address: 0x3201
+    register_type: read
+    entity_category: "diagnostic"
+    raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      switch (value) {
+        case 0: return std::string("Standby");
+        case 1: return std::string("Running");
+        case 2: return std::string("two");
+        case 3: return std::string("three");
+        case 4: return std::string("pv short circuit");
+        //case 5: return std::string("two");
+        case 6: return std::string("Disequilibrium in three circuits");
+        case 7: return std::string("Load MOSFET is short circuit");
+        case 8: return std::string("The load is short circui");
+        case 9: return std::string("The load is over current");
+        case 10: return std::string("Input is over current");
+        case 11: return std::string("Anti-reverse MOSFET is short circuit");
+        case 12: return std::string("Charging or Anti-reverse MOSFET is open circuit");
+        case 13: return std::string("Charging MOSFET is short circuit");
+        case 14: return std::string("14");
+        case 15: return std::string("15");
+        case 16: return std::string("16");
+        default: return std::string("Unknown");
+      }
+      return x;
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: discharger_status
+    name: "Discharger status"
+    address: 0x3202
+    register_type: read
+    raw_encode: HEXBYTES
+    entity_category: "diagnostic"
+    lambda: |-
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      switch (value) {
+        case 0: return std::string("Standby");
+        case 1: return std::string("Running");
+        //case 2: return std::string("two");
+        //case 3: return std::string("three");
+        case 4: return std::string("Output over voltage");
+        case 5: return std::string("Boost over voltage");
+        case 6: return std::string("Short circuit in high voltage side");
+        case 7: return std::string("Input over voltage");
+        case 8: return std::string("Output voltage abnormal");
+        case 9: return std::string("Unable to stop discharging");
+        case 10: return std::string("Unable to discharge");
+        case 11: return std::string("Short circuit");
+        default: return std::string("Unknown");
+      }
+      return x;
+
+  # Management modes of battery charge and discharge, voltage compensation : 0 and SOC : 1
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: Charging_Mode
+    name: "Charging Mode"
+    address: 0x9070
+    register_type: holding
+    raw_encode: HEXBYTES
+    entity_category: "diagnostic"
+    lambda: |-
+      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
+      switch (value) {
+        case 0: return std::string("Voltage Compensation");
+        case 1: return std::string("SOC Cmpensation");
+        default: return std::string("Unknown");
+      }
+      return x;

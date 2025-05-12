@@ -1,0 +1,119 @@
+esphome:
+  name: esp32-c3-mini--pool-temperature
+  friendly_name: Esp32 C3 Super Mini - Pool Temperature
+  on_boot: 
+    then:
+      - button.press: status_led_btn
+      #- deep_sleep.prevent: deep
+      #- delay: 45s
+      #- deep_sleep.allow: deep
+          
+substitutions:
+  device_name: "Pool Temperature"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: VERBOSE
+  initial_level: INFO
+
+select:
+  - platform: logger
+    id: logger_select
+    name: Log Level
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "hJtm4TFqNQhMQD8Pefou11bT0izhxvvcliMkjCa6yg0="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+    #on_state_change:
+    #  then:
+    #    - deep_sleep.prevent: deep
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32-C3-Mini--Pool-Temperature"
+    password: !secret ap_password
+
+captive_portal:
+
+#deep_sleep:
+  #id: deep
+  #run_duration: 45s
+  #sleep_duration: 4.25min
+
+output:
+  - platform: gpio
+    pin: 
+      number: GPIO8
+      inverted: True
+      ignore_strapping_warning: true
+    id: led_blue
+
+button:
+  - platform: restart
+    name: ${device_name} Restart
+
+  - platform: output
+    output: led_blue
+    name: Status LED
+    id: status_led_btn
+    duration: 
+      milliseconds: 100
+
+binary_sensor:
+  - platform: status
+    name: ${device_name} Status
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+
+one_wire:
+  - platform: gpio
+    pin: GPIO4
+
+sensor:
+  - platform: dallas_temp
+    accuracy_decimals: 3
+    update_interval: 5s
+    address: 0xf6b07a741f64ff28
+    force_update: false
+    resolution: 12
+    filters:
+      - filter_out: NAN
+      - filter_out: 85.0
+      - or:
+        - delta: 0.05
+        - throttle_average: 60s
+    name: ${device_name}
+    on_value:
+      then:
+        - button.press: status_led_btn
+            
+  - platform: uptime
+    name: Uptime
+    update_interval: 10s
+    filters: 
+      - or:
+        - delta: 5%
+        - throttle: 60s
+    
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"

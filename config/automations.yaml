@@ -1,0 +1,6979 @@
+- id: '1697103571991'
+  alias: Auto Desk Light
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 561b2fddd9cec3889faf18b8ccf214a0
+    entity_id: 9e2fd849edb418346b78ab27fafb8a79
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.everything_presence_lite_f1c0d0_illuminance
+    below: 200
+    id: 'On'
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+    id: 'On'
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    id: 'Off'
+  - type: not_occupied
+    device_id: 561b2fddd9cec3889faf18b8ccf214a0
+    entity_id: b4a408441c08e8103747f1fac6b78b62
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+    id: 'Off'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: switch.schreibtisch_links_power_strip_l5
+          state: 'on'
+        - condition: trigger
+          id:
+          - 'Off'
+      sequence:
+      - type: turn_off
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 203df768618055df4c42748f101b7f2b
+        domain: switch
+      alias: 'Off'
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.average_illuminance
+          below: 300
+        - condition: state
+          entity_id: person.duncan
+          state: home
+        - condition: time
+          after: 07:00:00
+          before: '23:00:00'
+        - condition: state
+          entity_id: binary_sensor.schreibtisch
+          state: 'on'
+        - condition: trigger
+          id:
+          - 'On'
+      sequence:
+      - type: turn_on
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 203df768618055df4c42748f101b7f2b
+        domain: switch
+      alias: 'On'
+  mode: queued
+  max: 10
+- id: '1697465397809'
+  alias: Room Ambient Lights
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.esphome_web_529778_room_occupied
+    from: 'on'
+    to: 'off'
+    trigger: state
+  - entity_id:
+    - binary_sensor.esphome_web_529778_room_occupied
+    to: 'on'
+    trigger: state
+  - trigger: state
+    entity_id:
+    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+    to: 'on'
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'on'
+  conditions:
+  - condition: zone
+    entity_id: person.duncan
+    zone: zone.home
+  actions:
+  - metadata: {}
+    data: {}
+    action: script.1716068747270
+  mode: queued
+  max: 10
+- id: '1702826722550'
+  alias: Presence DESK Controller
+  description: ''
+  triggers:
+  - type: not_occupied
+    device_id: 561b2fddd9cec3889faf18b8ccf214a0
+    entity_id: b4a408441c08e8103747f1fac6b78b62
+    domain: binary_sensor
+    trigger: device
+    id: laptop off
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  - type: not_occupied
+    device_id: 561b2fddd9cec3889faf18b8ccf214a0
+    entity_id: b4a408441c08e8103747f1fac6b78b62
+    domain: binary_sensor
+    trigger: device
+    id: Monitor off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+    id: 'ON'
+    alias: 20 sec there -> All ON
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: Monitor off
+    alias: 1 min await -> Monitor OFF
+  - trigger: state
+    entity_id:
+    - binary_sensor.schreibtisch
+    to: 'off'
+    id: laptop off
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    alias: 10 min await -> Laptop OFF
+  conditions: []
+  actions:
+  - alias: Laptop OFF
+    if:
+    - condition: trigger
+      id:
+      - laptop off
+    - type: is_not_occupied
+      condition: device
+      device_id: 561b2fddd9cec3889faf18b8ccf214a0
+      entity_id: 9e2fd849edb418346b78ab27fafb8a79
+      domain: binary_sensor
+      enabled: false
+    - condition: state
+      entity_id: binary_sensor.schreibtisch
+      state: 'off'
+    then:
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.schreibtisch_rechts_power_strip_l3
+        - switch.schreibtisch_rechts_power_strip_l2
+    - if:
+      - condition: sun
+        after: sunset
+        before: sunrise
+      then:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_links_l2
+          - switch.desk_paludarium_turm_rechts_l1
+          - switch.desk_paludarium_links_l1
+          - switch.desk_paludarium_turm_rechts_l3
+          - switch.desk_paludarium_rechts_l3
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 5
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.schreibtisch_rechts_power_strip_l5
+          - switch.schreibtisch_links_power_strip_l1
+  - alias: Monitor OFF
+    if:
+    - condition: trigger
+      id:
+      - Monitor off
+    then:
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.schreibtisch_rechts_power_strip_l2
+    - if:
+      - condition: sun
+        after: sunset
+        before: sunrise
+      then:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_links_l1
+          - switch.desk_paludarium_turm_rechts_l3
+          - switch.desk_paludarium_rechts_l3
+          - switch.desk_paludarium_links_l2
+          - switch.desk_paludarium_turm_rechts_l1
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.schreibtisch_rechts_power_strip_l5
+          - switch.schreibtisch_links_power_strip_l1
+  - alias: All ON
+    if:
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: person.duncan
+        state: home
+      - condition: time
+        after: 07:00:00
+        before: '23:00:00'
+      - condition: trigger
+        id:
+        - 'ON'
+    then:
+    - data: {}
+      target:
+        entity_id:
+        - switch.schreibtisch_rechts_power_strip_l3
+        - switch.schreibtisch_rechts_power_strip_l2
+        - switch.schreibtisch_links_power_strip_l4
+        - switch.schreibtisch_rechts_power_strip_l5
+        - switch.schreibtisch_links_power_strip_l1
+        - switch.desk_paludarium_links_l2
+        - switch.desk_paludarium_turm_rechts_l1
+        - switch.desk_paludarium_links_l1
+        - switch.desk_paludarium_turm_rechts_l3
+        - switch.desk_paludarium_rechts_l3
+        - switch.desk_paludarium_turm_links_l2
+        - switch.desk_paludarium_turm_links_l3
+      action: switch.turn_on
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 10
+        milliseconds: 0
+    - data: {}
+      action: switch.turn_on
+      target:
+        entity_id:
+        - switch.desk_paludarium_links_l1
+        - switch.desk_paludarium_turm_rechts_l3
+        - switch.desk_paludarium_rechts_l3
+        - switch.desk_paludarium_turm_links_l2
+        - switch.desk_paludarium_links_l2
+        - switch.desk_paludarium_turm_rechts_l1
+        - switch.desk_paludarium_turm_links_l3
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - data: {}
+      action: switch.turn_on
+      target:
+        entity_id:
+        - switch.desk_paludarium_links_l1
+        - switch.desk_paludarium_turm_rechts_l3
+        - switch.desk_paludarium_rechts_l3
+        - switch.desk_paludarium_turm_links_l2
+        - switch.desk_paludarium_links_l2
+        - switch.desk_paludarium_turm_rechts_l1
+        - switch.desk_paludarium_turm_links_l3
+  mode: queued
+  max: 15
+- id: '1702976643373'
+  alias: 'EV Solar charging '
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.grid_export_negative
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 30
+    below: -1249
+    trigger: numeric_state
+  conditions:
+  - condition: and
+    conditions:
+    - condition: or
+      conditions:
+      - condition: and
+        conditions:
+        - condition: zone
+          entity_id: device_tracker.lsjwh4097rn105299_vehicle_position
+          zone: zone.home
+        - condition: numeric_state
+          entity_id: sensor.lsjwh4097rn105299_soc
+          below: 100
+        alias: MG4 Home and Soc < 100
+      - condition: and
+        conditions:
+        - condition: zone
+          entity_id: device_tracker.renault_zoe_standort
+          zone: zone.home
+        - condition: numeric_state
+          entity_id: sensor.renault_zoe_batterie
+          below: 100
+        alias: Zoe Home and Soc < 100
+      - condition: and
+        conditions:
+        - condition: zone
+          entity_id: device_tracker.wvgzzze2zpe005371_position
+          zone: zone.home
+        - condition: numeric_state
+          entity_id: sensor.wvgzzze2zpe005371_battery_level
+          below: 100
+        alias: ID.4 Home and Soc < 100
+    - condition: sun
+      before: sunset
+      after: sunrise
+    - condition: numeric_state
+      entity_id: counter.ev_charging_messages
+      below: 10
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: select.go_echarger_252682_trx
+        state: None
+      - condition: state
+        entity_id: select.go_echarger_270862_trx
+        state: None
+  actions:
+  - parallel:
+    - alias: Notify Papa
+      if:
+      - condition: and
+        conditions:
+        - condition: zone
+          entity_id: person.stephan
+          zone: zone.home
+        - condition: zone
+          entity_id: device_tracker.wvgzzze2zpe005371_position
+          zone: zone.home
+      then:
+      - data:
+          title: AEVSCC Possible
+          message: "{{  ['Hey, die Sonne lacht! Zeit, dein E-Auto zu laden und die
+            Solarenergie zu nutzen. \U0001F609',  'Na los! Die Solarenergie wartet
+            nicht! Steck dein Auto an die Ladestation, bevor die Energie verpufft!',
+            \ 'Hey, du Schlaufuchs! Warum lässt du die Solarenergie verpuffen? Steck
+            dein Auto an die Ladestation, sonst geht die Energie flöten!',  'Bist
+            du blind? Schau mal raus! Hopp flott, schnapp dir dein Auto und steck
+            es an!',  'Hey du Schnarchnase! Die Sonne macht heute Überstunden. Zeit,
+            dass auch dein Auto mal was tut! Lad es auf, bevor die Energie im Nirvana
+            verschwindet. \U0001F609',  'Na los, du Schluffi! Die Sonne geht bald
+            pennen, und du lässt dein Auto ungeladen?',  'Hey du Trantüte! Schau mal
+            aus dem Fenster – die Sonne sagt Hallo. Steck dein Auto an, sonst geht
+            die Solarenergie verloren!',  'Du Grottenolm! Schnell zur Ladesäule, bevor
+            du mir noch mehr kostbare Solarenergie verschwendest!'] | random }}"
+        enabled: false
+        action: notify.mobile_app_stephan_iphone
+      - metadata: {}
+        data: {}
+        action: script.charge_ev_message_with_optional_disable_stephan_iphone
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.increment
+      enabled: true
+    - alias: Notify Duncan
+      if:
+      - condition: zone
+        entity_id: person.duncan
+        zone: zone.home
+      then:
+      - metadata: {}
+        data: {}
+        action: script.charge_ev_message_with_optional_disable
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.increment
+  mode: parallel
+  max: 10
+- id: '1704466926541'
+  alias: Appliance Auto Count
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.kaffeemaschine_delonghi_energy_power
+    above: 10
+    id: Kaffeemaschine
+    trigger: numeric_state
+  - entity_id:
+    - sensor.kaffeemaschine_energy_power
+    above: 300
+    id: 'Kaffeemaschine '
+    trigger: numeric_state
+  - entity_id:
+    - sensor.kuhlschrank_drinnen_energy_power
+    above: 30
+    id: 'Kühlschrank '
+    trigger: numeric_state
+  - entity_id:
+    - sensor.kuhlschrank_draussen_energy_power
+    above: 30
+    id: 'Kühlschrank Draußen '
+    trigger: numeric_state
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id:
+      - 'Kühlschrank '
+    then:
+    - data: {}
+      target:
+        entity_id: counter.kuhlschrank
+      action: counter.increment
+    alias: 'Kühlschrank '
+  - alias: 'Kühlschrank  Draußen '
+    if:
+    - condition: trigger
+      id:
+      - 'Kühlschrank Draußen '
+    then:
+    - target:
+        entity_id: counter.kuhlschrank_draussen
+      data: {}
+      action: counter.increment
+  - alias: 'Kaffeemaschine '
+    if:
+    - condition: trigger
+      id:
+      - 'Kaffeemaschine '
+    then:
+    - data: {}
+      target:
+        entity_id: counter.kaffeemaschine
+      action: counter.increment
+  mode: parallel
+  max: 10
+- id: '1705100077572'
+  alias: Trockner ist fertig
+  description: ''
+  use_blueprint:
+    path: Blackshome/appliance-notifications.yaml
+    input:
+      power_sensor: sensor.trockner_energy_power
+      include_end_notify: disable_end_notify_options
+      end_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      - 3b177c6db2b7618a07b7cf691b4a3a9c
+      - 0d88285a82251e06c1a2bfced7afbd00
+      - 2f1b9530bd2a8a239c9716ad67359eba
+      end_message_title: 'Trockner '
+      end_message: Trockner ausräumen
+      end_time_delay: 0.5
+      start_appliance_power: 15
+      end_appliance_power: 10
+      include_start_notify: enable_start_notify_options
+      start_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      end_custom_actions:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.trockner
+        action: counter.increment
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.trockner_fertig
+      start_time_delay: 1
+      start_title: 'Trockner '
+      include_custom_actions:
+      - enable_end_custom_actions
+      start_message: ' '
+      watchdog_timeframe:
+        hours: 3
+        minutes: 0
+        seconds: 0
+      watchdog_message: 'Uh-oh! Time to check the dryer '
+      include_watchdog: enable_watchdog
+      end_notify_data: []
+      start_custom_actions: []
+- id: '1705101110242'
+  alias: Offline Sensors
+  description: ''
+  use_blueprint:
+    path: Tahutipai/zigbee_zwave_notify_when_battery_devices_have_fallen_offline.yaml
+    input:
+      exclude:
+        entity_id:
+        - sensor.24069pc21g_battery_level
+        - sensor.fp4_battery_level
+        - sensor.mi_9t_battery_level_2
+        - sensor.m2101k6g_battery_level_2
+        - sensor.ipad_air_2_battery_level
+        - sensor.iphone_von_enya_battery_level
+        - sensor.ipad_von_stephan_battery_level
+        - sensor.esp32_c3_mini_goe22_controll_battery_soc_22kw
+      actions:
+      - metadata: {}
+        data:
+          title: Offline Sensors
+          target: Warning
+          message: The following devices are unavailable {{sensors}}
+        action: notify.mobile_app_24069pc21g
+      time: '10:30:00'
+- id: '1705389061375'
+  alias: Homeassistent Start & Stop
+  description: ''
+  triggers:
+  - event: start
+    id: Start
+    trigger: homeassistant
+  - event: shutdown
+    id: Stop
+    trigger: homeassistant
+  conditions: []
+  actions:
+  - alias: Start
+    if:
+    - condition: trigger
+      id:
+      - Start
+    then:
+    - metadata: {}
+      data:
+        title: Homeassistent is Up
+        message: Homeassistant is online and reachable at http://{{ states('sensor.local_ip')
+          }}:8123
+        data:
+          notification_icon: mdi:restart
+      action: notify.mobile_app_24069pc21g
+    - delay:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - action: icloud3.action
+      metadata: {}
+      data:
+        command: Locate Device(s) using iCloud
+        device_name: 3675fe049f5a257fe6eebb6533252e74
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 15
+        milliseconds: 0
+    - action: icloud3.action
+      metadata: {}
+      data:
+        command: Locate Device(s) using iCloud
+        device_name: e146d7ea7dd792848fa6d8090a91ff6c
+  - alias: Stop
+    if:
+    - condition: trigger
+      id:
+      - Stop
+    then:
+    - metadata: {}
+      data:
+        title: Homeassistent is Down
+        message: 'Homeassistant was up for: {{ time_since( as_datetime(states(''sensor.uptime'')),
+          2)}}'
+        data:
+          notification_icon: mdi:restart
+      action: notify.mobile_app_24069pc21g
+  mode: single
+- id: '1705619896975'
+  alias: Garage open
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.garagedoor_zigbee_contact
+      friendly_name: Garagentor
+      notify_services_string: notify.mobile_app_24069pc21g
+- id: '1705857100421'
+  alias: Waschmaschine fertig
+  description: ''
+  use_blueprint:
+    path: Blackshome/appliance-notifications.yaml
+    input:
+      power_sensor: sensor.waschmaschine_energy_power
+      include_end_notify: disable_end_notify_options
+      end_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      - 3b177c6db2b7618a07b7cf691b4a3a9c
+      - 0d88285a82251e06c1a2bfced7afbd00
+      - 2f1b9530bd2a8a239c9716ad67359eba
+      end_message_title: Waschmaschine
+      end_message: Waschmaschine ausräumen
+      end_time_delay: 1
+      start_appliance_power: 30
+      end_appliance_power: 10
+      include_start_notify: enable_start_notify_options
+      start_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      include_custom_actions:
+      - enable_end_custom_actions
+      start_time_delay: 0.5
+      end_custom_actions:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.waschmaschine
+        enabled: true
+        action: counter.increment
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.waschmaschine_fertig
+      start_title: 'Waschmaschine '
+      start_message: ' '
+      watchdog_timeframe:
+        hours: 3
+        minutes: 0
+        seconds: 0
+      include_watchdog: enable_watchdog
+      running_dead_zone: 20
+      end_message_kwh: 'Consumption: '
+      end_repeat_count: 1
+      watchdog_title: ⚠️ Waschmaschine ⚠️
+      watchdog_message: Check die Waschmaschine
+- id: '1706024033086'
+  alias: 'Waschküche Fenster Offen '
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.waschkuche_fenster_contact
+      friendly_name: 'Waschküche Fenster '
+      notification_click_url: /lovelace
+      duration_issue_state:
+        hours: 1
+        minutes: 0
+        seconds: 0
+        days: 0
+      notify_services_string: notify.mobile_app_24069pc21g
+      notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=120)) | timestamp_custom('%T', True) }}.
+      notification_title: '{{ friendly_name }} offen'
+      repeat_notification: true
+      time_between_repeat_notification:
+        hours: 3
+        minutes: 0
+        seconds: 0
+        days: 0
+- id: '1706116334482'
+  alias: Nachtlicht
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 8d90a3db9282aaec047e6d784c3c33ea
+    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+    domain: binary_sensor
+    trigger: device
+    id: 'Off'
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+  - type: occupied
+    device_id: 8d90a3db9282aaec047e6d784c3c33ea
+    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+    domain: binary_sensor
+    trigger: device
+    id: Off fast
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  - entity_id:
+    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    from: 'on'
+    to: 'off'
+    id: 'On'
+    trigger: state
+  - type: turned_on
+    device_id: ffc86bfcc740ddde767208e2a0031ecd
+    entity_id: c029525ed2ebb07c129190168fe249a6
+    domain: binary_sensor
+    id: 'On'
+    trigger: device
+  - entity_id:
+    - light.esp32_c3_mini_bett_nachtlicht_bettlicht
+    from: 'off'
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    id: 'Off'
+    trigger: state
+  - entity_id:
+    - light.esp32_c3_mini_bett_nachtlicht_bettlicht
+    from: 'off'
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    id: 'Off'
+    trigger: state
+  conditions:
+  - condition: state
+    entity_id: person.duncan
+    state: home
+    enabled: true
+  - condition: sun
+    before: sunrise
+    after: sunset
+  actions:
+  - metadata: {}
+    data: {}
+    action: script.1716068747270
+  mode: restart
+- id: '1706398043305'
+  alias: 'Spülmaschine fertig '
+  description: ''
+  use_blueprint:
+    path: Blackshome/appliance-notifications.yaml
+    input:
+      power_sensor: sensor.spulmaschine_energy_power
+      include_start_notify: enable_start_notify_options
+      start_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      start_title: 'Spülmaschine '
+      end_notify_device:
+      - 1acbf8ccc41c43655002000aa5b1cd46
+      - 3b177c6db2b7618a07b7cf691b4a3a9c
+      - 0d88285a82251e06c1a2bfced7afbd00
+      - 2f1b9530bd2a8a239c9716ad67359eba
+      end_message_title: 'Spülmaschine '
+      end_custom_actions:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.spulmaschine
+        action: counter.increment
+      start_appliance_power: 15
+      end_message: 'Spülmaschine ausräumen '
+      start_message: ' '
+      include_end_notify: enable_end_notify_options
+      include_custom_actions:
+      - enable_end_custom_actions
+      start_custom_actions: []
+      end_appliance_power: 2
+      end_time_delay: 1
+      include_power_tracking: disable_power_tracking
+      include_watchdog: enable_watchdog
+      watchdog_timeframe:
+        hours: 3
+        minutes: 0
+        seconds: 0
+      watchdog_message: 'Uh-oh! Time to check the dishwasher '
+      start_time_delay: 0.25
+      include_duration_tracking: disable_duration_tracking
+- id: '1708932016459'
+  alias: Update System Metrics Sensors
+  description: ''
+  triggers:
+  - minutes: /5
+    id: 5m
+    trigger: time_pattern
+  - hours: /2
+    id: 2h
+    trigger: time_pattern
+  - id: 3h
+    hours: /3
+    trigger: time_pattern
+  conditions: []
+  actions:
+  - alias: 5m
+    if:
+    - condition: trigger
+      id:
+      - 5m
+    then:
+    - data: {}
+      target:
+        entity_id:
+        - sensor.folding_home_arbeitsspeicher_in_prozent
+        - sensor.folding_home_cpu_prozent
+        - sensor.know_loads
+        - sensor.know_loads_2
+      action: homeassistant.reload_config_entry
+    - action: homeassistant.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.wvgzzze2zpe005371_force_data_refresh
+      enabled: true
+  - alias: 2h
+    if:
+    - condition: trigger
+      id:
+      - 2h
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: button.ankermake_m5c_reload_ankerctl
+      action: button.press
+      enabled: true
+  - alias: 3h
+    if:
+    - condition: trigger
+      id:
+      - 3h
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        device_id:
+        - 9914e6e4fe991b11910d0b307255e881
+      action: homeassistant.reload_config_entry
+      enabled: false
+    - action: homeassistant.update_entity
+      metadata: {}
+      data:
+        entity_id:
+        - sensor.top_15_entites
+      enabled: false
+    - action: homeassistant.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.wvgzzze2zpe005371_force_data_refresh
+      enabled: false
+  mode: queued
+  max: 10
+- id: '1708973217328'
+  alias: Auto Kaffeemaschine Off
+  description: ''
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - sensor.kaffeemaschine_energy_power
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    below: 10
+  - platform: numeric_state
+    entity_id:
+    - sensor.kaffeemaschine_energy_power
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    below: 0.1
+  condition: []
+  action:
+  - type: turn_off
+    device_id: 2320e049052c2c576731c97129f67579
+    entity_id: 890c2aa53bbcd5947be35ffe30558133
+    domain: switch
+  mode: single
+- id: '1709073413848'
+  alias: Auto Boiler
+  description: ''
+  triggers:
+  - entity_id:
+    - schedule.boiler_pumpe
+    from:
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    trigger: state
+  - entity_id:
+    - schedule.boiler_pumpe
+    from:
+    to: 'off'
+    id: 'Off'
+    trigger: state
+  - trigger: state
+    entity_id:
+    - script.boiler_save_energy_script
+    to: 'off'
+    from: 'on'
+    id: Script finished
+  conditions: []
+  actions:
+  - alias: 'On'
+    if:
+    - condition: trigger
+      id:
+      - 'On'
+    then:
+    - alias: Notify of not enough warm water
+      if:
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_mini_boiler_heizraum_boiler_temperature
+        below: 30
+      then:
+      - metadata: {}
+        data:
+          message: Das Wasser hat nur {{ states('sensor.esp32_c3_mini_boiler_heizraum_boiler_temperature')
+            | float(0)| round(0) }}°C!
+        action: notify.mobile_app_24069pc21g
+    - action: script.boiler_save_energy_script
+      metadata: {}
+      data: {}
+  - alias: 'Off'
+    if:
+    - condition: trigger
+      id:
+      - 'Off'
+    then:
+    - type: turn_off
+      device_id: 2d4856e9b534472fb57e5601a3f5110e
+      entity_id: 4537b8f00f743d73e53e52b828f58d2c
+      domain: switch
+  - if:
+    - condition: trigger
+      id:
+      - Script finished
+    - condition: state
+      entity_id: schedule.boiler_pumpe
+      state: 'on'
+    then:
+    - action: script.boiler_save_energy_script
+      metadata: {}
+      data: {}
+    alias: Re Execute if Still in Time Frame
+  mode: queued
+  max: 10
+- id: '1709109726781'
+  alias: Update Credits when new Task is started
+  description: ''
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - sensor.192_168_2_205_00_percentdone
+    above: 1
+  - platform: numeric_state
+    entity_id:
+    - sensor.192_168_2_205_00_percentdone
+    above: 25
+  - platform: numeric_state
+    entity_id:
+    - sensor.192_168_2_205_00_percentdone
+    above: 50
+  - platform: numeric_state
+    entity_id:
+    - sensor.192_168_2_205_00_percentdone
+    above: 75
+  condition: []
+  action:
+  - service: button.press
+    data: {}
+    target:
+      entity_id:
+      - button.update_foldingathome
+  mode: single
+- id: '1710427927351'
+  alias: 'Daily Energy Summary '
+  description: ''
+  triggers:
+  - at: '23:59:55'
+    id: Day End
+    trigger: time
+  - event: sunrise
+    offset: 0
+    id: Rise
+    trigger: sun
+  - event: sunset
+    offset: 0
+    id: Set
+    trigger: sun
+  conditions: []
+  actions:
+  - alias: 'Message rise '
+    if:
+    - condition: trigger
+      id:
+      - Rise
+    - condition: state
+      entity_id: input_boolean.automation_enable_sunrise
+      state: 'on'
+    then:
+    - data:
+        title: 'Daily Energy Summary:'
+        message: '{{ states(''sensor.energy_summary_1st_block'') }}
+
+
+          {{ states(''sensor.energy_summary_1st_block_2'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  - alias: 'Message sunset '
+    if:
+    - condition: trigger
+      id:
+      - Set
+    - condition: state
+      entity_id: input_boolean.automation_enable_sunset
+      state: 'on'
+    then:
+    - data:
+        title: 'Daily Energy Summary:'
+        message: '{{ states(''sensor.energy_summary_1st_block'') }}
+
+
+          {{ states(''sensor.energy_summary_1st_block_2'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  - alias: 'Message midnight '
+    if:
+    - condition: trigger
+      id:
+      - Day End
+    - condition: state
+      entity_id: input_boolean.automation_enable_midnight
+      state: 'on'
+    then:
+    - data:
+        title: 'Daily Energy Summary:'
+        message: '{{ states(''sensor.energy_summary_1st_block'') }}
+
+
+          {{ states(''sensor.energy_summary_1st_block_2'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  - alias: Appliances
+    if:
+    - condition: trigger
+      id:
+      - Day End
+    - condition: state
+      entity_id: input_boolean.automation_enable_appliance
+      state: 'on'
+    then:
+    - data:
+        title: 'Appliance Summary:'
+        message: '{{ states(''sensor.appliance_used'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  - alias: Sunset Notification
+    if:
+    - condition: trigger
+      id:
+      - Set
+    then:
+    - if:
+      - condition: state
+        entity_id: input_boolean.automation_enable_go_echarger
+        state: 'on'
+      then:
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - alias: Goe
+        if:
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.daily_energy_goe_11kw
+            above: 0
+          - condition: numeric_state
+            entity_id: sensor.daily_energy_goe_22kw
+            above: 0
+        then:
+        - metadata: {}
+          data:
+            title: Charged Energy
+            message: '{{ "- 11kW: " + states(''sensor.daily_energy_goe_11kw'')|float(0)|round(2)|string
+              + ''kWh'' if states(''sensor.daily_energy_goe_11kw'')|float(0)|round(2)
+              > 0 else ''''}}
+
+              {{ "- 22kW: " + states(''sensor.daily_energy_goe_22kw'')|float(0)|round(2)|string
+              + ''kWh'' if states(''sensor.daily_energy_goe_22kw'')|float(0)|round(2)
+              > 0 else ''''}}
+
+              {{ " Total: " + (states(''sensor.daily_energy_goe_22kw'')|float(0)|round(2)
+              + states(''sensor.daily_energy_goe_11kw'')|float(0)|round(2))|round(2)|string
+              + "kWh" if states(''sensor.daily_energy_goe_22kw'')|float(0)|round(2)
+              > 0 and states(''sensor.daily_energy_goe_11kw'')|float(0)|round(2) >
+              0}}
+
+              '
+          action: notify.mobile_app_24069pc21g
+      alias: 'Go-eCharger '
+  - if:
+    - condition: trigger
+      id:
+      - Day End
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.ev_charging_messages
+      action: counter.reset
+    alias: Reset EV Messages Counter
+  - alias: Forecast tomorrow
+    if:
+    - condition: trigger
+      id:
+      - Set
+    - condition: state
+      entity_id: input_boolean.automation_enable_forecast
+      state: 'on'
+    then:
+    - data:
+        title: 'Solar Forecast Tomorrow:'
+        message: '{{ states(''sensor.solar_forecast_text_tomorrow'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  - alias: Forecast today
+    if:
+    - condition: trigger
+      id:
+      - Rise
+    - condition: state
+      entity_id: input_boolean.automation_enable_forecast
+      state: 'on'
+    then:
+    - data:
+        title: 'Solar Forecast Today:'
+        message: '{{ states(''sensor.solar_forecast_text_today'') }}
+
+          '
+      action: notify.mobile_app_24069pc21g
+  mode: parallel
+  max: 10
+- id: '1710589916637'
+  alias: Fire detection based on temperature sensors
+  description: ''
+  triggers:
+  - seconds: /15
+    trigger: time_pattern
+  conditions:
+  - condition: template
+    value_template: '{{ sensors != '''' }}'
+  actions:
+  - choose: []
+    default:
+    - metadata: {}
+      data:
+        message: fire detected in {{sensors}}
+      action: notify.mobile_app_24069pc21g
+    - metadata: {}
+      data:
+        message: fire detected in {{sensors}}
+      action: notify.mobile_app_stephan_iphone
+  variables:
+    threshold: 45
+    include:
+      entity_id:
+      - sensor.esp32_c3_mini_terra_duncan_room_temperature
+      - sensor.esp32_c3_mini_boiler_heizraum_temperature
+      - sensor.esp32_c3_zero_epever_bme280_temperature
+      - sensor.inverter_battery_temperature
+      - sensor.esphome_az_envy_2_temperature_gartenhaus
+      - sensor.esphome_az_envy_1_temperature_heizraum
+      - sensor.esphome_az_envy_3_temperature_3d_printer
+      - sensor.gw1100a_indoor_temperature
+      - sensor.t_h_duncan_zigbee_temperature
+      - sensor.t_h_waschkuche_zigbee_temperature
+      - sensor.weinkeller_temperature
+      - sensor.t_h_bad_zigbee_temperature
+      - sensor.t_h_kinderbad_zigbee_temperature
+      - sensor.inverter_battery_temperature
+      - sensor.t_h_garage_zigbee_temperature
+      - sensor.esp32_c3_zero_epever_battery_temperature
+    sensors: "{% set result = namespace(sensors=[]) %} {% for state in states.sensor
+      | selectattr('attributes.device_class', '==', 'temperature') %}\n  {% if 0 <=
+      state.state | int(-1) > threshold | int and state.entity_id in include.entity_id
+      %}\n    {% set result.sensors = result.sensors + [state.name ~ ' (' ~ state.state
+      ~ ' °C)'] %}\n  {% endif %}\n{% endfor %} {% for state in states.binary_sensor
+      | selectattr('attributes.device_class', '==', 'temperature') | selectattr('state',
+      '==', 'on') %}\n  {% if state.entity_id in include.entity_id %}\n    {% set
+      result.sensors = result.sensors + [state.name] %}\n  {% endif %}\n{% endfor
+      %} {{result.sensors|join(', ')}}"
+  mode: single
+- id: '1710856538174'
+  alias: Count Battery Full
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_voltage
+    above: 28.3
+    id: Full
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_voltage
+    below: 24
+    id: Empty
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_soc
+    above: 98
+    id: Full
+    enabled: false
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_soc
+    id: Empty
+    below: 40
+    enabled: false
+    trigger: numeric_state
+  conditions: []
+  actions:
+  - alias: Full
+    if:
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_boolean.battery_full
+        state: 'off'
+      - condition: trigger
+        id:
+        - Full
+    then:
+    - target:
+        entity_id:
+        - input_boolean.battery_full
+      data: {}
+      action: input_boolean.turn_on
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.battery_full
+      enabled: false
+      action: counter.increment
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.charged_energy_to_bkw_battery'') | float(0) | round(2)
+          }}
+
+          '
+      target:
+        entity_id: input_number.last_charged_energy_to_bkw_battery
+  - alias: Empty
+    if:
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_boolean.battery_full
+        state: 'on'
+      - condition: trigger
+        id:
+        - Empty
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.battery_full
+      action: input_boolean.turn_off
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.battery_empty
+      enabled: false
+      action: counter.increment
+  mode: single
+- id: '1711468239502'
+  alias: BKw Control
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.inverter_pv_power
+    id: on day
+    above: 2250
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_voltage
+    id: off night
+    below: 23
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 200
+    id: off day
+    trigger: numeric_state
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 175
+    id: off day
+    trigger: numeric_state
+  - entity_id:
+    - sensor.inverter_pv_power
+    id: off day
+    below: 2250
+    trigger: numeric_state
+  - entity_id:
+    - sensor.inverter_pv_power
+    id: off day
+    below: 2000
+    trigger: numeric_state
+  - event: sunset
+    offset: -00:15:00
+    id: on night
+    trigger: sun
+  - event: sunrise
+    offset: +00:15:00
+    id: off night
+    trigger: sun
+  - id: on day
+    enabled: true
+    trigger: time_pattern
+    minutes: '*'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.bkw_outlet_1_energy_power
+    below: 50
+    id: off night
+  conditions:
+  - condition: or
+    conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: input_boolean.battery_full
+        state: 'on'
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_zero_epever_battery_soc
+          above: 95
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_zero_epever_battery_voltage
+          above: 27.75
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.inverter_pv_power
+        below: 2001
+      - condition: device
+        type: is_on
+        device_id: f7afa3f7d75d54c713ea1d78071ff30c
+        entity_id: 12403f847e9caae174f8b14a11ab9c19
+        domain: switch
+  actions:
+  - alias: on day
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - on day
+      - condition: state
+        entity_id: sensor.scb_inverter_state
+        state: FeedIn
+      - condition: and
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_zero_epever_battery_voltage
+          above: 27.65
+          enabled: true
+        - condition: numeric_state
+          entity_id: sensor.inverter_pv_power
+          above: 2250
+      - condition: state
+        entity_id: input_boolean.battery_full
+        state: 'on'
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_zero_epever_battery_soc
+        above: 95
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+      enabled: true
+      action: switch.turn_on
+    - type: turn_on
+      device_id: f7afa3f7d75d54c713ea1d78071ff30c
+      entity_id: 12403f847e9caae174f8b14a11ab9c19
+      domain: switch
+  - alias: off day
+    if:
+    - condition: and
+      conditions:
+      - condition: sun
+        before: sunset
+        after: sunrise
+        after_offset: -00:16:00
+      - condition: trigger
+        id:
+        - off day
+    then:
+    - type: turn_off
+      device_id: f7afa3f7d75d54c713ea1d78071ff30c
+      entity_id: 12403f847e9caae174f8b14a11ab9c19
+      domain: switch
+  - alias: on night
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - on night
+      - condition: state
+        entity_id: input_boolean.battery_full
+        state: 'on'
+    then:
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+      enabled: true
+      action: switch.turn_on
+    - type: turn_on
+      device_id: f7afa3f7d75d54c713ea1d78071ff30c
+      entity_id: 12403f847e9caae174f8b14a11ab9c19
+      domain: switch
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.battery_full
+      action: counter.increment
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ (states(''sensor.charged_energy_to_bkw_battery'') | float(0) |
+          round(2) - states(''sensor.discharged_energy_from_bkw_battery'') | float(0)
+          | round(2)) | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_charged_energy_to_bkw_battery
+      enabled: false
+    - action: utility_meter.calibrate
+      metadata: {}
+      data:
+        value: '0.0'
+      target:
+        entity_id:
+        - sensor.charged_energy_to_bkw_battery
+        - sensor.discharged_energy_from_bkw_battery
+  - alias: off night
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - off night
+      - condition: numeric_state
+        entity_id: sensor.bkw_outlet_1_energy_today
+        above: 0.001
+      - condition: time
+        after: 00:00:00
+        before: 09:00:00
+    then:
+    - alias: Repeat off cmd until OFF
+      repeat:
+        sequence:
+        - type: turn_off
+          device_id: f7afa3f7d75d54c713ea1d78071ff30c
+          entity_id: 12403f847e9caae174f8b14a11ab9c19
+          domain: switch
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: state
+          entity_id: switch.bkw_outlet_1_bkw_outlet_1
+          state: 'off'
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.battery_full
+      action: input_boolean.turn_off
+    - if:
+      - condition: numeric_state
+        entity_id: sensor.discharged_energy_from_bkw_battery
+        above: 0
+      then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.battery_empty
+        action: counter.increment
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ states(''sensor.discharged_energy_from_bkw_battery'') | float(0)
+            | round(2) }}
+
+            '
+        target:
+          entity_id: input_number.last_discharged_energy_from_bkw_battery
+      - action: utility_meter.calibrate
+        metadata: {}
+        data:
+          value: '0.0'
+        target:
+          entity_id: sensor.discharged_energy_from_bkw_battery
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - type: turn_off
+      device_id: 93a7dbc1ab0380e01f4cd6d5eb91b9bc
+      entity_id: c75f234504dc77b5d544518a8128c688
+      domain: switch
+  mode: queued
+  max: 15
+- id: '1711830948847'
+  alias: Restart O2 Router if Internet down for 5 minutes
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.internet_connection
+    from: 'on'
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 30
+    id: No Internet irregular
+    trigger: state
+  - entity_id:
+    - schedule.restart_o2_router_schedule
+    from: 'off'
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
+    id: No Internet regular
+    trigger: state
+    enabled: true
+  conditions: []
+  actions:
+  - alias: 'Restart Router irregular '
+    if:
+    - condition: trigger
+      id:
+      - No Internet irregular
+    then:
+    - type: turn_off
+      device_id: db6576d379f8b04c0a70307678de8d18
+      entity_id: 92c1b1563f51d25b908ef48e8efc9026
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - type: turn_on
+      device_id: db6576d379f8b04c0a70307678de8d18
+      entity_id: 92c1b1563f51d25b908ef48e8efc9026
+      domain: switch
+    - wait_for_trigger:
+      - entity_id:
+        - binary_sensor.internet_connection
+        from: 'off'
+        to: 'on'
+        for:
+          hours: 0
+          minutes: 1
+          seconds: 0
+        trigger: state
+      timeout:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        milliseconds: 0
+      continue_on_timeout: false
+    - data:
+        message: Succesfull Restart of Internet
+        title: Restarted Router based on Internet Outage
+      action: notify.mobile_app_24069pc21g
+  - alias: 'Restart Router regular '
+    if:
+    - condition: trigger
+      id:
+      - No Internet regular
+    then:
+    - type: turn_off
+      device_id: db6576d379f8b04c0a70307678de8d18
+      entity_id: 92c1b1563f51d25b908ef48e8efc9026
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - type: turn_on
+      device_id: db6576d379f8b04c0a70307678de8d18
+      entity_id: 92c1b1563f51d25b908ef48e8efc9026
+      domain: switch
+    - wait_for_trigger:
+      - entity_id:
+        - binary_sensor.internet_connection
+        from: 'off'
+        to: 'on'
+        for:
+          hours: 0
+          minutes: 1
+          seconds: 0
+        trigger: state
+      timeout:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        milliseconds: 0
+      continue_on_timeout: false
+    - data:
+        message: Succesfull Restart of Internet
+        title: 'Restarted Router based on Schedule '
+      action: notify.mobile_app_24069pc21g
+  mode: single
+- id: '1712568670640'
+  alias: Update notifications
+  description: ''
+  use_blueprint:
+    path: mdegat01/update_notifications.yaml
+    input:
+      update_entities:
+      - update.advanced_ssh_web_terminal_update
+      - update.ankerctl_update
+      - update.ankermake_update
+      - update.anylist_update_2
+      - update.anylist_update
+      - update.auto_backup_update
+      - update.battery_notes_update
+      - update.bookstack_update
+      - update.bubble_card_update
+      - update.card_mod_update
+      - update.charger_card_update
+      - update.chrony_update
+      - update.custom_sidebar_update
+      - update.dbstats_update
+      - update.device_tools_update
+      - update.dreame_vacuum_update
+      - update.dwd_pollenflug_update
+      - update.dynamic_energy_cost_update
+      - update.earnapp_update
+      - update.emqx_update
+      - update.esphome_update
+      - update.everything_presence_lite_f1c0d0_everything_presence_lite_firmware
+      - update.everything_presence_zone_configurator_update
+      - update.file_editor_update
+      - update.folding_home_update
+      - update.folding_homecontrol_update
+      - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
+      - update.go2rtc_update
+      - update.hacs_update
+      - update.home_assistant_core_update
+      - update.home_assistant_google_drive_backup_update
+      - update.home_assistant_operating_system_update
+      - update.home_assistant_supervisor_update
+      - update.honeygain_update_2
+      - update.honeygain_update
+      - update.icloud3_v3_idevice_tracker_update
+      - update.ics_calendar_icalendar_update
+      - update.ingress_update
+      - update.jellyfin_nas_update
+      - update.kiosk_mode_update
+      - update.mariadb_update
+      - update.mini_graph_card_update
+      - update.mqtt_explorer_update
+      - update.multiscrape_update
+      - update.mushroom_update
+      - update.network_ups_tools_update
+      - update.onedrive_backup_update
+      - update.packetstream_update
+      - update.pawns_app_update
+      - update.phpmyadmin_update
+      - update.rain_gauge_card_update
+      - update.rclone_backup_update
+      - update.repocket_update
+      - update.samba_nas_update
+      - update.scheduler_card_update
+      - update.scheduler_component_update
+      - update.scrutiny_full_access_update
+      - update.solarman_update
+      - update.solcast_pv_solar_update
+      - update.speedtest_update
+      - update.spook_not_your_homie_update
+      - update.tailscale_update
+      - update.tapo_cameras_control_update
+      - update.terminal_ssh_update
+      - update.tibber_pulse_local_update
+      - update.traffmonetizer_update
+      - update.trashcard_update
+      - update.ultra_vehicle_card_update
+      - update.vehicle_status_card_update
+      - update.vertical_stack_in_card_update
+      - update.volkswagen_we_connect_update
+      - update.waste_collection_schedule_update
+      - update.webrtc_camera_update
+      - update.wundergroundpws_update
+      - update.xiaomi_vacuum_map_card_update
+      - update.zigbee2mqtt_update
+      - update.earnfm_update
+      - update.librespeed_update
+      - update.saic_mqtt_gateway_python_update
+      - update.octopus_energy_germany_update
+      mobile_app_device: 1acbf8ccc41c43655002000aa5b1cd46
+      run_config_check: false
+      only_after: '11:59:00'
+      only_before: '12:04:00'
+      mobile_app_device_2: 71c7eee3ffe028806cd019f588f47ba1
+      reminder_hours: '3'
+      changelog_urls: none
+      take_backup: false
+- id: '1712612224089'
+  alias: Adjust Person Counter if necessary
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: 8d90a3db9282aaec047e6d784c3c33ea
+    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+    domain: binary_sensor
+    trigger: device
+    id: Bed occupied
+  - type: not_occupied
+    device_id: 561b2fddd9cec3889faf18b8ccf214a0
+    entity_id: b4a408441c08e8103747f1fac6b78b62
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: Room empty
+  conditions: []
+  actions:
+  - alias: Adjust when in bed
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Bed occupied
+      - condition: numeric_state
+        entity_id: number.esphome_web_529778_person_counter
+        below: 1
+        enabled: true
+    then:
+    - metadata: {}
+      data:
+        value: '1'
+      target:
+        entity_id:
+        - number.esphome_web_529778_person_counter
+      action: number.set_value
+  - alias: Adjust when room empty
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Room empty
+      - type: is_not_occupied
+        condition: device
+        device_id: 8d90a3db9282aaec047e6d784c3c33ea
+        entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
+        domain: binary_sensor
+      - condition: numeric_state
+        entity_id: number.esphome_web_529778_person_counter
+        enabled: true
+        above: 0.5
+    then:
+    - device_id: ffc86bfcc740ddde767208e2a0031ecd
+      domain: number
+      entity_id: 2a17997fb79eae57b456a9cfb917ae18
+      type: set_value
+      value: 0
+  mode: single
+- id: '1712821937547'
+  alias: Time in Bed
+  description: ''
+  triggers:
+  - entity_id:
+    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+    from: 'on'
+    to: 'off'
+    trigger: state
+  conditions:
+  - condition: and
+    conditions:
+    - condition: sun
+      after: sunrise
+      before: sunset
+      enabled: true
+  actions:
+  - metadata: {}
+    data:
+      message: Du warst {{ time_since(now() - timedelta(hours=states('sensor.time_in_bed_last_24h')|float(0)),
+        2)}} im Bett
+      title: Zeit im Bett
+    action: notify.mobile_app_24069pc21g
+  mode: single
+- id: '1712941263468'
+  alias: Save PulseTIme
+  description: ''
+  triggers:
+  - id: frommqtt
+    topic: stat/tasmota_837238/RESULT
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ ''PulseTime1'' in  trigger.payload }}'
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: switch.pool_pumpe
+      state: 'off'
+      for:
+        hours: 0
+        minutes: 5
+        seconds: 0
+  actions:
+  - target:
+      entity_id: input_number.pulseTimeActualValue
+    data:
+      value: "{% set pulseTime = trigger.payload_json.PulseTime1.Remaining | int(0)
+        %}\n{% if  pulseTime < 112 %}\n  {{ pulseTime / 10 | round(0) }}\n{% else
+        %}\n  {{ ( pulseTime | int - 100 ) }}\n{% endif %}\n"
+    action: input_number.set_value
+  mode: single
+- id: '1713031049792'
+  alias: Get Pulsetime
+  description: ''
+  triggers:
+  - seconds: /10
+    trigger: time_pattern
+  - event: start
+    trigger: homeassistant
+  conditions:
+  - condition: sun
+    before: sunset
+    after: sunrise
+  - condition: not
+    conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: unavailable
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
+        for:
+          hours: 0
+          minutes: 5
+          seconds: 0
+  actions:
+  - metadata: {}
+    data:
+      topic: cmnd/tasmota_837238/pulsetime1
+    action: mqtt.publish
+  mode: single
+- id: '1714554450926'
+  alias: Luftbefeuchter leer
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.terrarium_tasmota3
+    to: 'on'
+    from: 'off'
+  conditions:
+  - condition: device
+    type: is_on
+    device_id: cb754e11257e7b140e732b51b3457d49
+    entity_id: 0da0445bb1137737a147e4ab96e26655
+    domain: switch
+  actions:
+  - alias: Heat on
+    if:
+    - condition: device
+      type: is_on
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+      domain: switch
+    then:
+    - wait_for_trigger:
+      - trigger: numeric_state
+        entity_id:
+        - sensor.terrarium_energy_power
+        above: 100
+      continue_on_timeout: true
+      timeout:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - if:
+      - condition: numeric_state
+        entity_id: sensor.terrarium_energy_power
+        below: 100
+      then:
+      - metadata: {}
+        data:
+          message: 'Wassertank auffüllen '
+          title: Luftbefeuchter leer
+        action: notify.mobile_app_24069pc21g
+      - metadata: {}
+        data:
+          message: ' Der Luftbefeuchter war {{ states(''counter.luftbefeuchter'')}}
+            Mal an'
+          title: Luftbefeuchter Counter
+        action: notify.mobile_app_24069pc21g
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.luftbefeuchter
+        action: counter.reset
+  - alias: Heat off
+    if:
+    - condition: device
+      type: is_off
+      device_id: cb754e11257e7b140e732b51b3457d49
+      entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
+      domain: switch
+    then:
+    - wait_for_trigger:
+      - trigger: numeric_state
+        entity_id:
+        - sensor.terrarium_energy_power
+        above: 20
+        for:
+          hours: 0
+          minutes: 0
+          seconds: 5
+      continue_on_timeout: true
+      timeout:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - if:
+      - condition: numeric_state
+        entity_id: sensor.terrarium_energy_power
+        below: 20
+      then:
+      - metadata: {}
+        data:
+          message: 'Wassertank auffüllen '
+          title: Luftbefeuchter leer
+        action: notify.mobile_app_24069pc21g
+      - metadata: {}
+        data:
+          message: ' Der Luftbefeuchter war {{ states(''counter.luftbefeuchter'')}}
+            Mal an'
+          title: Luftbefeuchter Counter
+        action: notify.mobile_app_24069pc21g
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.luftbefeuchter
+        action: counter.reset
+  mode: single
+- id: '1714558482048'
+  alias: message on per phase overload
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.current_l1
+    above: input_number.fuselimit
+    id: overcurrent_l1
+    trigger: numeric_state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - entity_id:
+    - sensor.current_l2
+    above: input_number.fuselimit
+    id: overcurrent_l2
+    trigger: numeric_state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - entity_id:
+    - sensor.current_l3
+    above: input_number.fuselimit
+    id: overcurrent_l3
+    trigger: numeric_state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  conditions: []
+  actions:
+  - alias: Message on Overcurrent
+    if:
+    - condition: trigger
+      id:
+      - overcurrent_l1
+      - overcurrent_l2
+      - overcurrent_l3
+    then:
+    - metadata: {}
+      data:
+        title: '!!! OVERCURRENT !!!'
+        message: '{{ states(trigger.entity_id) }}A, Phase: {{ trigger.from_state.attributes.friendly_name.replace(''Current'','''')
+          }}'
+      action: notify.mobile_app_24069pc21g
+    - metadata: {}
+      data:
+        option: Don't charge
+      target:
+        entity_id:
+        - select.go_echarger_252682_frc
+        - select.go_echarger_270862_frc
+      action: select.select_option
+  mode: parallel
+  max: 10
+- id: '1715935226503'
+  alias: 'Set night time '
+  description: ''
+  trigger:
+  - platform: time_pattern
+    hours: '12'
+    minutes: /10
+  condition:
+  - condition: sun
+    before: sunset
+    after: sunrise
+  action:
+  - service: input_number.set_value
+    metadata: {}
+    data:
+      value: '{% set set = state_attr(''sun.sun'',''next_setting'')  | as_timestamp()
+        %}{% set rise = state_attr(''sun.sun'',''next_rising'') | as_timestamp() %}{{rise
+        - set}}'
+    target:
+      entity_id: input_number.night_time
+  mode: single
+- id: '1716307846138'
+  alias: Pool Control
+  description: Controls the runtime of the pool and extends it if the weather is nice,
+    based on the solar power available
+  triggers:
+  - hours: '9'
+    minutes: /2
+    id: On early
+    trigger: time_pattern
+  - hours: '10'
+    minutes: /2
+    id: On early
+    trigger: time_pattern
+  - hours: '11'
+    minutes: /2
+    id: Force Start
+    trigger: time_pattern
+  - entity_id:
+    - input_number.pulsetimeactualvalue
+    below: 250
+    id: Extend
+    trigger: numeric_state
+  - entity_id:
+    - input_number.pulsetimeactualvalue
+    below: 150
+    id: Extend
+    trigger: numeric_state
+  - trigger: state
+    entity_id:
+    - switch.pool_pumpe
+    to: 'off'
+    from: 'on'
+    id: Stopped
+  - hours: '20'
+    minutes: '*'
+    id: Force Stop
+    trigger: time_pattern
+  conditions:
+  - condition: or
+    conditions:
+    - alias: Early Start Condition
+      condition: and
+      conditions:
+      - condition: time
+        after: 09:45:00
+        before: '10:59:00'
+      - condition: device
+        type: is_off
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+    - condition: and
+      conditions:
+      - condition: device
+        type: is_off
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+      - condition: time
+        after: '10:59:59'
+        before: '12:00:00'
+      alias: Force Start Condition
+    - alias: 'Extend Condition '
+      condition: numeric_state
+      entity_id: input_number.pulsetimeactualvalue
+      below: 401
+    - condition: state
+      entity_id: switch.pool_pumpe
+      state: 'off'
+      alias: Stopped Condition
+    - condition: and
+      conditions:
+      - condition: time
+        after: '14:00:00'
+        before: '21:00:00'
+      alias: Stop Condition
+  actions:
+  - alias: Early Start
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - On early
+      - alias: Confirm enough solar or power
+        condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.inverter_pv_power
+          above: 1800
+        - condition: numeric_state
+          entity_id: sensor.grid_export
+          above: 2000
+      - condition: device
+        type: is_off
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+      - condition: numeric_state
+        entity_id: sensor.sun_solar_azimuth
+        above: 100
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 40
+    then:
+    - action: automation.turn_off
+      metadata: {}
+      data:
+        stop_actions: true
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+    - alias: 8 hours
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_837238/pulsetime1
+        payload: '28895'
+      action: mqtt.publish
+    - type: turn_on
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 5
+        seconds: 0
+        milliseconds: 0
+    - metadata: {}
+      data:
+        value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+          | float(0) }}'
+      target:
+        entity_id: input_number.pool_temp_start
+      action: input_number.set_value
+    - action: automation.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+  - alias: Force Start
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Force Start
+      - condition: device
+        type: is_off
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+    then:
+    - action: automation.turn_off
+      metadata: {}
+      data:
+        stop_actions: true
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+    - alias: 6 hours
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_837238/pulsetime1
+        payload: '21695'
+      action: mqtt.publish
+    - type: turn_on
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 5
+        seconds: 0
+        milliseconds: 0
+    - metadata: {}
+      data:
+        value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+          | float(0) }}'
+      target:
+        entity_id: input_number.pool_temp_start
+      action: input_number.set_value
+    - action: automation.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+  - alias: Extend
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Extend
+      - condition: numeric_state
+        entity_id: sensor.inverter_pv_power
+        above: 1200
+      - condition: numeric_state
+        entity_id: counter.pool_extend_counter
+        below: 20
+      - condition: numeric_state
+        entity_id: input_number.pulsetimeactualvalue
+        below: 410
+      - condition: device
+        type: is_on
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+      - condition: state
+        entity_id: input_boolean.stop_pool
+        state: 'off'
+    then:
+    - action: automation.turn_off
+      metadata: {}
+      data:
+        stop_actions: true
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 0
+        milliseconds: 500
+    - if:
+      - condition: numeric_state
+        entity_id: counter.pool_extend_counter
+        below: 1
+      then:
+      - metadata: {}
+        data:
+          value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+            | float(0) }}'
+        target:
+          entity_id: input_number.pool_temp_stop
+        action: input_number.set_value
+      alias: Save Temperature before extend
+    - alias: Extend by 6min
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_837238/pulsetime1
+        payload: '{{ states(''input_number.pulsetimeactualvalue'') | int(0) + 460
+          }}'
+      action: mqtt.publish
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.pool_extend_counter
+      action: counter.increment
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 20
+        milliseconds: 0
+    - action: automation.turn_on
+      target:
+        entity_id: automation.pool_pulsetime_auto_adjust
+      data: {}
+    else:
+    - alias: Save Stop Temp when was still on
+      if:
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - Extend
+        - condition: device
+          type: is_on
+          device_id: 7f4653a91cd2ef69cb48aa494a983be8
+          entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+          domain: switch
+      then:
+      - alias: Notify about temperature change caused by extend
+        if:
+        - condition: numeric_state
+          entity_id: counter.pool_extend_counter
+          above: 0
+        - condition: state
+          entity_id: input_boolean.stop_pool
+          state: 'off'
+        then:
+        - action: notify.duncan
+          metadata: {}
+          data:
+            message: Extend caused {{ (states('sensor.esp32_c3_mini_pool_temperature_pool_temperature')
+              | float(0) - states('input_number.pool_temp_stop') | float(0)) | round(2)
+              }}°C
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 100
+      - metadata: {}
+        data:
+          value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+            | float(0) }}'
+        target:
+          entity_id: input_number.pool_temp_stop
+        action: input_number.set_value
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.stop_pool
+  - alias: Stopped
+    if:
+    - condition: trigger
+      id:
+      - Stopped
+    then:
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
+    - alias: Notify about temperature change caused by extend
+      if:
+      - condition: numeric_state
+        entity_id: counter.pool_extend_counter
+        above: 0
+      - condition: state
+        entity_id: input_boolean.stop_pool
+        state: 'off'
+      then:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: Extend caused {{ (states('sensor.esp32_c3_mini_pool_temperature_pool_temperature')
+            | float(0) - states('input_number.pool_temp_stop') | float(0)) | round(2)
+            }}°C
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 0
+        milliseconds: 100
+    - metadata: {}
+      data:
+        value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+          | float(0) }}'
+      target:
+        entity_id: input_number.pool_temp_stop
+      action: input_number.set_value
+    - action: input_boolean.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.stop_pool
+  - alias: Force Stop
+    if:
+    - condition: trigger
+      id:
+      - Force Stop
+    then:
+    - if:
+      - condition: device
+        type: is_on
+        device_id: 7f4653a91cd2ef69cb48aa494a983be8
+        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+        domain: switch
+      then:
+      - metadata: {}
+        data:
+          value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
+            | float(0) }}'
+        target:
+          entity_id: input_number.pool_temp_stop
+        action: input_number.set_value
+      alias: Save Stop Temp when was still on
+    - type: turn_off
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+    - alias: '0'
+      metadata: {}
+      data:
+        topic: cmnd/tasmota_837238/pulsetime1
+        payload: '0'
+      action: mqtt.publish
+    - metadata: {}
+      data: {}
+      target:
+        entity_id: counter.pool_extend_counter
+      action: counter.reset
+    - delay:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - if:
+      - condition: state
+        entity_id: input_boolean.stop_pool
+        state: 'on'
+      then:
+      - alias: 'Notify of Temperature Change '
+        if:
+        - condition: numeric_state
+          entity_id: input_number.pool_temp_stop
+          above: input_number.pool_temp_start
+        then:
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Pool Temperature Change
+            data:
+              tag: pool_diff_plus
+            message: + {{ (states('input_number.pool_temp_stop') | float(0) - states('input_number.pool_temp_start')
+              | float(0)) | round(2) }}°C
+        else:
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Pool Temperature Change
+            data:
+              tag: pool_diff_minus
+            message: '- {{ (states(''input_number.pool_temp_sta'') | float(0) - states(''input_number.pool_temp_stop'')
+              | float(0)) | round(2) }}°C'
+    - action: input_boolean.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.stop_pool
+  mode: queued
+  max: 50
+- id: '1716921868511'
+  alias: Wasserleck
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.heizraum_wasser_sensor_zigbee_occupancy
+    - binary_sensor.kuche_wasser_sensor_zigbee_occupancy
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      title: ' !! Wasserleck !!'
+      message: '{{trigger.to_state.name}} {{text_var}}'
+    action: notify.notify
+  - data:
+      title: ' !! Wasserleck !!'
+      message: '{{trigger.to_state.name}} {{text_var}}'
+    action: notify.persistent_notification
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  variables:
+    text_var: ' hat Feuchtigkeit erkannt!'
+  mode: single
+- id: '1716928849223'
+  alias: 'Get Pulsetime Terrarium '
+  description: ''
+  triggers:
+  - seconds: /30
+    trigger: time_pattern
+  - trigger: homeassistant
+    event: start
+  conditions:
+  - condition: sun
+    before: sunset
+    after: sunrise
+    before_offset: +01:00:00
+    after_offset: -01:00:00
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: switch.terrarium
+      state: unavailable
+  actions:
+  - alias: Luftbefeuchter
+    metadata: {}
+    data:
+      topic: cmnd/tasmota_18F373/pulsetime3
+      payload: ' '
+    action: mqtt.publish
+  mode: single
+- id: '1716929138745'
+  alias: Save Terrarium Pulsetimes
+  description: ''
+  triggers:
+  - id: frommqtt
+    topic: stat/tasmota_18F373/RESULT
+    trigger: mqtt
+  conditions:
+  - condition: template
+    value_template: '{{ ''PulseTime3'' in  trigger.payload }}'
+  actions:
+  - alias: Pulsetime3
+    if:
+    - condition: template
+      value_template: '{{ ''PulseTime3'' in  trigger.payload }}'
+    then:
+    - target:
+        entity_id: input_number.pulsetime3_terrarium
+      data:
+        value: "{% set pulseTime = trigger.payload_json.PulseTime3.Remaining | int(0)
+          %}\n{% if  pulseTime < 112 %}\n  {{ pulseTime / 10 | round(0) }}\n{% else
+          %}\n  {{ ( pulseTime | int - 100 ) }}\n{% endif %}\n"
+      action: input_number.set_value
+  mode: parallel
+  max: 10
+- id: '1716929359492'
+  alias: Terra Pulsetime Control
+  description: ''
+  triggers:
+  - minutes: /1
+    id: '1'
+    trigger: time_pattern
+  conditions:
+  - condition: sun
+    before: sunset
+    after: sunrise
+  actions:
+  - alias: On Sunrise
+    if:
+    - condition: trigger
+      id:
+      - 'On'
+    - condition: sun
+      before: sunset
+      after: sunrise
+      after_offset: +00:30:00
+    then:
+    - metadata: {}
+      data: {}
+      action: script.terra_sunrise
+    enabled: false
+  - alias: Off Sunset
+    if:
+    - condition: trigger
+      id:
+      - 'Off'
+    - condition: sun
+      before: sunset
+      before_offset: -01:00:00
+      after: sunset
+      after_offset: +01:00:00
+    then:
+    - data: {}
+      action: script.terra_sunset
+    enabled: false
+  - alias: Daytime
+    if:
+    - condition: and
+      conditions:
+      - condition: sun
+        after: sunrise
+        before: sunset
+        before_offset: -01:00:00
+        after_offset: +01:00:00
+      - condition: state
+        entity_id: input_boolean.terrarium_on
+        state: 'on'
+      - condition: trigger
+        id:
+        - '1'
+      enabled: true
+    then:
+    - if:
+      - condition: state
+        entity_id: binary_sensor.luftbefeuchter_on_over_day
+        state: 'on'
+        for:
+          hours: 0
+          minutes: 1
+          seconds: 0
+      then:
+      - data: {}
+        action: script.luftbefeuchter
+      alias: Luftbefeuchter
+    - data: {}
+      action: script.warmelampe
+  mode: parallel
+  max: 10
+- id: '1716929964357'
+  alias: Set Daytime
+  description: ''
+  trigger:
+  - platform: time_pattern
+    hours: '00'
+    minutes: /10
+  condition:
+  - condition: sun
+    before: sunrise
+    after: sunset
+  action:
+  - service: input_number.set_value
+    metadata: {}
+    data:
+      value: '{% set set = state_attr(''sun.sun'',''next_setting'')  | as_timestamp()
+        %} {% set rise = state_attr(''sun.sun'',''next_rising'') | as_timestamp()
+        %} {{set - rise}}'
+    target:
+      entity_id: input_number.day_time
+  mode: single
+- id: '1717064050117'
+  alias: Reboot Host System on 1st of Month
+  description: ''
+  triggers:
+  - at: '13:00:00'
+    trigger: time
+    id: '13'
+  - at: '12:00:00'
+    trigger: time
+    id: '12'
+  conditions:
+  - condition: template
+    value_template: '{{ now().day == 1 }}'
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - '12'
+      sequence:
+      - metadata: {}
+        data:
+          message: Rebooting Hostsystem at 13 o'clock
+        action: notify.mobile_app_24069pc21g
+    - conditions:
+      - condition: trigger
+        id:
+        - '13'
+      sequence:
+      - metadata: {}
+        data:
+          message: Rebooting Hostsystem
+        action: notify.mobile_app_24069pc21g
+      - data: {}
+        action: hassio.host_reboot
+- id: '1717951712000'
+  alias: Pool Heizung off If too cold
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.sun_solar_azimuth
+    above: 100
+    id: 'On'
+    below: 105
+    trigger: numeric_state
+    enabled: true
+  - trigger: time
+    at: '11:00:00'
+    id: 'On'
+  - trigger: time
+    at: '12:00:00'
+    id: 'On'
+  - trigger: time
+    at: '13:00:00'
+    id: 'On'
+  - trigger: time
+    at: '14:00:00'
+    id: 'On'
+  - trigger: time
+    at: '15:00:00'
+    id: 'On'
+  - trigger: time
+    at: '16:00:00'
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.esp32_c3_mini_pool_temperature_pool_temperature
+    above: input_number.pool_heating_stop
+    id: Off if to hot
+  - entity_id:
+    - input_number.pool_temp_start
+    id: Off if to hot
+    trigger: state
+  conditions: []
+  actions:
+  - alias: Solar Heating ON
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_mini_pool_temperature_pool_temperature
+        below: input_number.pool_heating_stop
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.cloud_coverage
+          below: 50
+        - condition: numeric_state
+          entity_id: sensor.solar_power_total
+          above: 8000
+        - condition: numeric_state
+          entity_id: sensor.gw1100a_solar_radiation
+          above: 300
+    then:
+    - type: turn_on
+      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
+      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
+      domain: switch
+  - alias: Solar Heating OFF
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_mini_pool_temperature_pool_temperature
+          above: input_number.pool_heating_stop
+        - condition: and
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.cloud_coverage
+            above: 50
+          - condition: numeric_state
+            entity_id: sensor.solar_power_total
+            below: 5000
+          - condition: numeric_state
+            entity_id: sensor.gw1100a_solar_radiation
+            below: 250
+    then:
+    - type: turn_off
+      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
+      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
+      domain: switch
+  - if:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: input_number.pool_temp_start
+        above: 29
+      - condition: trigger
+        id:
+        - Off if to hot
+    then:
+    - type: turn_off
+      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
+      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
+      domain: switch
+    alias: Disable Solar Heating if to hot
+  mode: single
+- id: '1719828773465'
+  alias: Speedtest using Fast.com
+  description: ''
+  trigger:
+  - platform: time_pattern
+    hours: /1
+  condition: []
+  action:
+  - service: script.1707895746671
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1720823999014'
+  alias: Battery Notes - Battery Replaced
+  description: ''
+  use_blueprint:
+    path: andrew-codechimp/battery_notes_battery_replaced.yaml
+    input:
+      on_replaced_actions:
+      - service: notify.mobile_app_24069pc21g
+        metadata: {}
+        data:
+          title: 'Battery Replaced: {{ trigger.event.data.device_name }}'
+          message: ''
+- id: '1720824045012'
+  alias: Battery Notes - Battery Threshold
+  description: ''
+  use_blueprint:
+    path: andrew-codechimp/battery_notes_battery_threshold.yaml
+    input:
+      excluded_devices:
+      - null
+- id: '1721083497910'
+  alias: Fan for BkW AC Inverter
+  description: ''
+  triggers:
+  - type: turned_off
+    device_id: f7afa3f7d75d54c713ea1d78071ff30c
+    entity_id: 12403f847e9caae174f8b14a11ab9c19
+    domain: switch
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    id: 'Off'
+    trigger: device
+  - type: turned_on
+    device_id: f7afa3f7d75d54c713ea1d78071ff30c
+    entity_id: 12403f847e9caae174f8b14a11ab9c19
+    domain: switch
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+    trigger: device
+  - type: turned_off
+    device_id: 93a7dbc1ab0380e01f4cd6d5eb91b9bc
+    entity_id: c75f234504dc77b5d544518a8128c688
+    domain: switch
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    id: 'Off'
+    trigger: device
+  - trigger: numeric_state
+    entity_id:
+    - sensor.esp32_c3_zero_epever_device_temperature
+    above: 15
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.esp32_c3_zero_epever_device_temperature
+    id: 'Off'
+    below: 10
+  - trigger: numeric_state
+    entity_id:
+    - sensor.esp32_c3_zero_epever_device_temperature
+    above: 25
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.esp32_c3_zero_epever_device_temperature
+    above: 30
+    id: 'On'
+  conditions: []
+  actions:
+  - alias: 'On'
+    if:
+    - condition: or
+      conditions:
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - 'On'
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_zero_epever_device_temperature
+          above: 15
+        - condition: state
+          entity_id: switch.bkw_outlet_1_bkw_outlet_1
+          state: 'on'
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - 'On'
+        - condition: numeric_state
+          entity_id: sensor.esp32_c3_zero_epever_device_temperature
+          above: 25
+    then:
+    - type: turn_on
+      device_id: bed54c26cf6525e3fe9269dbbe02fcdd
+      entity_id: 49b4763d5c8011ddddabd6298a49a272
+      domain: switch
+  - alias: 'Off'
+    if:
+    - condition: trigger
+      id:
+      - 'Off'
+    then:
+    - type: turn_off
+      device_id: bed54c26cf6525e3fe9269dbbe02fcdd
+      entity_id: 49b4763d5c8011ddddabd6298a49a272
+      domain: switch
+  mode: single
+- id: '1721219665412'
+  alias: Pool Pulsetime Auto Adjust
+  description: ''
+  triggers:
+  - entity_id:
+    - input_number.pulsetimeactualvalue
+    from:
+    to:
+    trigger: state
+  conditions:
+  - condition: device
+    type: is_on
+    device_id: 7f4653a91cd2ef69cb48aa494a983be8
+    entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+    domain: switch
+  actions:
+  - if:
+    - condition: template
+      value_template: "{{ \n  (trigger.to_state.state | int(0)) > (trigger.from_state.state
+        | int(0)) \n    and \n  ((trigger.from_state.state|int() != 0)\n    or\n  (trigger.to_state.state|int()
+        > 1000 ))\n}}"
+    then:
+    - type: turn_off
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - metadata: {}
+      data:
+        topic: cmnd/tasmota_837238/pulsetime1
+        payload: '{{ trigger.from_state.state | int(0) }}'
+      action: mqtt.publish
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        milliseconds: 0
+    - type: turn_on
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+  - if:
+    - condition: and
+      conditions:
+      - condition: template
+        value_template: '{{ (trigger.to_state.state | int(0)) == 0 }}'
+      - condition: template
+        value_template: '{{ (trigger.from_state.state | int(0)) == 0 }}'
+    then:
+    - type: turn_off
+      device_id: 7f4653a91cd2ef69cb48aa494a983be8
+      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
+      domain: switch
+  mode: single
+- id: '1721345437021'
+  alias: Auto Turn Off after 15 Min after Completion
+  description: ''
+  trigger:
+  - platform: numeric_state
+    entity_id:
+    - sensor.ankermake_m5c_progress
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    above: 99.9
+  condition: []
+  action:
+  - type: turn_off
+    device_id: 7b50ca1fdd0a5ceb179537cac54ed999
+    entity_id: 2c74e7833eafa89cf52abba6f4e629a4
+    domain: switch
+  mode: single
+- id: '1723670137701'
+  alias: Reload Dreame Robots after Internet Outage
+  description: ''
+  triggers:
+  - entity_id:
+    - binary_sensor.internet_connection
+    from: 'off'
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
+    trigger: state
+  conditions: []
+  actions:
+  - action: homeassistant.reload_config_entry
+    metadata: {}
+    data: {}
+    target:
+      device_id:
+      - 990e7401f4719a68ee0021ca37067f72
+      - 2a504e345eda14cbe58039ef062f08b5
+      - 3c53675db85802e31029e37e7b7fd3cd
+      - 9914e6e4fe991b11910d0b307255e881
+      - 57f6d676ec41388b14998ad815b1c610
+  - action: hassio.addon_restart
+    metadata: {}
+    data:
+      addon: cff83567_ankerctl
+  - action: hassio.addon_restart
+    metadata: {}
+    data:
+      addon: bf995ce7_saic_python_mqtt_gateway
+  mode: single
+- id: '1723675237746'
+  alias: 3D Printer Timelapse
+  description: ''
+  triggers:
+  - seconds: /15
+    id: every_30th_second
+    trigger: time_pattern
+  - entity_id:
+    - sensor.ankermake_m5c_progress
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    above: 99.99
+    id: Print finished
+    enabled: true
+    trigger: numeric_state
+  conditions:
+  - condition: device
+    type: is_on
+    device_id: 7b50ca1fdd0a5ceb179537cac54ed999
+    entity_id: 2c74e7833eafa89cf52abba6f4e629a4
+    domain: switch
+  actions:
+  - alias: Time lapse pictures
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - every_30th_second
+      - type: is_power
+        condition: device
+        device_id: 7b50ca1fdd0a5ceb179537cac54ed999
+        entity_id: c8c1983e6bcaf5b9c2acf5d654cf7bc2
+        domain: sensor
+        above: 15
+    then:
+    - metadata: {}
+      data:
+        filename: /media/m5ccam/pictures/{{states('sensor.job_name_2') | string }}_{{
+          now().strftime("%Y%m%d-%H%M%S") }}.jpg
+      target:
+        entity_id: camera.ankermake_m5c_hd_stream
+      action: camera.snapshot
+      enabled: true
+  - if:
+    - condition: trigger
+      id:
+      - Print finished
+    then:
+    - action: script.create_timelapse
+      metadata: {}
+      data: {}
+    alias: Create Timelapse
+  mode: parallel
+  max: 3
+- id: '1724944606723'
+  alias: Vacation or Daily Mode
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - input_select.smart_home_status
+    from: Daily
+    to: Vacation
+    id: Vacation
+  - platform: state
+    entity_id:
+    - input_select.smart_home_status
+    from: Vacation
+    to: Daily
+    id: Daily
+  condition: []
+  action:
+  - alias: Vacation
+    if:
+    - condition: trigger
+      id:
+      - Vacation
+    then:
+    - action: homeassistant.turn_off
+      metadata: {}
+      data: {}
+      target:
+        label_id: vacation_mode
+    - action: notify.notify
+      metadata: {}
+      data:
+        message: 'euer Smart Home '
+        title: "Viel Spaß im Urlaub \U0001F3D6️"
+      alias: 'Viel Spaß im Urlaub '
+  - alias: Daily
+    if:
+    - condition: trigger
+      id:
+      - Daily
+    then:
+    - action: homeassistant.turn_on
+      target:
+        label_id: vacation_mode
+      data: {}
+    - alias: 'Viel Spaß im Urlaub '
+      action: notify.notify
+      metadata: {}
+      data:
+        message: 'Ich hoffe ihr seid erholt '
+        title: 'Willkommen zurück '
+  mode: single
+- id: '1726817233810'
+  alias: Restart at 4:15 every Night
+  description: ''
+  triggers:
+  - at: 04:15:00
+    trigger: time
+  conditions:
+  - condition: and
+    conditions:
+    - condition: template
+      value_template: '{{ now().day | int(1) % 2 == 0 }}'
+      enabled: true
+    - condition: state
+      entity_id: binary_sensor.up_longer_than_1_day
+      state: 'on'
+  actions:
+  - action: homeassistant.restart
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1727252450108'
+  alias: Nightly Battery Energy Discharged
+  description: ''
+  trigger:
+  - platform: sun
+    event: sunrise
+    offset: 0
+    id: Rise
+  - platform: sun
+    event: sunset
+    offset: 0
+    id: Set
+  condition: []
+  action:
+  - if:
+    - condition: trigger
+      id:
+      - Rise
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_discharged
+    alias: 'Save last night '
+  - alias: Save last day
+    if:
+    - condition: trigger
+      id:
+      - Set
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_discharged
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: 5.95
+      target:
+        entity_id: input_number.last_day_battery_discharged
+      enabled: false
+  - alias: Reset at sunrise or sunset
+    if:
+    - condition: trigger
+      id:
+      - Set
+      - Rise
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 2
+        milliseconds: 0
+    - action: utility_meter.reset
+      data: {}
+      target:
+        entity_id: sensor.night_battery_energy_discharged
+  mode: single
+- id: '1727387566504'
+  alias: Ganglicht Motion
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.aqara_p1_occupancy
+    - binary_sensor.gang_bewegung_keller_tur_occupancy
+    to: 'on'
+    id: 'On motion '
+  - trigger: state
+    entity_id:
+    - binary_sensor.treppenhaus_occupancy
+    to: 'on'
+    id: On motion oben
+  - type: turned_on
+    device_id: 9bc7cc38eac20f9f965ee9552f02cc39
+    entity_id: a12b3636dd4c15b23c0edd5277ea7404
+    domain: light
+    trigger: device
+    id: Sync on
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: Sync on
+  - type: turned_off
+    device_id: 9bc7cc38eac20f9f965ee9552f02cc39
+    entity_id: a12b3636dd4c15b23c0edd5277ea7404
+    domain: light
+    trigger: device
+    id: Sync off
+  - type: turned_off
+    device_id: 9bc7cc38eac20f9f965ee9552f02cc39
+    entity_id: a12b3636dd4c15b23c0edd5277ea7404
+    domain: light
+    trigger: device
+    id: Sync off
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  - trigger: numeric_state
+    entity_id:
+    - sensor.aqara_p1_illuminance
+    above: 300
+    id: Light
+  conditions: []
+  actions:
+  - alias: On motion
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - 'On motion '
+      - condition: numeric_state
+        entity_id: sensor.aqara_p1_illuminance
+        below: 25
+        enabled: true
+      - condition: template
+        value_template: '{{ state_attr(''light.ganglicht_zigbee_led'',''brightness'')|int(1)
+          < 28 }}'
+    then:
+    - type: turn_on
+      device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+      entity_id: 564e927e962a99447ddb8d55d189ca32
+      domain: light
+      brightness_pct: 100
+      enabled: true
+    - action: light.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: light.esp32_c3_mini_treppenhaus_licht
+  - alias: On motion oben
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - On motion oben
+      - condition: numeric_state
+        entity_id: sensor.aqara_p1_illuminance
+        below: 35
+        enabled: true
+      - condition: template
+        enabled: true
+        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+          int(1) < 28 }}'
+    then:
+    - if:
+      - condition: template
+        enabled: true
+        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+          int(1) < 28 }}'
+      then:
+      - type: turn_on
+        device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+        entity_id: 564e927e962a99447ddb8d55d189ca32
+        domain: light
+        brightness_pct: 75
+        enabled: true
+      - action: light.turn_on
+        metadata: {}
+        data:
+          brightness_pct: 10
+        target:
+          entity_id: light.esp32_c3_mini_treppenhaus_licht
+    - sequence:
+      - wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - binary_sensor.aqara_p1_occupancy
+          - binary_sensor.gang_bewegung_keller_tur_occupancy
+          to: 'on'
+        timeout:
+          hours: 0
+          minutes: 1
+          seconds: 0
+          milliseconds: 0
+        continue_on_timeout: true
+      - if:
+        - condition: and
+          conditions:
+          - condition: template
+            value_template: '{{ not wait.completed }}'
+          - condition: template
+            enabled: true
+            value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+              int(1) < 28 }}'
+          - condition: not
+            conditions:
+            - condition: or
+              conditions:
+              - type: is_motion
+                condition: device
+                device_id: 6aa53e57ab4128aa151491184dee696c
+                entity_id: f186a7b86f51499f34c6a256d7b755a6
+                domain: binary_sensor
+              - type: is_motion
+                condition: device
+                device_id: 0c126cf3ac97892e31c219e4e479933d
+                entity_id: 1b5c6eef919911c8e327a309ab828d22
+                domain: binary_sensor
+              - type: is_motion
+                condition: device
+                device_id: e89ead353b14ef9ce97038650a6e3bb4
+                entity_id: a7cb7008da8607788c4b8d01cc73f4e0
+                domain: binary_sensor
+        then:
+        - type: turn_off
+          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+          entity_id: 564e927e962a99447ddb8d55d189ca32
+          domain: light
+        - if:
+          - condition: template
+            enabled: true
+            value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+              int(1) < 28 }}'
+          then:
+          - type: turn_off
+            device_id: 9bc7cc38eac20f9f965ee9552f02cc39
+            entity_id: a12b3636dd4c15b23c0edd5277ea7404
+            domain: light
+        else:
+        - type: turn_on
+          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+          entity_id: 564e927e962a99447ddb8d55d189ca32
+          domain: light
+          brightness_pct: 100
+        - if:
+          - condition: template
+            enabled: true
+            value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+              int(1) < 28 }}'
+          then:
+          - type: turn_off
+            device_id: 9bc7cc38eac20f9f965ee9552f02cc39
+            entity_id: a12b3636dd4c15b23c0edd5277ea7404
+            domain: light
+      enabled: true
+  - alias: Turn off after 5min
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - 'On motion '
+        - On motion oben
+      - condition: template
+        enabled: true
+        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+          int(1) < 28 }}'
+    then:
+    - action: script.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: script.5_min_turn_off_ganglicht
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 0
+        milliseconds: 100
+      enabled: false
+    - action: script.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: script.5_min_turn_off_ganglicht
+      enabled: false
+  - alias: On Light Sync
+    if:
+    - condition: trigger
+      id:
+      - Sync on
+    - condition: template
+      enabled: true
+      value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+        int(1) > 27 }}'
+    then:
+    - type: turn_on
+      device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+      entity_id: 564e927e962a99447ddb8d55d189ca32
+      domain: light
+      brightness_pct: 100
+  - alias: Off Light Sync
+    if:
+    - condition: trigger
+      id:
+      - Sync off
+    - condition: not
+      conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.aqara_p1_occupancy
+          state: 'on'
+        - condition: state
+          entity_id: binary_sensor.treppenhaus_occupancy
+          state: 'on'
+        - condition: state
+          entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
+          state: 'on'
+      alias: No Motion Detected
+    then:
+    - repeat:
+        sequence:
+        - type: turn_off
+          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+          entity_id: 564e927e962a99447ddb8d55d189ca32
+          domain: light
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: state
+          entity_id: light.ganglicht_zigbee_led
+          state: 'off'
+  - alias: 'Off Illumination '
+    if:
+    - condition: trigger
+      id:
+      - Light
+    - condition: numeric_state
+      entity_id: sensor.aqara_p1_illuminance
+      above: 299
+    then:
+    - repeat:
+        sequence:
+        - type: turn_off
+          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+          entity_id: 564e927e962a99447ddb8d55d189ca32
+          domain: light
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: state
+          entity_id: light.ganglicht_zigbee_led
+          state: 'off'
+  mode: parallel
+  max: 5
+- id: '1727504565238'
+  alias: Open Lucky Pot
+  description: Check when we are able to open the Honeygain Lucky Pot, and open it
+  triggers:
+  - hours: '23'
+    minutes: '0'
+    seconds: '0'
+    trigger: time_pattern
+  - trigger: numeric_state
+    entity_id:
+    - sensor.today_s_earnings
+    above: 0.15
+  conditions:
+  - condition: numeric_state
+    entity_id: sensor.today_s_earnings
+    above: 0.015
+  - condition: numeric_state
+    entity_id: sensor.today_s_lucky_pot_credits
+    below: 0.001
+  actions:
+  - data: {}
+    target:
+      entity_id: button.open_lucky_pot
+    action: button.press
+  mode: single
+- id: '1728376825897'
+  alias: Bad Nachlicht Motion
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.bad_nachtlicht_illuminance
+    below: 9
+    id: 'On'
+    trigger: numeric_state
+    enabled: true
+  - entity_id:
+    - sensor.bad_nachtlicht_illuminance
+    id: Off immediately
+    trigger: numeric_state
+    enabled: true
+    above: 20
+  - trigger: state
+    entity_id:
+    - binary_sensor.kinderbad_bewegung
+    to: 'on'
+    from: 'off'
+    id: 'On'
+  - trigger: state
+    entity_id:
+    - binary_sensor.kinderbad_bewegung
+    to: 'off'
+    from: 'on'
+    id: 'Off'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - trigger: state
+    entity_id:
+    - binary_sensor.kinderbad_bewegung
+    to: 'off'
+    from:
+    id: 'Off'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - light.bad_nachtlicht
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    id: Off if to long on
+  conditions: []
+  actions:
+  - alias: 'On'
+    if:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      - type: is_illuminance
+        condition: device
+        device_id: 2e7223e910889cdb2c4fcb060c712ac5
+        entity_id: d693ba4267735db947d0830cad78379e
+        domain: sensor
+        below: 20
+      - condition: state
+        entity_id: binary_sensor.kinderbad_bewegung
+        state: 'on'
+    then:
+    - if:
+      - condition: device
+        type: is_off
+        device_id: 2e7223e910889cdb2c4fcb060c712ac5
+        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+        domain: light
+      then:
+      - type: turn_on
+        device_id: 2e7223e910889cdb2c4fcb060c712ac5
+        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+        domain: light
+      alias: If off, then on
+  - alias: Off after time x
+    if:
+    - condition: trigger
+      id:
+      - 'Off'
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - type: turn_off
+      device_id: 2e7223e910889cdb2c4fcb060c712ac5
+      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+      domain: light
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - type: turn_off
+      device_id: 2e7223e910889cdb2c4fcb060c712ac5
+      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+      domain: light
+    enabled: true
+  - alias: Off immediately
+    if:
+    - condition: or
+      conditions:
+      - condition: trigger
+        id:
+        - Off immediately
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - Off if to long on
+        - condition: state
+          entity_id: binary_sensor.kinderbad_bewegung
+          state: 'off'
+    then:
+    - type: turn_off
+      device_id: 2e7223e910889cdb2c4fcb060c712ac5
+      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+      domain: light
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+    - type: turn_off
+      device_id: 2e7223e910889cdb2c4fcb060c712ac5
+      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
+      domain: light
+  mode: restart
+- id: '1730294194772'
+  alias: Aqara H1 EU Decoupled Switch
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    type: action
+    subtype: single_right
+    trigger: device
+    id: single right
+  - domain: mqtt
+    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    type: action
+    subtype: double_right
+    trigger: device
+    id: Double right
+  conditions:
+  - condition: state
+    entity_id: select.duncan_lichtschalter_operation_mode_left
+    state: decoupled
+  - condition: state
+    entity_id: select.duncan_lichtschalter_operation_mode_right
+    state: decoupled
+  - condition: template
+    value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_right'',''last_triggered'')
+      | default(0)) | int > 10)}}'
+  actions:
+  - alias: 'Toggle Right '
+    if:
+    - condition: trigger
+      id:
+      - Double right
+      - single right
+    then:
+    - type: toggle
+      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+      entity_id: b9d22d683fc4bfcb5d9b9955ae1d4108
+      domain: switch
+  mode: single
+- id: '1730367818444'
+  alias: "VW \U0001F513"
+  description: ''
+  triggers:
+  - type: not_locked
+    device_id: 9914e6e4fe991b11910d0b307255e881
+    entity_id: 365363c4aaf4c5618cda78ca034b4878
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    id: Unlocked
+  - type: locked
+    device_id: 9914e6e4fe991b11910d0b307255e881
+    entity_id: 365363c4aaf4c5618cda78ca034b4878
+    domain: binary_sensor
+    trigger: device
+    id: Locked
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Unlocked
+      - condition: state
+        entity_id: binary_sensor.wvgzzze2zpe005371_vehicle_moving
+        state: 'off'
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: VW⚠️
+          data:
+            tag: duncan_vw_lock
+          message: ' Verriegel dein Auto!'
+      - action: notify.mobile_app_stephan_iphone
+        data:
+          data:
+            tag: stephan_vw_lock
+          message: Verriegel dein Auto!
+          title: VW ⚠️
+    - conditions:
+      - condition: trigger
+        id:
+        - Locked
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          data:
+            tag: duncan_vw_lock
+          message: clear_notification
+      - action: notify.mobile_app_stephan_iphone
+        data:
+          data:
+            tag: stephan_vw_lock
+          message: clear_notification
+  mode: single
+- id: '1730391958900'
+  alias: Daily or Powersave Mode
+  description: ''
+  triggers:
+  - entity_id:
+    - input_select.smart_home_status
+    from: Daily
+    id: PowerSave
+    trigger: state
+    to: Power Save
+  - entity_id:
+    - input_select.smart_home_status
+    from: Power Save
+    id: Daily
+    trigger: state
+    to: Daily
+  conditions: []
+  actions:
+  - alias: Power Save
+    if:
+    - condition: trigger
+      id:
+      - PowerSave
+    then:
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.schedule_paludarien
+        - switch.schedule_start_folding_home
+        - switch.schedule_regal_big_paludarien
+    - action: homeassistant.turn_off
+      metadata: {}
+      data: {}
+      target:
+        label_id: optional_off_power_save
+    - action: notify.mobile_app_24069pc21g
+      metadata: {}
+      data:
+        title: Power Save Mode ON
+        message: 'Smart Home '
+  - alias: Daily
+    if:
+    - condition: trigger
+      id:
+      - Daily
+    then:
+    - action: homeassistant.turn_on
+      data: {}
+      target:
+        label_id: optional_off_power_save
+    - action: switch.turn_on
+      target:
+        entity_id:
+        - switch.schedule_paludarien
+        - switch.schedule_start_folding_home
+        - switch.schedule_regal_big_paludarien
+      data: {}
+    - action: notify.mobile_app_24069pc21g
+      metadata: {}
+      data:
+        title: Power Save Mode OFF
+        message: 'Smart Home '
+  mode: single
+- id: '1731148293801'
+  alias: Automatic Backup excluding InfluxDB
+  description: ''
+  triggers:
+  - id: daily
+    at: 02:30:00
+    trigger: time
+  - id: hourly
+    enabled: true
+    hours: /3
+    trigger: time_pattern
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id: daily
+    then:
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ enable_yearly }}'
+        - condition: template
+          value_template: '{{ now().day == 1 and now().month == 1 }}'
+        sequence:
+        - variables:
+            backup_type: yearly
+            keep_days:
+        - variables:
+            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
+              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
+              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
+              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
+            backup_action:
+            - data:
+                name: '{{ name }}'
+                password: '{{ password }}'
+                keep_days: '{{ keep_days }}'
+                download_path:
+                - /share/USBMEDIABACKUP_Share/Backup/
+                exclude:
+                  addons:
+                  - a0d7b954_influxdb
+                include_folders:
+                - config
+                exclude_folders:
+                - media
+              action: auto_backup.backup
+        - if:
+          - condition: template
+            value_template: '{{ not use_action_hourly }}'
+          - condition: template
+            value_template: '{{ backup_action | length > 0 }}'
+          then:
+          - data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              include_folders:
+              - config
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+          else:
+          - alias: Creating a full backup (default action)
+            data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+      - conditions:
+        - condition: template
+          value_template: '{{ enable_monthly }}'
+        - condition: template
+          value_template: '{{ now().day == 1 }}'
+        sequence:
+        - variables:
+            backup_type: monthly
+            keep_days: 365
+        - variables:
+            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
+              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \",\"\")\n    ~ \"%B
+              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
+              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
+            backup_action:
+            - data:
+                name: '{{ name }}'
+                password: '{{ password }}'
+                keep_days: '{{ keep_days }}'
+                download_path:
+                - /share/USBMEDIABACKUP_Share/Backup/
+                include_folders:
+                - config
+                exclude_folders:
+                - media
+              action: auto_backup.backup
+        - if:
+          - condition: template
+            value_template: '{{ not use_action_hourly }}'
+          - condition: template
+            value_template: '{{ backup_action | length > 0 }}'
+          then:
+          - data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              include_folders:
+              - config
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+          else:
+          - alias: Creating a full backup (default action)
+            data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+      - conditions:
+        - condition: template
+          value_template: '{{ enable_weekly }}'
+        - condition: template
+          value_template: '{{ now().weekday() == 0 }}'
+        sequence:
+        - variables:
+            backup_type: weekly
+            keep_days: 30.4167
+        - variables:
+            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
+              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
+              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
+              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
+            backup_action:
+            - data:
+                name: '{{ name }}'
+                password: '{{ password }}'
+                keep_days: '{{ keep_days }}'
+                download_path:
+                - /share/USBMEDIABACKUP_Share/Backup/
+                include_folders:
+                - config
+                exclude_folders:
+                - media
+              action: auto_backup.backup
+        - if:
+          - condition: template
+            value_template: '{{ not use_action_hourly }}'
+          - condition: template
+            value_template: '{{ backup_action | length > 0 }}'
+          then:
+          - data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              include_folders:
+              - config
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+          else:
+          - alias: Creating a full backup (default action)
+            data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+      - conditions:
+        - condition: template
+          value_template: '{{ enable_daily }}'
+        sequence:
+        - variables:
+            backup_type: daily
+            keep_days: 7
+        - variables:
+            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
+              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
+              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
+              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
+            backup_action:
+            - data:
+                name: '{{ name }}'
+                password: '{{ password }}'
+                keep_days: '{{ keep_days }}'
+                download_path:
+                - /share/USBMEDIABACKUP_Share/Backup/
+                include_folders:
+                - config
+                exclude_folders:
+                - media
+              action: auto_backup.backup
+        - if:
+          - condition: template
+            value_template: '{{ not use_action_hourly }}'
+          - condition: template
+            value_template: '{{ backup_action | length > 0 }}'
+          then:
+          - data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              include_folders:
+              - config
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+          else:
+          - alias: Creating a full backup (default action)
+            data:
+              name: '{{ name }}'
+              password: '{{ password }}'
+              keep_days: '{{ keep_days }}'
+              download_path:
+              - /share/USBMEDIABACKUP_Share/Backup/
+              exclude_folders:
+              - media
+            action: auto_backup.backup
+    else:
+    - variables:
+        backup_type: hourly
+        keep_days: 1
+    - variables:
+        name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A, \"\n
+          \   ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B %-d,
+          %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006 #}\n{#
+          DailyBackup: Monday, January 2, 2006 #}\n"
+        backup_action:
+        - data:
+            name: '{{ name }}'
+            password: '{{ password }}'
+            keep_days: '{{ keep_days }}'
+            exclude_database: true
+            include_folders:
+            - config
+          action: auto_backup.backup
+    - if:
+      - condition: template
+        value_template: '{{ backup_action | length > 0 }}'
+      then:
+      - data:
+          name: '{{ name }}'
+          password: '{{ password }}'
+          keep_days: '{{ keep_days }}'
+          include_folders:
+          - config
+          exclude_addons:
+          - '*'
+          exclude_folders:
+          - media
+          - share
+          - ssl
+          - addons
+          compressed: true
+          exclude_database: true
+        action: auto_backup.backup
+      else:
+      - alias: Creating a partial backup (default action)
+        data:
+          name: '{{ name }}'
+          password: '{{ password }}'
+          keep_days: '{{ keep_days }}'
+          include_folders:
+          - config
+          exclude_addons:
+          - '*'
+          exclude_folders:
+          - media
+          - share
+          - ssl
+          - addons
+          compressed: true
+          exclude_database: true
+        action: auto_backup.backup
+  mode: single
+  variables:
+    password: ''
+    enable_hourly: true
+    enable_daily: true
+    enable_weekly: true
+    enable_monthly: true
+    enable_yearly: true
+    use_action_hourly: true
+- id: '1731973759998'
+  alias: Bed Occupied Smartphone Charge
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    from: 'off'
+    to: 'on'
+    id: 'On'
+  - trigger: time_pattern
+    minutes: /5
+  conditions:
+  - condition: state
+    entity_id: person.duncan
+    state: home
+  actions:
+  - alias: 'On'
+    if:
+    - condition: state
+      state: 'off'
+      entity_id: switch.bett_power_strip_l5
+    - condition: state
+      entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+      state: 'on'
+    - condition: numeric_state
+      entity_id: sensor.24069pc21g_battery_level
+      below: 91
+    then:
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.bett_power_strip_l5
+  - alias: 'Off'
+    if:
+    - condition: state
+      state: 'on'
+      entity_id: switch.bett_power_strip_l5
+    - condition: numeric_state
+      entity_id: sensor.24069pc21g_battery_level
+      above: 95
+    then:
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.bett_power_strip_l5
+  mode: single
+- id: '1732984794991'
+  alias: 'Button Zigbee '
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 5d41bd478ba9cb5fabcb3b24df25d9fd
+    type: action
+    subtype: single
+    trigger: device
+    id: single
+  - domain: mqtt
+    device_id: 5d41bd478ba9cb5fabcb3b24df25d9fd
+    type: action
+    subtype: double
+    trigger: device
+    id: double
+  - domain: mqtt
+    device_id: 5d41bd478ba9cb5fabcb3b24df25d9fd
+    type: action
+    subtype: hold
+    trigger: device
+    id: hold
+  conditions: []
+  actions:
+  - alias: SINGLE
+    if:
+    - condition: trigger
+      id:
+      - single
+    then:
+    - sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.schreibtisch_rechts_power_strip_l5
+          - switch.schreibtisch_links_power_strip_l1
+      - action: switch.toggle
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_links_l1
+          - switch.desk_paludarium_turm_rechts_l3
+          - switch.desk_paludarium_rechts_l3
+          - switch.desk_paludarium_links_l2
+          - switch.desk_paludarium_turm_rechts_l1
+          - switch.desk_paludarium_turm_links_l2
+          - switch.desk_paludarium_turm_links_l3
+  - alias: HOLD
+    if:
+    - condition: trigger
+      id:
+      - hold
+    then:
+    - sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.schreibtisch_rechts_power_strip_l2
+          - switch.schreibtisch_rechts_power_strip_l3
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.schreibtisch_rechts_power_strip_l2
+          - switch.schreibtisch_rechts_power_strip_l3
+  mode: queued
+  max: 10
+- id: '1733064187070'
+  alias: Kinderbad Fenster Open
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.kinderbad_fenster_contact
+      notify_services_string: notify.familie
+      notification_title: '{{ friendly_name }} offen'
+      notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=10)) | timestamp_custom('%T', True) }}.
+      duration_issue_state:
+        hours: 0
+        minutes: 10
+        seconds: 0
+        days: 0
+      repeat_notification: false
+      time_between_repeat_notification:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        days: 0
+- id: '1733907310581'
+  alias: Bad Fenster offen
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.bad_fenster_contact
+      notify_services_string: notify.familie
+      notification_title: '{{ friendly_name }} offen'
+      notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=10)) | timestamp_custom('%T', True) }}.
+      duration_issue_state:
+        hours: 0
+        minutes: 10
+        seconds: 0
+        days: 0
+      duration_from_issue_state:
+        hours: 0
+        minutes: 0
+        seconds: 5
+        days: 0
+      delete_notification: true
+- id: '1734198692426'
+  alias: Gästeklo Fenster Offen
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.gasteklo_fenster_contact
+      notify_services_string: notify.familie
+      notification_title: '{{ friendly_name }} offen'
+      notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=15)) | timestamp_custom('%T', True) }}.
+      duration_issue_state:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        days: 0
+      notification_color: red
+- id: '1734263785760'
+  alias: DB Purge Entites under 14 days
+  description: ''
+  triggers:
+  - trigger: time
+    at: 04:30:00
+    id: Time 1
+  - trigger: time
+    at: 04:45:00
+    id: Time 2
+  - trigger: time
+    at: 05:00:00
+    id: Time 3
+  - trigger: time
+    at: 05:15:00
+    id: Time 7
+  conditions: []
+  actions:
+  - alias: Keep 1 Day
+    if:
+    - condition: trigger
+      id:
+      - Time 1
+    then:
+    - action: recorder.purge_entities
+      metadata: {}
+      data:
+        entity_id:
+        - automation.15s_ping_update
+        - automation.publish_to_mqtt_grid_export
+        - automation.reload_tibber_local_if_unavailable
+        - sensor.kg_temperatur
+        - sensor.eg_temperatur
+        - sensor.og_temperatur
+        keep_days: 1
+  - alias: Keep 2 Day
+    if:
+    - condition: trigger
+      id:
+      - Time 2
+    then:
+    - action: recorder.purge_entities
+      metadata: {}
+      data:
+        keep_days: 2
+        entity_id:
+        - sensor.time_in_bed_last_24h
+        - sensor.average_illuminance
+        - sensor.inverter_update_interval
+        - sensor.esp32_c3_mini_bett_nachtlicht_master_bed_sensor
+        - sensor.inverter_battery_soh
+        - sensor.inverter_load_frequency
+        - sensor.inverter_grid_frequency
+        - sensor.inverter_output_frequency
+        - sensor.voltage_l1
+        - sensor.voltage_l2
+        - sensor.voltage_l3
+        - sensor.cpu_speed
+        entity_globs: sensor.esp32_s3_zero_deye8k*
+    enabled: true
+  - alias: Keep 3 Day
+    if:
+    - condition: trigger
+      id:
+      - Time 3
+    then:
+    - action: recorder.purge_entities
+      metadata: {}
+      data:
+        keep_days: 3
+        entity_id:
+        - binary_sensor.inverter_connection
+        - sensor.inverter_battery_state
+        - sensor.inverter_output_l1_current
+        - sensor.inverter_output_l1_power
+        - sensor.inverter_output_l1_voltage
+        - sensor.inverter_output_l2_current
+        - sensor.inverter_output_l2_power
+        - sensor.inverter_output_l2_voltage
+        - sensor.inverter_output_l3_current
+        - sensor.inverter_output_l3_power
+        - sensor.inverter_output_l3_voltage
+        - sensor.inverter_internal_ct1_current
+        - sensor.inverter_internal_ct1_power
+        - sensor.inverter_internal_ct2_current
+        - sensor.inverter_internal_ct2_power
+        - sensor.inverter_internal_ct3_current
+        - sensor.inverter_internal_ct3_power
+        - sensor.inverter_internal_power
+        - sensor.inverter_grid_l1_voltage
+        - sensor.inverter_grid_l2_voltage
+        - sensor.inverter_grid_l3_voltage
+        - sensor.inverter_grid_l1_power
+        - sensor.inverter_grid_l2_power
+        - sensor.inverter_grid_l3_power
+        - sensor.inverter_power_losses
+        - binary_sensor.saugen
+        - binary_sensor.abgasgeblase
+        - binary_sensor.zundung
+        - sensor.grid_export_negative
+        - sensor.grid_consumption
+        - sensor.grid_production
+        - sensor.grid_power
+        - sensor.scb_home_consumption_month
+        - sensor.scb_home_consumption_total
+        - sensor.scb_home_consumption_year
+        - sensor.scb_energy_yield_day
+        - sensor.scb_energy_yield_month
+        - sensor.scb_energy_yield_year
+        - sensor.scb_energy_yield_total
+        - sensor.scb_energy_pv1_day
+        - sensor.scb_energy_pv2_day
+        - sensor.scb_energy_pv3_day
+        - sensor.scb_dc1_current
+        - sensor.scb_dc1_power
+        - sensor.scb_dc1_voltage
+        - sensor.scb_dc2_current
+        - sensor.scb_dc2_power
+        - sensor.scb_dc2_voltage
+        - sensor.scb_dc3_current
+        - sensor.scb_dc3_power
+        - sensor.scb_dc3_voltage
+        - sensor.inverter_pv1_current
+        - sensor.inverter_pv1_voltage
+        - sensor.inverter_pv2_current
+        - sensor.inverter_pv2_voltage
+        - sensor.inverter_load_l1_power
+        - sensor.inverter_load_l1_voltage
+        - sensor.inverter_load_l2_power
+        - sensor.inverter_load_l2_voltage
+        - sensor.inverter_load_l3_power
+        - sensor.inverter_load_l3_voltage
+        - sensor.esp32_c3_zero_epever_battery_current
+        - sensor.esp32_c3_zero_epever_battery_power
+        - sensor.esp32_c3_zero_epever_battery_status_temerature
+        - sensor.esp32_c3_zero_epever_battery_status_voltage
+        - sensor.esp32_c3_zero_epever_battery_temperature
+        - sensor.esp32_c3_zero_epever_battery_voltage
+        - sensor.esp32_c3_zero_epever_charger_status
+        - sensor.esp32_c3_zero_epever_charging_current
+        - sensor.esp32_c3_zero_epever_charging_mode
+        - sensor.esp32_c3_zero_epever_charging_power
+        - sensor.esp32_c3_zero_epever_charging_voltage
+        - sensor.esp32_c3_zero_epever_consumed_energy_month
+        - sensor.esp32_c3_zero_epever_consumed_energy_today
+        - sensor.esp32_c3_zero_epever_consumed_energy_year
+        - sensor.esp32_c3_zero_epever_consumed_energy_total
+        - sensor.esp32_c3_zero_epever_generated_energy_today
+        - sensor.esp32_c3_zero_epever_generated_energy_month
+        - sensor.esp32_c3_zero_epever_generated_energy_year
+        - sensor.esp32_c3_zero_epever_generated_energy_total
+        - sensor.esp32_c3_zero_epever_load_current
+        - sensor.esp32_c3_zero_epever_load_power
+        - sensor.esp32_c3_zero_epever_load_voltage
+        - sensor.esp32_c3_zero_epever_pv_array_input_current
+        - sensor.esp32_c3_zero_epever_pv_array_input_power
+        - sensor.esp32_c3_zero_epever_pv_array_input_voltage
+        - sensor.esp32_c3_zero_epever_length_of_night
+        - sensor.esp32_c3_zero_epever_discharger_status
+        - sensor.esp32_c3_zero_epever_power_components_temperature
+        - sensor.esp32_c3_zero_epever_device_temperature
+        - sensor.go_echarger_252682_nrg
+        - sensor.go_echarger_252682_nrg_5
+        - sensor.go_echarger_252682_nrg_6
+        - sensor.go_echarger_252682_nrg_7
+        - sensor.go_echarger_252682_nrg_8
+        - sensor.go_echarger_252682_nrg_9
+        - sensor.go_echarger_252682_nrg_10
+        - sensor.go_echarger_252682_nrg_12
+        - sensor.go_echarger_270862_nrg
+        - sensor.go_echarger_270862_nrg_5
+        - sensor.go_echarger_270862_nrg_6
+        - sensor.go_echarger_270862_nrg_7
+        - sensor.go_echarger_270862_nrg_8
+        - sensor.go_echarger_270862_nrg_9
+        - sensor.go_echarger_270862_nrg_10
+        - sensor.go_echarger_270862_nrg_12
+        - sensor.go_echarger_252682_wh
+        - sensor.go_echarger_270862_wh
+        - sensor.daily_energy_goe_11kw
+        - sensor.daily_energy_goe_22kw
+        - sensor.herd_energy_today
+        - sensor.sauger_energy_today
+        - sensor.heizung_energy_today
+        - sensor.backofen_energy_today
+        - sensor.trockner_energy_today
+        - sensor.ankermake_energy_today
+        - sensor.fernseher_energy_today
+        - sensor.terrarium_energy_today
+        - sensor.garagentor_energy_today
+        - sensor.mikrowelle_energy_today
+        - sensor.pool_pumpe_energy_today
+        - sensor.smart_plug_energy_today
+        - sensor.antella_plug_energy_today
+        - sensor.spulmaschine_energy_today
+        - sensor.waschmaschine_energy_today
+        - sensor.gefrierschrank_energy_today
+        - sensor.kaffeemaschine_energy_today
+        - sensor.heizraum_lufter_energy_today
+        - sensor.regenwasserpumpe_energy_today
+        - sensor.kuhlschrank_drinnen_energy_today
+        - sensor.duncan_lichtschalter_energy_today
+        - sensor.kuhlschrank_draussen_energy_today
+        - sensor.heizraum_lufter_abluft_energy_today
+        - sensor.kaffeemaschine_delonghi_energy_today
+        - sensor.inverter_grid_frequency
+        - sensor.current_l1
+        - sensor.current_l2
+        - sensor.current_l3
+        - sensor.daily_netzeinspeisung
+        - sensor.monthly_netzeinspeisung
+        - sensor.yearly_netzeinspeisung
+        - sensor.total_money_generated
+        - sensor.daily_netzbezug
+        - sensor.monthly_netzbezug
+        - sensor.yearly_netzbezug
+        - sensor.inverter_today_energy_losses
+        - sensor.kostal_energy_losses_today
+        - sensor.go_echarger_270862_eto
+        - sensor.go_echarger_252682_eto
+        - sensor.tibber_pulse_metrics
+  - alias: Keep 7 Day
+    if:
+    - condition: trigger
+      id:
+      - Time 7
+    then:
+    - action: recorder.purge_entities
+      metadata: {}
+      data:
+        keep_days: 7
+        entity_id:
+        - sensor.inverter_load_power
+        - sensor.inverter_pv_voltage
+        - sensor.inverter_pv_current
+        - sensor.scb_dc_current
+        - sensor.scb_dc_voltage
+        - sensor.inverter_grid_power
+        - sensor.inverter_battery_voltage
+        - sensor.inverter_battery_current
+        - sensor.battery_discharge
+        - sensor.battery_charge
+        - sensor.maria_db_rows_events
+        - sensor.maria_db_rows_state_attributes
+        - sensor.maria_db_rows_states
+        - sensor.maria_db_rows_statistics
+        - sensor.maria_db_rows_statistics_short_term
+        - sensor.maria_db_size
+        - sensor.maria_db_rows
+        - sensor.mikrowelle_power
+        - sensor.ankermake_power
+        - sensor.orangina_lampe_zigbee_power
+        - sensor.sauger_energy_power
+        - sensor.heizung_energy_power
+        - sensor.backofen_energy_power
+        - sensor.trockner_energy_power
+        - sensor.terrarium_energy_power
+        - sensor.garagentor_energy_power
+        - sensor.smart_plug_energy_power
+        - sensor.pool_pumpe_energy_power
+        - sensor.spulmaschine_energy_power
+        - sensor.waschmaschine_energy_power
+        - sensor.gefrierschrank_energy_power
+        - sensor.kaffeemaschine_energy_power
+        - sensor.heizraum_lufter_energy_power
+        - sensor.regenwasserpumpe_energy_power
+        - sensor.kuhlschrank_drinnen_energy_power
+        - sensor.kuhlschrank_draussen_energy_power
+        - sensor.kaffeemaschine_delonghi_energy_power
+        - sensor.antella_plug_power
+        - sensor.herd_ct_klemme_power_ab
+        - sensor.dunstabzugshaube_power
+        - sensor.herd_energy_total
+        - sensor.sauger_energy_total
+        - sensor.heizung_energy_total
+        - sensor.backofen_energy_total
+        - sensor.trockner_energy_total
+        - sensor.ankermake_energy_total
+        - sensor.fernseher_energy
+        - sensor.terrarium_energy_total
+        - sensor.garagentor_energy_total
+        - sensor.mikrowelle_energy_total
+        - sensor.pool_pumpe_energy_total
+        - sensor.smart_plug_energy_total
+        - sensor.antella_plug_energy_total
+        - sensor.spulmaschine_energy_total
+        - sensor.waschmaschine_energy_total
+        - sensor.gefrierschrank_energy_total
+        - sensor.kaffeemaschine_energy_total
+        - sensor.heizraum_lufter_energy_total
+        - sensor.regenwasserpumpe_energy_total
+        - sensor.kuhlschrank_drinnen_energy_total
+        - sensor.duncan_lichtschalter_energy
+        - sensor.kuhlschrank_draussen_energy_total
+        - sensor.heizraum_lufter_abluft_energy
+        - sensor.kaffeemaschine_delonghi_energy_total
+        - sensor.solar_to_home_hourly_energy_cost
+        - sensor.solar_to_home_daily_energy_cost
+        - sensor.solar_to_home_weekly_energy_cost
+        - sensor.solar_to_home_manual_energy_cost
+        - sensor.solar_to_home_yearly_energy_cost
+        - sensor.solar_to_home_manual_energy_cost
+        - sensor.solar_to_home_real_time_energy_cost
+        - sensor.inverter_total_energy_losses
+        - sensor.kostal_energy_losses_total
+        - sensor.kostal_power_losses
+    enabled: true
+  mode: queued
+  max: 10
+- id: '1734549334887'
+  alias: Nightly Battery Energy Charged
+  description: ''
+  triggers:
+  - event: sunrise
+    offset: 0
+    id: Rise
+    trigger: sun
+  - event: sunset
+    offset: 0
+    id: Set
+    trigger: sun
+  conditions: []
+  actions:
+  - alias: 'Save last night '
+    if:
+    - condition: trigger
+      id:
+      - Rise
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_charged
+    - delay:
+        hours: 0
+        minutes: 10
+        seconds: 0
+        milliseconds: 0
+    - action: homeassistant.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.day_or_night
+  - alias: Save last day
+    if:
+    - condition: trigger
+      id:
+      - Set
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_charged
+    - action: homeassistant.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.day_or_night
+  - alias: Reset at sunrise or sunset
+    if:
+    - condition: trigger
+      id:
+      - Set
+      - Rise
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 1
+        milliseconds: 0
+    - action: utility_meter.reset
+      data: {}
+      target:
+        entity_id: sensor.day_night_battery_charged_energy
+  mode: parallel
+  max: 10
+- id: '1735214695890'
+  alias: Dunstabzugshaube
+  description: ''
+  triggers:
+  - type: not_opened
+    device_id: e2cc9734d6f5740e3d29c0293fbceb9b
+    entity_id: 9b97a26c321418e7a1e38f1a2ca41312
+    domain: binary_sensor
+    trigger: device
+    id: Close
+  - type: opened
+    device_id: e2cc9734d6f5740e3d29c0293fbceb9b
+    entity_id: 9b97a26c321418e7a1e38f1a2ca41312
+    domain: binary_sensor
+    trigger: device
+    id: Open
+  conditions: []
+  actions:
+  - alias: Close -> off
+    if:
+    - condition: trigger
+      id:
+      - Close
+    then:
+    - type: turn_off
+      device_id: ef01d2ddf47a4af5d7628e467cc8c934
+      entity_id: d541b035c04edb6c74fdc91ea72c7743
+      domain: switch
+  - alias: Open -> on
+    if:
+    - condition: trigger
+      id:
+      - Open
+    then:
+    - type: turn_on
+      device_id: ef01d2ddf47a4af5d7628e467cc8c934
+      entity_id: d541b035c04edb6c74fdc91ea72c7743
+      domain: switch
+  mode: single
+- id: '1735498655841'
+  alias: Update Boiler Remaining Time Timer
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /1
+  conditions:
+  - condition: state
+    entity_id: timer.boiler_on_demand
+    state: active
+  actions:
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - sensor.boiler_remaining_time
+  mode: single
+- id: '1736241679688'
+  alias: Restart Deye ESP if Theoretical Current is Unavailable
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
+    from:
+    to: unknown
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  conditions: []
+  actions:
+  - action: button.press
+    data:
+      entity_id: button.esp32_s3_zero_deye8k_restart
+  mode: single
+- id: '1736282318739'
+  alias: Reload Tibber Local if Unavailable
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unavailable
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unavailable
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unavailable
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unavailable
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unknown
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unknown
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unknown
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - sensor.tibber_bridge_0100020800ff_in_k
+    to: unknown
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  - trigger: numeric_state
+    entity_id:
+    - sensor.total_money_generated
+    below: 1
+  - trigger: numeric_state
+    entity_id:
+    - sensor.total_money_generated
+    for:
+      hours: 0
+      minutes: 3
+      seconds: 0
+    below: 1
+  - trigger: numeric_state
+    entity_id:
+    - sensor.total_money_generated
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    below: 1
+  - trigger: numeric_state
+    entity_id:
+    - sensor.total_money_generated
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+    below: 1
+  conditions: []
+  actions:
+  - repeat:
+      sequence:
+      - sequence:
+        - action: homeassistant.reload_config_entry
+          metadata: {}
+          data: {}
+          target:
+            device_id: 09c4fe882d8dc5dfd424705fe962ada4
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 30
+      until:
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.tibber_bridge_0100020800ff_in_k
+          above: 0
+        - condition: numeric_state
+          entity_id: sensor.total_money_generated
+          above: 1
+  mode: single
+  max_exceeded: silent
+- id: '1736353991047'
+  alias: Papa kommt heim
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.wvgzzze2zpe005371_vehicle_moving
+    from:
+    to: 'on'
+    id: Arbeit
+  - trigger: zone
+    entity_id: person.stephan
+    zone: zone.big_home_2
+    event: enter
+    id: Enter
+  - trigger: zone
+    entity_id: person.stephan
+    zone: zone.home
+    event: enter
+    id: Home
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: person.stephan
+      state: Arbeit
+    - condition: state
+      entity_id: person.stephan
+      state: not_home
+    - condition: state
+      entity_id: person.stephan
+      state: home
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: or
+          conditions:
+          - condition: time
+            before: '18:30:00'
+            after: '17:00:00'
+            weekday:
+            - thu
+            - wed
+            - tue
+            - mon
+          - condition: time
+            before: '16:00:00'
+            after: '13:00:00'
+            weekday:
+            - fri
+        - condition: trigger
+          id:
+          - Arbeit
+        - condition: not
+          conditions:
+          - condition: time
+            after: '17:59:30'
+            before: '18:00:30'
+      sequence:
+      - action: icloud3.action
+        metadata: {}
+        data:
+          command: Restart iCloud3
+          device_name: 3675fe049f5a257fe6eebb6533252e74
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 15
+          milliseconds: 0
+      - action: icloud3.action
+        metadata: {}
+        data:
+          command: Locate Device(s) using iCloud
+          device_name: 3675fe049f5a257fe6eebb6533252e74
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: Papa kommt heim
+          message: Er ist in {{ states('sensor.stephans_iphone_travel_time', with_unit=true)
+            }} daheim
+          data:
+            tag: home_arrival_papa
+      alias: Leave Arbeit
+    - conditions:
+      - condition: trigger
+        id:
+        - Enter
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: Papa kommt heim
+          message: Er ist in {{ states('sensor.stephans_iphone_travel_time', with_unit=true)
+            }} daheim
+          data:
+            tag: home_arrival_papa
+    - conditions:
+      - condition: trigger
+        id:
+        - Home
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: home_arrival_papa
+  mode: single
+- id: '1737030430090'
+  alias: Caclulate PV Savings
+  description: ''
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Sunrise
+  - trigger: sun
+    event: sunset
+    offset: 0
+    id: Sunset
+  - trigger: time
+    at: '23:59:57'
+    id: Dayend
+  conditions: []
+  actions:
+  - alias: DAYEND
+    if:
+    - condition: trigger
+      id:
+      - Dayend
+    then:
+    - sequence:
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) }}'
+        target:
+          entity_id: input_number.before_gesamt_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) - (states(''sensor.inverter_total_battery_discharge_daily_energy_cost'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.gesamte_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) - (states(''sensor.daily_money_generated_solar'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.gesamte_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) - (states(''sensor.bkw_outlet_1_total_daily_energy_cost'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.gesamte_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) - (states(''sensor.solar_to_home_daily_energy_cost'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.gesamte_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) - (states(''sensor.battery_charge_from_solar_daily_energy_cost'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.gesamte_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - target:
+          entity_id: notify.file
+        data:
+          message: '{{ as_timestamp(now()) | timestamp_custom(''%d.%m.%Y %H:%M'')
+            }}; {{ states(''sensor.solar_to_home_daily_energy_cost'')|round(4)|string
+            + " EUR"}}; {{states(''sensor.inverter_total_battery_discharge_daily_energy_cost'')|round(4)|string
+            + " EUR"}}; {{ states(''sensor.daily_money_generated_solar'')|round(4)|string
+            + " EUR"}}; {{ states(''sensor.bkw_outlet_1_total_daily_energy_cost'')|round(4)|string
+            + " EUR"}}; {{states(''sensor.battery_charge_from_solar_daily_energy_cost'')|round(4)|string
+            + " EUR"}}; {{ states(''sensor.gesamt_kosten_pv'') + " EUR"}}'
+        action: notify.send_message
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0.1
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.gesamte_pv_kosten'') | float(0)) }}'
+        target:
+          entity_id: input_number.after_gesamt_pv_kosten
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 3
+          milliseconds: 0
+      - action: onedrive.upload
+        metadata: {}
+        data:
+          config_entry_id: 01JTPDVP94GTDT06DCHRQGX7BC
+          filename: /media/Gesamt_Kosten.csv
+          destination_folder: /Media/
+  mode: single
+- id: '1737391740399'
+  alias: Hobbyraum kleines Fenster offen
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.hobbyraum_kleines_fenster_contact
+      duration_issue_state:
+        hours: 1
+        minutes: 0
+        seconds: 0
+        days: 0
+      notify_services_string: notify.familie
+      notification_title: '{{ friendly_name }} offen'
+      notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=60)) | timestamp_custom('%T', True) }}.
+- id: '1737391841418'
+  alias: Duncan Fenster offen
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.duncan_fenster_contact
+      notify_services_string: notify.familie
+      notification_title: '{{ friendly_name }} offen'
+      notification_message: '{{ friendly_name }} ist offen seit {{ as_timestamp(now()
+        - timedelta(minutes=10)) | timestamp_custom(''%T'', True) }}.'
+- id: '1738024300699'
+  alias: UPS changed state
+  description: ''
+  triggers:
+  - event_type: nut.ups_event
+    trigger: event
+  actions:
+  - data_template:
+      title: UPS changed state
+      message: '{{ trigger.event.data.notify_msg }}'
+      data:
+        push:
+          sound:
+            name: default
+            critical: 1
+            volume: 1
+    action: notify.duncan
+- id: '1738082703170'
+  alias: Inverter time synchronization
+  description: Set device's time to `now()`
+  triggers:
+  - at: sensor.sun_next_dawn
+    trigger: time
+  - event: start
+    trigger: homeassistant
+  actions:
+  - data:
+      datetime: '{{ now() }}'
+    target:
+      entity_id: datetime.inverter_date_time
+    action: datetime.set_value
+  mode: single
+- id: '1738246026422'
+  alias: Aqara H1 eu Decoupled Switch Left
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    type: action
+    subtype: single_left
+    metadata: {}
+    trigger: device
+    id: single left
+  - domain: mqtt
+    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    type: action
+    subtype: double_left
+    trigger: device
+    id: Double left
+  conditions:
+  - condition: state
+    entity_id: select.duncan_lichtschalter_operation_mode_left
+    state: decoupled
+  - condition: state
+    entity_id: select.duncan_lichtschalter_operation_mode_right
+    state: decoupled
+  - condition: template
+    value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',''last_triggered'')
+      | default(0)) | int > 10)}}'
+  actions:
+  - alias: Toggle Left
+    if:
+    - condition: trigger
+      id:
+      - Double left
+      - single left
+    then:
+    - type: toggle
+      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+      entity_id: aa18e4cda3fe66d197e8584a34149f0f
+      domain: switch
+  mode: single
+- id: '1738338302199'
+  alias: WallPanelBrightness
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.average_illuminance
+    trigger: state
+  - entity_id: sun.sun
+    attribute: elevation
+    trigger: state
+  conditions:
+  - condition: template
+    value_template: '{{ now() - state_attr(this.entity_id, ''last_triggered'') > timedelta(minutes=2)
+      }}'
+  actions:
+  - action: number.set_value
+    metadata: {}
+    target:
+      entity_id: number.lenovo_tab_p11_bildschirmhelligkeit
+    data:
+      value: "{% set light_max = 250 %}\n{% if states('sensor.average_illuminance')
+        == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
+        = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif %}\n{%
+        if states.sun.sun.attributes.elevation >= 0 %}\n  {{ light_max }} \n{% else
+        %}\n  {{ max(light_max * light_float, 10) }}\n{% endif %}\n"
+  - action: number.set_value
+    metadata: {}
+    target:
+      entity_id: number.lenovo_tab_p11_bildschirmschoner_helligkeit
+    data:
+      value: "{% set light_max = 200 %}\n{% if states('sensor.average_illuminance')
+        == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
+        = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif %}\n{%
+        if states.sun.sun.attributes.elevation >= 0 %}\n  {{ light_max }} \n{% else
+        %}\n  {{ max(light_max * light_float, 10)/2 }}\n{% endif %}\n"
+  mode: single
+- id: '1738339387324'
+  alias: Orangina Lampe
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'on'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+    to: 'on'
+    id: 'Off'
+  - trigger: time
+    at: '23:00:00'
+    id: 'Off'
+  - trigger: time
+    at: 02:00:00
+    id: Off sleep
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'off'
+    id: Off sync
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'off'
+    id: Off sync
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      - condition: template
+        enabled: true
+        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
+          int(1) > 27 }}'
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.orangina_lampe_zigbee
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.orangina_lampe_zigbee
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.orangina_lampe_zigbee
+            state: 'on'
+      alias: 'On'
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      - condition: time
+        after: '23:00:00'
+        before: 04:00:00
+      - condition: state
+        entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+        state: 'on'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.orangina_lampe_zigbee
+      alias: 'Off'
+    - conditions:
+      - condition: time
+        before: '20:00:00'
+        after: 04:00:00
+      - condition: trigger
+        id:
+        - Off sync
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.orangina_lampe_zigbee
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 10
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.orangina_lampe_zigbee
+      alias: Off Sync
+    - conditions:
+      - condition: trigger
+        id:
+        - Off sleep
+      - condition: time
+        after: 01:59:00
+        before: 04:00:00
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.orangina_lampe_zigbee
+      alias: Off Sleep
+  mode: single
+- id: '1738676581969'
+  alias: 15s Ping Update
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /2
+  conditions:
+  - condition: state
+    entity_id: input_select.smart_home_status
+    state: Daily
+  actions:
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - binary_sensor.1_1_1_1
+      - binary_sensor.1_0_0_1
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - binary_sensor.8_8_8_8
+      - binary_sensor.8_8_4_4
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - binary_sensor.9_9_9_9
+      - binary_sensor.149_112_112_112
+  mode: single
+- id: '1738740501702'
+  alias: Clean EG if Awake
+  description: ''
+  triggers:
+  - entity_id: schedule.dreame_clean_up
+    from: 'off'
+    to: 'on'
+    trigger: state
+  actions:
+  - domain: mobile_app
+    type: notify
+    device_id: 1acbf8ccc41c43655002000aa5b1cd46
+    title: '{{ notification_title }}'
+    message: '{{ notification_message }}'
+    data:
+      tag: '{{ notification_title }}'
+      persistent: '{{ persistent_notification }}'
+      actions: "{% set titles = [action_1_title, action_2_title, action_3_title] %}
+        {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
+        = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
+        %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
+        + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\" if
+        uri|length else action_name,\n      \"title\": title,\n      \"uri\": uri
+        \n      }\n    %}\n    {% set actions.data = actions.data + [action] %}\n
+        \ {% endif %}\n{% endfor %} {{ actions.data }}\n"
+  - wait_for_trigger:
+      event_type: mobile_app_notification_action
+      trigger: event
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up EG'' }}'
+      sequence:
+      - action: vacuum.start
+        metadata: {}
+        data: {}
+        target:
+          entity_id: vacuum.d9_max_gen_2
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up EG'' }}'
+      sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up EG''}}'
+      sequence:
+      - action: vacuum.return_to_base
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - vacuum.d9_max_gen_2
+  mode: restart
+  max_exceeded: silent
+  variables:
+    notify_device: 1acbf8ccc41c43655002000aa5b1cd46
+    trigger_entity: schedule.dreame_clean_up
+    notification_title: Dreame Clean-Up EG
+    notification_message: ''
+    persistent_notification: false
+    action_1_title: Awake for EG
+    action_1_uri: ''
+    first_action:
+    - action: vacuum.start
+      metadata: {}
+      data: {}
+      target:
+        entity_id: vacuum.d9_max_gen_2
+    action_2_title: ''
+    action_2_uri: ''
+    second_action: []
+    action_3_title: Not Awake
+    action_3_uri: ''
+    third_action:
+    - action: vacuum.return_to_base
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - vacuum.d9_max_gen_2
+- id: '1738740572519'
+  alias: Clean OG if awake
+  description: ''
+  triggers:
+  - entity_id: schedule.dreame_clean_up
+    from: 'off'
+    to: 'on'
+    trigger: state
+  actions:
+  - entity_id: schedule.dreame_clean_up
+    action: input_boolean.turn_off
+  - domain: mobile_app
+    type: notify
+    device_id: 1acbf8ccc41c43655002000aa5b1cd46
+    title: '{{ notification_title }}'
+    message: '{{ notification_message }}'
+    data:
+      tag: '{{ notification_title }}'
+      persistent: '{{ persistent_notification }}'
+      actions: "{% set titles = [action_1_title, action_2_title, action_3_title] %}
+        {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
+        = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
+        %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
+        + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\" if
+        uri|length else action_name,\n      \"title\": title,\n      \"uri\": uri
+        \n      }\n    %}\n    {% set actions.data = actions.data + [action] %}\n
+        \ {% endif %}\n{% endfor %} {{ actions.data }}\n"
+  - wait_for_trigger:
+      event_type: mobile_app_notification_action
+      trigger: event
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up OG'' }}'
+      sequence:
+      - action: vacuum.start
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - vacuum.dreamebot_d10_plus
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up OG''}}'
+      sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
+          == ''Dreame Clean-Up OG'' }}'
+      sequence:
+      - action: vacuum.return_to_base
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - vacuum.dreamebot_d10_plus
+  mode: restart
+  max_exceeded: silent
+  variables:
+    notify_device: 1acbf8ccc41c43655002000aa5b1cd46
+    trigger_entity: schedule.dreame_clean_up
+    notification_title: Dreame Clean-Up OG
+    notification_message: ''
+    persistent_notification: false
+    action_1_title: Awake for OG
+    action_1_uri: ''
+    first_action:
+    - action: vacuum.start
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - vacuum.dreamebot_d10_plus
+    action_2_title: ''
+    action_2_uri: ''
+    second_action: []
+    action_3_title: Not Awake
+    action_3_uri: ''
+    third_action:
+    - action: vacuum.return_to_base
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - vacuum.dreamebot_d10_plus
+- id: '1738879628887'
+  alias: Restart Go-e 11kW if minimum pause duration
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.go_echarger_270862_modelstatus
+    from:
+    to: Not charging because of minimum pause duration
+  conditions: []
+  actions:
+  - action: button.press
+    metadata: {}
+    data: {}
+    target:
+      entity_id: button.go_echarger_270862_rst
+    enabled: false
+  - action: goecharger_mqtt.set_config_key
+    metadata: {}
+    data:
+      key: mcpea
+      value: 'null'
+      serial_number: '270862'
+  mode: single
+- id: '1738879679202'
+  alias: Restart Gid 22kW if minimum pause duration
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.go_echarger_252682_modelstatus
+    from:
+    to: Not charging because of minimum pause duration
+  conditions: []
+  actions:
+  - action: button.press
+    metadata: {}
+    data: {}
+    enabled: false
+    target:
+      entity_id: button.go_echarger_252682_rst
+  - action: goecharger_mqtt.set_config_key
+    metadata: {}
+    data:
+      key: mcpea
+      serial_number: '252682'
+      value: 'null'
+  mode: single
+- id: '1739881671493'
+  alias: Notify for Tibber Pulse Battery Replacement
+  description: ''
+  triggers:
+  - type: value
+    device_id: 09c4fe882d8dc5dfd424705fe962ada4
+    entity_id: 0c4417a37b8446bef9aaf5149593d725
+    domain: sensor
+    trigger: device
+    below: 3.019
+  conditions: []
+  actions:
+  - action: notify.duncan
+    metadata: {}
+    data:
+      message: 'Replace Batteries: 2x AA'
+      title: Tibber Pulse
+  mode: single
+- id: '1739891374135'
+  alias: Briefkasten
+  description: ''
+  triggers:
+  - type: opened
+    device_id: a9a60bacd223dc315ac08b423a29fa30
+    entity_id: 316ef2ee03240888c856ab276382f3ee
+    domain: binary_sensor
+    metadata:
+      secondary: false
+    trigger: device
+    id: Oben
+  - type: opened
+    device_id: d5bba5fc9f9e499990295049f9c5f628
+    entity_id: 97cf27362c37ab1fa89101443026a181
+    domain: binary_sensor
+    trigger: device
+    id: Unten
+  - trigger: state
+    entity_id:
+    - input_boolean.etwas_ist_imbriefkasten
+    to: 'off'
+    from: 'on'
+    id: Unten
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Oben
+      - condition: state
+        entity_id: input_boolean.etwas_ist_imbriefkasten
+        state: 'off'
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: Post
+          message: Etwas wurde in den Briefkasten gelegt
+          data:
+            tag: briefkasten
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.etwas_ist_imbriefkasten
+      alias: Notify
+    - conditions:
+      - condition: trigger
+        id:
+        - Unten
+      - condition: state
+        entity_id: input_boolean.etwas_ist_imbriefkasten
+        state: 'on'
+        enabled: false
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: briefkasten
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.etwas_ist_imbriefkasten
+      alias: Clear
+  mode: single
+- id: '1739967189542'
+  alias: Reminder Waschmaschine und Trockner
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.waschmaschine_fertig
+    from: 'off'
+    to: 'on'
+    id: Waschmaschine
+  - trigger: state
+    entity_id:
+    - input_boolean.trockner_fertig
+    from: 'off'
+    to: 'on'
+    id: Trockner
+  - trigger: state
+    entity_id:
+    - input_boolean.trockner_fertig
+    from: 'on'
+    to: 'off'
+    id: Trockner fertig
+  - trigger: state
+    entity_id:
+    - input_boolean.waschmaschine_fertig
+    from: 'on'
+    to: 'off'
+    id: Waschmaschine fertig
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Waschmaschine
+      sequence:
+      - repeat:
+          sequence:
+          - action: notify.familie
+            metadata: {}
+            data:
+              data:
+                tag: waschmaschine_fertig
+                color: yellow
+                notification_icon: mdi:washing-machine
+              title: Waschmascchine fertig
+              message: Bitte ausräumen
+          - action: notify.send_message
+            metadata: {}
+            data:
+              message: Waschmaschine ist fertig
+            target:
+              entity_id:
+              - notify.lenovo_tab_p11_text_zu_sprache
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: input_boolean.waschmaschine_fertig
+            state: 'off'
+      - action: notify.familie
+        metadata: {}
+        data:
+          data:
+            tag: waschmaschine_fertig
+          message: clear_notification
+      alias: Waschmaschine
+    - conditions:
+      - condition: trigger
+        id:
+        - Trockner
+      sequence:
+      - repeat:
+          sequence:
+          - action: notify.familie
+            metadata: {}
+            data:
+              data:
+                tag: trockner_fertig
+                color: yellow
+                notification_icon: mdi:tumble-dryer
+              title: Trockner fertig
+              message: Bitte ausräumen
+          - action: notify.send_message
+            metadata: {}
+            data:
+              message: Trockner ist fertig
+            target:
+              entity_id:
+              - notify.lenovo_tab_p11_text_zu_sprache
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: input_boolean.trockner_fertig
+            state: 'off'
+      - action: notify.familie
+        metadata: {}
+        data:
+          data:
+            tag: trockner_fertig
+          message: clear_notification
+      alias: Trockner
+    - conditions:
+      - condition: trigger
+        id:
+        - Trockner fertig
+      sequence:
+      - action: notify.familie
+        metadata: {}
+        data:
+          data:
+            tag: trockner_fertig
+          message: clear_notification
+    - conditions:
+      - condition: trigger
+        id:
+        - Waschmaschine fertig
+      sequence:
+      - action: notify.familie
+        metadata: {}
+        data:
+          data:
+            tag: waschmaschine_fertig
+          message: clear_notification
+  mode: parallel
+  max: 10
+- id: '1740093536851'
+  alias: Wallpanel Restart Auto Charging
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.lenovo_tab_p11_batterie
+  conditions:
+  - condition: numeric_state
+    entity_id: sensor.lenovo_tab_p11_batterie
+    below: 40
+  actions:
+  - sequence:
+    - variables:
+        counter: 0
+        max_retries: 10
+    - repeat:
+        sequence:
+        - variables:
+            counter: '{{ counter + 1 }}'
+        - action: switch.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id: switch.mikrowelle_2
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        - action: switch.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id: switch.mikrowelle_2
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: binary_sensor.lenovo_tab_p11_eingesteckt
+            state: 'on'
+          - condition: template
+            value_template: '{{ counter >= max_retries }}'
+  mode: single
+- id: '1740094506579'
+  alias: Wallpanel Reload Browser if -> low memory or 02:00
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.lenovo_tab_p11_ram_usage
+    above: 90
+  - trigger: time
+    at: 02:00:00
+  conditions: []
+  actions:
+  - sequence:
+    - action: button.press
+      metadata: {}
+      data: {}
+      target:
+        entity_id: button.lenovo_tab_p11_browser_neu_starten
+    - delay:
+        hours: 0
+        minutes: 5
+        seconds: 0
+        milliseconds: 0
+    - type: turn_off
+      device_id: b2f8744d05fbc0df49c0036eeb2fe41c
+      entity_id: 2421c34f010ad80ffb49d8e4ea205770
+      domain: switch
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - type: turn_on
+      device_id: b2f8744d05fbc0df49c0036eeb2fe41c
+      entity_id: 2421c34f010ad80ffb49d8e4ea205770
+      domain: switch
+  mode: single
+- id: '1740160222722'
+  alias: Dachfenster Rolladen Steuerung
+  description: ''
+  triggers:
+  - event: sunset
+    id: sunset
+    trigger: sun
+    offset: +00:15:00
+  - event: sunrise
+    offset: 00:30:00
+    id: sunrise_offset
+    trigger: sun
+  - entity_id: sensor.gw1100a_outdoor_temperature
+    id: temp_change
+    trigger: state
+  - entity_id:
+    - sensor.gw1100a_indoor_temperature
+    - sensor.gw1100a_solar_lux
+    id: temp_change
+    trigger: state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gw1100a_solar_lux
+    below: 4000
+    id: sunset
+  - trigger: numeric_state
+    entity_id:
+    - sensor.sun_solar_elevation
+    below: 16
+    id: sunset
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - sunset
+        - condition: template
+          value_template: '{{ now().month in [11,12,1,2,3] }}'
+          alias: Is Winter
+        alias: Is Winter and Sunset
+      sequence:
+      - target:
+          entity_id: weather.irauen33
+        data:
+          type: daily
+        response_variable: weather_forecast
+        action: weather.get_forecasts
+      - alias: If Snow, only close Window, if not close window and Rollo
+        if:
+        - alias: Is Snow or below 0
+          condition: template
+          value_template: '{{ ''snow'' in weather_forecast[''weather.irauen33''].forecast[1].condition
+            or (weather_forecast[''weather.irauen33''].forecast[1].templow < 0 and
+            ''rain'' in weather_forecast[''weather.irauen33''].forecast[1].condition
+            ) }} '
+        then:
+        - if:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: binary_sensor.dachfenster_wintergarten_links_contact
+              state: 'on'
+            - condition: state
+              entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
+              state: 'on'
+          then:
+          - action: cover.close_cover
+            metadata: {}
+            data: {}
+            target:
+              entity_id: cover.wintergarten_dachfenster
+          alias: If Open then Close Window
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Dachfenster Winter
+            message: Fenster zu, Templow {{ weather_forecast['weather.irauen33'].forecast[1].templow
+              }}, Condition {{weather_forecast['weather.irauen33'].forecast[1].condition}}
+        else:
+        - alias: If Open then Close Window
+          if:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: binary_sensor.dachfenster_wintergarten_links_contact
+              state: 'on'
+            - condition: state
+              entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
+              state: 'on'
+          then:
+          - action: cover.close_cover
+            metadata: {}
+            data: {}
+            target:
+              entity_id: cover.wintergarten_dachfenster
+          - delay:
+              hours: 0
+              minutes: 1
+              seconds: 0
+              milliseconds: 0
+            enabled: true
+        - target:
+            entity_id: cover.wintergarten_rolladen_dachfenster
+          action: cover.close_cover
+          data: {}
+          enabled: true
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Dachfenster Winter
+            message: Fenster und Rollo zu, Templow {{ weather_forecast['weather.irauen33'].forecast[1].templow
+              }}, Condition  {{weather_forecast['weather.irauen33'].forecast[1].condition}}
+      alias: Is Winter and Sunset -> Rollo Close if no snow or not below 0 tomorrow
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ now().month in [11,12,1,2,3] }}'
+          alias: Is Winter
+        - condition: trigger
+          id:
+          - sunrise_offset
+        alias: Is Winter and Sunrise offset
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id:
+          - cover.wintergarten_rolladen_dachfenster
+        data: {}
+        enabled: true
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: Dachfenster Winter
+          message: Rollo auf
+      alias: Is Winter and Sunrise -> Open Rollo
+    - conditions:
+      - alias: Is Summer and Temp Diff > 5
+        condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - temp_change
+        - alias: Is Summer
+          condition: template
+          value_template: '{{ now().month in [4,5,6,7,8,9,10] }}'
+        - alias: Is Temp Diff > 5
+          condition: template
+          value_template: '{% set temp_inside = states(''sensor.gw1100a_indoor_temperature'')
+            | float(0) %}
+
+            {% set temp_outside = states(''sensor.gw1100a_outdoor_temperature'') |
+            float(0) %}
+
+            {% set uv = states(''sensor.gw1100a_solar_lux'') | float(0) %}
+
+            {% set uv_index = states(''sensor.gw1100a_uv_index'') | float(0) %}
+
+            {{ ((temp_outside - temp_inside) > 5.0) or (uv > 75000.0 and (temp_outside
+            > 20.0 or uv_index >= 5 )) }}'
+        - condition: numeric_state
+          entity_id: sensor.sun_solar_azimuth
+          above: 175
+      sequence:
+      - if:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: binary_sensor.dachfenster_wintergarten_links_contact
+            state: 'on'
+          - condition: state
+            entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
+            state: 'on'
+        then:
+        - action: cover.close_cover
+          metadata: {}
+          data: {}
+          target:
+            entity_id: cover.wintergarten_dachfenster
+        alias: If Open then Close Window
+      - if:
+        - condition: state
+          entity_id: cover.wintergarten_rolladen_dachfenster
+          state: open
+        then:
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Dachfenster Sommer
+            message: Rollo zu Temp
+        alias: Notify on first close
+      - target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+        action: cover.close_cover
+        data: {}
+        enabled: true
+      alias: Is Summer, Temp Diff > 5 -> Close Rollo
+    - conditions:
+      - condition: and
+        conditions:
+        - alias: Is Summer
+          condition: template
+          value_template: '{{ now().month in [4,5,6,7,8,9,10] }}'
+        - condition: trigger
+          id:
+          - sunset
+        alias: Is Summer and sunset
+      sequence:
+      - if:
+        - condition: state
+          entity_id: cover.wintergarten_rolladen_dachfenster
+          state: closed
+        then:
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: Dachfenster Sommer
+            message: Rollo auf
+        alias: Notify on first open
+      - action: cover.open_cover
+        metadata: {}
+        data: {}
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+        enabled: true
+      alias: Is Summer and Sunset -> Open Rollo
+  mode: queued
+  max: 10
+- id: '1740525979043'
+  alias: Turn all off if going to bed
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  conditions:
+  - condition: sun
+    after: sunset
+    before: sunrise
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - switch.schreibtisch_links_power_strip_l4
+      - switch.schreibtisch_rechts_power_strip_l2
+      - switch.schreibtisch_rechts_power_strip_l3
+      - switch.kallax_plant_light_zigbee
+      - switch.schreibtisch_rechts_power_strip_l5
+      - switch.schreibtisch_links_power_strip_l1
+  mode: single
+- id: '1740690228362'
+  alias: UPS, on battery -> Stop Folding@Home
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.myups_status
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: sensor.myups_status
+      state: Online
+  actions:
+  - sequence:
+    - action: button.press
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - button.192_168_2_205_pause
+        - button.192_168_2_205_00_pause
+  mode: single
+- id: '1740741927183'
+  alias: Turn off Trockner or Waschmaschine fertig using Button
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 7be1308679cc0cfa3cc595fe650e29ed
+    type: action
+    subtype: button_1_single
+    metadata: {}
+    trigger: device
+    id: Trockner
+    alias: Trockner
+  - domain: mqtt
+    device_id: 7be1308679cc0cfa3cc595fe650e29ed
+    type: action
+    subtype: button_2_single
+    trigger: device
+    id: Waschmaschine
+    alias: Waschmaschine
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Trockner
+      - condition: state
+        entity_id: input_boolean.trockner_fertig
+        state: 'on'
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.trockner_fertig
+      alias: Trockner
+    - conditions:
+      - condition: trigger
+        id:
+        - Waschmaschine
+      - condition: state
+        state: 'on'
+        entity_id: input_boolean.waschmaschine_fertig
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.waschmaschine_fertig
+      alias: Waschmaschine
+  mode: single
+- id: '1740768826171'
+  alias: 4 Button Garage
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 567e3678adb66923eb4b34ad88e55ff5
+    type: action
+    subtype: 1_single
+    trigger: device
+    id: '1'
+  - domain: mqtt
+    device_id: 567e3678adb66923eb4b34ad88e55ff5
+    type: action
+    subtype: 2_single
+    metadata: {}
+    trigger: device
+    id: '2'
+  - domain: mqtt
+    device_id: 567e3678adb66923eb4b34ad88e55ff5
+    type: action
+    subtype: 3_single
+    trigger: device
+    id: '3'
+  - domain: mqtt
+    device_id: 567e3678adb66923eb4b34ad88e55ff5
+    type: action
+    subtype: 4_single
+    trigger: device
+    id: '4'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - '1'
+      sequence: []
+    - conditions:
+      - condition: trigger
+        id:
+        - '2'
+      sequence: []
+    - conditions:
+      - condition: trigger
+        id:
+        - '3'
+      sequence: []
+    - conditions:
+      - condition: trigger
+        id:
+        - '4'
+      sequence: []
+  mode: single
+- id: '1741093435280'
+  alias: Set Herd CT Clamp Update Frequency at Startup and every Hour
+  description: ''
+  triggers:
+  - trigger: homeassistant
+    event: start
+  - trigger: time_pattern
+    hours: /1
+  - trigger: state
+    entity_id:
+    - number.herd_ct_klemme_zigbee_update_frequency
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - device_id: 3198731e8b90e56a55763e5862d1e728
+    domain: number
+    entity_id: 8dac2d1e77f626770b9dd54c98445f49
+    type: set_value
+    metadata:
+      secondary: false
+    value: 15
+  mode: single
+- id: '1741102167233'
+  alias: 'Publish to Mqtt: grid Export'
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.grid_power
+    - sensor.solar_power_total
+    - sensor.battery_discharge
+    - sensor.felicity_ess_soc_avg
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: binary_sensor.esp32_c3_mini_goe11_controll_status_11kw
+      state: 'on'
+    - condition: state
+      entity_id: binary_sensor.esp32_c3_mini_goe22_controll_status_22kw
+      state: 'on'
+    - condition: state
+      entity_id: switch.schreibtisch_links_power_strip_l3
+      state: 'on'
+  actions:
+  - action: mqtt.publish
+    metadata: {}
+    data:
+      evaluate_payload: false
+      topic: grid/power
+      payload: '{{ states(''sensor.grid_power'') | float(0) }}'
+  - action: mqtt.publish
+    metadata: {}
+    data:
+      evaluate_payload: false
+      topic: grid/solar
+      payload: '{{ states(''sensor.solar_power_total'') | float(0) - states(''sensor.battery_charge'')
+        | float(0) - states(''sensor.pool_pumpe_energy_power'') | float(0) }}'
+  - action: mqtt.publish
+    metadata: {}
+    data:
+      topic: grid/battery
+      payload: '{{ states(''sensor.battery_discharge'') | float(0) }}'
+  - action: mqtt.publish
+    metadata: {}
+    data:
+      topic: grid/soc
+      payload: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0) }}'
+  mode: parallel
+  max: 10
+- id: '1742316986881'
+  alias: Wall panel Display Off at Night
+  description: ''
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+    id: Display Off
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Display On
+  - trigger: state
+    entity_id:
+    - switch.lenovo_tab_p11_bildschirmschoner
+    id: Bildschirm changed
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Display Off
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.lenovo_tab_p11_bildschirm
+      alias: Mitternacht -> Bildschirm Aus
+    - conditions:
+      - condition: trigger
+        id:
+        - Display On
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.lenovo_tab_p11_bildschirm
+      alias: Sunrise -> Bildschirm An
+    - conditions:
+      - condition: trigger
+        id:
+        - Bildschirm changed
+      - condition: time
+        after: '23:00:00'
+        before: sensor.sun_next_rising
+      - condition: state
+        entity_id: switch.lenovo_tab_p11_bildschirm
+        state: 'on'
+      sequence:
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+        enabled: false
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.lenovo_tab_p11_bildschirm
+      alias: Bildschirm Aus wenn nach Mitternacht, vor Sonnenaufgang
+  mode: single
+  max_exceeded: silent
+- id: '1742769759070'
+  alias: Bad Heizung Restore
+  description: ''
+  triggers:
+  - device_id: 82cf1e7db2bc59a699e322e466ac478c
+    domain: climate
+    entity_id: 4d4bd1fb7e7759051cd662221363356a
+    type: hvac_mode_changed
+    trigger: device
+    to: 'off'
+  - trigger: state
+    entity_id:
+    - climate.bad
+    to: 'off'
+    from: heat_cool
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: climate.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: climate.bad
+    enabled: true
+  - type: turn_on
+    device_id: 82cf1e7db2bc59a699e322e466ac478c
+    entity_id: 314d8c594f80b23a611dd5b672a11c4b
+    domain: switch
+  mode: single
+- id: '1744046298527'
+  alias: Enya kommt heim
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.lsjwh4097rn105299_vehicle_running
+    from:
+    id: Arbeit
+  - trigger: zone
+    entity_id: person.enya
+    zone: zone.big_home_2
+    event: enter
+    id: Enter
+  - trigger: zone
+    entity_id: person.enya
+    zone: zone.home
+    event: enter
+    id: Home
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: person.enya
+      state: not_home
+    - condition: state
+      entity_id: person.enya
+      state: home
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Arbeit
+      sequence:
+      - action: icloud3.action
+        metadata: {}
+        data:
+          command: Restart iCloud3
+          device_name: e146d7ea7dd792848fa6d8090a91ff6c
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 15
+          milliseconds: 0
+      - action: icloud3.action
+        metadata: {}
+        data:
+          command: Locate Device(s) using iCloud
+          device_name: e146d7ea7dd792848fa6d8090a91ff6c
+      alias: Leave Arbeit
+    - conditions:
+      - condition: trigger
+        id:
+        - Enter
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: Enya kommt heim
+          message: Sie ist in {{ states('sensor.enyas_iphone_travel_time', with_unit=true)
+            }} daheim
+          data:
+            tag: home_arrival_enya
+    - conditions:
+      - condition: trigger
+        id:
+        - Home
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: home_arrival_enya
+  mode: single
+- id: '1744099492999'
+  alias: Daily Agenda using OpenAI
+  description: ''
+  triggers:
+  - at: 08:00:00
+    trigger: time
+  actions:
+  - variables:
+      weather_entity: weather.forecast_home
+      calendar_number: three
+      calendar_entity_1: calendar.looping
+      calendar_entity_2: calendar.anniversaries
+      calendar_entity_3: calendar.apps_by_abfall
+      notify_number: one
+      zone_entity: zone.home
+      calendar_duration:
+        hours: 15
+        minutes: 59
+        seconds: 0
+      prompt: "Please generate text for a notification that will be sent to the users
+        smartphone with helpful information. keep it simple and short but precise.
+        simply provide the notification and nothing else! don't use any Benachrichtigung
+        or something like that just the message! if you like you can format it to
+        make it more readable \n\n- Your answers are not technical, and do not include
+        Home Assistant internal details such as entities in responses.\n- Your messages
+        help the user prepare for their day\n  - use the event name to refer to single
+        persons, provide individual recommendations for each person and seperate them
+        if needed per person.\n  - Making note of unusual weather for the location
+        and time of year (but not mundane details like \"0% chance of precipitation\")
+        also make sure to only tell the condition and temperature and maybe what I
+        should bring when I go outside if the condition or temperature makes it needed.
+        don't tell me to got for a walk or something like that \n  - Anything that
+        may be special or unique, such as celebrating a birthday\nProvide your answer
+        in German and make it precise and efficient as a German would like it. Bitte
+        Duzen nicht Siezen"
+  - alias: Fetch First Calendar Agenda
+    data:
+      duration:
+        hours: 15
+        minutes: 59
+        seconds: 0
+    target:
+      entity_id: calendar.looping
+    response_variable: agenda_1
+    action: calendar.get_events
+  - if:
+    - condition: template
+      value_template: '{{ (calendar_number == ''two'') or (calendar_number == ''three'')
+        }}'
+    then:
+    - alias: Fetch Second Calendar Agenda
+      data:
+        duration:
+          hours: 15
+          minutes: 59
+          seconds: 0
+      target:
+        entity_id: calendar.anniversaries
+      response_variable: agenda_2
+      action: calendar.get_events
+  - if:
+    - condition: template
+      value_template: '{{ calendar_number == ''three''}}'
+    then:
+    - alias: Fetch Third Calendar Agenda
+      data:
+        duration:
+          hours: 15
+          minutes: 59
+          seconds: 0
+      target:
+        entity_id: calendar.apps_by_abfall
+      response_variable: agenda_3
+      action: calendar.get_events
+  - alias: Fetch Weather Forecast
+    data:
+      type: hourly
+    target:
+      entity_id:
+      - '{{ weather_entity }}'
+    response_variable: daily_forecast
+    action: weather.get_forecasts
+  - variables:
+      forecast_entity: '{{ daily_forecast[weather_entity] }}'
+      forecast: '{{ forecast_entity.forecast[0] }}'
+  - alias: Conversation Agent Notification Text
+    data:
+      text: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }}\n{%- if zone_entity
+        is defined %}\nLatitude: {{ state_attr(zone_entity, 'latitude') | round(1)
+        }}\nLongitude: {{ state_attr(zone_entity, 'longitude') | round(1) }}\n{% endif
+        %}\n{%- if weather_entity is defined %}        \n{%- set temperature_unit
+        = state_attr(weather_entity, 'temperature_unit') -%}\nCurrent Weather : {{
+        forecast.condition }} ({{ forecast.temperature }}{{ temperature_unit }}, {{
+        forecast.precipitation }}% precipitation, UV Index {{forecast.uv_index}},
+        Wind Speed {{forecast.wind_speed}}, Temp Low {{forecast.templow}})\nTodays
+        Overall Weather: {{ states('sensor.irauen33_weather_summary_0') }}\n{%- endif
+        %}\n\nCalendar \"{{ state_attr(calendar_entity_1, 'friendly_name') }}\" events
+        for the next {{ calendar_duration.hours }} hours:\n{%- set agenda = (agenda_1
+        | items | first)[1] %}\n{%- if agenda.events %}\n  {%- for event in agenda.events
+        %}\n  - Summary: {{ event.summary }}\n    Start-End: {% if event.start is
+        defined %}{{ event.start }} to {{ event.end }}{% else %}All Day{% endif %}\n
+        \   {%- if event.description is defined %}\n    Description: {{ event.description
+        }}\n    {% endif -%}\n    {%- if event.location is defined %}\n      Location:
+        {{ event.location }}\n    {% endif -%}\n  {%- endfor %}\n{%- else %}\n  -
+        No upcoming events.\n{%- endif %}\n\n{%- if (calendar_number == \"two\") or
+        (calendar_number == \"three\") %}\nCalendar \"{{ state_attr(calendar_entity_2,
+        'friendly_name') }}\" events for the next {{ calendar_duration.hours }} hours:\n
+        \ {%- set agenda = (agenda_2 | items | first)[1] %}\n  {%- if agenda.events
+        %}\n    {%- for event in agenda.events %}\n    - Summary: {{ event.summary
+        }}\n      Start-End: {% if event.start is defined %}{{ event.start }} to {{
+        event.end }}{% else %}All Day{% endif %}\n      {%- if event.description is
+        defined %}\n      Description: {{ event.description }}\n      {% endif -%}\n
+        \     {%- if event.location is defined %}\n        Location: {{ event.location
+        }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n    - No upcoming
+        events.\n  {%- endif %}\n{%- endif %}\n\n{%- if (calendar_number == \"three\")
+        %}\nCalendar \"{{ state_attr(calendar_entity_3, 'friendly_name') }}\" events
+        for the next {{ calendar_duration.hours }} hours:\n  {%- set agenda = (agenda_3
+        | items | first)[1] %}\n  {%- if agenda.events %}\n    {%- for event in agenda.events
+        %}\n    - Summary: {{ event.summary }}\n      Start-End: {% if event.start
+        is defined %}{{ event.start }} to {{ event.end }}{% else %}All Day{% endif
+        %}\n      {%- if event.description is defined %}\n      Description: {{ event.description
+        }}\n      {% endif -%}\n      {%- if event.location is defined %}\n        Location:
+        {{ event.location }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n
+        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}\n\n{{ prompt }}"
+      agent_id: conversation.chatgpt
+    response_variable: agent
+    action: conversation.process
+  - alias: Send notification
+    data:
+      title: '{{ now().strftime(''%A'') }} Agenda'
+      message: '{{ agent.response.speech.plain.speech }}'
+    action: notify.duncan
+- id: '1744915571531'
+  alias: Kinderbad Restore
+  description: ''
+  triggers:
+  - device_id: a78abc6c05c0743b436ba83424f50b76
+    domain: climate
+    entity_id: ab93eb8da47b939a1ac280983d38c2d3
+    type: hvac_mode_changed
+    trigger: device
+    to: 'off'
+  - trigger: state
+    entity_id:
+    - climate.kinderbad
+    to: 'off'
+    from: heat_cool
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: climate.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - climate.kinderbad
+    enabled: true
+  - type: turn_on
+    device_id: a78abc6c05c0743b436ba83424f50b76
+    entity_id: af40e8a58cc2a5090f6b0680f852e07b
+    domain: switch
+  mode: single
+- id: '1745964630082'
+  alias: Delete old daily backups if storage gets low
+  description: ''
+  triggers:
+  - type: data_size
+    device_id: 1982a3831d7e13579a3803758fdcede6
+    entity_id: feabd8d9c429685149a2002f520cf959
+    domain: sensor
+    trigger: device
+    below: 50
+  conditions: []
+  actions:
+  - action: shell_command.delete_old_backups_disk
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1746275970155'
+  alias: 'Get Power from AC Unit Breaker '
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    seconds: /30
+  conditions:
+  - condition: state
+    entity_id: switch.wifi_din_rail_switch_with_metering_schalter
+    state: 'on'
+  actions:
+  - action: homeassistant.update_entity
+    metadata: {}
+    data:
+      entity_id:
+      - sensor.wifi_din_rail_switch_with_metering_leistung
+  mode: single
+- id: '1746353652230'
+  alias: Wohnzimmer Restore
+  description: ''
+  triggers:
+  - device_id: 8bc371f0e1849d30a79bb106122e1200
+    domain: climate
+    entity_id: 4f79ac53f159b50c2e545c9e46d50a35
+    type: hvac_mode_changed
+    trigger: device
+    to: 'off'
+  - trigger: state
+    entity_id:
+    - climate.wohnzimmer
+    to: 'off'
+    from: heat_cool
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: climate.turn_on
+    metadata: {}
+    data: {}
+    enabled: true
+    target:
+      entity_id: climate.wohnzimmer
+  - type: turn_on
+    device_id: 8bc371f0e1849d30a79bb106122e1200
+    entity_id: d5cdcbc59080fa1c4b6f71da7dff99b0
+    domain: switch
+  mode: single
+- id: '1746353703872'
+  alias: Küche Restore
+  description: ''
+  triggers:
+  - device_id: ffd1ca2fc2f9f56c885d4416254b6c8f
+    domain: climate
+    entity_id: c45c1e73801d3dba025e8a24955eb0eb
+    type: hvac_mode_changed
+    trigger: device
+    to: 'off'
+  - trigger: state
+    entity_id:
+    - climate.kuche
+    to: 'off'
+    from: heat_cool
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: climate.turn_on
+    metadata: {}
+    data: {}
+    enabled: true
+    target:
+      entity_id:
+      - climate.kuche
+  - type: turn_on
+    device_id: ffd1ca2fc2f9f56c885d4416254b6c8f
+    entity_id: 9b235326bd8d0d48c010dbef3918b444
+    domain: switch
+  mode: single
+- id: '1747048995618'
+  alias: Trigger Solis when power of DeLonghi is above 50W from below 0.5W
+  description: ''
+  triggers:
+  - entity_id:
+    - sensor.kaffeemaschine_delonghi_energy_power
+    trigger: state
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.from_state.state | float(default=0) < 0.4 and\n   trigger.to_state.state
+      | float(default=0) > 50 }}\n"
+  actions:
+  - target:
+      entity_id:
+      - switch.kaffeemaschine_tasmota
+    action: switch.turn_on
+    data: {}
+  mode: single
