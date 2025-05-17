@@ -6217,8 +6217,8 @@
 
             {% set uv_index = states(''sensor.gw1100a_uv_index'') | float(0) %}
 
-            {{ ((temp_outside - temp_inside) > 5.0) or (uv > 75000.0 and (temp_outside
-            > 20.0 or uv_index >= 5 )) }}'
+            {{ ((temp_outside - temp_inside) > 5.0 and temp_outside > 22.0 ) or ((uv
+            > 75000.0 or uv_index >= 5) and temp_outside > 20.0) }}'
         - condition: numeric_state
           entity_id: sensor.sun_solar_azimuth
           above: 175
@@ -6785,6 +6785,10 @@
   - variables:
       forecast_entity: '{{ daily_forecast[weather_entity] }}'
       forecast: '{{ forecast_entity.forecast[0] }}'
+  - action: anylist.get_items
+    data:
+      list: To Do Duncan
+    response_variable: to_do
   - alias: Conversation Agent Notification Text
     data:
       text: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }}\n{%- if zone_entity
@@ -6823,7 +6827,9 @@
         %}\n      {%- if event.description is defined %}\n      Description: {{ event.description
         }}\n      {% endif -%}\n      {%- if event.location is defined %}\n        Location:
         {{ event.location }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n
-        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}\n\n{{ prompt }}"
+        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}\n\nAlso heres a random
+        task from my todo list:  {% set length = to_do['items'] | length %} {{ to_do['items'][range(0,length)|random]}}\nfeel
+        free to make suggestions on how to do this in today.\n\n{{ prompt }}"
       agent_id: conversation.chatgpt
     response_variable: agent
     action: conversation.process

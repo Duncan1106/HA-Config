@@ -240,16 +240,16 @@ number:
     mode: BOX
     on_value: 
       then:
-        - text_sensor.template.publish:
-            id: log_txt
-            state: !lambda |-
-              char text_amps[200];
-              sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, id(amps_goe_calculated_rounded).state);
-              return ((std::string) text_amps).c_str();
         - if:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
+              - text_sensor.template.publish:
+                  id: log_txt
+                  state: !lambda |-
+                    char text_amps[200];
+                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, id(amps_goe_calculated_rounded).state);
+                    return ((std::string) text_amps).c_str();
               - mqtt.publish: 
                   id: broker
                   topic: ${main_topic}amp/set
@@ -600,6 +600,9 @@ interval:
           - switch.is_on: enable_pv_charging
         then:
           - script.execute: charge_ev
+          - script.execute: 
+              id: blink_led
+              repeat_count: 1 # flash button for duration of 250ms to inidcate working
         else:
           - text_sensor.template.publish:
               id: log_txt
@@ -615,13 +618,7 @@ script:
           count: !lambda return repeat_count;
           then:
             - button.press: led_flash
-            # - if: 
-            #     condition:
-            #       lambda: !lambda return repeat_count > 1;
-            #     then:
-            #       - delay: 1000ms
             - if:
-                # only delay if we're NOT on the final iteration
                 condition:
                   lambda: return iteration < (repeat_count - 1);
                 then:
@@ -643,6 +640,11 @@ script:
             - text_sensor.template.publish:
                 id: log_txt
                 state: "Disallow Charging"
+            - delay: 500ms
+          # else:
+          #   - text_sensor.template.publish:
+          #       id: log_txt
+          #       state: "Charging already disallowed"
   - id: start_charging
     mode: single
     then:
@@ -662,7 +664,12 @@ script:
                 state: "Allow Charging"
             - number.to_min: 
                 id: restart_charging_counter
-            - delay: 5s
+            # - delay: 2s
+          # else: 
+          #   - text_sensor.template.publish:
+          #       id: log_txt
+          #       state: "Charging already allowed"
+          #   - delay: 500ms
   - id: restart_charging
     mode: single
     then:
@@ -687,7 +694,7 @@ script:
                 id: broker
                 payload: 0
                 topic: ${main_topic}frc/set
-            - number.to_min: restart_charging_counter  
+            - number.to_min: restart_charging_counter
   - id: stop_charging_battery
     mode: single
     then:
@@ -705,7 +712,86 @@ script:
             return ((std::string) text_amps).c_str();
       - delay: 1s
       - script.stop: charge_ev
-
+  - id: below_amp_threshold
+    mode: single
+    then:
+      - if:  # first time below min amps
+          condition:
+            - switch.is_off: low_amp_flag
+          then:
+            - switch.turn_on: low_amp_flag
+          else:  # second consecutive time below
+            - script.execute: stop_charging
+            # - switch.turn_off: low_amp_flag
+  - id: above_amp_threshold
+    mode: single
+    then: 
+      - switch.turn_off: low_amp_flag
+      # - script.execute: start_charging
+      - if: # Set amps to the calculated ones if not already done so, also skip if not enough solar or battery power is available to provide the requested amps
+          condition: 
+            - lambda: !lambda return id(amps_goe_calculated_rounded).state != id(feedback_amps).state;
+          then:
+            - if: # Skip Cycle if not enough solar or battery power available or allowed, up to a maximum of 10 skips
+                condition:
+                  - and:
+                    - number.in_range:
+                        below: 10
+                        id: skip_counter
+                    - lambda: !lambda return (id(solar_amps).state + (id(availbale_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
+                then:
+                  - text_sensor.template.publish:
+                      id: log_txt
+                      state: !lambda |-
+                        char text_amps[200];
+                        sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
+                        return ((std::string) text_amps).c_str();
+                  - number.increment: 
+                      cycle: false
+                      id: skip_counter
+                  - script.stop: charge_ev
+                else:
+                  - number.set: # set amps to calculated amps when enough solar or battery power is available
+                      id: amps
+                      value: !lambda return id(amps_goe_calculated_rounded).state;
+                  - script.execute: start_charging
+                  - delay: 2s
+                  - number.to_min: skip_counter # resetting skip counter since we dont skip anymore
+      - if: # if not charging but not allowed, start it
+          condition: 
+            - not:
+              - text_sensor.state: 
+                  id: goe_status
+                  state: "Neutral"
+          then:
+            - script.execute: start_charging
+            - delay: 1s
+          else:
+            - delay: 1s
+            - text_sensor.template.publish:
+                id: log_txt
+                state: "Running..."
+      - if: # Restart Charging if not Charging but should be
+          condition:
+            - and:
+              - text_sensor.state: # if charging is allowed
+                  id: goe_status
+                  state: "Neutral"
+              - sensor.in_range: # if not charging, power between -20 and 20 W
+                  id: goe_power
+                  above: -20
+                  below: 20
+              - or: # either not charging or not waitCar
+                - not:
+                  - text_sensor.state:
+                      id: car_connected
+                      state: "Charging"
+                - not: 
+                  - text_sensor.state:
+                      id: car_connected
+                      state: "WaitCar"
+          then:
+            - script.execute: restart_charging 
   - id: charge_ev
     mode: single
     then:
@@ -722,88 +808,18 @@ script:
                       id: battery_power_offset
                       above: 500.0
             then:
-              - script.wait: stop_charging_battery
+              - script.execute: stop_charging_battery
         - if: # If Amps are below the min threshold then stop charging    
             condition:
               - sensor.in_range:
                   id: amps_goe_calculated
                   below: ${min_charge_threshold}
             then:
-              - if:  # first time below min amps
-                  condition:
-                    - switch.is_off: low_amp_flag
-                  then:
-                    - switch.turn_on: low_amp_flag
-                  else:  # second consecutive time below
-                    - switch.turn_off: low_amp_flag
-                    - script.wait: stop_charging
+              - script.execute: below_amp_threshold
         - if: # if Amps are above the min threshold then start charging
             condition: 
               - sensor.in_range: 
                   id: amps_goe_calculated
                   above: ${min_charge_threshold}
             then:
-              - switch.turn_off: low_amp_flag
-              - if: # Set amps to the calculated ones if not already done so, also skip if not enough solar or battery power is available to provide the requested amps
-                  condition: 
-                    - lambda: !lambda return id(amps_goe_calculated_rounded).state != id(feedback_amps).state;
-                  then:
-                    - if: # Skip Cycle if not enough solar or battery power available or allowed, up to a maximum of 10 skips
-                        condition:
-                          - and:
-                            - number.in_range:
-                                below: 10
-                                id: skip_counter
-                            - lambda: !lambda return (id(solar_amps).state + (id(availbale_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
-                        then:
-                          - text_sensor.template.publish:
-                              id: log_txt
-                              state: !lambda |-
-                                char text_amps[200];
-                                sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
-                                return ((std::string) text_amps).c_str();
-                          - number.increment: 
-                              cycle: false
-                              id: skip_counter
-                          - script.stop: charge_ev
-                    - number.set: # set amps to calculated amps when enough solar or battery power is available
-                        id: amps
-                        value: !lambda return id(amps_goe_calculated_rounded).state;
-                    - number.to_min: skip_counter # resetting skip counter since we dont skip anymore
-              - if: # if not charging but not allowed, start it
-                  condition: 
-                    - not:
-                      - text_sensor.state: 
-                          id: goe_status
-                          state: "Neutral"
-                  then:
-                    - script.wait: start_charging
-                  else:
-                    - delay: 1s
-                    - text_sensor.template.publish:
-                        id: log_txt
-                        state: "Running..."
-              - if: # Restart Charging if not Charging but should be
-                  condition:
-                    - and:
-                      - text_sensor.state: # if charging is allowed
-                          id: goe_status
-                          state: "Neutral"
-                      - sensor.in_range: # if not charging, power between -20 and 20 W
-                          id: goe_power
-                          above: -20
-                          below: 20
-                      - or: # either not charging or not waitCar
-                        - not:
-                          - text_sensor.state:
-                              id: car_connected
-                              state: "Charging"
-                        - not: 
-                          - text_sensor.state:
-                              id: car_connected
-                              state: "WaitCar"
-                  then:
-                    - script.wait: restart_charging 
-        - script.execute: 
-            id: blink_led
-            repeat_count: 1 # flash button for duration of 250ms to inidcate working
+              - script.execute: above_amp_threshold
