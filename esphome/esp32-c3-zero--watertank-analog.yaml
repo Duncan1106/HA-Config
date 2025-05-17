@@ -1,0 +1,458 @@
+esphome:
+  name: esp32-c3-zero--watertank-analog
+  friendly_name: esp32 c3 zero - watertank analog
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: arduino
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "P04OSlEwFIGNVA4fV7mJUfPe+QmAZvGzJljF7BnDmZE="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+      priority: 10
+      manual_ip: 
+        gateway: 192.168.2.1
+        subnet: 255.255.255.0
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.8
+
+    - ssid: !secret wifi_ssid2
+      password: !secret wifi_password
+      priority: 8
+      manual_ip: 
+        gateway: 192.168.2.1
+        subnet: 255.255.255.0
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.8
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32-C3-Zero--Watertank"
+    password: !secret ap_password
+
+captive_portal:
+
+substitutions:
+  threshold: "0.79"
+  update_interval: 1s
+  delay_off: 5s
+
+# Enable logging
+logger:
+  level: DEBUG
+  logs:
+    component: ERROR
+
+light:  
+  - platform: status_led    
+    name: "Status LED"    
+    id: esp_status_led    
+    icon: "mdi:alarm-light"    
+    pin:      
+      number: GPIO10
+      inverted: true
+      #ignore_strapping_warning: True
+    restore_mode: ALWAYS_OFF
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+    ssid:
+      name: SSID
+  
+button:
+  - platform: restart
+    name: "Restart"
+  - platform: shutdown
+    name: "Shutdown"
+
+number:
+  - platform: template
+    max_value: 100
+    min_value: 0
+    step: 10
+    internal: True
+    optimistic: True
+    restore_value: True
+    mode: BOX
+    name: Number Watertank Level
+    id: number_watertank_level
+  
+  # - platform: template
+  #   min_value: 0.1
+  #   max_value: 3.3
+  #   step: 0.05
+  #   name: Threshold
+  #   initial_value: 1.15
+  #   optimistic: True
+  #   id: threshold
+  #   restore_value: True
+  #   mode: 'BOX'
+
+cd74hc4067:
+  - id: cd74hc4067_1
+    pin_s0: GPIO0
+    pin_s1: GPIO1
+    pin_s2: GPIO2
+    pin_s3: GPIO3
+
+sensor:
+  - platform: adc
+    id: adc_sensor
+    attenuation: 12db
+    pin: 
+      number: GPIO4
+      inverted: true
+    #update_interval: 100ms
+    samples: 10
+
+  - platform: cd74hc4067
+    number: 0
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_10
+    update_interval: ${update_interval}
+    name: Number 10 ADC
+  - platform: cd74hc4067
+    number: 1
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_20
+    update_interval: ${update_interval}
+    name: Number 20 ADC
+  - platform: cd74hc4067
+    number: 2
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_30
+    update_interval: ${update_interval}
+    name: Number 30 ADC
+  - platform: cd74hc4067
+    number: 3
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_40
+    update_interval: ${update_interval}
+    name: Number 40 ADC
+  - platform: cd74hc4067
+    number: 4
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_50
+    update_interval: ${update_interval}
+    name: Number 50 ADC
+  - platform: cd74hc4067
+    number: 5
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_60
+    update_interval: ${update_interval}
+    name: Number 60 adc
+  - platform: cd74hc4067
+    number: 6
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_70
+    update_interval: ${update_interval}
+    name: Number 70 ADC
+  - platform: cd74hc4067
+    number: 7
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_80
+    update_interval: ${update_interval}
+    name: Number 80 ADC
+  - platform: cd74hc4067
+    number: 8
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_90
+    update_interval: ${update_interval}
+    name: Number 90 ADC
+  - platform: cd74hc4067
+    number: 9
+    accuracy_decimals: 2
+    sensor: adc_sensor
+    id: number_100
+    update_interval: ${update_interval}
+    name: Number 99 ADC
+  # - platform: cd74hc4067
+  #   number: 15
+  #   accuracy_decimals: 2
+  #   sensor: adc_sensor
+  #   update_interval: ${update_interval}
+  #   name: Return
+  #   filters: 
+  #     - clamp: 
+  #         max_value: 2
+  #         min_value: 0
+  #         ignore_out_of_range: true
+
+  - platform: uptime
+    name: Uptime
+
+  - platform: template
+    accuracy_decimals: 0
+    name: Wasserstand
+    id: waterlevel
+    unit_of_measurement: '%'
+    state_class: measurement
+    update_interval: 5s
+    filters: 
+      - or:
+        - delta: 10%
+        - throttle: 60s           
+    lambda: !lambda return id(number_watertank_level).state;
+
+binary_sensor:
+  - platform: status
+    name: "Sensor Status"
+
+  - platform: analog_threshold
+    sensor_id: number_10
+    threshold: ${threshold}
+    id: bin_10
+    name : 10%
+    filters:
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_20
+    threshold: ${threshold}
+    id: bin_20
+    name: 20%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_30
+    threshold: ${threshold}
+    id: bin_30
+    name: 30%
+    filters: 
+      - delayed_off: ${delay_off} 
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_40
+    threshold: ${threshold}
+    id: bin_40
+    name: 40%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_50
+    threshold: ${threshold}
+    id: bin_50
+    name: 50%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_60
+    threshold: ${threshold}
+    id: bin_60
+    name: 60%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_70
+    threshold: ${threshold}
+    id: bin_70
+    name: 70%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_80
+    threshold: ${threshold}
+    id: bin_80
+    name: 80%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_90
+    threshold: ${threshold}
+    id: bin_90
+    name: 90%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+  - platform: analog_threshold
+    sensor_id: number_100
+    threshold: ${threshold}
+    id: bin_100
+    name: 99%
+    filters: 
+      - delayed_off: ${delay_off}
+    on_press: 
+      then: 
+        - script.execute: get_water_level
+
+script:
+  - id: get_water_level
+    mode: restart  # Sets script mode to restart on re-trigger
+    then:
+      - lambda: |-
+          int max_value = 0;
+          if (id(bin_10).state) { max_value = 10; }
+          if (id(bin_20).state) { max_value = 20; }
+          if (id(bin_30).state) { max_value = 30; }
+          if (id(bin_40).state) { max_value = 40; }
+          if (id(bin_50).state) { max_value = 50; }
+          if (id(bin_60).state) { max_value = 60; }
+          if (id(bin_70).state) { max_value = 70; }
+          if (id(bin_80).state) { max_value = 80; }
+          if (id(bin_90).state) { max_value = 90; }
+          if (id(bin_100).state) { max_value = 100; }
+          auto call = id(number_watertank_level).make_call();
+          call.set_value(max_value);
+          call.perform();
+
+
+# switch:
+#   - platform: gpio
+#     pin: GPIO0
+#     name: "MUX S0"
+#     id: mux_s0
+#   - platform: gpio
+#     pin: GPIO1
+#     name: "MUX S1"
+#     id: mux_s1
+#   - platform: gpio
+#     pin: GPIO2
+#     name: "MUX S2"
+#     id: mux_s2
+#   - platform: gpio
+#     pin: GPIO3
+#     name: "MUX S3"
+#     id: mux_s3
+
+# sensor:
+#   - platform: adc
+#     pin: GPIO4
+#     name: "Mux Analog Input"
+#     id: mux_analog_input
+#     update_interval: 1s
+
+#   # Template sensors for each channel
+#   - platform: template
+#     name: "Mux Channel 0"
+#     id: mux_channel_0
+#   - platform: template
+#     name: "Mux Channel 1"
+#     id: mux_channel_1
+#   - platform: template
+#     name: "Mux Channel 2"
+#     id: mux_channel_2
+#   - platform: template
+#     name: "Mux Channel 3"
+#     id: mux_channel_3
+#   - platform: template
+#     name: "Mux Channel 4"
+#     id: mux_channel_4
+#   - platform: template
+#     name: "Mux Channel 5"
+#     id: mux_channel_5
+#   - platform: template
+#     name: "Mux Channel 6"
+#     id: mux_channel_6
+#   - platform: template
+#     name: "Mux Channel 7"
+#     id: mux_channel_7
+#   - platform: template
+#     name: "Mux Channel 8"
+#     id: mux_channel_8
+#   - platform: template
+#     name: "Mux Channel 9"
+#     id: mux_channel_9
+
+#   # Custom sensor to read and distribute multiplexed channels
+#   - platform: template
+#     name: "Mux Controller"
+#     id: mux_controller
+#     lambda: |-
+#       static int current_channel = 0;
+      
+#       // Set the control pins for the current channel
+
+#       id(mux_s0).turn_on();
+#       id(mux_s1).turn_on();
+#       id(mux_s2).turn_on();
+#       id(mux_s3).turn_on();
+      
+#       // Small delay to allow the multiplexer to settle
+#       delay(10);
+      
+#       // Read the analog value for the current channel
+#       float value = id(mux_analog_input).state;
+      
+#       // Publish the value to the corresponding channel sensor
+#       switch(current_channel) {
+#         case 0: id(mux_channel_0).publish_state(value); break;
+#         case 1: id(mux_channel_1).publish_state(value); break;
+#         case 2: id(mux_channel_2).publish_state(value); break;
+#         case 3: id(mux_channel_3).publish_state(value); break;
+#         case 4: id(mux_channel_4).publish_state(value); break;
+#         case 5: id(mux_channel_5).publish_state(value); break;
+#         case 6: id(mux_channel_6).publish_state(value); break;
+#         case 7: id(mux_channel_7).publish_state(value); break;
+#         case 8: id(mux_channel_8).publish_state(value); break;
+#         case 9: id(mux_channel_9).publish_state(value); break;
+#       }
+      
+#       // Turn off all control pins
+#       id(mux_s0).turn_off();
+#       id(mux_s1).turn_off();
+#       id(mux_s2).turn_off();
+#       id(mux_s3).turn_off();
+      
+#       // Move to the next channel (0-9)
+#       current_channel = (current_channel + 1) % 10;
+      
+#       return value;
+#     update_interval: 100ms

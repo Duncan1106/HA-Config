@@ -1,0 +1,218 @@
+esphome:
+  name: "rp2040-paludarium"
+  friendly_name: rp2040-paludarium
+  on_boot: 
+    then:
+      - delay: 15s
+      - if: 
+          condition:
+            - sun.is_above_horizon:
+          then:
+            light.turn_on:
+              id: ws2812led
+              brightness: 100%
+              blue: 55%
+              green: 75%
+              red: 100%
+              transition_length: 10s
+
+rp2040:
+  board: rpipicow
+
+# Enable logging
+logger:
+   level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "9hZuDVPOQ/AifBBUK6kTjriy1WfPj7UUv5Pyj4lx7HE="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    dns1: 192.168.2.1
+    subnet: 255.255.255.0
+    static_ip: 192.168.2.38
+
+  # Enable fallback hotspot in case wifi connection fails
+  ap:
+    ssid: "Rp2040-2 Fallback Hotspot"
+    password: !secret ap_password
+    
+time:
+  - platform: homeassistant
+
+sun:
+  latitude: !secret latitude
+  longitude: !secret longitude
+  on_sunrise:
+    elevation: 2°
+    then:
+      - button.press: sunrise
+
+  on_sunset: 
+    elevation: 2°
+    then:
+      - button.press: sunset
+
+i2c:
+  sda: 0
+  scl: 1
+  scan: False
+  id: bus_a
+
+light:
+  - platform: rp2040_pio_led_strip
+    num_leds: 8
+    pin: GPIO21
+    id: ws2812led
+    pio: 0
+    name: "Paludarium Light RGB"
+    chipset: WS2812B
+    rgb_order: GRB
+    restore_mode: RESTORE_AND_OFF
+    on_turn_on: 
+      then:
+        - if: 
+            condition: 
+              - sun.is_below_horizon: 
+                  elevation: 2°
+            then:
+              - delay: 1s
+              - light.turn_off: ws2812led
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              - sun.is_above_horizon:
+                  elevation: 2°
+            then: 
+              - delay: 1s 
+              - light.turn_on:
+                  id: ws2812led
+                  brightness: 100%
+                  blue: 55%
+                  green: 75%
+                  red: 100%
+                  transition_length: 10s
+
+button:
+  - platform: restart
+    name: Restart
+
+  - platform: template
+    id: sunrise
+    name: Sunrise
+    on_press: 
+      then:
+        - if:
+            condition:
+              light.is_off: ws2812led
+            then:
+              - light.turn_on:
+                  id: ws2812led
+                  brightness: 15%
+                  blue: 55%
+                  green: 75%
+                  red: 100%
+                  transition_length: 10s
+              - delay: 5s
+              - light.turn_on: 
+                  id: ws2812led
+                  brightness: 100%
+                  transition_length: 300s
+                  color_brightness: 100%
+                  red: 100%
+                  green: 75%
+                  blue: 55%
+            else: 
+              - light.turn_on: 
+                  id: ws2812led
+                  brightness: 100%
+                  color_brightness: 100%
+                  blue: 55%
+                  green: 75%
+                  red: 100%
+
+  - platform: template
+    id: sunset
+    name: Sunset
+    on_press: 
+      then:
+        - light.turn_on:
+            id: ws2812led
+            brightness: 100%
+            color_brightness: 100%
+            blue: 55%
+            green: 75%
+            red: 100%
+        - light.control: 
+            id: ws2812led
+            brightness: 0%
+            transition_length: 300s
+            state: False
+
+binary_sensor:
+  - platform: status
+    name: Status
+
+switch:
+  - platform: gpio
+    pin: LED
+    name: LED
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+    ssid:
+      name: SSID
+
+sensor:
+  - platform: bh1750
+    name: "BH1750 Illuminance"
+    address: 0x23
+    update_interval: 5s
+    filters:
+        - or:
+          - throttle: 60s
+          - delta: 2%
+    
+  - platform: dht
+    model: DHT22
+    pin: 2
+    temperature:
+      name: "Paludarium Temperature"
+      id: tem
+    humidity:
+      name: "Paludarium Humidity"
+      id: hum
+    update_interval: 60s
+
+  - platform: absolute_humidity
+    humidity: hum
+    temperature: tem
+    name: Absolute Humidity
+
+  - platform: uptime
+    name: Uptime
+    device_class: duration
+    state_class: total
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 60s
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 120s
+    entity_category: "diagnostic"

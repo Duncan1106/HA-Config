@@ -1,0 +1,76 @@
+config:
+  views:
+  - badges: []
+    cards:
+    - cards:
+      - entity: script.1707895746671
+        fill_container: true
+        icon: ''
+        layout: vertical
+        primary: '{% set unavailable = is_state(''sensor.speedtest_download'',''unavailable'')%}
+
+          {% set text = "Ping: " + states(''sensor.speedtest_ping'') + "ms, " + states(''sensor.speedtest_upload'')
+          + " Mbps, " + states(''sensor.speedtest_download'') + " Mbps, Count: " +
+          states(''sensor.daily_speedtests'')%}
+
+          {{"" if unavailable else text }}'
+        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}
+
+          {% set unavailable = is_state(''sensor.speedtest_download'',''unavailable'')%}
+
+          {% set last_run = states(''sensor.speedtest_last_run'') %}
+
+          {{ "Start SpeedTest, Last: "+last_run if not script else ("Testing" if unavailable
+          else "Wrapping up") }}'
+        tap_action:
+          action: call-service
+          service: script.1707895746671
+          target: {}
+        type: custom:mushroom-template-card
+      - card:
+          type: vertical-stack
+        card_param: cards
+        filter:
+          include:
+          - entity_id: input_number.*
+            name: '*Download|Upload|Ping|Jitter*'
+            not:
+              name: '*Daily|Last|Counter|Speedtest.net*'
+            options:
+              align_header: center
+              align_state: center
+              cache: true
+              color_thresholds:
+              - color: '#10FF10'
+                value: 10
+              - color: '#1010FF'
+                value: 30
+              - color: '#FF1010'
+                value: 75
+              entities:
+              - this.entity_id
+              entity: null
+              font_size: 60
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              points_per_hour: 2
+              show:
+                average: true
+                extrema: true
+                fill: true
+                graph: bar
+                icon: false
+                labels: true
+                points: hover
+              state_adaptive_color: true
+              type: custom:mini-graph-card
+        sort:
+          ignore_case: false
+          ip: false
+          numeric: false
+          reverse: false
+        type: custom:auto-entities
+      type: vertical-stack
+    title: Home
+    type: panel

@@ -1,0 +1,82 @@
+esphome:
+  name: esp32-c3-mini--kallax-light
+  friendly_name: esp32 c3 mini - kallax light
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+    
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "9ap4LHGH2lmOpJABaNQdyin1uvOebYhw0tIGywI5gRI="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    subnet: 255.255.255.0
+    dns1: 192.168.2.1
+    static_ip: 192.168.2.37
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Kallax-Beleuchtung"
+    password: !secret ap_password
+
+captive_portal:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+
+button:
+  - platform: restart
+    name: "Restart"
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+
+output:
+  - platform: ledc
+    pin: GPIO4
+    frequency: 19531Hz
+    id: light_one
+
+light:
+  - platform: status_led
+    name: Status LED
+    pin: 
+      number: GPIO8
+      ignore_strapping_warning: true
+      inverted: true
+  - platform: monochromatic
+    name: "Kallax Licht"
+    output: light_one
+    id: motor_fan_speed
+
+sensor:
+  - platform: uptime
+    name: Uptime
+    device_class: duration
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: WiFi Signal
+    id: wifi_signal_db
+    update_interval: 120s
+    entity_category: "diagnostic"

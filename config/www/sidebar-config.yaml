@@ -1,0 +1,155 @@
+title: "Hallo {{ user_name }}"
+subtitle: "Reif für die 550"
+#sidebar_background: center / cover no-repeat fixed url('https://cdn.jsdelivr.net/gh/basnijholt/lovelace-ios-themes@a37376d918fcfe4785be99910dc9a7200ac37da9/themes/homekit-bg-blue-red.jpg')
+sidebar_editable: False
+order:
+  - item: overview
+    name: Dashboard
+    order: 0
+  - item: Tablet
+    order: 2
+  - item: Energy
+    icon: mdi:home-lightning-bolt-outline
+    order: 3
+  - item: Power Distribution
+    name: Power Distribution
+    icon: mdi:chart-sankey
+    order: 4
+    info: |
+        Haus: {{states('sensor.home_power', with_unit=True)}} | Netz: {{states('sensor.grid_power', with_unit=True)}}
+  - item: Scheduler
+    exact: true
+    order: 5
+  - item: Media
+    order: 7
+    info: |
+        Size: {{ states('sensor.media_folder_size', with_unit=True) }}
+  - item: History
+    hide: true
+  - item: Kalender
+    hide: true
+  - item: Calendar
+    hide: true
+  - item: To-Do
+    hide: true
+  - item: Logbuch
+    hide: true
+  - item: Logbook
+    hide: true
+  - item: Karte
+    hide: true
+  - item: Enya
+    hide: true
+  - item: ai-lab
+    hide: true
+
+exceptions:
+  - user:
+    - Duncan
+    extend_from: base
+    order:
+      - item: Analysis
+        order: 1
+        info: |
+          {% set rows = states('sensor.maria_db_rows') | int(0)%} {{ ((states('sensor.maria_db_size') | float(0)) * 1000000) | filesizeformat() }}  {{ ' / ' +  (rows/ 1000000)|round(1)|string + ' Mio Rows' }}
+      - item: Admin Scheduler
+        order: 6
+      - item: Zigbee2MQTT
+        name: Z2M 
+        order: 8
+        bottom: true
+      - item: O2
+        order: 9
+        bottom: true
+        hide: true
+      - item: Router
+        order: 10
+        bottom: true
+        hide: true
+      - item: File Editor
+        bottom: true
+        order: 11
+      - item: hacs
+        order: 12
+        bottom: true
+        notification: |
+          [[[
+            const outdatedHacsEntities = Object.values(entities.update).filter(
+              (entity) => entity.platform === 'hacs' && is_state(entity.entity_id, 'on')
+            );
+            return outdatedHacsEntities.length || '';
+          ]]]
+      - item: Integrationen
+        icon: mdi:puzzle
+        order: 13
+        bottom: true
+        new_item: true
+        href: "/config/integrations"
+        info: |
+          {{states('sensor.devices')}} Geräte | {{states('sensor.entities')}} Entitäten
+      - item: Automationen
+        icon: mdi:robot
+        order: 14
+        bottom: true
+        new_item: true
+        href: "/config/automation"
+        info: |
+            {{ states.automation | selectattr('state', 'eq', 'off') | list | count }} inaktive |  {{ states.automation | selectattr('state', 'eq', 'on') | list | count }} aktive
+      - item: DbStats
+        bottom: true
+        order: 15
+        info: | 
+          {% set rows = states('sensor.maria_db_rows') | int(0)%} {{ ((states('sensor.maria_db_size') | float(0)) * 1000000) | filesizeformat() }}  {{ ' / ' +  (rows/ 1000000)|round(1)|string + ' Mio Rows' }}
+    #   - item: AI Lab
+    #     bottom: true
+    #     order: 16
+      - new_item: true
+        item: 'info'
+        name: 'Info ({{ state_attr("update.home_assistant_supervisor_update", "latest_version") }})'
+        info: 'OS {{ state_attr("update.home_assistant_operating_system_update", "latest_version") }}'
+        href: '/hassio/system/info'
+        icon: 'mdi:information-outline'
+        bottom: true
+        order: 16
+      - item: Developer tools
+        icon: mdi:tools
+        order: 17
+        bottom: true
+      - item: Settings
+        order: 18
+        bottom: true
+
+  - user:  
+    - Katalin
+    - Enya
+    - Stephan
+    extend_from: base
+    order:
+      - item: Settings
+        hide: true
+      - item: Einstellungen
+        hide: true
+      - item: Entwicklerwerkzeuge
+        hide: true
+      - item: Developer tools
+        hide: true
+      - item: Zigbee2MQTT
+        hide: true
+      - item: File editor
+        hide: true
+      - item: Map
+        hide: true
+      - item: Karte
+        hide: true
+      - item: HACS
+        hide: true
+      - item: O2
+        hide: true        
+      - item: Router
+        hide: true
+      - item: DbStats
+        hide: true
+      - item: Verlauf
+        hide: true
+      - item: Analysis
+        hide: true

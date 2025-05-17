@@ -1,0 +1,74 @@
+esphome:
+  name: garagecontrollersmall
+  platform: ESP8266
+  board: esp01_1m
+
+wifi:
+  ssid: "xxxxxxxxxxxxxxxxx"
+  password: !secret wifi_password
+  manual_ip:
+    static_ip: '192.168.1.215'
+    gateway: '192.168.1.1'
+    subnet: '255.255.255.0'
+  ap:
+    ssid: "ESP_pc_remote"
+    password: !secret wifi_password
+
+captive_portal:
+logger:
+  baud_rate: 0
+api:
+ota:
+
+uart:
+  baud_rate: 115200
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+
+binary_sensor:
+  - platform: status
+    name: "PC Remote ESP Status"
+
+switch:
+  - platform: template
+    id: oc
+    turn_on_action:
+      - uart.write: [0xA0, 0x01, 0x01, 0xA2]
+    turn_off_action:
+      - uart.write: [0xA0, 0x01, 0x00, 0xA1]
+    internal: yes
+
+  - platform: template
+    id: cc
+    turn_on_action:
+      - uart.write: [0xA0, 0x02, 0x01, 0xA3]
+    turn_off_action:
+      - uart.write: [0xA0, 0x02, 0x00, 0xA2]
+    internal: yes
+
+cover:
+  - platform: template
+    name: "Garage Door"
+    open_action:
+      # Cancel any previous action
+      - switch.turn_off: cc
+      # Turn the OPEN switch on briefly
+      - switch.turn_on: oc
+      - delay: 0.1s
+      - switch.turn_off: oc
+    close_action:
+      # Cancel any previous action
+      - switch.turn_off: oc
+      # Turn the OPEN switch on briefly
+      - switch.turn_on: cc
+      - delay: 0.1s
+      - switch.turn_off: cc
+    stop_action: 
+      then:
+        - switch.turn_on: oc
+        - switch.turn_on: cc 
+        - delay: 0.05s
+        - switch.turn_off: oc
+        - switch.turn_off: cc
+    optimistic: true
+    assumed_state: true

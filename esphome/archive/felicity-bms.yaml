@@ -1,0 +1,76 @@
+esphome:
+  name: felicity-bms
+  friendly_name: felicity bms
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "1veZ0EAG0vGQoHlhQ9MrSJyN91Y34+0Nj7jGmkEYrQc="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Felicity-Bms Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+# UART for RS485 communication
+uart:
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 9600
+  parity: NONE
+  stop_bits: 1
+  id: uart_one
+
+pylontech:
+  uart_id: uart_one
+  update_interval: 10s
+
+sensor:
+  - platform: pylontech
+    battery: 1
+    voltage:
+      name: "Battery1 Voltage"
+    current:
+      name: "Battery1 Current"
+    coulomb:
+      name: "Battery1 State of Charge"
+    temperature:
+      name: "Battery1 Temperature"
+    voltage_low:
+      name: "Battery1 Volt Low"
+    voltage_high: 
+      name: "Battery1 Volt High"
+
+text_sensor:
+  - platform: pylontech
+    battery: 1
+    base_state:
+      id: bat1_base_state
+      name: "Battery1 Base State"
+    voltage_state:
+      id: bat1_volt_state
+      name: "Battery1 Volt State"
+    current_state:
+      id: bat1_curr_state
+      name: "Battery1 Curr State"
+    temperature_state: 
+      id: bat1_temp_state
+      name: "Battery1 Temp State"

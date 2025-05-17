@@ -1,0 +1,45 @@
+blueprint:
+  name: Wasserleck
+  description: Wenn einer der Wassersensoren Feuchtigkeit erkennt, werden Push Nachrichten
+    an die mobile Apps verschickt und eine Benachrichtigung erstellt.
+  domain: automation
+  input:
+    sensor:
+      name: Feuchtigkeitssensoren
+      description: Liste der Feuchtigkeitssensoren
+      selector:
+        entity:
+          multiple: true
+          device_class:
+          - moisture
+    titel:
+      name: Meldungstitel
+      description: Titel für die Meldung beispielsweise !! Wasserleck !!
+      default: ' !! Wasserleck !!'
+      selector:
+        text: {}
+    text:
+      name: Meldungstext
+      description: Text (Inhalt) der Meldung. Der eingegebene Text wird an den Namen
+        des Sensors, der ausgelöst hat, angehängt. [Name des Sensors]+[Meldungstext]
+      default: ' hat Feuchtigkeit erkannt!'
+      selector:
+        text: {}
+  source_url: https://gist.github.com/user-x-adm/5b6c753495d5281a72c821f66121a942
+trigger:
+- platform: state
+  entity_id: !input sensor
+  to: 'on'
+condition: []
+variables:
+  text_var: !input text
+action:
+- service: notify.notify
+  data:
+    title: !input titel
+    message: '{{trigger.to_state.name}} {{text_var}}'
+- service: notify.persistent_notification
+  data:
+    title: !input titel
+    message: '{{trigger.to_state.name}} {{text_var}}'
+mode: single

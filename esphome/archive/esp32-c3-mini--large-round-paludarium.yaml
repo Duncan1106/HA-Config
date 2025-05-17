@@ -1,0 +1,185 @@
+substitutions:
+  name: esp32_c3_mini-round_paludarium
+  friendly_name: esp32 c3 mini - large round Paludarium
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: false
+  platformio_options:
+    board_build.flash_mode: dio  
+  on_boot: 
+    then:
+      - delay: 5s 
+      - button.press: button_led_blue
+      - if:
+          condition:
+            - sun.is_above_horizon:
+          then:
+            - light.turn_on: 
+                id: led_pwm
+                brightness: 100%
+                transition_length: 10s
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: INFO
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "vQa9pZ2sJWagweoOzxK+tsdlFPDPUE6DrepVVoF7Gyo="
+
+# Allow Over-The-Air updates
+ota:
+- platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    dns1: 192.168.2.1
+    subnet: 255.255.255.0
+    static_ip: 192.168.2.38
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32-C3-Mini--Round-Paludarium"
+    password: !secret ap_password
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+
+sun:
+  latitude: !secret latitude
+  longitude: !secret longitude
+  on_sunrise:
+    elevation: 5°
+    then:
+      - button.press: sunrise
+
+  on_sunset: 
+    elevation: 5°
+    then:
+      - button.press: sunset
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+    ssid:
+      name: SSID
+
+button:
+  - platform: restart
+    name: Restart
+
+  - platform: output
+    id: button_led_blue
+    duration: 
+      milliseconds: 100
+    output: led_blue
+    name: "Status LED"
+  
+  - platform: template
+    id: sunrise
+    name: Sunrise
+    on_press: 
+      then:
+        - if:
+            condition:
+              light.is_off: led_pwm
+            then:
+              - light.turn_on:
+                  id: led_pwm
+                  brightness: 15%
+                  transition_length: 10s
+              - delay: 5s
+              - light.turn_on: 
+                  id: led_pwm
+                  brightness: 100%
+                  transition_length: 300s
+            else: 
+              - light.turn_on: 
+                  id: led_pwm
+                  brightness: 100%
+
+  - platform: template
+    id: sunset
+    name: Sunset
+    on_press: 
+      then:
+        - light.turn_on:
+            id: led_pwm
+            brightness: 100%
+        - light.control: 
+            id: led_pwm
+            brightness: 0%
+            transition_length: 300s
+            state: False
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+
+output:
+  - platform: gpio
+    id: led_blue
+    pin: 
+      number: GPIO8
+      inverted: True
+
+  - platform: ledc
+    pin: 
+      number: GPIO3
+      #drive_strength: 40mA
+      mode: 
+        output: True
+    zero_means_zero: False
+    max_power: 1
+    min_power: 0.1
+    frequency: 19531Hz
+    id: light_one
+
+light:
+  - platform: monochromatic
+    name: Light
+    output: light_one
+    id: led_pwm
+    on_turn_on: 
+      then:
+        - if: 
+            condition: 
+              - sun.is_below_horizon: 
+                  elevation: 5°
+            then:
+              - delay: 1s
+              - light.turn_off: led_pwm
+    on_turn_off: 
+      then:
+        - if: 
+            condition: 
+              - sun.is_above_horizon:
+                  elevation: 5°
+            then: 
+              - delay: 1s 
+              - light.turn_on: led_pwm
+
+sensor:
+  - platform: uptime
+    name: Uptime
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 120s
+    entity_category: "diagnostic"

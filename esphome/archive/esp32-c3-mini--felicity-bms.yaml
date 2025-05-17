@@ -1,0 +1,478 @@
+substitutions:
+  modbus_controller_id1: bms1
+  modbus_controller_id2: bms2
+
+esphome:
+  name: esp32-c3-zero--felicity-bms
+  friendly_name: esp32 c3 zero - felicity BMS
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: INFO
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "JyGIONT7VGrFltomBjt9NWeWQkfjKF4j+sKyW7kOovo="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: 192.168.2.117
+  ap:
+    ssid: "Esp32-C3-Mini--Felicity-Bms"
+    password: !secret ap_password
+
+captive_portal:
+
+uart:
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 9600
+  stop_bits: 1
+
+modbus:
+  id: modbus1
+
+modbus_controller:
+  - id: ${modbus_controller_id1}
+    address: 0x1
+    modbus_id: modbus1
+    #setup_priority: -10
+    update_interval: 5sec
+
+  - id: ${modbus_controller_id2}
+    address: 0x2
+    modbus_id: modbus1
+    #setup_priority: -10
+    update_interval: 5sec
+
+sensor:
+  - platform: uptime
+    name: Uptime
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    
+  # BMS 1 Cell Information
+  - platform: modbus_controller
+    modbus_controller_id: ${modbus_controller_id1}
+    name: "BMS1 Cell Information"
+    id: bms1_cell_info
+    register_type: read
+    address: 0x132A
+    register_count: 20
+    # raw_encode: HEXBYTES
+    lambda: |-
+      for (int i = 0; i < 16; i++) {
+        float cell_voltage = (float)((data[i*2] << 8) | data[i*2 + 1]) * 0.001f;
+        id(bms1_cell_voltage_1 + i).publish_state(cell_voltage);
+      }
+      for (int i = 0; i < 8; i++) {
+        float temp = (float)((data[32 + i*2] << 8) | data[32 + i*2 + 1]);
+        id(bms1_temperature_1 + i).publish_state(temp);
+      }
+      return 0;
+
+  # BMS 1 Battery Information
+  - platform: modbus_controller
+    modbus_controller_id: ${modbus_controller_id1}
+    name: "BMS1 Battery Information"
+    id: bms1_battery_info
+    register_type: read
+    address: 0x1302
+    register_count: 10
+    # raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t battery_status = (data[0] << 8) | data[1];
+      uint16_t fault_status = (data[4] << 8) | data[5];
+      float battery_voltage = (float)((data[8] << 8) | data[9]) * 0.01f;
+      int16_t battery_current = (int16_t)((data[10] << 8) | data[11]);
+      float current = (float)battery_current * 0.1f;
+      float bms_temp = (float)((data[16] << 8) | data[17]);
+      uint8_t soc = data[19];
+      
+      id(bms1_total_voltage).publish_state(battery_voltage);
+      id(bms1_current).publish_state(current);
+      id(bms1_soc).publish_state(soc);
+      id(bms1_temperature_1).publish_state(bms_temp);
+      
+      std::string fault_status_report = "normal";
+      if (fault_status != 0) {
+        fault_status_report = "Fault Statuses:";
+        if (fault_status & (1 << 2)) fault_status_report += " Cell Voltage High;";
+        if (fault_status & (1 << 3)) fault_status_report += " Cell Voltage Low;";
+        if (fault_status & (1 << 4)) fault_status_report += " Charge Current High;";
+        if (fault_status & (1 << 5)) fault_status_report += " Discharge Current High;";
+        if (fault_status & (1 << 6)) fault_status_report += " BMS Temperature High;";
+        if (fault_status & (1 << 8)) fault_status_report += " Cell Temperature High;";
+        if (fault_status & (1 << 9)) fault_status_report += " Cell Temperature Low;";
+      }
+      id(bms1_fault_status).publish_state(fault_status_report);
+      
+      std::string battery_status_report = "";
+      if (battery_status & (1 << 0)) battery_status_report += "Charge Enabled; ";
+      if (battery_status & (1 << 1)) battery_status_report += "Charge Immediately Requested; ";
+      if (battery_status & (1 << 2)) battery_status_report += "Discharge Enabled; ";
+      id(bms1_battery_status).publish_state(battery_status_report);
+      
+      return 0;
+
+  # BMS 2 Cell Information
+  - platform: modbus_controller
+    modbus_controller_id: ${modbus_controller_id2}
+    name: "BMS2 Cell Information"
+    id: bms2_cell_info
+    register_type: read
+    address: 0x132A
+    register_count: 20
+    # raw_encode: HEXBYTES
+    lambda: |-
+      for (int i = 0; i < 16; i++) {
+        float cell_voltage = (float)((data[i*2] << 8) | data[i*2 + 1]) * 0.001f;
+        id(bms2_cell_voltage_1 + i).publish_state(cell_voltage);
+      }
+      for (int i = 0; i < 4; i++) {
+        float temp = (float)((data[32 + i*2] << 8) | data[32 + i*2 + 1]);
+        id(bms2_temperature_1 + i).publish_state(temp);
+      }
+      return 0;
+
+  # BMS 2 Battery Information
+  - platform: modbus_controller
+    modbus_controller_id: ${modbus_controller_id2}
+    name: "BMS2 Battery Information"
+    id: bms2_battery_info
+    register_type: read
+    address: 0x1302
+    register_count: 10
+    # raw_encode: HEXBYTES
+    lambda: |-
+      uint16_t battery_status = (data[0] << 8) | data[1];
+      uint16_t fault_status = (data[4] << 8) | data[5];
+      float battery_voltage = (float)((data[8] << 8) | data[9]) * 0.01f;
+      int16_t battery_current = (int16_t)((data[10] << 8) | data[11]);
+      float current = (float)battery_current * 0.1f;
+      float bms_temp = (float)((data[16] << 8) | data[17]);
+      uint8_t soc = data[19];
+      
+      id(bms2_total_voltage).publish_state(battery_voltage);
+      id(bms2_current).publish_state(current);
+      id(bms2_soc).publish_state(soc);
+      id(bms2_temperature_1).publish_state(bms_temp);
+      
+      std::string fault_status_report = "normal";
+      if (fault_status != 0) {
+        fault_status_report = "Fault Statuses:";
+        if (fault_status & (1 << 2)) fault_status_report += " Cell Voltage High;";
+        if (fault_status & (1 << 3)) fault_status_report += " Cell Voltage Low;";
+        if (fault_status & (1 << 4)) fault_status_report += " Charge Current High;";
+        if (fault_status & (1 << 5)) fault_status_report += " Discharge Current High;";
+        if (fault_status & (1 << 6)) fault_status_report += " BMS Temperature High;";
+        if (fault_status & (1 << 8)) fault_status_report += " Cell Temperature High;";
+        if (fault_status & (1 << 9)) fault_status_report += " Cell Temperature Low;";
+      }
+      id(bms2_fault_status).publish_state(fault_status_report);
+      
+      std::string battery_status_report = "";
+      if (battery_status & (1 << 0)) battery_status_report += "Charge Enabled; ";
+      if (battery_status & (1 << 1)) battery_status_report += "Charge Immediately Requested; ";
+      if (battery_status & (1 << 2)) battery_status_report += "Discharge Enabled; ";
+      id(bms2_battery_status).publish_state(battery_status_report);
+      
+      return 0;
+
+  # Template sensors for BMS 1
+  - platform: template
+    id: bms1_total_voltage
+    name: "BMS1 Total Voltage"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_current
+    name: "BMS1 Current"
+    unit_of_measurement: "A"
+
+  - platform: template
+    id: bms1_soc
+    name: "BMS1 SOC"
+    unit_of_measurement: "%"
+
+  # BMS1 Temperature Sensors (4 sensors)
+  - platform: template
+    id: bms1_temperature_1
+    name: "BMS1 Temperature 1"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms1_temperature_2
+    name: "BMS1 Temperature 2"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms1_temperature_3
+    name: "BMS1 Temperature 3"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms1_temperature_4
+    name: "BMS1 Temperature 4"
+    unit_of_measurement: "°C"
+
+  # BMS1 Cell Voltages (16 cells)
+  - platform: template
+    id: bms1_cell_voltage_1
+    name: "BMS1 Cell Voltage 1"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_2
+    name: "BMS1 Cell Voltage 2"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_3
+    name: "BMS1 Cell Voltage 3"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_4
+    name: "BMS1 Cell Voltage 4"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_5
+    name: "BMS1 Cell Voltage 5"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_6
+    name: "BMS1 Cell Voltage 6"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_7
+    name: "BMS1 Cell Voltage 7"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_8
+    name: "BMS1 Cell Voltage 8"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_9
+    name: "BMS1 Cell Voltage 9"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_10
+    name: "BMS1 Cell Voltage 10"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_11
+    name: "BMS1 Cell Voltage 11"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_12
+    name: "BMS1 Cell Voltage 12"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_13
+    name: "BMS1 Cell Voltage 13"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_14
+    name: "BMS1 Cell Voltage 14"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_15
+    name: "BMS1 Cell Voltage 15"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms1_cell_voltage_16
+    name: "BMS1 Cell Voltage 16"
+    unit_of_measurement: "V"
+
+  # BMS 1 Cell Voltage Difference
+  - platform: template
+    name: "BMS1 Max Cell Voltage Difference"
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+    lambda: |-
+      float min_voltage = 5.0;
+      float max_voltage = 0.0;
+      for (int i = 0; i < 16; i++) {
+        float cell_voltage = id(bms1_cell_voltage_1 + i).state;
+        if (cell_voltage < min_voltage) min_voltage = cell_voltage;
+        if (cell_voltage > max_voltage) max_voltage = cell_voltage;
+      }
+      return max_voltage - min_voltage;
+
+  # Template sensors for BMS 2
+  - platform: template
+    id: bms2_total_voltage
+    name: "BMS2 Total Voltage"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_current
+    name: "BMS2 Current"
+    unit_of_measurement: "A"
+
+  - platform: template
+    id: bms2_soc
+    name: "BMS2 SOC"
+    unit_of_measurement: "%"
+
+  # BMS2 Temperature Sensors (4 sensors)
+  - platform: template
+    id: bms2_temperature_1
+    name: "BMS2 Temperature 1"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms2_temperature_2
+    name: "BMS2 Temperature 2"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms2_temperature_3
+    name: "BMS2 Temperature 3"
+    unit_of_measurement: "°C"
+
+  - platform: template
+    id: bms2_temperature_4
+    name: "BMS2 Temperature 4"
+    unit_of_measurement: "°C"
+
+  # BMS2 Cell Voltages (16 cells)
+  - platform: template
+    id: bms2_cell_voltage_1
+    name: "BMS2 Cell Voltage 1"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_2
+    name: "BMS2 Cell Voltage 2"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_3
+    name: "BMS2 Cell Voltage 3"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_4
+    name: "BMS2 Cell Voltage 4"
+    unit_of_measurement: "V"
+
+  - platform: template
+    id: bms2_cell_voltage_5
+    name: "BMS2 Cell Voltage 5"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_6
+    name: "BMS2 Cell Voltage 6"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_7
+    name: "BMS2 Cell Voltage 7"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_8
+    name: "BMS2 Cell Voltage 8"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_9
+    name: "BMS2 Cell Voltage 9"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_10
+    name: "BMS2 Cell Voltage 10"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_11
+    name: "BMS2 Cell Voltage 11"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_12
+    name: "BMS2 Cell Voltage 12"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_13
+    name: "BMS2 Cell Voltage 13"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_14
+    name: "BMS2 Cell Voltage 14"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_15
+    name: "BMS2 Cell Voltage 15"
+    unit_of_measurement: "V"
+  
+  - platform: template
+    id: bms2_cell_voltage_16
+    name: "BMS2 Cell Voltage 16"
+    unit_of_measurement: "V"
+
+  # BMS 2 Cell Voltage Difference
+  - platform: template
+    name: "BMS2 Max Cell Voltage Difference"
+    unit_of_measurement: "V"
+    accuracy_decimals: 3
+    lambda: |-
+      float min_voltage = 5.0;
+      float max_voltage = 0.0;
+      for (int i = 0; i < 16; i++) {
+        float cell_voltage = id(bms2_cell_voltage_1 + i).state;
+        if (cell_voltage < min_voltage) min_voltage = cell_voltage;
+        if (cell_voltage > max_voltage) max_voltage = cell_voltage;
+      }
+      return max_voltage - min_voltage;
+
+text_sensor:
+  - platform: template
+    name: "BMS1 Fault Status"
+    id: bms1_fault_status
+
+  - platform: template
+    name: "BMS2 Fault Status"
+    id: bms2_fault_status
+
+  - platform: template
+    name: "BMS1 Battery Status"
+    id: bms1_battery_status
+
+  - platform: template
+    name: "BMS2 Battery Status"
+    id: bms2_battery_status

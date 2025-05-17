@@ -1,0 +1,763 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# logger:
+#   default: warn
+#   logs:
+#     custom_components.solcast_solar: debug
+
+recorder:
+  purge_keep_days: 10
+  commit_interval: 10
+  db_url: !secret db_url
+  exclude:
+    event_types:
+      - call_service
+      - service_registered
+      - automation_triggered
+      - recorder_5min_statistics_generated
+      - recorder_hourly_statistics_generated
+      #- entity_registry_updated
+    domains:
+      - assist_satellite
+      - button
+      - calendar
+      - camera
+      - conversation
+      - datetime
+      - event
+      - image
+      - lock
+      - input_select
+      - input_text
+      - openplantbook
+      - plant
+      - scene
+      - script
+      - select
+      - siren
+      - sun
+      - time
+      - todo
+      - update
+      - vacuum
+      - weather
+      - zone
+    entities:
+      - sensor.known_power
+      - sensor.known_energy
+      - sensor.unmonitored
+      - sensor.unmonitored_consumption
+      - sensor.grid_import
+      - sensor.grid_export
+      - sensor.smart_meter_mqtt_data
+      - sensor.smart_meter_mqtt_power
+      - sensor.tibber_pulse_uptime
+      - sensor.tibber_monthly_consumption
+      - sensor.tibber_monthly_cost
+      - sensor.tibber_pulse_lieblingsplatz_leistung
+      - sensor.tibber_pulse_lieblingsplatz_einspeiseleistung
+      - sensor.tibber_bridge_0100100700ff
+      - sensor.tibber_api_power
+      - sensor.energy_summary_1st_block
+      - sensor.energy_summary_1st_block_2
+      - sensor.energy_summary_2nd_block
+      - sensor.appliance_used
+      - sensor.id_4_charging_finish_time
+      - sensor.id_4_remaining_charging_time
+      - sensor.zoe_remaining_charging_time
+      - sensor.zoe_charging_finish_time
+      - sensor.vw_status
+      - sensor.zoe_status
+      - sensor.total_print_time
+      - sensor.remaining_time
+      - sensor.elapsed_time
+      - sensor.finish_time
+      - sensor.folding_at_home_rank_scrape
+      - sensor.wind_direction
+      - sensor.mqtt_stats_uptime
+      - sensor.day_light_hours
+      - sensor.speedtest_last_run
+      - sensor.solar_forecast_text_tomorrow
+      - sensor.solar_forecast_text_today
+      - sensor.boiler_remaining_time
+      - sensor.uptime
+      - sensor.herd_ct_klemme_zigbee_power_a
+      - sensor.herd_ct_klemme_zigbee_power_b
+      - sensor.system_monitor_letzter_start
+      - sensor.go_echarger_252682_nrg
+      - sensor.go_echarger_270862_nrg
+      - automation.publish_to_mqtt_grid_export
+      - sensor.cudy_router_betriebszeit
+      - sensor.stephans_iphone_next_update
+      - sensor.enyas_iphone_next_update
+      - sensor.stephans_iphone_travel_time_hhmm
+      - sensor.enyas_iphone_travel_time_hhmm
+      - sensor.stephans_iphone_arrival_time
+      - sensor.enyas_iphone_arrival_time
+      - sensor.enyas_iphone_last_update
+      - sensor.enyas_iphone_last_located
+      - sensor.stephans_iphone_last_located
+      - sensor.stephans_iphone_last_update
+      - sensor.enyas_iphone_info
+      - sensor.stephans_iphone_info
+      - sensor.forecast_text
+      - sensor.remainingtototalforecast
+      - automation.15s_ping_update
+    entity_globs:
+      - sensor.dreamebot_d10_plus_*
+      - sensor.d9_max_white_*
+      - sensor.dwd_weather_warnings_*
+      - sensor.192_168_2_205_*
+      - sensor.*_rssi
+      - sensor.*_signal
+      - sensor.*_signal_db
+      - sensor.1st_max_*
+      - sensor.2nd_max_*
+      - sensor.m2101k6g*
+      - sensor.m2010j19cg*
+      - sensor.24069pc21g*
+      - sensor.redmi_note_8t*
+      - sensor.fp4*
+      - sensor.mi_9t*
+      - sensor.poco_f6_*
+      - sensor.iphone_von_*
+      - sensor.*_firmware_version
+      - sensor.*_build
+      - sensor.irauen33_*
+      - sensor.localhost_*
+      - sensor.*_uptime
+      - sensor.*linkquality
+      - sensor.everything_presence_lite_f1c0d0_*
+      
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+  extra_module_url:
+    #- /local/card-mod.js
+    #- /www/community/lovelace-card-mod/card-mod.js
+    - /hacsfiles/lovelace-card-mod/card-mod.js
+    - /hacsfiles/custom-sidebar/custom-sidebar-yaml.js
+
+homeassistant:
+  media_dirs:
+    recordings: "/media/tapo"
+    3dprinter: "/media/m5ccam"
+    usbdrive: "/media/USBMEDIABACKUP_Media"
+  allowlist_external_dirs:
+    - "/media/"
+
+battery_notes:
+  show_all_devices: true
+  default_battery_low_threshold: 5
+  battery_increase_threshold: 75
+  round_battery: true
+
+# Text to speech
+tts:
+  - platform: google_translate
+
+shell_command:
+  timelapse_webcam1: "ffmpeg -framerate 8 -pattern_type glob -i '/media/m5ccam/*.jpg' -c:v libx264 -crf 30 -pix_fmt yuv420p -y /media/m5ccam/video_`date +%d_%m_%Y_%X`.mp4 > /dev/null 2>&1 &"
+  call_timelapse_script: /config/Ffmpeg_timeplase.sh {{output_filename}}
+  delete_files_webcam1: 'rm -f /media/m5ccam/pictures/*.jpg'
+  delete_old_backups_disk: "find /share/USBMEDIABACKUP_Share/Backup/ -name 'DailyBackup*' -type f -mtime +14 -delete"
+
+ingress:
+  o2:
+    title: O2
+    ui_mode: toolbar
+    icon: mdi:signal-4g
+    url: http://192.168.3.1/
+    require_admin: True
+
+  router:
+    title: Router
+    icon: mdi:router-wireless-settings
+    url: http://192.168.2.1/
+    require_admin: true
+    ui_mode: toolbar
+    rewrite:
+      # for HTML response
+      - mode: body
+        match: >-
+          /(luci-static|cgi-bin)/
+        replace: >-
+          $http_x_ingress_path/\1/
+      # for JS init code
+      - mode: body
+        match: >-
+          \\/(luci-static|cgi-bin|ubus)\\/
+        replace: >-
+          $http_x_ingress_path\/\1\/
+      # for login response
+      - mode: header
+        name: "(Location|Set-Cookie)"
+        match: /cgi-bin/
+        replace: $http_x_ingress_path/cgi-bin/
+
+# waste_collection_schedule:
+#   sources:
+#     - name: abfall_io
+#       args:
+#         key: 914fb9d000a9a05af4fd54cfba478860
+#         f_id_kommune: 3859
+#         f_id_strasse: 4634
+#         f_id_strasse_hnr: 90571
+#         f_abfallarten:
+#           - 811
+#           - 813
+#           - 812
+#           - 810
+
+notify:
+  - platform: group
+    name: "Duncan"
+    services:
+      - action: mobile_app_24069pc21g
+        data:
+          data:
+            ttl: 0
+            priority: high
+      - action: mobile_app_mi_9t
+        data:
+          data:
+            ttl: 0
+            priority: high
+      - action: mobile_app_m2101k6g
+        data:
+          data:
+            ttl: 0
+            priority: high
+
+  - platform: group
+    name: "Familie"
+    services:
+      - action: mobile_app_24069pc21g
+      - action: mobile_app_fp4
+      - action: mobile_app_iphone_von_enya
+      - action: mobile_app_stephan_iphone
+
+
+cover:
+  - platform: template
+    covers:
+      wintergarten_dachfenster:
+        device_class: window
+        unique_id: wintergarten_dachfenster
+        optimistic: false
+        friendly_name: "Wintergarten Dachfenster"
+        value_template: "{{ is_state('binary_sensor.dachfenster_wintergarten','on') }}"
+        open_cover:
+          action: script.wintergarten_dachfenster_open
+        close_cover:
+          action: script.wintergarten_dachfenster_close
+        stop_cover:
+          action: script.wintergarten_dachfenster_stop
+      
+      wintergarten_rolladen_dachfenster:
+        device_class: blind
+        unique_id: wintergarten_rolladen_dachfenster
+        optimistic: true
+        friendly_name: "Wintergarten Rolladen Dachfenster"
+        #value_template: "{{ states('sensor.garage_door')|float > 0 }}"
+        open_cover:
+          action: script.wintergarten_dachfenster_rolladen_open
+        close_cover:
+          action: script.wintergarten_dachfenster_rolladen_close
+        stop_cover:
+          action: script.wintergarten_dachfenster_rolladen_stop
+
+binary_sensor:
+  - platform: rest
+    verify_ssl: false
+    scan_interval: 60
+    method: POST
+    resource: "http://192.168.2.205:8080/api/device/fxs500pro234920229/details"
+    name: "HDD - SMART Status"
+    unique_id: hdd_smart_status
+    value_template: "{{ bool(value_json['data']['smart_results'][0]['Status']) }}"
+    device_class: problem
+
+mqtt:
+  sensor:
+    - state_topic: fully-single-app/deviceInfo/a9641507-a9641507
+      name: Fully Kiosk Device Info
+      unique_id: fully_kiosk_device_info
+      json_attributes_topic: fully/deviceInfo/a9641507-a9641507
+      force_update: true
+      value_template: "{{ value_json['deviceName'] }}"
+
+    - name: "Smart Meter MQTT Data"
+      state_topic: "smartmeter-em420/"
+      value_template: "{{ value_json['smart-meter']['status'] }}"
+      unique_id: smart_meter_mqtt_data
+      json_attributes_topic: "smartmeter-em420/"
+      json_attributes_template: "{{ value_json['smart-meter'] | tojson }}"
+      device:
+        name: "Smart Meter"
+        identifiers: 
+         - "em420"
+  
+    - name: "MQTT_Stats_Messages_Received"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/messages/received"
+      state_class: total
+      unit_of_measurement: messages
+      unique_id: mqtt_stats_messages_received
+    - name: "MQTT_Stats_Messages_Sent"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/messages/sent"
+      state_class: total
+      unit_of_measurement: messages
+      unique_id: mqtt_stats_messages_sent
+    - name: "MQTT_Stats_Bytes_Received"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/bytes/received"
+      device_class: data_size
+      state_class: total
+      unit_of_measurement: B
+      unique_id: mqtt_stats_bytes_received
+    - name: "MQTT_Stats_Bytes_Sent"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/bytes/sent"
+      device_class: data_size
+      state_class: total
+      unit_of_measurement: B
+      unique_id: mqtt_stats_bytes_sent
+    - name: "MQTT_Stats_Uptime"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/uptime"
+      state_class: total
+      device_class: duration
+      unit_of_measurement: ms
+      unique_id: mqtt_stats_uptime
+    
+    - name: Zigbee2mqtt Networkmap
+      # if you change base_topic of Zigbee2mqtt, change state_topic accordingly
+      state_topic: zigbee2mqtt/bridge/response/networkmap
+      value_template: >-
+        {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
+      # again, if you change base_topic of Zigbee2mqtt, change json_attributes_topic accordingly
+      json_attributes_topic: zigbee2mqtt/bridge/response/networkmap
+      json_attributes_template: "{{ value_json.data.value | tojson }}"
+
+command_line:
+  - sensor:
+      name: Jellyfin Media Size
+      unit_of_measurement: GB
+      unique_id: jellyfin_media_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/USBMEDIABACKUP_Media/Movies/ | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+      
+  - sensor:
+      name: M5C Cam Folder Size
+      unit_of_measurement: GB
+      unique_id: m5ccam_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/m5ccam/ | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+      
+  - sensor:  
+      name: TerasseCam Folder Size
+      unit_of_measurement: GB
+      unique_id: terasse_cam_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/tapo/Terrasse | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+
+  - sensor:  
+      name: Ding-Dong Cam Folder Size
+      unit_of_measurement: GB
+      unique_id: ding_dong_cam_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/tapo/Ding-Dong | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+      
+  - sensor:  
+      name: Keller Cam Folder Size
+      unit_of_measurement: GB
+      unique_id: keller_cam_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/tapo/Keller | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+ 
+  - sensor:  
+      name: Autos Cam Folder Size
+      unit_of_measurement: GB
+      unique_id: autos_cam_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/tapo/Autos | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+
+
+sensor:
+  - platform: history_stats
+    unique_id: time_in_bed_night
+    name: 'Time in Bed last 24h'
+    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    state: "on"
+    type: time
+    start: "{{ today_at() - timedelta(hours=4) }}"
+    end: "{{ now() }}"
+    
+  - platform: history_stats
+    unique_id: time_on_schreibtischstuhl
+    name: 'Schreibtischstuhl Besetz Dauer'
+    entity_id: binary_sensor.nous_chair_sensor_zigbee_water_leak
+    state: "on"
+    type: time
+    end: "{{ now() }}"
+    duration:
+      hours: 24
+
+  - platform: statistics
+    entity_id: sensor.esp32_c3_zero_epever_battery_voltage
+    name: "Battery Voltage Stats Minimum"
+    state_characteristic: value_min
+    unique_id: "batteryvoltagestats24h_min"
+    max_age:
+      hours: 24
+
+  - platform: rest
+    scan_interval: 43200
+    name: Tasmota - newest version
+    resource: https://api.github.com/repos/arendst/Sonoff-Tasmota/releases/latest
+    value_template: "{{ value_json.tag_name | replace('v','' ) }}"
+    headers:
+      Accept: application/vnd.github.v3+json
+      Content-Type: application/json
+      User-Agent: Home Assistant REST sensor
+
+  - platform: rest
+    scan_interval: 43200
+    name: OpenBK7231T App - newest version
+    resource: https://api.github.com/repos/openshwprojects/OpenBK7231T_App/releases/latest
+    value_template: "{{ value_json.tag_name | replace('v','' ) }}"
+    headers:
+      Accept: application/vnd.github.v3+json
+      Content-Type: application/json
+      User-Agent: Home Assistant REST sensor
+
+  - platform: rest
+    name: Tibber Pulse Metrics
+    unique_id: tibber_pulse_metrics
+    resource: !secret tibber_bridge_url
+    method: GET
+    json_attributes_path: "node_status"
+    json_attributes:
+      - node_temperature
+      - node_avg_rssi
+      - node_uptime_ms
+    value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
+    scan_interval: 300
+    state_class: measurement
+    device_class: voltage
+    headers:
+      Content-Type: application/json
+      User-Agent: REST
+    unit_of_measurement: V
+
+#   - platform: rest
+#     unique_id: tibber_prices
+#     name: Tibber Prices
+#     resource: https://api.tibber.com/v1-beta/gql
+#     method: POST
+#     payload: '{ "query": "{ viewer { homes { currentSubscription { status priceInfo { current { total level startsAt } today { total level startsAt } tomorrow { total level startsAt } } } } } }" }'
+#     json_attributes_path: "$.data.viewer.homes[0].currentSubscription.priceInfo" 
+#     json_attributes:
+#       - today
+#       - tomorrow
+#     value_template: "{{ value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.total | float (default=0) }}"
+#     scan_interval: 30
+#     headers:
+#       Authorization: !secret tibber_token
+#       Content-Type: application/json
+#       User-Agent: REST
+#     unit_of_measurement: EUR/kWh
+#     state_class: total
+
+#     # Tibber Preislevel
+#   - platform: rest
+#     unique_id: tibber_price_level_german
+#     name: Tibber Price Level Deutsch
+#     resource: https://api.tibber.com/v1-beta/gql
+#     method: POST
+#     payload: '{ "query": "{ viewer { homes { currentSubscription { status priceInfo { current { level } today { level } tomorrow { level } } } } } }" }'
+#     json_attributes_path: "$.data.viewer.homes[0].currentSubscription.priceInfo"
+#     json_attributes:
+#       - today
+#       - tomorrow
+#     value_template: >
+#       {% if value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "NORMAL" %}
+#         normal
+#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "CHEAP" %}
+#         günstig
+#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "VERY_CHEAP" %}
+#         sehr günstig  
+#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "EXPENSIVE" %}
+#         teuer
+#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "VERY_EXPENSIVE" %}
+#         sehr teuer
+#       {% endif %}  
+#     scan_interval: 1800
+#     headers:
+#       Authorization: !secret tibber_token
+#       Content-Type: application/json
+#       User-Agent: REST
+    
+multiscrape:
+  - name: LNGInventory
+    resource: "https://alsi.gie.eu/api?date=today"
+    log_response: false
+    button:
+      - name: 'Refresh LNG'
+        unique_id: refesh_lng_sensors
+    scan_interval: 3600
+    headers:
+      content-type: "application/json"
+      x-key: !secret gas_token
+    sensor:
+      - unique_id: eu_lng_inventory
+        name: EU LNG Inventory
+        value_template: "{{ value_json.data[0].inventory.lng }}"
+        unit_of_measurement: "10³ m³ LNG"
+        attributes:
+          - name: name
+            value_template: "{{ value_json.data[0].name }}"
+          - name: code
+            value_template: "{{ value_json.data[0].code }}"
+          - name: lng_inventory_gwh
+            value_template: "{{ value_json.data[0].inventory.gwh }}"
+          - name: lng_inventory_lng
+            value_template: "{{ value_json.data[0].inventory.lng }}"
+          - name: sendOut
+            value_template: "{{ value_json.data[0].sendOut }}"
+          - name: dtmi_gwh
+            value_template: "{{ value_json.data[0].dtmi.gwh }}"
+          - name: dtmi_lng
+            value_template: "{{ value_json.data[0].dtmi.lng }}"
+          - name: dtrs
+            value_template: "{{ value_json.data[0].dtrs }}"
+          - name: contractedCapacity
+            value_template: "{{ value_json.data[0].contractedCapacity }}"
+          - name: availableCapacity
+            value_template: "{{ value_json.data[0].availableCapacity }}"
+          - name: coveredCapacity
+            value_template: "{{ value_json.data[0].coveredCapacity }}"
+          - name: status
+            value_template: "{{ value_json.data[0].status }}"
+
+      - unique_id: germany_lng_inventory
+        name: Germany LNG Inventory
+        value_template: >
+          {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+          {{ germany.inventory.lng }}
+        unit_of_measurement: "10³ m³ LNG"
+        attributes:
+          - name: name
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.name }}
+          - name: code
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.code }}
+          - name: lng_inventory_gwh
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.inventory.gwh }}
+          - name: lng_inventory_lng
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.inventory.lng }}
+          - name: sendOut
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.sendOut }}
+          - name: dtmi_gwh
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.dtmi.gwh }}
+          - name: dtmi_lng
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.dtmi.lng }}
+          - name: dtrs
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.dtrs }}
+          - name: contractedCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.contractedCapacity }}
+          - name: availableCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.availableCapacity }}
+          - name: coveredCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.coveredCapacity }}
+          - name: status
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.status }}
+
+  - name: GasSpeicher
+    resource: "https://agsi.gie.eu/api?date=today"
+    log_response: false
+    scan_interval: 3600
+    button:
+      - name: 'Refresh Gas'
+        unique_id: refresh_gas_sensors
+    headers:
+      content-type: "application/json"
+      x-key: !secret gas_token
+    sensor:
+      - unique_id: eu_speicher
+        name: EU Gas Storage Full
+        value_template: "{{ value_json.data[0].full }}"
+        unit_of_measurement: "%"
+        attributes:
+          - name: name
+            value_template: "{{ value_json.data[0].name }}"
+          - name: code
+            value_template: "{{ value_json.data[0].code }}"
+          - name: gasInStorage
+            value_template: "{{ value_json.data[0].gasInStorage }}"
+          - name: consumption
+            value_template: "{{ value_json.data[0].consumption }}"
+          - name: injection
+            value_template: "{{ value_json.data[0].injection }}"
+          - name: withdrawal
+            value_template: "{{ value_json.data[0].withdrawal }}"
+          - name: workingGasVolume
+            value_template: "{{ value_json.data[0].workingGasVolume }}"
+          - name: injectionCapacity
+            value_template: "{{ value_json.data[0].injectionCapacity }}"
+          - name: withdrawalCapacity
+            value_template: "{{ value_json.data[0].withdrawalCapacity }}"
+          - name: contractedCapacity
+            value_template: "{{ value_json.data[0].contractedCapacity }}"
+          - name: availableCapacity
+            value_template: "{{ value_json.data[0].availableCapacity }}"
+          - name: coveredCapacity
+            value_template: "{{ value_json.data[0].coveredCapacity }}"
+          - name: status
+            value_template: "{{ value_json.data[0].status }}"
+          - name: trend
+            value_template: "{{ value_json.data[0].trend }}"
+
+      - unique_id: germany_speicher
+        name: Germany Gas Storage Full
+        value_template: >
+          {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+          {{ germany.full }}
+        unit_of_measurement: "%"
+        attributes:
+          - name: name
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.name }}
+          - name: code
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.code }}
+          - name: gasInStorage
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.gasInStorage }}
+          - name: consumption
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.consumption }}
+          - name: injection
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.injection }}
+          - name: withdrawal
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.withdrawal }}
+          - name: workingGasVolume
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.workingGasVolume }}
+          - name: injectionCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.injectionCapacity }}
+          - name: withdrawalCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.withdrawalCapacity }}
+          - name: contractedCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.contractedCapacity }}
+          - name: availableCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.availableCapacity }}
+          - name: coveredCapacity
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.coveredCapacity }}
+          - name: status
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.status }}
+          - name: trend
+            value_template: >
+              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+              {{ germany.trend }}
+
+  - name: FoldingAtHome Credits
+    resource: https://api.foldingathome.org/user/nighthawk1106
+    scan_interval: 21600
+    button:
+      name: Update Folding@Home
+      unique_id: update_foldingathome
+    sensor:
+      - unique_id: folding_at_home_credits_scrape
+        value_template: "{{ value_json.score | int(0) }}"
+        state_class: measurement
+        unit_of_measurement: 'credits'
+      - unique_id: folding_at_home_rank_scrape
+        value_template: "{{ value_json.rank | int(0) }}"
+        state_class: measurement
+        unit_of_measurement: 'rank'
+        attributes:
+          name: "Rest"
+          value_template: "{{ value_json }}"
+
+#   - name: Strompreisentwicklung
+#     resource: https://tibber.com/de/strompreisentwicklung
+#     scan_interval: 3600
+#     button:
+#       name: Update Strompreisentwicklung
+#       unique_id: update_strompreisentwicklung
+#     sensor:
+#       - unique_id: tibber_strompreisentwicklung_kw
+#         name: tibber_strompreisentwicklung_kw
+#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.no-padding > div > div > div > div > div > div > div > h2 > span"
+#       - unique_id: tibber_strompreisentwicklung_short
+#         name: tibber_strompreisentwicklung_short
+#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.no-padding > div > div > div > div > div > p"
+#       - unique_id: tibber_strompreisentwicklung_preise
+#         name: tibber_strompreisentwicklung_preise
+#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(2)"
+#         attributes:
+#           - name: text_eins
+#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(3)"
+#           - name: text_zwei
+#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(4)"
+#           - name: text_drei
+#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(5)"
+            
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml

@@ -1,0 +1,229 @@
+esphome:
+  name: esp32-c3-mini--bett-nachtlicht
+  friendly_name: esp32 c3 mini - bett nachtlicht
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+   level: VERBOSE
+   initial_level: INFO
+
+select:
+  - platform: logger
+    id: logger_select
+    name: Logger Level
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "uB2eF4GroWy1rwSf5HJ18F6+9+k5i1F6RPbIbJPRIQY="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  manual_ip: 
+    gateway: 192.168.2.1
+    subnet: 255.255.255.0
+    dns1: 192.168.2.1
+    static_ip: 192.168.2.35
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp32-C3-Mini--Bett-Nachtlicht"
+    password: !secret ap_password
+
+captive_portal:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+
+output:
+  - platform: ledc
+    pin: GPIO4
+    frequency: 19531Hz
+    id: light_one
+
+light:
+  - platform: status_led
+    name: Status LED
+    pin: 
+      number: GPIO8
+      ignore_strapping_warning: true
+      inverted: true
+
+  - platform: monochromatic
+    name: Bettlicht
+    output: light_one
+    id: motor_fan_speed
+    on_turn_on: 
+      then:
+        - delay: !lambda 'return id(reentered_bed).state * 1000;'
+        - if:
+            condition:
+              - binary_sensor.is_on: mb_o
+            then:
+              - light.turn_off: motor_fan_speed
+
+script:
+  - id: was_in_bed_script
+    mode: restart
+    then:
+      - if:
+          condition: 
+            binary_sensor.is_on: mb_o
+          then:
+            - delay: !lambda 'return id(consider_in_bed).state * 60 * 1000;'
+            - if:
+                condition: 
+                  binary_sensor.is_on: mb_o
+                then:
+                  - switch.turn_on: was_in_bed
+                
+  - id: left_bed_script
+    mode: restart
+    then:
+      - if:
+          condition:
+            - binary_sensor.is_off: mb_o
+          then:
+            - delay: !lambda 'return id(consider_out_of_bed).state * 60 * 1000;'
+            - if:
+                condition: 
+                  - binary_sensor.is_off: mb_o
+                then:
+                  - switch.turn_off: was_in_bed              
+
+switch:
+  - platform: template
+    name: Was In Bed
+    id: was_in_bed
+    optimistic: True
+    icon: mdi:bed
+    restore_mode: RESTORE_DEFAULT_OFF
+
+button:
+  - platform: restart
+    name: Restart
+
+binary_sensor:
+  - platform: status
+    name: Status
+
+  - platform: template
+    name: Master Bed Occupied
+    id: mb_o
+    lambda: |-
+      if (id(master_bed_sensor).state > id(trigger_level).state) {
+        return true;
+      } else {
+        return false;
+      }
+    on_press:
+      then:
+        - script.execute: was_in_bed_script
+    on_release: 
+      then:
+        - script.execute: left_bed_script
+
+number:
+  - platform: template
+    name: Master Bed Trigger Level
+    id: trigger_level
+    optimistic: true
+    restore_value: true
+    min_value: 0
+    max_value: 3.0
+    step: 0.05
+    icon: mdi:arrow-collapse-down
+    mode: BOX
+    unit_of_measurement: V
+    entity_category: diagnostic
+
+  - platform: template
+    id: consider_in_bed
+    name: Time to consider in Bed
+    min_value: 0
+    max_value: 60
+    step: 0.5
+    initial_value: 3
+    optimistic: True
+    restore_value: True
+    unit_of_measurement: min
+    mode: BOX
+    entity_category: diagnostic
+  
+  - platform: template
+    id: consider_out_of_bed
+    name: Time to consider out of Bed
+    min_value: 0
+    max_value: 60
+    step: 0.5
+    initial_value: 15
+    optimistic: True
+    restore_value: True
+    mode: BOX
+    unit_of_measurement: min
+    entity_category: diagnostic
+  
+  - platform: template
+    id: reentered_bed
+    name: Time to Re-Enter Bed
+    min_value: 0
+    max_value: 60
+    step: 1
+    initial_value: 5
+    optimistic: True
+    restore_value: True
+    mode: BOX
+    unit_of_measurement: s
+    entity_category: diagnostic
+
+sensor:
+  - platform: uptime
+    name: Uptime
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: WiFi Signal
+    id: wifi_signal_db
+    update_interval: 5s
+    entity_category: "diagnostic"
+    filters: 
+      - or:
+        - delta: 5%
+        - throttle: 60s
+
+  - platform: adc
+    internal: False
+    pin: 
+      number: GPIO1
+    samples: 5
+    sampling_mode: max
+    attenuation: 12db
+    name: Master Bed Sensor
+    id: master_bed_sensor
+    icon: mdi:bed
+    update_interval: 125ms
+    state_class: measurement
+    device_class: voltage
+    unit_of_measurement: V
+    filters:
+      - or:
+        - sliding_window_moving_average:
+            window_size: 10
+            send_every: 4
+        - throttle: 180s
+      - clamp:
+          max_value: 2.0
+          min_value: 0.1
