@@ -145,14 +145,18 @@ switch:
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_on: 
       then:
-        - text_sensor.template.publish:
-            id: log_txt
-            state: "PV Surplus Charging ON"
+        - script.execute: 
+            id: log_txt_queued
+            log_text: "PV Surplus Charging ON"
+        # - text_sensor.template.publish:
+        #     id: log_txt
+        #     state: "PV Surplus Charging ON"
     on_turn_off:
       then:
-        - mqtt.publish: # Stop charging
-            topic: ${main_topic}frc/set
-            payload: 1
+        - script.execute: stop_charging
+        # - mqtt.publish: # Stop charging
+        #     topic: ${main_topic}frc/set
+        #     payload: 1
         - number.set: # Set Amps to Min
             id: amps
             value: ${min_amps}
@@ -244,11 +248,17 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              - text_sensor.template.publish:
-                  id: log_txt
-                  state: !lambda |-
+              # - text_sensor.template.publish:
+              #     id: log_txt
+              #     state: !lambda |-
+              #       char text_amps[200];
+              #       sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
+              #       return ((std::string) text_amps).c_str();
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
                     char text_amps[200];
-                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, id(amps_goe_calculated_rounded).state);
+                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
                     return ((std::string) text_amps).c_str();
               - mqtt.publish: 
                   id: broker
@@ -257,6 +267,7 @@ number:
                     // Convert the float value to uint8_t
                     uint8_t amps_uint8 = static_cast<uint8_t>(round(x));
                     return to_string(amps_uint8);
+              - delay: 500ms
 
 text_sensor:
   - platform: template
@@ -604,11 +615,24 @@ interval:
               id: blink_led
               repeat_count: 1 # flash button for duration of 250ms to inidcate working
         else:
-          - text_sensor.template.publish:
-              id: log_txt
-              state: "PV Surplus Charging OFF"
+           - script.execute: 
+                id: log_txt_queued
+                log_text: "PV Surplus Charging OFF"
+          # - text_sensor.template.publish:
+          #     id: log_txt
+          #     state: "PV Surplus Charging OFF"
 
 script:
+  - id: log_txt_queued
+    mode: queued
+    parameters:
+      log_text: string
+    then:
+      - text_sensor.template.publish:
+          id: log_txt
+          state: !lambda return log_text;
+      - delay: 500ms
+
   - id: blink_led
     parameters:
       repeat_count: int
@@ -637,10 +661,13 @@ script:
                 id: broker
                 payload: 1
                 topic: ${main_topic}frc/set
-            - text_sensor.template.publish:
-                id: log_txt
-                state: "Disallow Charging"
-            - delay: 500ms
+            # - text_sensor.template.publish:
+            #     id: log_txt
+            #     state: "Disallow Charging"
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Disallow Charging"
+            # - delay: 500ms
           # else:
           #   - text_sensor.template.publish:
           #       id: log_txt
@@ -659,9 +686,12 @@ script:
                 id: broker
                 payload: 0
                 topic: ${main_topic}frc/set
-            - text_sensor.template.publish:
-                id: log_txt
-                state: "Allow Charging"
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Allow Charging"
+            # - text_sensor.template.publish:
+            #     id: log_txt
+            #     state: "Allow Charging"
             - number.to_min: 
                 id: restart_charging_counter
             # - delay: 2s
@@ -682,9 +712,12 @@ script:
                 id: restart_charging_counter
                 above: 9
           then: 
-            - text_sensor.template.publish:
-                id: log_txt
-                state: "Car not Charging, but allowed, restarting..."
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Car not Charging, but allowed, restarting..."
+            # - text_sensor.template.publish:
+            #     id: log_txt
+            #     state: "Car not Charging, but allowed, restarting..."
             - mqtt.publish: 
                 id: broker
                 payload: 1
@@ -704,13 +737,19 @@ script:
           then:
             switch.turn_off: enable_pv_charging
       - script.wait: stop_charging
-      - text_sensor.template.publish:
-          id: log_txt
-          state: !lambda |-
+      - script.execute: 
+          id: log_txt_queued
+          log_text: !lambda |-
             char text_amps[200];
             sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
             return ((std::string) text_amps).c_str();
-      - delay: 1s
+      # - text_sensor.template.publish:
+      #     id: log_txt
+      #     state: !lambda |-
+      #       char text_amps[200];
+      #       sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
+      #       return ((std::string) text_amps).c_str();
+      # - delay: 1s
       - script.stop: charge_ev
   - id: below_amp_threshold
     mode: single
@@ -740,12 +779,18 @@ script:
                         id: skip_counter
                     - lambda: !lambda return (id(solar_amps).state + (id(availbale_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
                 then:
-                  - text_sensor.template.publish:
-                      id: log_txt
-                      state: !lambda |-
+                  - script.execute: 
+                      id: log_txt_queued
+                      log_text: !lambda |-
                         char text_amps[200];
                         sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
                         return ((std::string) text_amps).c_str();
+                  # - text_sensor.template.publish:
+                  #     id: log_txt
+                  #     state: !lambda |-
+                  #       char text_amps[200];
+                  #       sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
+                  #       return ((std::string) text_amps).c_str();
                   - number.increment: 
                       cycle: false
                       id: skip_counter
@@ -768,9 +813,12 @@ script:
             - delay: 1s
           else:
             - delay: 1s
-            - text_sensor.template.publish:
-                id: log_txt
-                state: "Running..."
+            # - text_sensor.template.publish:
+            #     id: log_txt
+            #     state: "Running..."
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Running..."
       - if: # Restart Charging if not Charging but should be
           condition:
             - and:
