@@ -892,33 +892,6 @@
       enabled: false
   mode: queued
   max: 10
-- id: '1708973217328'
-  alias: Auto Kaffeemaschine Off
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id:
-    - sensor.kaffeemaschine_energy_power
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    below: 10
-  - platform: numeric_state
-    entity_id:
-    - sensor.kaffeemaschine_energy_power
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-    below: 0.1
-  condition: []
-  action:
-  - type: turn_off
-    device_id: 2320e049052c2c576731c97129f67579
-    entity_id: 890c2aa53bbcd5947be35ffe30558133
-    domain: switch
-  mode: single
 - id: '1709073413848'
   alias: Auto Boiler
   description: ''
@@ -2123,6 +2096,7 @@
     minutes: /2
     id: Force Start
     trigger: time_pattern
+    enabled: false
   - entity_id:
     - input_number.pulsetimeactualvalue
     below: 250
@@ -4421,6 +4395,7 @@
         - sensor.kg_temperatur
         - sensor.eg_temperatur
         - sensor.og_temperatur
+        - sensor.icloud3_event_log
         keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4451,6 +4426,7 @@
         - sensor.battery_charge_from_solar_monthly_energy_cost
         - sensor.battery_charge_from_solar_yearly_energy_cost
         - sensor.battery_charge_from_solar_manual_energy_cost
+        - sensor.solar_to_home
         - sensor.solar_to_home_real_time_energy_cost
         - sensor.solar_to_home_hourly_energy_cost
         - sensor.solar_to_home_daily_energy_cost
@@ -4476,6 +4452,13 @@
         - sensor.inverter_total_battery_charge_monthly_energy_cost
         - sensor.inverter_total_battery_charge_yearly_energy_cost
         - sensor.inverter_total_battery_charge_manual_energy_cost
+        - sensor.solcast_pv_forecast_prognose_heute
+        - sensor.solcast_pv_forecast_prognose_morgen
+        - sensor.solcast_pv_forecast_prognose_tag_3
+        - sensor.solcast_pv_forecast_prognose_tag_4
+        - sensor.solcast_pv_forecast_prognose_tag_5
+        - sensor.solcast_pv_forecast_prognose_tag_6
+        - sensor.solcast_pv_forecast_prognose_tag_7
         entity_globs: sensor.esp32_s3_zero_deye8k*
     enabled: true
   - alias: Keep 3 Day
@@ -4514,6 +4497,7 @@
         - sensor.inverter_grid_l2_power
         - sensor.inverter_grid_l3_power
         - sensor.inverter_power_losses
+        - sensor.kostal_power_losses
         - binary_sensor.saugen
         - binary_sensor.abgasgeblase
         - binary_sensor.zundung
@@ -4609,7 +4593,7 @@
         - sensor.terrarium_energy_today
         - sensor.garagentor_energy_today
         - sensor.mikrowelle_energy_today
-        - sensor.pool_pumpe_energy_today
+        - sensor.pool_power
         - sensor.smart_plug_energy_today
         - sensor.antella_plug_energy_today
         - sensor.spulmaschine_energy_today
@@ -4623,6 +4607,7 @@
         - sensor.kuhlschrank_draussen_energy_today
         - sensor.heizraum_lufter_abluft_energy_today
         - sensor.kaffeemaschine_delonghi_energy_today
+        - sensor.kostal_energy_losses_today
         - sensor.inverter_grid_frequency
         - sensor.current_l1
         - sensor.current_l2
@@ -4724,6 +4709,7 @@
         - sensor.kuhlschrank_draussen_energy_total
         - sensor.heizraum_lufter_abluft_energy
         - sensor.kaffeemaschine_delonghi_energy_total
+        - sensor.kostal_energy_losses_total
         - sensor.solar_to_home_hourly_energy_cost
         - sensor.solar_to_home_daily_energy_cost
         - sensor.solar_to_home_weekly_energy_cost
@@ -4732,8 +4718,6 @@
         - sensor.solar_to_home_manual_energy_cost
         - sensor.solar_to_home_real_time_energy_cost
         - sensor.inverter_total_energy_losses
-        - sensor.kostal_energy_losses_total
-        - sensor.kostal_power_losses
     enabled: true
   mode: queued
   max: 10
@@ -6259,7 +6243,7 @@
             {% set uv_index = states(''sensor.gw1100a_uv_index'') | float(0) %}
 
             {{ ((temp_outside - temp_inside) > 5.0 and temp_outside > 22.0 ) or ((uv
-            > 75000.0 or uv_index >= 5) and temp_outside > 20.0) }}'
+            > 75000.0 or uv_index >= 5) and temp_outside > 22.0) }}'
         - condition: numeric_state
           entity_id: sensor.sun_solar_azimuth
           above: 175
@@ -7043,4 +7027,44 @@
     metadata: {}
     data:
       addon: 68413af6_git-exporter
+  mode: single
+- id: '1747573166845'
+  alias: Boiler Timer
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - timer.boiler_on_demand
+    to: active
+    from: idle
+    id: Start
+  - trigger: state
+    entity_id:
+    - timer.boiler_on_demand
+    to: idle
+    from: active
+    id: Stop
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Start
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.zirkulationspumpe_zigbee
+    - conditions:
+      - condition: trigger
+        id:
+        - Stop
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.zirkulationspumpe_zigbee
   mode: single
