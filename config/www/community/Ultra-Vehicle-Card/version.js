@@ -8,6 +8,11 @@
 
 let version = "undefined";
 
+/**
+ * Sets the current version string for the Ultra Vehicle Card.
+ *
+ * @param {string} value - The version to assign.
+ */
 function setVersion(value) {
   version = value;
 }
