@@ -1853,11 +1853,46 @@ config:
       fill_container: true
       layout: horizontal
       type: custom:mushroom-select-card
-    - options: {}
-      tabs:
-      - attributes:
-          label: Automations
-        card:
+    - cards:
+      - cards:
+        - card_mod:
+            style: "ha-card {\n  {% if states('input_select.automation_and_script_select')\
+              \ == 'Automation' %}\n    background: var(--primary-color);;\n  {% else\
+              \ %}\n    background: ' ';\n  {% endif %}\n}\n"
+          entity: input_select.automation_and_script_select
+          icon_type: none
+          layout: vertical
+          name: Automation
+          primary_info: name
+          secondary_info: none
+          tap_action:
+            action: perform-action
+            data:
+              option: Automation
+            perform_action: input_select.select_option
+            target:
+              entity_id: input_select.automation_and_script_select
+          type: custom:mushroom-entity-card
+        - card_mod:
+            style: "ha-card {\n  {% if states('input_select.automation_and_script_select')\
+              \ == 'Script' %}\n    background: var(--primary-color);;\n  {% else\
+              \ %}\n    background: ' ';\n  {% endif %}\n}\n"
+          entity: input_select.automation_and_script_select
+          icon_type: none
+          layout: vertical
+          name: Script
+          primary_info: name
+          secondary_info: none
+          tap_action:
+            action: perform-action
+            data:
+              option: Script
+            perform_action: input_select.select_option
+            target:
+              entity_id: input_select.automation_and_script_select
+          type: custom:mushroom-entity-card
+        type: horizontal-stack
+      - card:
           card:
             show_header_toggle: false
             type: entities
@@ -1871,9 +1906,12 @@ config:
             method: attribute
             reverse: true
           type: custom:auto-entities
-      - attributes:
-          label: Scripts
-        card:
+        conditions:
+        - condition: state
+          entity: input_select.automation_and_script_select
+          state: Automation
+        type: conditional
+      - card:
           card:
             show_header_toggle: false
             type: entities
@@ -1887,7 +1925,12 @@ config:
             method: attribute
             reverse: true
           type: custom:auto-entities
-      type: custom:tabbed-card
+        conditions:
+        - condition: state
+          entity: input_select.automation_and_script_select
+          state: Script
+        type: conditional
+      type: vertical-stack
     - entities:
       - entity: input_boolean.automation_enable_appliance
       - entity: input_boolean.automation_enable_go_echarger
