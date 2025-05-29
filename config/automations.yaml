@@ -6956,10 +6956,6 @@
   - variables:
       forecast_entity: '{{ daily_forecast[weather_entity] }}'
       forecast: '{{ forecast_entity.forecast[0] }}'
-  - action: anylist.get_items
-    data:
-      list: To Do Duncan
-    response_variable: to_do
   - alias: Conversation Agent Notification Text
     data:
       text: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }}\n{%- if zone_entity
@@ -6998,25 +6994,7 @@
         %}\n      {%- if event.description is defined %}\n      Description: {{ event.description
         }}\n      {% endif -%}\n      {%- if event.location is defined %}\n        Location:
         {{ event.location }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n
-        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}\n\nI'm quite allergic
-        to Grass pollen, Hausstaubmilben and Roggen. here are the today sensor values
-        of these three pollen and any other \nGräser: {{ states('sensor.pollenflug_graeser')
-        }} \nRoggen: {{ states('sensor.pollenflug_roggen') }}\nAmbrosia: {{ states('sensor.pollenflug_ambrosia')
-        }}\nBeifuss {{ states('sensor.pollenflug_beifuss') }}\nHasel: {{ states('sensor.pollenflug_hasel')
-        }}\nEsche: {{ states('sensor.pollenflug_esche') }}\nLegende:\n\nIndex\tDescription
-        (in German)\n0\tkeine Belastung\n0.5\tkeine bis geringe Belastung\n1\tgeringe
-        Belastung\n1.5\tgeringe bis mittlere Belastung\n2\tmittlere Belastung\n2.5\tmittlere
-        bis hohe Belastung\n3\thohe Belastung\n\nBased on these and the temperature
-        and wind conditions, how much anti allergy mddica6should i take i have 20mg
-        ones, my typical dose would be 2 tablets meaning 40mg, on bad days it could
-        be well around 100mg. dont panic my doctor says i can take as much as 200mg
-        a day. Give me a base count i should take and suggest how many more i could
-        take over the day. Keep it short, only tell the amount, and the amount i should
-        take with me, based on the pollen pollution. dont tell me why, dont tell me
-        what is happening in the air. like 'Allergie: 2 Tabletten, zusätzlich 3 Tabletten.
-        ' thats it not anymore \n\nAlso heres a random task from my todo list:  {%
-        set length = to_do['items'] | length %} {{ to_do['items'][range(0,length)|random]}}\nfeel
-        free to make suggestions on how to do this in today.\n\n{{ prompt }}"
+        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}\n\n{{ prompt }}"
       agent_id: conversation.chatgpt
     response_variable: agent
     action: conversation.process
@@ -7284,4 +7262,58 @@
         data: {}
         target:
           entity_id: switch.zirkulationspumpe_zigbee
+  mode: single
+- id: '1748530213618'
+  alias: Allergie und Tasks
+  description: ''
+  triggers:
+  - trigger: time
+    at: 08:10:00
+  conditions: []
+  actions:
+  - variables:
+      prompt: 'Please generate text for a notification that will be sent to the users
+        smartphone with helpful information. keep it simple and short but precise.
+        simply provide the notification and nothing else! don''t use any Benachrichtigung
+        or something like that just the message! if you like you can format it to
+        make it more readable . Only provide the message and not more.
+
+
+        - Your answers are not technical, and do not include Home Assistant internal
+        details such as entities in responses.
+
+        Provide your answer in German and make it precise and efficient as a German
+        would like it. Bitte Duzen nicht Siezen'
+  - action: anylist.get_items
+    data:
+      list: To Do Duncan
+    response_variable: to_do
+  - alias: Conversation Agent Notification Text
+    data:
+      text: "I'm quite allergic to Grass pollen, Hausstaubmilben and Roggen. here
+        are the today sensor values of these three pollen and any other \nGräser:
+        {{ states('sensor.pollenflug_graeser') }} \nRoggen: {{ states('sensor.pollenflug_roggen')
+        }}\nAmbrosia: {{ states('sensor.pollenflug_ambrosia') }}\nBeifuss {{ states('sensor.pollenflug_beifuss')
+        }}\nHasel: {{ states('sensor.pollenflug_hasel') }}\nEsche: {{ states('sensor.pollenflug_esche')
+        }}\nLegende:\n\nIndex\tDescription (in German)\n0\tkeine Belastung\n0.5\tkeine
+        bis geringe Belastung\n1\tgeringe Belastung\n1.5\tgeringe bis mittlere Belastung\n2\tmittlere
+        Belastung\n2.5\tmittlere bis hohe Belastung\n3\thohe Belastung\n\nBased on
+        these, how much anti allergic medication should i take i have 20mg ones, my
+        typical dose would be 2 tablets meaning 40mg, on bad days it could be well
+        around 100mg. dont panic my doctor says i can take as much as 200mg a day.
+        Give me a base count i should take and suggest how many more i could take
+        over the day. Keep it short, only tell the amount, and the amount i should
+        take with me, based on the pollen pollution. dont tell me why, dont tell me
+        what is happening in the air. like: 2 Tabletten, + 3 Tabletten. ' thats it
+        not anymore, no argumentation or anything like that.\n\n\nAlso heres a random
+        task from my todo list:  {% set length = to_do['items'] | length %} {{ to_do['items'][range(0,length)|random]}}\nfeel
+        free to make suggestions on how to do this in today.\n\n{{ prompt }}"
+      agent_id: conversation.chatgpt
+    response_variable: agent
+    action: conversation.process
+  - alias: Send notification
+    data:
+      title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
+      message: '{{ agent.response.speech.plain.speech }}'
+    action: notify.duncan
   mode: single
