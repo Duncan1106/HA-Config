@@ -4602,6 +4602,8 @@
         - sensor.system_monitor_prozessornutzung
         - sensor.system_monitor_prozessortemperatur
         - sensor.system_monitor_freier_massenspeicher_share_usbmediabackup_share
+        - sensor.cudy_data_received_daily
+        - sensor.cudy_data_received_daily
         entity_globs: sensor.esp32_s3_zero_deye8k*
     enabled: true
   - alias: Keep 3 Day
@@ -4767,6 +4769,14 @@
         - sensor.current_session_22kw
         - sensor.tibber_bridge_0100010800ff_in_k
         - sensor.tibber_bridge_0100020800ff_in_k
+        - sensor.cudy_data_received
+        - sensor.cudy_data_sent
+        - sensor.cudy_router_daten_empfangen
+        - sensor.cudy_router_daten_gesendet
+        - sensor.cudy_router_download_geschwindigkeit
+        - sensor.cudy_router_upload_geschwindigkeit
+        - sensor.cudy_total_data_received
+        - sensor.cudy_total_data_sent
   - alias: Keep 7 Day
     if:
     - condition: trigger
@@ -7323,4 +7333,29 @@
       title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
+  mode: single
+- id: '1748638092151'
+  alias: Restart Honeygain if not running
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.active_device_count
+    below: 1
+  conditions: []
+  actions:
+  - action: hassio.addon_restart
+    metadata: {}
+    data:
+      addon: b3f9bc48_honeygain
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 10
+      milliseconds: 0
+  - action: homeassistant.reload_config_entry
+    metadata: {}
+    data: {}
+    target:
+      device_id: be21d8dbeedf2103ac5a484a78c7f3de
   mode: single
