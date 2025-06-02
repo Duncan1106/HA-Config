@@ -7327,6 +7327,13 @@
     at: 08:10:00
   conditions: []
   actions:
+  - action: todo.get_items
+    metadata: {}
+    data:
+      status: needs_action
+    target:
+      entity_id: todo.to_do_duncan
+    response_variable: to_do_duncan
   - variables:
       prompt: 'Please generate text for a notification that will be sent to the users
         smartphone with helpful information. keep it simple and short but precise.
@@ -7340,46 +7347,59 @@
 
         Provide your answer in German and make it precise and efficient as a German
         would like it. Bitte Duzen nicht Siezen'
-  - action: todo.get_items
-    metadata: {}
-    data:
-      status: needs_action
-    target:
-      entity_id: todo.to_do_duncan
-    response_variable: to_do_duncan
-  - alias: Conversation Agent Notification Text
-    data:
-      text: "I'm quite allergic to Grass pollen, Hausstaubmilben and Roggen. here
-        are the today sensor values of these three pollen and any other \nGräser:
-        {{ states('sensor.pollenflug_graeser') }} \nRoggen: {{ states('sensor.pollenflug_roggen')
-        }}\nAmbrosia: {{ states('sensor.pollenflug_ambrosia') }}\nBeifuss {{ states('sensor.pollenflug_beifuss')
-        }}\nHasel: {{ states('sensor.pollenflug_hasel') }}\nEsche: {{ states('sensor.pollenflug_esche')
-        }}\nLegende:\n\nIndex\tDescription (in German)\n0\tkeine Belastung\n0.5\tkeine
-        bis geringe Belastung\n1\tgeringe Belastung\n1.5\tgeringe bis mittlere Belastung\n2\tmittlere
-        Belastung\n2.5\tmittlere bis hohe Belastung\n3\thohe Belastung\n\nBased on
-        these, how much anti allergic medication should i take i have 20mg ones, my
-        typical dose would be 2 tablets meaning 40mg, on bad days it could be well
+      prompt_custom: "I'm quite allergic to Grass pollen, Hausstaubmilben and Roggen.
+        here are the today sensor values of these three pollen and any other  Gräser:
+        {{ states('sensor.pollenflug_graeser') }}  Roggen: {{ states('sensor.pollenflug_roggen')
+        }} Ambrosia: {{ states('sensor.pollenflug_ambrosia') }} Beifuss {{ states('sensor.pollenflug_beifuss')
+        }} Hasel: {{ states('sensor.pollenflug_hasel') }} Esche: {{ states('sensor.pollenflug_esche')
+        }} Legende:\nIndex\tDescription (in German) 0\tkeine Belastung 0.5\tkeine
+        bis geringe Belastung 1\tgeringe Belastung 1.5\tgeringe bis mittlere Belastung
+        2\tmittlere Belastung 2.5\tmittlere bis hohe Belastung 3\thohe Belastung\nBased
+        on these, how much anti allergic medication should i take i have 20mg ones,
+        my typical dose would be 2 tablets meaning 40mg, on bad days it could be well
         around 100mg. dont panic my doctor says i can take as much as 200mg a day.
         Give me a base count i should take and suggest how many more i could take
         over the day. Keep it short, only tell the amount, and the amount i should
         take with me, based on the pollen pollution. dont tell me why, dont tell me
         what is happening in the air. like: 2 Tabletten, + 3 Tabletten. ' thats it
-        not anymore, no argumentation or anything like that.\n\n\nAlso heres a random
-        task from my todo list:  \n{% set length = to_do_duncan['todo.to_do_duncan']['items']
-        | length %}\n{{ to_do_duncan['todo.to_do_duncan']['items'][range(0,length)|random]['summary']}}\n\nfeel
-        free to make suggestions on how to do this in today.\nkeep the task it self
+        not anymore, no argumentation or anything like that.\n\nAlso heres a random
+        task from my todo list:   {% set length = to_do_duncan['todo.to_do_duncan']['items']
+        | length %} {{ to_do_duncan['todo.to_do_duncan']['items'][range(0,length)|random]['summary']}}\nfeel
+        free to make suggestions on how to do this in today. keep the task it self
         as is and only add helpful instructions or informations. also keep it in the
         language it is and don't translate it, the rest needs to be translated as
-        requested later.\nVery important add the task as it is only the task and nothing
+        requested later. Very important add the task as it is only the task and nothing
         more to the message you're generating. only add helpful instructions or informations
-        never replace, translate or manipulate the task in any way!\n\n{{ prompt }}"
+        never replace, translate or manipulate the task in any way!"
+  - alias: Conversation Agent Notification Text
+    data:
+      text: '{{ prompt_custom}}
+
+
+        {{ prompt }}'
       agent_id: conversation.chatgpt
     response_variable: agent
     action: conversation.process
+    enabled: true
   - alias: Send notification
     data:
       title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
       message: '{{ agent.response.speech.plain.speech }}'
+    action: notify.duncan
+    enabled: true
+  - alias: Conversation Agent Notification Text
+    data:
+      text: '{{ prompt_custom }}
+
+
+        {{ prompt }}'
+      agent_id: conversation.google_generative_ai
+    response_variable: agent_2
+    action: conversation.process
+  - alias: Send notification
+    data:
+      title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
+      message: '{{ agent_2.response.speech.plain.speech }}'
     action: notify.duncan
   mode: single
 - id: '1748638092151'
