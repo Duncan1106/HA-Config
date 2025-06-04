@@ -786,10 +786,8 @@
     path: Blackshome/appliance-notifications.yaml
     input:
       power_sensor: sensor.spulmaschine_energy_power
-      include_start_notify: enable_start_notify_options
-      start_notify_device:
-      - 1acbf8ccc41c43655002000aa5b1cd46
-      start_title: 'Spülmaschine '
+      include_start_notify: disable_start_notify_options
+      start_notify_device: []
       end_notify_device:
       - 1acbf8ccc41c43655002000aa5b1cd46
       - 3b177c6db2b7618a07b7cf691b4a3a9c
@@ -802,12 +800,12 @@
         target:
           entity_id: counter.spulmaschine
         action: counter.increment
+        enabled: false
       start_appliance_power: 15
       end_message: 'Spülmaschine ausräumen '
       start_message: ' '
       include_end_notify: enable_end_notify_options
-      include_custom_actions:
-      - enable_end_custom_actions
+      include_custom_actions: []
       start_custom_actions: []
       end_appliance_power: 2
       end_time_delay: 1
@@ -820,6 +818,8 @@
       watchdog_message: 'Uh-oh! Time to check the dishwasher '
       start_time_delay: 0.25
       include_duration_tracking: disable_duration_tracking
+      include_cycle_counter: enable_cycle_counter
+      cycle_counter_helper: counter.spulmaschine
 - id: '1708932016459'
   alias: Update System Metrics Sensors
   description: ''
@@ -3343,6 +3343,11 @@
     - sensor.aqara_p1_illuminance
     above: 100
     id: Light
+  - trigger: numeric_state
+    entity_id:
+    - sensor.aqara_p1_illuminance
+    above: 75
+    id: Light
   conditions: []
   actions:
   - alias: On motion
@@ -3565,7 +3570,7 @@
       - Light
     - condition: numeric_state
       entity_id: sensor.aqara_p1_illuminance
-      above: 99
+      above: 74
     then:
     - repeat:
         sequence:
@@ -4497,6 +4502,7 @@
         - automation.get_pulsetime
         - automation.save_pulsetime
         - automation.pool_pulsetime_auto_adjust
+        - binary_sensor.inverter_connection
         keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4653,7 +4659,6 @@
       data:
         keep_days: 3
         entity_id:
-        - binary_sensor.inverter_connection
         - sensor.inverter_battery_state
         - sensor.inverter_output_l1_current
         - sensor.inverter_output_l1_power
