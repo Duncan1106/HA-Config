@@ -1741,9 +1741,10 @@
       - update.xiaomi_vacuum_map_card_update
       - update.zigbee2mqtt_update
       - update.earnfm_update
-      - update.librespeed_update
       - update.saic_mqtt_gateway_python_update
       - update.octopus_energy_germany_update
+      - update.openspeedtest_update
+      - update.area_occupancy_detection_update
       mobile_app_device: 1acbf8ccc41c43655002000aa5b1cd46
       run_config_check: false
       only_after: '11:59:00'
@@ -4503,6 +4504,18 @@
         - automation.save_pulsetime
         - automation.pool_pulsetime_auto_adjust
         - binary_sensor.inverter_connection
+        - sensor.auto_backup_last_success
+        - sensor.auto_backup_last_failure
+        - sensor.auto_backup_monitored_backups
+        - button.auto_backup_purge_backups
+        - sensor.lenovo_tab_p11_ram_usage
+        - binary_sensor.screensaver
+        - sensor.lenovo_tab_p11_batterie
+        - switch.lenovo_tab_p11_bildschirm
+        - switch.lenovo_tab_p11_bildschirmschoner
+        - number.lenovo_tab_p11_bildschirmhelligkeit
+        - number.lenovo_tab_p11_bildschirmschoner_helligkeit
+        - sensor.lenovo_tab_p11_freier_speicher
         keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4523,6 +4536,7 @@
         - sensor.inverter_load_frequency
         - sensor.inverter_grid_frequency
         - sensor.inverter_output_frequency
+        - sensor.inverter_temperature
         - sensor.voltage_l1
         - sensor.voltage_l2
         - sensor.voltage_l3
@@ -4853,6 +4867,8 @@
         - sensor.renault_zoe_kilometerstand
         - sensor.lsjwh4097rn105299_mileage
         - sensor.wvgzzze2zpe005371_odometer
+        - sensor.myups_batterielaufzeit
+        - sensor.myups_last
   - alias: Keep 7 Day
     if:
     - condition: trigger
@@ -6978,8 +6994,6 @@
       calendar_entity_1: calendar.looping
       calendar_entity_2: calendar.anniversaries
       calendar_entity_3: calendar.apps_by_abfall
-      notify_number: one
-      zone_entity: zone.home
       calendar_duration:
         hours: 15
         minutes: 59
@@ -7050,14 +7064,12 @@
   - variables:
       forecast_entity: '{{ daily_forecast[weather_entity] }}'
       forecast: '{{ forecast_entity.forecast[0] }}'
-      calendar_prompt: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }} {%- if zone_entity
-        is defined %} Latitude: {{ state_attr(zone_entity, 'latitude') | round(1)
-        }} Longitude: {{ state_attr(zone_entity, 'longitude') | round(1) }} {% endif
-        %} {%- if weather_entity is defined %}         {%- set temperature_unit =
-        state_attr(weather_entity, 'temperature_unit') -%} Current Weather : {{ forecast.condition
-        }} ({{ forecast.temperature }}{{ temperature_unit }}, {{ forecast.precipitation
-        }}% precipitation, UV Index {{forecast.uv_index}}, Wind Speed {{forecast.wind_speed}},
-        Temp Low {{forecast.templow}}) Todays Overall Weather: {{ states('sensor.irauen33_weather_summary_0')
+      calendar_prompt: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }} {%- if weather_entity
+        is defined %}         {%- set temperature_unit = state_attr(weather_entity,
+        'temperature_unit') -%} Current Weather : {{ forecast.condition }} ({{ forecast.temperature
+        }}{{ temperature_unit }}, {{ forecast.precipitation }}% precipitation, UV
+        Index {{forecast.uv_index}}, Wind Speed {{forecast.wind_speed}}, Temp Low
+        {{forecast.templow}}) Todays Overall Weather: {{ states('sensor.irauen33_weather_summary_0')
         }} {%- endif %}\nCalendar \"{{ state_attr(calendar_entity_1, 'friendly_name')
         }}\" events for the next {{ calendar_duration.hours }} hours: {%- set agenda
         = (agenda_1 | items | first)[1] %} {%- if agenda.events %}\n  {%- for event
@@ -7100,6 +7112,11 @@
       title: '{{ now().strftime(''%A'') }} Agenda'
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ calendar_prompt }}
@@ -7466,6 +7483,11 @@
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
     enabled: true
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ pollen_prompt }}
@@ -7567,4 +7589,40 @@
     data:
       title: Honeygain Withdrawn Now
       message: 'Balance: {{ states(''sensor.account_balance'') | float(0)}}$'
+  mode: single
+- id: '1749115504854'
+  alias: Adjust Addon Status based on AnkerMake M5C Usage
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.ankermake_1
+    to: 'on'
+    id: 'ON'
+  - trigger: state
+    entity_id:
+    - switch.ankermake_1
+    to: 'off'
+    id: 'OFF'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'ON'
+      sequence:
+      - action: hassio.addon_start
+        metadata: {}
+        data:
+          addon: cff83567_ankerctl
+    - conditions:
+      - condition: trigger
+        id:
+        - 'OFF'
+      sequence:
+      - action: hassio.addon_stop
+        metadata: {}
+        data:
+          addon: cff83567_ankerctl
   mode: single
