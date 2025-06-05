@@ -1805,22 +1805,19 @@ sensor:
       then:
         - if:
             condition:
-              - switch.is_on: enable_charge_automations
+              and:
+                - lambda: |-
+                        return id(battery_capacity).state < 99.0 && 
+                        id(Total_Grid_Power).state < -200 &&
+                        id(enable_charge_automations).state;
+                - for: 
+                    time: 1min
+                    condition:
+                      - sensor.in_range: 
+                          id: Total_Grid_Power
+                          below: -200
             then:
-              - if: 
-                 condition:
-                  and: 
-                    - sensor.in_range:
-                        id: battery_capacity
-                        below: 99
-                    - for: 
-                        time: 1min
-                        condition:
-                          - sensor.in_range: 
-                              id: Total_Grid_Power
-                              below: -200
-                 then:
-                  - switch.turn_on: enable_solar_grid_charge
+              - switch.turn_on: enable_solar_grid_charge
  
   - platform: modbus_controller
     modbus_controller_id: ${modbus_controller_id}
