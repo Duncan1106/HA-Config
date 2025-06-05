@@ -6978,8 +6978,6 @@
       calendar_entity_1: calendar.looping
       calendar_entity_2: calendar.anniversaries
       calendar_entity_3: calendar.apps_by_abfall
-      notify_number: one
-      zone_entity: zone.home
       calendar_duration:
         hours: 15
         minutes: 59
@@ -7050,14 +7048,12 @@
   - variables:
       forecast_entity: '{{ daily_forecast[weather_entity] }}'
       forecast: '{{ forecast_entity.forecast[0] }}'
-      calendar_prompt: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }} {%- if zone_entity
-        is defined %} Latitude: {{ state_attr(zone_entity, 'latitude') | round(1)
-        }} Longitude: {{ state_attr(zone_entity, 'longitude') | round(1) }} {% endif
-        %} {%- if weather_entity is defined %}         {%- set temperature_unit =
-        state_attr(weather_entity, 'temperature_unit') -%} Current Weather : {{ forecast.condition
-        }} ({{ forecast.temperature }}{{ temperature_unit }}, {{ forecast.precipitation
-        }}% precipitation, UV Index {{forecast.uv_index}}, Wind Speed {{forecast.wind_speed}},
-        Temp Low {{forecast.templow}}) Todays Overall Weather: {{ states('sensor.irauen33_weather_summary_0')
+      calendar_prompt: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }} {%- if weather_entity
+        is defined %}         {%- set temperature_unit = state_attr(weather_entity,
+        'temperature_unit') -%} Current Weather : {{ forecast.condition }} ({{ forecast.temperature
+        }}{{ temperature_unit }}, {{ forecast.precipitation }}% precipitation, UV
+        Index {{forecast.uv_index}}, Wind Speed {{forecast.wind_speed}}, Temp Low
+        {{forecast.templow}}) Todays Overall Weather: {{ states('sensor.irauen33_weather_summary_0')
         }} {%- endif %}\nCalendar \"{{ state_attr(calendar_entity_1, 'friendly_name')
         }}\" events for the next {{ calendar_duration.hours }} hours: {%- set agenda
         = (agenda_1 | items | first)[1] %} {%- if agenda.events %}\n  {%- for event
@@ -7100,6 +7096,11 @@
       title: '{{ now().strftime(''%A'') }} Agenda'
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ calendar_prompt }}
@@ -7466,6 +7467,11 @@
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
     enabled: true
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ pollen_prompt }}
