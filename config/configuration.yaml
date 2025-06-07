@@ -402,7 +402,6 @@ mqtt:
       state_topic: zigbee2mqtt/bridge/response/networkmap
       value_template: >-
         {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
-      # again, if you change base_topic of Zigbee2mqtt, change json_attributes_topic accordingly
       json_attributes_topic: zigbee2mqtt/bridge/response/networkmap
       json_attributes_template: "{{ value_json.data.value | tojson }}"
 
@@ -460,7 +459,6 @@ command_line:
       device_class: data_size
       command: 'du -sm /media/tapo/Autos | awk ''{print $1}'''
       value_template: "{{ (value|int(0) / 1024) | round(3) }}"
-
 
 sensor:
   - platform: history_stats
@@ -533,20 +531,23 @@ multiscrape:
       content-type: "application/json"
       x-key: !secret gas_token
     sensor:
+      - unique_id: eu_lng_gwh
+        name: EU LNG GWh
+        value_template: "{{ value_json.data[0].inventory.gwh | float(0) }}"
+        unit_of_measurement: GWh
+        state_class: total
+        device_class: energy
       - unique_id: eu_lng_inventory
         name: EU LNG Inventory
-        value_template: "{{ value_json.data[0].inventory.lng | float(0) }}"
-        unit_of_measurement: "10³ m³ LNG"
+        value_template: "{{ value_json.data[0].inventory.lng | float(0) * 1000 }}"
+        unit_of_measurement: m³
         state_class: measurement
+        device_class: volume
         attributes:
           - name: name
             value_template: "{{ value_json.data[0].name }}"
           - name: code
             value_template: "{{ value_json.data[0].code }}"
-          - name: lng_inventory_gwh
-            value_template: "{{ value_json.data[0].inventory.gwh }}"
-          - name: lng_inventory_lng
-            value_template: "{{ value_json.data[0].inventory.lng }}"
           - name: sendOut
             value_template: "{{ value_json.data[0].sendOut }}"
           - name: dtmi_gwh
@@ -564,12 +565,20 @@ multiscrape:
           - name: status
             value_template: "{{ value_json.data[0].status }}"
 
+      - unique_id: germany_lng_gwh
+        name: Germany LNG GWh
+        value_template: >
+          {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+          {{ germany.inventory.gwh | float(0) }}
+        unit_of_measurement: GWh
+        state_class: total
+        device_class: energy
       - unique_id: germany_lng_inventory
         name: Germany LNG Inventory
         value_template: >
           {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-          {{ germany.inventory.lng | float(0) }}
-        unit_of_measurement: "10³ m³ LNG"
+          {{ germany.inventory.lng | float(0) * 1000 }}
+        unit_of_measurement: m³
         state_class: measurement
         attributes:
           - name: name
@@ -580,14 +589,6 @@ multiscrape:
             value_template: >
               {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
               {{ germany.code }}
-          - name: lng_inventory_gwh
-            value_template: >
-              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-              {{ germany.inventory.gwh }}
-          - name: lng_inventory_lng
-            value_template: >
-              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-              {{ germany.inventory.lng }}
           - name: sendOut
             value_template: >
               {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
@@ -633,7 +634,7 @@ multiscrape:
       x-key: !secret gas_token
     sensor:
       - unique_id: eu_speicher
-        name: EU Gas Storage Full
+        name: EU Gas Storage
         value_template: "{{ value_json.data[0].full | float(0) }}"
         unit_of_measurement: "%"
         state_class: measurement
@@ -668,7 +669,7 @@ multiscrape:
             value_template: "{{ value_json.data[0].trend }}"
 
       - unique_id: germany_speicher
-        name: Germany Gas Storage Full
+        name: Germany Gas Storage
         value_template: >
           {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
           {{ germany.full | float(0) }}
