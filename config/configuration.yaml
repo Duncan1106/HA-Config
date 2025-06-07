@@ -25,7 +25,6 @@ recorder:
       - lock
       - input_select
       - input_text
-      - openplantbook
       - plant
       - scene
       - script
@@ -261,7 +260,6 @@ cover:
         unique_id: wintergarten_rolladen_dachfenster
         optimistic: true
         friendly_name: "Wintergarten Rolladen Dachfenster"
-        #value_template: "{{ states('sensor.garage_door')|float > 0 }}"
         open_cover:
           action: script.wintergarten_dachfenster_rolladen_open
         close_cover:
@@ -404,7 +402,6 @@ mqtt:
       state_topic: zigbee2mqtt/bridge/response/networkmap
       value_template: >-
         {{ now().strftime('%Y-%m-%d %H:%M:%S') }}
-      # again, if you change base_topic of Zigbee2mqtt, change json_attributes_topic accordingly
       json_attributes_topic: zigbee2mqtt/bridge/response/networkmap
       json_attributes_template: "{{ value_json.data.value | tojson }}"
 
@@ -463,7 +460,6 @@ command_line:
       command: 'du -sm /media/tapo/Autos | awk ''{print $1}'''
       value_template: "{{ (value|int(0) / 1024) | round(3) }}"
 
-
 sensor:
   - platform: history_stats
     unique_id: time_in_bed_night
@@ -482,14 +478,6 @@ sensor:
     type: time
     end: "{{ now() }}"
     duration:
-      hours: 24
-
-  - platform: statistics
-    entity_id: sensor.esp32_c3_zero_epever_battery_voltage
-    name: "Battery Voltage Stats Minimum"
-    state_characteristic: value_min
-    unique_id: "batteryvoltagestats24h_min"
-    max_age:
       hours: 24
 
   - platform: rest
@@ -531,54 +519,6 @@ sensor:
       User-Agent: REST
     unit_of_measurement: V
 
-#   - platform: rest
-#     unique_id: tibber_prices
-#     name: Tibber Prices
-#     resource: https://api.tibber.com/v1-beta/gql
-#     method: POST
-#     payload: '{ "query": "{ viewer { homes { currentSubscription { status priceInfo { current { total level startsAt } today { total level startsAt } tomorrow { total level startsAt } } } } } }" }'
-#     json_attributes_path: "$.data.viewer.homes[0].currentSubscription.priceInfo" 
-#     json_attributes:
-#       - today
-#       - tomorrow
-#     value_template: "{{ value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.total | float (default=0) }}"
-#     scan_interval: 30
-#     headers:
-#       Authorization: !secret tibber_token
-#       Content-Type: application/json
-#       User-Agent: REST
-#     unit_of_measurement: EUR/kWh
-#     state_class: total
-
-#     # Tibber Preislevel
-#   - platform: rest
-#     unique_id: tibber_price_level_german
-#     name: Tibber Price Level Deutsch
-#     resource: https://api.tibber.com/v1-beta/gql
-#     method: POST
-#     payload: '{ "query": "{ viewer { homes { currentSubscription { status priceInfo { current { level } today { level } tomorrow { level } } } } } }" }'
-#     json_attributes_path: "$.data.viewer.homes[0].currentSubscription.priceInfo"
-#     json_attributes:
-#       - today
-#       - tomorrow
-#     value_template: >
-#       {% if value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "NORMAL" %}
-#         normal
-#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "CHEAP" %}
-#         günstig
-#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "VERY_CHEAP" %}
-#         sehr günstig  
-#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "EXPENSIVE" %}
-#         teuer
-#       {% elif value_json.data.viewer.homes[0].currentSubscription.priceInfo.current.level == "VERY_EXPENSIVE" %}
-#         sehr teuer
-#       {% endif %}  
-#     scan_interval: 1800
-#     headers:
-#       Authorization: !secret tibber_token
-#       Content-Type: application/json
-#       User-Agent: REST
-    
 multiscrape:
   - name: LNGInventory
     resource: "https://alsi.gie.eu/api?date=today"
@@ -591,20 +531,23 @@ multiscrape:
       content-type: "application/json"
       x-key: !secret gas_token
     sensor:
+      - unique_id: eu_lng_gwh
+        name: EU LNG GWh
+        value_template: "{{ value_json.data[0].inventory.gwh | float(0) }}"
+        unit_of_measurement: GWh
+        state_class: total
+        device_class: energy
       - unique_id: eu_lng_inventory
         name: EU LNG Inventory
-        value_template: "{{ value_json.data[0].inventory.lng }}"
-        unit_of_measurement: "10³ m³ LNG"
+        value_template: "{{ value_json.data[0].inventory.lng | float(0) * 1000 }}"
+        unit_of_measurement: m³
         state_class: measurement
+        device_class: volume
         attributes:
           - name: name
             value_template: "{{ value_json.data[0].name }}"
           - name: code
             value_template: "{{ value_json.data[0].code }}"
-          - name: lng_inventory_gwh
-            value_template: "{{ value_json.data[0].inventory.gwh }}"
-          - name: lng_inventory_lng
-            value_template: "{{ value_json.data[0].inventory.lng }}"
           - name: sendOut
             value_template: "{{ value_json.data[0].sendOut }}"
           - name: dtmi_gwh
@@ -622,12 +565,20 @@ multiscrape:
           - name: status
             value_template: "{{ value_json.data[0].status }}"
 
+      - unique_id: germany_lng_gwh
+        name: Germany LNG GWh
+        value_template: >
+          {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
+          {{ germany.inventory.gwh | float(0) }}
+        unit_of_measurement: GWh
+        state_class: total
+        device_class: energy
       - unique_id: germany_lng_inventory
         name: Germany LNG Inventory
         value_template: >
           {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-          {{ germany.inventory.lng }}
-        unit_of_measurement: "10³ m³ LNG"
+          {{ germany.inventory.lng | float(0) * 1000 }}
+        unit_of_measurement: m³
         state_class: measurement
         attributes:
           - name: name
@@ -638,14 +589,6 @@ multiscrape:
             value_template: >
               {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
               {{ germany.code }}
-          - name: lng_inventory_gwh
-            value_template: >
-              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-              {{ germany.inventory.gwh }}
-          - name: lng_inventory_lng
-            value_template: >
-              {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-              {{ germany.inventory.lng }}
           - name: sendOut
             value_template: >
               {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
@@ -691,8 +634,8 @@ multiscrape:
       x-key: !secret gas_token
     sensor:
       - unique_id: eu_speicher
-        name: EU Gas Storage Full
-        value_template: "{{ value_json.data[0].full }}"
+        name: EU Gas Storage
+        value_template: "{{ value_json.data[0].full | float(0) }}"
         unit_of_measurement: "%"
         state_class: measurement
         attributes:
@@ -726,10 +669,10 @@ multiscrape:
             value_template: "{{ value_json.data[0].trend }}"
 
       - unique_id: germany_speicher
-        name: Germany Gas Storage Full
+        name: Germany Gas Storage
         value_template: >
           {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
-          {{ germany.full }}
+          {{ germany.full | float(0) }}
         unit_of_measurement: "%"
         state_class: measurement
         attributes:
@@ -809,30 +752,6 @@ multiscrape:
           name: "Rest"
           value_template: "{{ value_json }}"
 
-#   - name: Strompreisentwicklung
-#     resource: https://tibber.com/de/strompreisentwicklung
-#     scan_interval: 3600
-#     button:
-#       name: Update Strompreisentwicklung
-#       unique_id: update_strompreisentwicklung
-#     sensor:
-#       - unique_id: tibber_strompreisentwicklung_kw
-#         name: tibber_strompreisentwicklung_kw
-#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.no-padding > div > div > div > div > div > div > div > h2 > span"
-#       - unique_id: tibber_strompreisentwicklung_short
-#         name: tibber_strompreisentwicklung_short
-#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.no-padding > div > div > div > div > div > p"
-#       - unique_id: tibber_strompreisentwicklung_preise
-#         name: tibber_strompreisentwicklung_preise
-#         select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(2)"
-#         attributes:
-#           - name: text_eins
-#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(3)"
-#           - name: text_zwei
-#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(4)"
-#           - name: text_drei
-#             select: "#app-root > div.jsx-850a60188453b536.app-container > div > section > div > div:nth-child(2) > div > div > div > div.Blocks.py-xl > div > div > div > p:nth-child(5)"
-            
 automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
