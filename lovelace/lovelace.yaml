@@ -6752,6 +6752,280 @@ config:
     path: duncan
     subview: true
     title: Duncan
+  - cards:
+    - cards:
+      - cards:
+        - card:
+            double_tap_action:
+              action: toggle
+            entity: switch.terrarium
+            fill_container: true
+            icon: mdi:globe-light
+            layout: vertical
+            name: "W\xE4rmelampe"
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
+            type: custom:mushroom-entity-card
+          conditions:
+          - condition: state
+            entity: switch.terrarium
+            state: 'on'
+          type: conditional
+        - card:
+            double_tap_action:
+              action: toggle
+            entity: switch.terrarium_tasmota2
+            fill_container: true
+            icon: mdi:light-switch
+            layout: vertical
+            name: Helligkeit
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
+            type: custom:mushroom-entity-card
+          conditions:
+          - condition: state
+            entity: switch.terrarium_tasmota2
+            state: 'on'
+          type: conditional
+        - card:
+            double_tap_action:
+              action: toggle
+            entity: switch.terrarium_tasmota3
+            fill_container: true
+            icon: mdi:water-percent
+            layout: vertical
+            name: Luftbefeuchter
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
+            type: custom:mushroom-entity-card
+          conditions:
+          - condition: state
+            entity: switch.terrarium_tasmota3
+            state: 'on'
+          type: conditional
+        - double_tap_action:
+            action: more-info
+          entity: switch.terrarium_tasmota4
+          fill_container: true
+          hold_action:
+            action: more-info
+          icon: mdi:raspberry-pi
+          layout: vertical
+          name: Raspberry
+          primary_info: name
+          secondary_info: state
+          tap_action:
+            action: more-info
+          type: custom:mushroom-entity-card
+        title: Terrarium
+        type: horizontal-stack
+      - card:
+          collapsible_controls: true
+          double_tap_action:
+            action: toggle
+          entity: light.terrarrium_light_bar_light
+          fill_container: true
+          hold_action:
+            action: more-info
+          icon: mdi:ceiling-light
+          primary_info: name
+          secondary_info: state
+          show_brightness_control: true
+          show_color_temp_control: true
+          tap_action:
+            action: none
+          type: custom:mushroom-light-card
+          use_light_color: true
+        conditions:
+        - condition: state
+          entity: switch.terrarium_tasmota2
+          state: 'on'
+        type: conditional
+      - entity: sensor.daily_luftbefeuchter
+        fill_container: true
+        hold_action:
+          action: more-info
+        icon: ''
+        layout: vertical
+        primary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising')) |\
+          \ as_local + timedelta(hours=2) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
+          \ 'next_setting')) | as_local - timedelta(hours=1) %}\n{% set api_request_limit\
+          \ = 15 %}\n{% if nr > ns %}\n  {% set nr = nr - timedelta(hours=24) %}\n\
+          {% endif %}\n{% set hours_difference = (ns - nr).total_seconds() / 3600\
+          \ %}\n{% set interval_hours = hours_difference / api_request_limit %}\n\
+          {% set nsp = namespace(start_times=[]) %}\n{% for i in range(api_request_limit)\
+          \ %}\n  {% set start_time = nr + timedelta(hours=i * interval_hours) %}\n\
+          \  {% set nsp.start_times = nsp.start_times + [start_time] %}\n{% endfor\
+          \ %}\n{% set now_time = now() %}\n{% for start_time in nsp.start_times %}\n\
+          \  {% set difference = start_time.timestamp() - now_time.timestamp() %}\n\
+          \  {% if difference > 0 %}\nNext Humidity Cycle: {{ start_time.strftime('%H:%M:%S')\
+          \ }}\n     {% break %}\n  {% endif %}\n{% endfor %}"
+        secondary: ''
+        tap_action:
+          action: more-info
+        type: custom:mushroom-template-card
+      - entities:
+        - sensor.daily_luftbefeuchter
+        type: entities
+      - entity: sensor.terrarium_signal
+        fill_container: true
+        hold_action:
+          action: more-info
+        icon: ''
+        layout: vertical
+        multiline_secondary: true
+        primary: ''
+        secondary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising'))\
+          \ | as_local + timedelta(hours=1.23) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
+          \ 'next_setting')) | as_local - timedelta(hours=0.77) %}\n{% if nr > ns\
+          \ %}\n  {% set nr = nr - timedelta(hours=24) %}\n{% endif %}\n{% set hours_difference\
+          \ = (ns - nr).total_seconds() %}\n{% set now_time = now() %}\n{% set dif_nr\
+          \ = time_until(nr, 2) %}\n{% set ref_nr = (nr|as_timestamp()) - (now_time|as_timestamp())\
+          \ %}\n{% set dif_ns = time_until(ns, 2) %}\n{% set ref_ns = (ns|as_timestamp())\
+          \ - (now_time|as_timestamp()) %}\n{% set nr_h = nr - timedelta(hours=0.25)\
+          \ %}\n{% set ns_h = ns + timedelta(hours=0.25) %}\n{% set dif_nr_h = time_until(nr_h,\
+          \ 2) %}\n{% set ref_nr_h = (nr_h|as_timestamp()) - (now_time|as_timestamp())\
+          \ %}\n{% set dif_ns_h = time_until(ns_h,2 ) %}\n{% set ref_ns_h = (ns_h|as_timestamp())\
+          \ - (now_time|as_timestamp()) %}\n{% set runtime = now_time + timedelta(seconds=hours_difference)%}\n\
+          {% set runtime_end = nr + timedelta(seconds=hours_difference)%}\nRuntime:\
+          \ {{ time_until(runtime, 2) }} @ {{ runtime_end.strftime('%H:%M:%S')}}\n\
+          Helligkeit: {{ 'ON in ' + dif_nr_h + ' @ ' + nr_h.strftime('%H:%M:%S') if\
+          \ ref_nr_h > 0 else 'OFF in ' + dif_ns_h + ' @ ' + ns_h.strftime('%H:%M:%S')}}\n\
+          W\xE4rnelampe: {{ 'ON in ' + dif_nr + ' @ ' + nr.strftime('%H:%M:%S') if\
+          \ ref_nr > 0 else 'OFF in ' + dif_ns + ' @ ' + ns.strftime('%H:%M:%S')}}"
+        tap_action:
+          action: more-info
+        type: custom:mushroom-template-card
+      - cards:
+        - display_mode: buttons
+          entity: input_number.terrarium_humidity_control_threshold
+          fill_container: true
+          name: Threshold
+          type: custom:mushroom-number-card
+        - display_mode: buttons
+          entity: input_number.terrarium_humidity_control_threshold_offset
+          fill_container: true
+          name: Offset
+          type: custom:mushroom-number-card
+        type: horizontal-stack
+      - entity: sensor.terrarium_energy_power
+        fill_container: false
+        type: custom:mushroom-entity-card
+      type: vertical-stack
+    - cards:
+      - align_state: center
+        animate: true
+        cache: true
+        entities:
+        - sensor.t_h_terrarium_temperature
+        font_size: 75
+        hour24: true
+        hours_to_show: 24
+        line_width: 6
+        name: Temperatur
+        points_per_hour: 10
+        show:
+          fill: false
+          labels: false
+          points: hover
+        show_graph: true
+        type: custom:mini-graph-card
+      - align_state: center
+        animate: true
+        cache: true
+        entities:
+        - sensor.t_h_terrarium_humidity
+        font_size: 75
+        hour24: true
+        hours_to_show: 24
+        line_width: 6
+        name: Luftfeuchtigkeit
+        points_per_hour: 10
+        show:
+          fill: false
+          labels: false
+          points: hover
+        show_graph: true
+        type: custom:mini-graph-card
+      title: Terrarium TH Sensors
+      type: horizontal-stack
+    - cards:
+      - align_state: center
+        animate: true
+        cache: true
+        entities:
+        - sensor.esp32_c3_mini_terra_terrarium_temperature_average
+        font_size: 75
+        hour24: true
+        hours_to_show: 12
+        line_width: 6
+        name: Temperatur
+        points_per_hour: 60
+        show:
+          fill: false
+          labels: false
+          points: hover
+        show_graph: true
+        type: custom:mini-graph-card
+      - align_state: center
+        animate: true
+        cache: true
+        entities:
+        - sensor.esp32_c3_mini_terra_terrarium_humidity_average
+        font_size: 75
+        hour24: true
+        hours_to_show: 12
+        line_width: 6
+        name: Luftfeuchtigkeit
+        points_per_hour: 60
+        show:
+          fill: false
+          labels: false
+          points: hover
+        show_graph: true
+        type: custom:mini-graph-card
+      title: Terrarium DHT22
+      type: horizontal-stack
+    - entity: binary_sensor.1_0_0_1
+      hold_action:
+        action: none
+      icon: mdi:water-percent
+      name: Luftbefeuchter
+      show_icon: true
+      show_name: true
+      tap_action:
+        action: perform-action
+        confirmation: true
+        perform_action: script.luftbefeuchter
+        target: {}
+      type: button
+    - entity: binary_sensor.1_0_0_1
+      hold_action:
+        action: none
+      icon: mdi:heat-wave
+      name: "W\xE4rmelampe "
+      show_icon: true
+      show_name: true
+      tap_action:
+        action: perform-action
+        confirmation: true
+        perform_action: script.warmelampe
+        target: {}
+      type: button
+    - entities:
+      - automation.luftbefeuchter
+      type: entities
+    icon: mdi:snake
+    path: terrarium
+    subview: true
+    title: Terrarium
+    type: masonry
   - badges: []
     cards:
     - cards:
@@ -7222,10 +7496,11 @@ config:
         horseshoe_style: autominmax
       type: custom:flex-horseshoe-card
       view_layout: null
-    icon: mdi:solar-panel
+    icon: mdi:car-battery
     path: bkw
     subview: true
     title: Bkw
+    type: masonry
   - badges: []
     cards:
     - cards:
@@ -9215,280 +9490,6 @@ config:
     path: solar-battery
     subview: true
     title: Solar Battery
-  - cards:
-    - cards:
-      - cards:
-        - card:
-            double_tap_action:
-              action: toggle
-            entity: switch.terrarium
-            fill_container: true
-            icon: mdi:globe-light
-            layout: vertical
-            name: "W\xE4rmelampe"
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: more-info
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: state
-            entity: switch.terrarium
-            state: 'on'
-          type: conditional
-        - card:
-            double_tap_action:
-              action: toggle
-            entity: switch.terrarium_tasmota2
-            fill_container: true
-            icon: mdi:light-switch
-            layout: vertical
-            name: Helligkeit
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: more-info
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: state
-            entity: switch.terrarium_tasmota2
-            state: 'on'
-          type: conditional
-        - card:
-            double_tap_action:
-              action: toggle
-            entity: switch.terrarium_tasmota3
-            fill_container: true
-            icon: mdi:water-percent
-            layout: vertical
-            name: Luftbefeuchter
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: more-info
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: state
-            entity: switch.terrarium_tasmota3
-            state: 'on'
-          type: conditional
-        - double_tap_action:
-            action: more-info
-          entity: switch.terrarium_tasmota4
-          fill_container: true
-          hold_action:
-            action: more-info
-          icon: mdi:raspberry-pi
-          layout: vertical
-          name: Raspberry
-          primary_info: name
-          secondary_info: state
-          tap_action:
-            action: more-info
-          type: custom:mushroom-entity-card
-        title: Terrarium
-        type: horizontal-stack
-      - card:
-          collapsible_controls: true
-          double_tap_action:
-            action: toggle
-          entity: light.terrarrium_light_bar_light
-          fill_container: true
-          hold_action:
-            action: more-info
-          icon: mdi:ceiling-light
-          primary_info: name
-          secondary_info: state
-          show_brightness_control: true
-          show_color_temp_control: true
-          tap_action:
-            action: none
-          type: custom:mushroom-light-card
-          use_light_color: true
-        conditions:
-        - condition: state
-          entity: switch.terrarium_tasmota2
-          state: 'on'
-        type: conditional
-      - entity: sensor.daily_luftbefeuchter
-        fill_container: true
-        hold_action:
-          action: more-info
-        icon: ''
-        layout: vertical
-        primary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising')) |\
-          \ as_local + timedelta(hours=2) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
-          \ 'next_setting')) | as_local - timedelta(hours=1) %}\n{% set api_request_limit\
-          \ = 15 %}\n{% if nr > ns %}\n  {% set nr = nr - timedelta(hours=24) %}\n\
-          {% endif %}\n{% set hours_difference = (ns - nr).total_seconds() / 3600\
-          \ %}\n{% set interval_hours = hours_difference / api_request_limit %}\n\
-          {% set nsp = namespace(start_times=[]) %}\n{% for i in range(api_request_limit)\
-          \ %}\n  {% set start_time = nr + timedelta(hours=i * interval_hours) %}\n\
-          \  {% set nsp.start_times = nsp.start_times + [start_time] %}\n{% endfor\
-          \ %}\n{% set now_time = now() %}\n{% for start_time in nsp.start_times %}\n\
-          \  {% set difference = start_time.timestamp() - now_time.timestamp() %}\n\
-          \  {% if difference > 0 %}\nNext Humidity Cycle: {{ start_time.strftime('%H:%M:%S')\
-          \ }}\n     {% break %}\n  {% endif %}\n{% endfor %}"
-        secondary: ''
-        tap_action:
-          action: more-info
-        type: custom:mushroom-template-card
-      - entities:
-        - sensor.daily_luftbefeuchter
-        type: entities
-      - entity: sensor.terrarium_signal
-        fill_container: true
-        hold_action:
-          action: more-info
-        icon: ''
-        layout: vertical
-        multiline_secondary: true
-        primary: ''
-        secondary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising'))\
-          \ | as_local + timedelta(hours=1.23) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
-          \ 'next_setting')) | as_local - timedelta(hours=0.77) %}\n{% if nr > ns\
-          \ %}\n  {% set nr = nr - timedelta(hours=24) %}\n{% endif %}\n{% set hours_difference\
-          \ = (ns - nr).total_seconds() %}\n{% set now_time = now() %}\n{% set dif_nr\
-          \ = time_until(nr, 2) %}\n{% set ref_nr = (nr|as_timestamp()) - (now_time|as_timestamp())\
-          \ %}\n{% set dif_ns = time_until(ns, 2) %}\n{% set ref_ns = (ns|as_timestamp())\
-          \ - (now_time|as_timestamp()) %}\n{% set nr_h = nr - timedelta(hours=0.25)\
-          \ %}\n{% set ns_h = ns + timedelta(hours=0.25) %}\n{% set dif_nr_h = time_until(nr_h,\
-          \ 2) %}\n{% set ref_nr_h = (nr_h|as_timestamp()) - (now_time|as_timestamp())\
-          \ %}\n{% set dif_ns_h = time_until(ns_h,2 ) %}\n{% set ref_ns_h = (ns_h|as_timestamp())\
-          \ - (now_time|as_timestamp()) %}\n{% set runtime = now_time + timedelta(seconds=hours_difference)%}\n\
-          {% set runtime_end = nr + timedelta(seconds=hours_difference)%}\nRuntime:\
-          \ {{ time_until(runtime, 2) }} @ {{ runtime_end.strftime('%H:%M:%S')}}\n\
-          Helligkeit: {{ 'ON in ' + dif_nr_h + ' @ ' + nr_h.strftime('%H:%M:%S') if\
-          \ ref_nr_h > 0 else 'OFF in ' + dif_ns_h + ' @ ' + ns_h.strftime('%H:%M:%S')}}\n\
-          W\xE4rnelampe: {{ 'ON in ' + dif_nr + ' @ ' + nr.strftime('%H:%M:%S') if\
-          \ ref_nr > 0 else 'OFF in ' + dif_ns + ' @ ' + ns.strftime('%H:%M:%S')}}"
-        tap_action:
-          action: more-info
-        type: custom:mushroom-template-card
-      - cards:
-        - display_mode: buttons
-          entity: input_number.terrarium_humidity_control_threshold
-          fill_container: true
-          name: Threshold
-          type: custom:mushroom-number-card
-        - display_mode: buttons
-          entity: input_number.terrarium_humidity_control_threshold_offset
-          fill_container: true
-          name: Offset
-          type: custom:mushroom-number-card
-        type: horizontal-stack
-      - entity: sensor.terrarium_energy_power
-        fill_container: false
-        type: custom:mushroom-entity-card
-      type: vertical-stack
-    - cards:
-      - align_state: center
-        animate: true
-        cache: true
-        entities:
-        - sensor.t_h_terrarium_temperature
-        font_size: 75
-        hour24: true
-        hours_to_show: 24
-        line_width: 6
-        name: Temperatur
-        points_per_hour: 10
-        show:
-          fill: false
-          labels: false
-          points: hover
-        show_graph: true
-        type: custom:mini-graph-card
-      - align_state: center
-        animate: true
-        cache: true
-        entities:
-        - sensor.t_h_terrarium_humidity
-        font_size: 75
-        hour24: true
-        hours_to_show: 24
-        line_width: 6
-        name: Luftfeuchtigkeit
-        points_per_hour: 10
-        show:
-          fill: false
-          labels: false
-          points: hover
-        show_graph: true
-        type: custom:mini-graph-card
-      title: Terrarium TH Sensors
-      type: horizontal-stack
-    - cards:
-      - align_state: center
-        animate: true
-        cache: true
-        entities:
-        - sensor.esp32_c3_mini_terra_terrarium_temperature_average
-        font_size: 75
-        hour24: true
-        hours_to_show: 12
-        line_width: 6
-        name: Temperatur
-        points_per_hour: 60
-        show:
-          fill: false
-          labels: false
-          points: hover
-        show_graph: true
-        type: custom:mini-graph-card
-      - align_state: center
-        animate: true
-        cache: true
-        entities:
-        - sensor.esp32_c3_mini_terra_terrarium_humidity_average
-        font_size: 75
-        hour24: true
-        hours_to_show: 12
-        line_width: 6
-        name: Luftfeuchtigkeit
-        points_per_hour: 60
-        show:
-          fill: false
-          labels: false
-          points: hover
-        show_graph: true
-        type: custom:mini-graph-card
-      title: Terrarium DHT22
-      type: horizontal-stack
-    - entity: binary_sensor.1_0_0_1
-      hold_action:
-        action: none
-      icon: mdi:water-percent
-      name: Luftbefeuchter
-      show_icon: true
-      show_name: true
-      tap_action:
-        action: perform-action
-        confirmation: true
-        perform_action: script.luftbefeuchter
-        target: {}
-      type: button
-    - entity: binary_sensor.1_0_0_1
-      hold_action:
-        action: none
-      icon: mdi:heat-wave
-      name: "W\xE4rmelampe "
-      show_icon: true
-      show_name: true
-      tap_action:
-        action: perform-action
-        confirmation: true
-        perform_action: script.warmelampe
-        target: {}
-      type: button
-    - entities:
-      - automation.luftbefeuchter
-      type: entities
-    icon: mdi:snake
-    path: terrarium
-    subview: true
-    title: Terrarium
-    type: masonry
   - cards: []
     max_columns: 4
     path: enya
