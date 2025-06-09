@@ -824,22 +824,6 @@ config:
           - 690f4c6bedc44a9daad30c216f237d1d
         type: conditional
       type: vertical-stack
-    - entity: sensor.octopus_a_10a76963_electricity_price
-      grid_options:
-        columns: 12
-        rows: 1
-      icon: ''
-      layout: vertical
-      primary: "{{ state_attr('sensor.octopus_a_10a76963_electricity_price','active_timeslot')}}:\
-        \ {{ states('sensor.octopus_a_10a76963_electricity_price') | round(3)}}\u20AC\
-        /kWh --- Balance: {{ state_attr('sensor.octopus_a_10a76963_electricity_price','electricity_balance')}}"
-      secondary: '{{ state_attr(''sensor.octopus_a_10a76963_electricity_price'',''active_timeslot_from'')}}
-        Uhr - {{ state_attr(''sensor.octopus_a_10a76963_electricity_price'',''active_timeslot_to'')}}
-        Uhr'
-      tap_action:
-        action: navigate
-        navigation_path: /lovelace/octopus
-      type: custom:mushroom-template-card
     - cards:
       - cards:
         - card:
@@ -2695,18 +2679,6 @@ config:
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
     - user: 336b62364b064bd6996f5f9e67feb7b9
   - badges:
-    - display_type: complete
-      entity: sensor.solar_power_total
-      icon: mdi:solar-panel-large
-      name: Total
-      type: entity
-    - entity: sensor.grid_power
-      name: Grid
-      show_icon: false
-      show_name: true
-      show_state: true
-      state_content: state
-      type: entity
     - color: ''
       entity: sensor.daily_energy_goe_11kw
       name: 11kW
@@ -2771,1411 +2743,1121 @@ config:
       - below: 90
         condition: numeric_state
         entity: sensor.felicity_ess_soc_avg
-    cards:
+    cards: []
+    icon: mdi:ev-plug-type2
+    max_columns: 4
+    path: goe
+    sections:
     - cards:
-      - card:
-          entity: sensor.renault_zoe_batterie
-          icon: mdi:car
-          icon_tap_action:
-            action: navigate
-            navigation_path: /lovelace/zoe
-          name: Zoe
-          show_entity_picture: false
-          type: tile
-          vertical: true
-        conditions:
+      - cards:
+        - heading: EVs
+          heading_style: title
+          icon: mdi:car-electric-outline
+          type: heading
+        - card:
+            entity: sensor.renault_zoe_batterie
+            icon: mdi:car
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/zoe
+            name: Zoe
+            show_entity_picture: false
+            type: tile
+            vertical: true
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity: select.go_echarger_252682_trx
+              state: Card 1
+            - condition: state
+              entity: select.go_echarger_270862_trx
+              state: Card 1
+          type: conditional
+        - card:
+            entity: sensor.wvgzzze2zpe005371_battery_level
+            icon: mdi:car
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/id4
+            name: 'VW ID4 Pro Performance '
+            show_entity_picture: false
+            type: tile
+            vertical: true
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity: select.go_echarger_252682_trx
+              state: Card 0
+            - condition: state
+              entity: select.go_echarger_270862_trx
+              state: Card 0
+            - condition: state
+              entity: select.go_echarger_270862_trx
+              state: Card 2
+          type: conditional
+        - card:
+            entity: sensor.lsjwh4097rn105299_soc
+            features_position: bottom
+            icon: mdi:car
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/car-mg4
+            name: MG4
+            show_entity_picture: false
+            type: tile
+            vertical: true
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity: select.go_echarger_252682_trx
+              state: Card 2
+            - condition: state
+              entity: select.go_echarger_270862_trx
+              state: Card 3
+          type: conditional
+        type: vertical-stack
+        visibility:
         - condition: or
           conditions:
           - condition: state
             entity: select.go_echarger_252682_trx
-            state: Card 1
+            state_not: None
           - condition: state
             entity: select.go_echarger_270862_trx
-            state: Card 1
-        type: conditional
-      - card:
-          entity: sensor.wvgzzze2zpe005371_battery_level
-          icon: mdi:car
-          icon_tap_action:
-            action: navigate
-            navigation_path: /lovelace/id4
-          name: 'VW ID4 Pro Performance '
-          show_entity_picture: false
-          type: tile
-          vertical: true
-        conditions:
-        - condition: or
-          conditions:
-          - condition: state
-            entity: select.go_echarger_252682_trx
-            state: Card 0
-          - condition: state
-            entity: select.go_echarger_270862_trx
-            state: Card 0
-          - condition: state
-            entity: select.go_echarger_270862_trx
-            state: Card 2
-        type: conditional
-      - card:
-          entity: sensor.lsjwh4097rn105299_soc
-          features_position: bottom
-          icon: mdi:car
-          icon_tap_action:
-            action: navigate
-            navigation_path: /lovelace/car-mg4
-          name: MG4
-          show_entity_picture: false
-          type: tile
-          vertical: true
-        conditions:
-        - condition: or
-          conditions:
-          - condition: state
-            entity: select.go_echarger_252682_trx
-            state: Card 2
-          - condition: state
-            entity: select.go_echarger_270862_trx
-            state: Card 3
-        type: conditional
-      type: vertical-stack
-    - cards:
+            state_not: None
+      - heading: EV Lade Statistik
+        heading_style: title
+        icon: mdi:car-electric-outline
+        type: heading
       - cards:
         - cards:
-          - entity: sensor.sum_charged_to_id_4
+          - cards:
+            - entity: sensor.sum_charged_to_id_4
+              layout: vertical
+              name: Charged to ID.4
+              type: custom:mushroom-entity-card
+            - entity: sensor.sum_charged_to_zoe
+              layout: vertical
+              name: Charged to Zoe
+              type: custom:mushroom-entity-card
+            - entity: sensor.sum_charged_to_mg4
+              layout: vertical
+              name: Charged to MG4
+              type: custom:mushroom-entity-card
+            type: horizontal-stack
+          type: vertical-stack
+        - card:
+            align_header: center
+            align_state: center
+            animate: true
+            cache: true
+            color_thresholds:
+            - color: '#008000'
+              value: 1200
+            - color: '#90EE90'
+              value: 3700
+            - color: '#FFA500'
+              value: 4800
+            - color: '#ff0050'
+              value: 11000
+            entities:
+            - entity: sensor.go_echarger_252682_nrg_12
+              show_state: true
+            - entity: sensor.go_echarger_270862_nrg_12
+              show_state: true
+            font_size: 60
+            hour24: true
+            hours_to_show: 8
+            line_width: 2
+            name: Goe Power
+            points_per_hour: 60
+            show:
+              fill: false
+              icon: false
+              labels: false
+              legend: false
+              points: hover
+            type: custom:mini-graph-card
+          conditions:
+          - condition: and
+            conditions:
+            - condition: state
+              entity: binary_sensor.go_echarger_270862_car
+              state: 'on'
+            - condition: state
+              entity: binary_sensor.go_echarger_252682_car
+              state: 'on'
+          type: conditional
+        type: vertical-stack
+      type: grid
+    - cards:
+      - badges:
+        - entity: input_select.go_e_select_card
+          show_icon: true
+          show_state: true
+          type: entity
+        heading: Kontrolle
+        heading_style: title
+        type: heading
+      - cards:
+        - cards:
+          - card_mod:
+              style: "ha-card {\n  {% if states('input_select.go_e_select_card') ==\
+                \ '11kW' %}\n    background: var(--primary-color);;\n  {% else %}\n\
+                \    background: ' ';\n  {% endif %}\n}\n"
+            entity: input_select.go_e_select_card
+            icon: ''
+            icon_type: none
             layout: vertical
-            name: Charged to ID.4
+            name: 11kW
+            primary_info: name
+            secondary_info: none
+            tap_action:
+              action: perform-action
+              data:
+                option: 11kW
+              perform_action: input_select.select_option
+              target:
+                entity_id: input_select.go_e_select_card
             type: custom:mushroom-entity-card
-          - entity: sensor.sum_charged_to_zoe
+          - card_mod:
+              style: "ha-card {\n  {% if states('input_select.go_e_select_card') ==\
+                \ '22kW' %}\n    background: var(--primary-color);;\n  {% else %}\n\
+                \    background: ' ';\n  {% endif %}\n}\n"
+            entity: input_select.go_e_select_card
+            icon: ''
+            icon_type: none
             layout: vertical
-            name: Charged to Zoe
+            name: 22kW
+            primary_info: name
+            secondary_info: none
+            tap_action:
+              action: perform-action
+              data:
+                option: 22kW
+              perform_action: input_select.select_option
+              target:
+                entity_id: input_select.go_e_select_card
             type: custom:mushroom-entity-card
           type: horizontal-stack
-        title: Totals
-        type: vertical-stack
-      - align_header: center
-        align_state: center
-        animate: true
-        cache: true
-        color_thresholds:
-        - color: '#008000'
-          value: 1200
-        - color: '#90EE90'
-          value: 3700
-        - color: '#FFA500'
-          value: 4800
-        - color: '#ff0050'
-          value: 11000
-        entities:
-        - entity: sensor.go_echarger_252682_nrg_12
-          show_state: true
-        - entity: sensor.go_echarger_270862_nrg_12
-          show_state: true
-        font_size: 60
-        hour24: true
-        hours_to_show: 8
-        line_width: 2
-        name: Goe Power
-        points_per_hour: 60
-        show:
-          fill: false
-          icon: false
-          labels: false
-          legend: false
-          points: hover
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/goe
-        type: custom:mini-graph-card
-      type: vertical-stack
-      visibility:
-      - condition: and
-        conditions:
-        - condition: state
-          entity: binary_sensor.go_echarger_270862_car
-          state: 'on'
-        - condition: state
-          entity: binary_sensor.go_echarger_252682_car
-          state: 'on'
-    - cards:
-      - card:
-          alignment: center
-          title: 11kW
-          type: custom:mushroom-title-card
-        conditions:
-        - condition: state
-          entity: input_select.go_e_select_card
-          state: 11kW
-        type: conditional
-      - card:
-          alignment: center
-          title: 22kW
-          type: custom:mushroom-title-card
-        conditions:
-        - condition: state
-          entity: input_select.go_e_select_card
-          state: 22kW
-        type: conditional
-      - cards:
-        - card_mod:
-            style: "ha-card {\n  {% if states('input_select.go_e_select_card') ==\
-              \ '11kW' %}\n    background: var(--primary-color);;\n  {% else %}\n\
-              \    background: ' ';\n  {% endif %}\n}\n"
-          entity: input_select.go_e_select_card
-          icon: ''
-          icon_type: none
-          layout: vertical
-          name: 11kW
-          primary_info: name
-          secondary_info: none
-          tap_action:
-            action: perform-action
-            data:
-              option: 11kW
-            perform_action: input_select.select_option
-            target:
-              entity_id: input_select.go_e_select_card
-          type: custom:mushroom-entity-card
-        - card_mod:
-            style: "ha-card {\n  {% if states('input_select.go_e_select_card') ==\
-              \ '22kW' %}\n    background: var(--primary-color);;\n  {% else %}\n\
-              \    background: ' ';\n  {% endif %}\n}\n"
-          entity: input_select.go_e_select_card
-          icon: ''
-          icon_type: none
-          layout: vertical
-          name: 22kW
-          primary_info: name
-          secondary_info: none
-          tap_action:
-            action: perform-action
-            data:
-              option: 22kW
-            perform_action: input_select.select_option
-            target:
-              entity_id: input_select.go_e_select_card
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
-      - card:
-          cards:
-          - card_mod:
-              style: "ha-card {\n  --ha-card-background: var(--card-background-color);\n\
-                \  color: var(--primary-color); \n}\n"
-            color_stops:
-              '0': '#43A047'
-              '300': '#DB4437'
-            entities:
-            - decimals: 0
-              entity: sensor.go_echarger_270862_nrg_12
-              name: Go-e 11kw
-              unit: W
-            - decimals: 0
-              entity: sensor.go_echarger_270862_nrg_8
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_270862_nrg_5
-              unit: A
-            - decimals: 0
-              entity: sensor.go_echarger_270862_nrg_9
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_270862_nrg_6
-              unit: A
-            - decimals: 0
-              entity: sensor.go_echarger_270862_nrg_10
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_270862_nrg_7
-              unit: A
-            - entity: sensor.go_echarger_270862_frc
-            - entity: sensor.go_echarger_270862_modelstatus
-            - decimals: 0
-              entity: sensor.goe_11kw_amps
-              name: Amps
-              unit: A
-            - decimals: 1
-              entity: sensor.sum_charged_to_id_4
-              name: ID.4
-              unit: kWh
-            - decimals: 2
-              entity: sensor.daily_energy_goe_11kw
-              name: Today
-              unit: kWh
-            horseshoe_scale:
-              color: '#6F6F6F'
-              max: 11000
-              min: 0
-              width: 6
-            layout:
-              hlines:
-              - id: 0
-                length: 70
-                styles:
-                - stroke: rgb(59, 60, 62);
-                xpos: 50
-                ypos: 40
-              - id: 1
-                length: 70
-                styles:
-                - stroke: rgb(59, 60, 62);
-                xpos: 50
-                ypos: 60
-              icons:
-              - align: start
-                entity_index: 1
-                id: 0
-                size: 1
-                xpos: 30
-                ypos: 52
-              names:
-              - entity_index: 0
-                id: 0
-                styles:
-                - font-size: 1.2em;
-                xpos: 50
-                ypos: 95
-              - entity_index: 9
-                id: 1
-                styles:
-                - font-size: 0.5em;
-                xpos: 50
-                ypos: 80
-              - entity_index: 10
-                id: 2
-                styles:
-                - font-size: 0.5em;
-                - text-anchor: end;
-                xpos: 100
-                ypos: 9
-              - entity_index: 11
-                id: 3
-                styles:
-                - font-size: 0.5em;
-                - text-anchor: start;
-                xpos: 0
-                ypos: 9
-              states:
-              - entity_index: 0
-                id: 0
-                styles:
-                - font-size: 3em;
-                - opacity: 0.9;
-                xpos: 50
-                ypos: 34
-              - entity_index: 1
-                id: 1
-                styles:
-                - font-size: 1.2em;
-                - text-anchor: end;
-                xpos: 34
-                ypos: 49
-              - entity_index: 2
-                id: 2
-                styles:
-                - font-size: .9em;
-                - text-anchor: end;
-                xpos: 34
-                ypos: 56
-              - entity_index: 3
-                id: 3
-                styles:
-                - font-size: 1.2em;
-                xpos: 51
-                ypos: 49
-              - entity_index: 4
-                id: 4
-                styles:
-                - font-size: .9em;
-                xpos: 51
-                ypos: 56
-              - entity_index: 5
-                id: 5
-                styles:
-                - font-size: 1.2em;
-                - text-anchor: start;
-                xpos: 66
-                ypos: 49
-              - entity_index: 6
-                id: 6
-                styles:
-                - font-size: .9em;
-                - text-anchor: start;
-                xpos: 66
-                ypos: 56
-              - entity_index: 7
-                id: 7
-                styles:
-                - font-size: .6em;
-                xpos: 50
-                ypos: 13
-              - entity_index: 8
-                id: 8
-                styles:
-                - font-size: 0.3em;
-                xpos: 50
-                ypos: 16
-              - entity_index: 9
-                id: 9
-                styles:
-                - font-size: 2em;
-                xpos: 50
-                ypos: 75
-              - entity_index: 10
-                id: 10
-                styles:
-                - text-anchor: end;
-                - font-size: 1.1em;
-                xpos: 100
-                ypos: 5
-              - entity_index: 11
-                id: 11
-                styles:
-                - text-anchor: start;
-                - font-size: 1.1em;
-                xpos: 0
-                ypos: 5
-              vlines:
-              - id: 0
-                length: 18
-                styles:
-                - stroke: rgb(59, 60, 62);
-                - stroke-linecap: square;
-                xpos: 37
-                ypos: 50
-              - id: 1
-                length: 18
-                styles:
-                - stroke: rgb(59, 60, 62);
-                - stroke-linecap: square;
-                xpos: 63
-                ypos: 50
-            show:
-              horseshoe_style: autominmax
-            type: custom:flex-horseshoe-card
-            view_layout: null
-          - card:
-              align_header: center
-              align_state: center
-              animate: true
-              cache: true
-              decimals: 3
+        - card:
+            cards:
+            - card_mod:
+                style: "ha-card {\n  --ha-card-background: var(--card-background-color);\n\
+                  \  color: var(--primary-color); \n}\n"
+              color_stops:
+                '0': '#43A047'
+                '300': '#DB4437'
               entities:
-              - entity: sensor.goe_current_session_11kw
-                name: Current Session
-              font_size: 60
-              hour24: true
-              hours_to_show: 12
-              line_width: 3
-              points_per_hour: 20
+              - decimals: 0
+                entity: sensor.go_echarger_270862_nrg_12
+                name: Go-e 11kw
+                unit: W
+              - decimals: 0
+                entity: sensor.go_echarger_270862_nrg_8
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_270862_nrg_5
+                unit: A
+              - decimals: 0
+                entity: sensor.go_echarger_270862_nrg_9
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_270862_nrg_6
+                unit: A
+              - decimals: 0
+                entity: sensor.go_echarger_270862_nrg_10
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_270862_nrg_7
+                unit: A
+              - entity: sensor.go_echarger_270862_frc
+              - entity: sensor.go_echarger_270862_modelstatus
+              - decimals: 0
+                entity: sensor.goe_11kw_amps
+                name: Amps
+                unit: A
+              - decimals: 1
+                entity: sensor.sum_charged_to_id_4
+                name: ID.4
+                unit: kWh
+              - decimals: 2
+                entity: sensor.daily_energy_goe_11kw
+                name: Today
+                unit: kWh
+              horseshoe_scale:
+                color: '#6F6F6F'
+                max: 11000
+                min: 0
+                width: 6
+              layout:
+                hlines:
+                - id: 0
+                  length: 70
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  xpos: 50
+                  ypos: 40
+                - id: 1
+                  length: 70
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  xpos: 50
+                  ypos: 60
+                icons:
+                - align: start
+                  entity_index: 1
+                  id: 0
+                  size: 1
+                  xpos: 30
+                  ypos: 52
+                names:
+                - entity_index: 0
+                  id: 0
+                  styles:
+                  - font-size: 1.2em;
+                  xpos: 50
+                  ypos: 95
+                - entity_index: 9
+                  id: 1
+                  styles:
+                  - font-size: 0.5em;
+                  xpos: 50
+                  ypos: 80
+                - entity_index: 10
+                  id: 2
+                  styles:
+                  - font-size: 0.5em;
+                  - text-anchor: end;
+                  xpos: 100
+                  ypos: 9
+                - entity_index: 11
+                  id: 3
+                  styles:
+                  - font-size: 0.5em;
+                  - text-anchor: start;
+                  xpos: 0
+                  ypos: 9
+                states:
+                - entity_index: 0
+                  id: 0
+                  styles:
+                  - font-size: 3em;
+                  - opacity: 0.9;
+                  xpos: 50
+                  ypos: 34
+                - entity_index: 1
+                  id: 1
+                  styles:
+                  - font-size: 1.2em;
+                  - text-anchor: end;
+                  xpos: 34
+                  ypos: 49
+                - entity_index: 2
+                  id: 2
+                  styles:
+                  - font-size: .9em;
+                  - text-anchor: end;
+                  xpos: 34
+                  ypos: 56
+                - entity_index: 3
+                  id: 3
+                  styles:
+                  - font-size: 1.2em;
+                  xpos: 51
+                  ypos: 49
+                - entity_index: 4
+                  id: 4
+                  styles:
+                  - font-size: .9em;
+                  xpos: 51
+                  ypos: 56
+                - entity_index: 5
+                  id: 5
+                  styles:
+                  - font-size: 1.2em;
+                  - text-anchor: start;
+                  xpos: 66
+                  ypos: 49
+                - entity_index: 6
+                  id: 6
+                  styles:
+                  - font-size: .9em;
+                  - text-anchor: start;
+                  xpos: 66
+                  ypos: 56
+                - entity_index: 7
+                  id: 7
+                  styles:
+                  - font-size: .6em;
+                  xpos: 50
+                  ypos: 13
+                - entity_index: 8
+                  id: 8
+                  styles:
+                  - font-size: 0.3em;
+                  xpos: 50
+                  ypos: 16
+                - entity_index: 9
+                  id: 9
+                  styles:
+                  - font-size: 2em;
+                  xpos: 50
+                  ypos: 75
+                - entity_index: 10
+                  id: 10
+                  styles:
+                  - text-anchor: end;
+                  - font-size: 1.1em;
+                  xpos: 100
+                  ypos: 5
+                - entity_index: 11
+                  id: 11
+                  styles:
+                  - text-anchor: start;
+                  - font-size: 1.1em;
+                  xpos: 0
+                  ypos: 5
+                vlines:
+                - id: 0
+                  length: 18
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  - stroke-linecap: square;
+                  xpos: 37
+                  ypos: 50
+                - id: 1
+                  length: 18
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  - stroke-linecap: square;
+                  xpos: 63
+                  ypos: 50
               show:
-                fill: false
-                icon: false
-                labels: false
-                points: hover
-              smoothing: true
-              type: custom:mini-graph-card
-            conditions:
-            - above: 0
-              condition: numeric_state
-              entity: sensor.goe_current_session_11kw
-            type: conditional
-          - cards:
-            - display_mode: buttons
-              entity: number.go_echarger_270862_amp
-              fill_container: true
-              layout: vertical
-              type: custom:mushroom-number-card
-            type: vertical-stack
-          - cards:
+                horseshoe_style: autominmax
+              type: custom:flex-horseshoe-card
+              view_layout: null
+            - card:
+                align_header: center
+                align_state: center
+                animate: true
+                cache: true
+                decimals: 3
+                entities:
+                - entity: sensor.goe_current_session_11kw
+                  name: Current Session
+                font_size: 60
+                hour24: true
+                hours_to_show: 12
+                line_width: 3
+                points_per_hour: 20
+                show:
+                  fill: false
+                  icon: false
+                  labels: false
+                  points: hover
+                smoothing: true
+                type: custom:mini-graph-card
+              conditions:
+              - above: 0
+                condition: numeric_state
+                entity: sensor.goe_current_session_11kw
+              type: conditional
+            - cards:
+              - display_mode: buttons
+                entity: number.go_echarger_270862_amp
+                fill_container: true
+                layout: vertical
+                type: custom:mushroom-number-card
+              type: vertical-stack
+            - cards:
+              - cards:
+                - card_mod:
+                    style: "ha-card {\n    {% if is_state('select.go_echarger_270862_psm','Force\
+                      \ single phase') %}\n      background: var(--primary-color);\n\
+                      \    {% endif %}\n}\n"
+                  entity: select.go_echarger_270862_psm
+                  icon: mdi:flash-triangle
+                  icon_height: 42px
+                  name: 1 Phase
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Force single phase
+                    service: select.select_option
+                    target:
+                      entity_id:
+                      - select.go_echarger_270862_psm
+                  type: button
+                - card_mod:
+                    style: "ha-card {\n    {% if not is_state('select.go_echarger_270862_psm','Force\
+                      \ single phase') %}\n      background: var(--primary-color);\n\
+                      \    {% endif %}\n}\n"
+                  entity: select.go_echarger_270862_psm
+                  icon: mdi:flash-triangle-outline
+                  icon_height: 42px
+                  name: 3 Phase
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Force three phases
+                    service: select.select_option
+                    target:
+                      entity_id:
+                      - select.go_echarger_270862_psm
+                  type: button
+                type: horizontal-stack
+              type: vertical-stack
             - cards:
               - card_mod:
-                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_psm','Force\
-                    \ single phase') %}\n      background: var(--primary-color);\n\
-                    \    {% endif %}\n}\n"
-                entity: select.go_echarger_270862_psm
-                icon: mdi:flash-triangle
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
+                    \ 'Card 1') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n}\n"
+                entity: select.go_echarger_270862_trx
+                icon: mdi:credit-card-chip
                 icon_height: 42px
-                name: 1 Phase
+                name: Select Zoe
                 show_icon: true
                 show_name: true
                 show_state: false
                 tap_action:
                   action: call-service
                   data:
-                    option: Force single phase
+                    option: Card 1
                   service: select.select_option
                   target:
-                    entity_id:
-                    - select.go_echarger_270862_psm
+                    entity_id: select.go_echarger_270862_trx
                 type: button
               - card_mod:
-                  style: "ha-card {\n    {% if not is_state('select.go_echarger_270862_psm','Force\
-                    \ single phase') %}\n      background: var(--primary-color);\n\
-                    \    {% endif %}\n}\n"
-                entity: select.go_echarger_270862_psm
-                icon: mdi:flash-triangle-outline
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
+                    \ 'Card 0') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n    {% if is_state('select.go_echarger_270862_trx',\
+                    \ 'Card 2') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n}\n"
+                entity: select.go_echarger_270862_trx
+                icon: mdi:credit-card-chip
                 icon_height: 42px
-                name: 3 Phase
+                name: Select ID.4
                 show_icon: true
                 show_name: true
                 show_state: false
                 tap_action:
                   action: call-service
                   data:
-                    option: Force three phases
+                    option: Card 0
                   service: select.select_option
                   target:
-                    entity_id:
-                    - select.go_echarger_270862_psm
+                    entity_id: select.go_echarger_270862_trx
+                type: button
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
+                    \ 'Card 3') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n}\n"
+                entity: select.go_echarger_270862_trx
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Select MG4
+                show_icon: true
+                show_name: true
+                show_state: false
+                tap_action:
+                  action: perform-action
+                  data:
+                    option: Card 3
+                  perform_action: select.select_option
+                  target:
+                    entity_id: select.go_echarger_270862_trx
                 type: button
               type: horizontal-stack
-            type: vertical-stack
-          - cards:
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
-                  \ 'Card 1') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_270862_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select Zoe
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Card 1
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_trx
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
-                  \ 'Card 0') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n    {% if is_state('select.go_echarger_270862_trx',\
-                  \ 'Card 2') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_270862_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select ID.4
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Card 0
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_trx
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_trx',\
-                  \ 'Card 3') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_270862_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select MG4
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: perform-action
-                data:
-                  option: Card 3
-                perform_action: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_trx
-              type: button
-            type: horizontal-stack
-          - cards:
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
-                  \ 'Neutral') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_270862_frc
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Neutral
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Neutral
-                service: select.select_option
-                target:
-                  entity_id:
-                  - select.go_echarger_270862_frc
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
-                  \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
-                  \    {% endif %}\n}\n"
-              entity: select.go_echarger_270862_frc
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Don't Charge
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Don't charge
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_frc
-              type: button
-            - card:
-                card_mod: null
+            - cards:
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
+                    \ 'Neutral') %}\n      background: var(--primary-color);\n   \
+                    \ {% endif %}\n}\n"
                 entity: select.go_echarger_270862_frc
                 icon: mdi:credit-card-chip
                 icon_height: 42px
-                name: Charge
+                name: Neutral
                 show_icon: true
                 show_name: true
                 show_state: false
-                style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
-                  \ \"Charge\") %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
                 tap_action:
                   action: call-service
                   data:
-                    option: Charge
+                    option: Neutral
+                  service: select.select_option
+                  target:
+                    entity_id:
+                    - select.go_echarger_270862_frc
+                type: button
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
+                    \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
+                    \    {% endif %}\n}\n"
+                entity: select.go_echarger_270862_frc
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Don't Charge
+                show_icon: true
+                show_name: true
+                show_state: false
+                tap_action:
+                  action: call-service
+                  data:
+                    option: Don't charge
                   service: select.select_option
                   target:
                     entity_id: select.go_echarger_270862_frc
                 type: button
-              conditions:
-              - condition: user
-                users:
-                - 4f7767cac0c342edb25e991662a2f56c
-              type: conditional
-            type: horizontal-stack
-          type: vertical-stack
-        conditions:
-        - condition: state
-          entity: input_select.go_e_select_card
-          state: 11kW
-        type: conditional
-      - card:
-          cards:
-          - card_mod:
-              style: "ha-card {\n  --ha-card-background: var(--card-background-color);\n\
-                \  color: var(--primary-color); \n}\n"
-            color_stops:
-              '0': '#43A047'
-              '300': '#DB4437'
-            entities:
-            - decimals: 0
-              entity: sensor.go_echarger_252682_nrg_12
-              name: Go-e 22kw
-              unit: W
-            - decimals: 0
-              entity: sensor.go_echarger_252682_nrg_8
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_252682_nrg_5
-              unit: A
-            - decimals: 0
-              entity: sensor.go_echarger_252682_nrg_9
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_252682_nrg_6
-              unit: A
-            - decimals: 0
-              entity: sensor.go_echarger_252682_nrg_10
-              unit: W
-            - decimals: 1
-              entity: sensor.go_echarger_252682_nrg_7
-              unit: A
-            - entity: sensor.go_echarger_252682_frc
-            - entity: sensor.go_echarger_252682_modelstatus
-            - decimals: 0
-              entity: sensor.goe_22kw_amps
-              name: Amps
-              unit: A
-            - decimals: 1
-              entity: sensor.sum_charged_to_zoe
-              name: Zoe
-              unit: kWh
-            - decimals: 2
-              entity: sensor.daily_energy_goe_22kw
-              name: Today
-              unit: kWh
-            horseshoe_scale:
-              color: '#6F6F6F'
-              max: 22000
-              min: 0
-              width: 6
-            layout:
-              hlines:
-              - id: 0
-                length: 70
-                styles:
-                - stroke: rgb(59, 60, 62);
-                xpos: 50
-                ypos: 40
-              - id: 1
-                length: 70
-                styles:
-                - stroke: rgb(59, 60, 62);
-                xpos: 50
-                ypos: 60
-              icons:
-              - align: start
-                entity_index: 1
-                id: 0
-                size: 1
-                xpos: 30
-                ypos: 52
-              names:
-              - entity_index: 0
-                id: 0
-                styles:
-                - font-size: 1.2em;
-                xpos: 50
-                ypos: 95
-              - entity_index: 9
-                id: 1
-                styles:
-                - font-size: 0.5em;
-                xpos: 50
-                ypos: 80
-              - entity_index: 10
-                id: 2
-                styles:
-                - font-size: 0.5em;
-                - text-anchor: end;
-                xpos: 100
-                ypos: 9
-              - entity_index: 11
-                id: 3
-                styles:
-                - font-size: 0.5em;
-                - text-anchor: start;
-                xpos: 0
-                ypos: 9
-              states:
-              - entity_index: 0
-                id: 0
-                styles:
-                - font-size: 3em;
-                - opacity: 0.9;
-                xpos: 50
-                ypos: 34
-              - entity_index: 1
-                id: 1
-                styles:
-                - font-size: 1.2em;
-                - text-anchor: end;
-                xpos: 34
-                ypos: 49
-              - entity_index: 2
-                id: 2
-                styles:
-                - font-size: .9em;
-                - text-anchor: end;
-                xpos: 34
-                ypos: 56
-              - entity_index: 3
-                id: 3
-                styles:
-                - font-size: 1.2em;
-                xpos: 51
-                ypos: 49
-              - entity_index: 4
-                id: 4
-                styles:
-                - font-size: .9em;
-                xpos: 51
-                ypos: 56
-              - entity_index: 5
-                id: 5
-                styles:
-                - font-size: 1.2em;
-                - text-anchor: start;
-                xpos: 66
-                ypos: 49
-              - entity_index: 6
-                id: 6
-                styles:
-                - font-size: .9em;
-                - text-anchor: start;
-                xpos: 66
-                ypos: 56
-              - entity_index: 7
-                id: 7
-                styles:
-                - font-size: .6em;
-                xpos: 50
-                ypos: 13
-              - entity_index: 8
-                id: 8
-                styles:
-                - font-size: 0.3em;
-                xpos: 50
-                ypos: 16
-              - entity_index: 9
-                id: 9
-                styles:
-                - font-size: 2em;
-                xpos: 50
-                ypos: 75
-              - entity_index: 10
-                id: 10
-                styles:
-                - text-anchor: end;
-                - font-size: 1.1em;
-                xpos: 100
-                ypos: 5
-              - entity_index: 11
-                id: 11
-                styles:
-                - text-anchor: start;
-                - font-size: 1.1em;
-                xpos: 0
-                ypos: 5
-              vlines:
-              - id: 0
-                length: 18
-                styles:
-                - stroke: rgb(59, 60, 62);
-                - stroke-linecap: square;
-                xpos: 37
-                ypos: 50
-              - id: 1
-                length: 18
-                styles:
-                - stroke: rgb(59, 60, 62);
-                - stroke-linecap: square;
-                xpos: 63
-                ypos: 50
-            show:
-              horseshoe_style: autominmax
-            type: custom:flex-horseshoe-card
-            view_layout: null
-          - card:
-              align_header: center
-              align_state: center
-              animate: true
-              cache: true
-              decimals: 3
-              entities:
-              - entity: sensor.current_session_22kw
-                name: Current Session
-              font_size: 60
-              hour24: true
-              hours_to_show: 12
-              line_width: 3
-              points_per_hour: 20
-              show:
-                fill: false
-                icon: false
-                labels: false
-                points: hover
-              smoothing: true
-              type: custom:mini-graph-card
-            conditions:
-            - above: 0
-              condition: numeric_state
-              entity: sensor.current_session_22kw
-            type: conditional
-          - cards:
-            - display_mode: buttons
-              entity: number.go_echarger_252682_amp
-              fill_container: true
-              layout: vertical
-              type: custom:mushroom-number-card
-            type: vertical-stack
-          - cards:
-            - cards:
-              - card_mod:
-                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_psm','Force\
-                    \ single phase') %}\n      background: var(--primary-color);\n\
-                    \    {% endif %}\n}\n"
-                entity: select.go_echarger_252682_psm
-                icon: mdi:flash-triangle
-                icon_height: 42px
-                name: 1 Phase
-                show_icon: true
-                show_name: true
-                show_state: false
-                tap_action:
-                  action: call-service
-                  data:
-                    option: Force single phase
-                  service: select.select_option
-                  target:
-                    entity_id:
-                    - select.go_echarger_252682_psm
-                type: button
-              - card_mod:
-                  style: "ha-card {\n    {% if not is_state('select.go_echarger_252682_psm','Force\
-                    \ single phase') %}\n      background: var(--primary-color);\n\
-                    \    {% endif %}\n}\n"
-                entity: select.go_echarger_252682_psm
-                icon: mdi:flash-triangle-outline
-                icon_height: 42px
-                name: 3 Phase
-                show_icon: true
-                show_name: true
-                show_state: false
-                tap_action:
-                  action: call-service
-                  data:
-                    option: Force three phases
-                  service: select.select_option
-                  target:
-                    entity_id:
-                    - select.go_echarger_252682_psm
-                type: button
+              - card:
+                  card_mod: null
+                  entity: select.go_echarger_270862_frc
+                  icon: mdi:credit-card-chip
+                  icon_height: 42px
+                  name: Charge
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_270862_frc',\
+                    \ \"Charge\") %}\n      background: var(--primary-color);\n  \
+                    \  {% endif %}\n}\n"
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Charge
+                    service: select.select_option
+                    target:
+                      entity_id: select.go_echarger_270862_frc
+                  type: button
+                conditions:
+                - condition: user
+                  users:
+                  - 4f7767cac0c342edb25e991662a2f56c
+                type: conditional
               type: horizontal-stack
             type: vertical-stack
-          - cards:
+          conditions:
+          - condition: state
+            entity: input_select.go_e_select_card
+            state: 11kW
+          type: conditional
+        - card:
+            cards:
             - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
-                  \ 'Card 1') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_252682_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select Zoe
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Card 1
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_252682_trx
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
-                  \ 'Card 0') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n- show_name: true\n"
-              entity: select.go_echarger_252682_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select ID.4
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Card 0
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_252682_trx
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
-                  \ 'Card 2') %}\n      background: var(--primary-color);\n    {%\
-                  \ endif %}\n}\n"
-              entity: select.go_echarger_252682_trx
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Select MG4
-              show_icon: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Card 2
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_252682_trx
-              type: button
-            type: horizontal-stack
-          - cards:
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
-                  \ \"Neutral\") %}\n      background: var(--primary-color);\n   \
-                  \ {% endif %}\n}\n"
-              entity: select.go_echarger_252682_frc
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Neutral
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Neutral
-                service: select.select_option
-                target:
-                  entity_id:
-                  - select.go_echarger_252682_frc
-              type: button
-            - card_mod:
-                style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
-                  \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
-                  \    {% endif %}\n}\n"
-              entity: select.go_echarger_252682_frc
-              icon: mdi:credit-card-chip
-              icon_height: 42px
-              name: Don't Charge
-              show_icon: true
-              show_name: true
-              show_state: false
-              tap_action:
-                action: call-service
-                data:
-                  option: Don't charge
-                service: select.select_option
-                target:
-                  entity_id: select.go_echarger_252682_frc
-              type: button
+                style: "ha-card {\n  --ha-card-background: var(--card-background-color);\n\
+                  \  color: var(--primary-color); \n}\n"
+              color_stops:
+                '0': '#43A047'
+                '300': '#DB4437'
+              entities:
+              - decimals: 0
+                entity: sensor.go_echarger_252682_nrg_12
+                name: Go-e 22kw
+                unit: W
+              - decimals: 0
+                entity: sensor.go_echarger_252682_nrg_8
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_252682_nrg_5
+                unit: A
+              - decimals: 0
+                entity: sensor.go_echarger_252682_nrg_9
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_252682_nrg_6
+                unit: A
+              - decimals: 0
+                entity: sensor.go_echarger_252682_nrg_10
+                unit: W
+              - decimals: 1
+                entity: sensor.go_echarger_252682_nrg_7
+                unit: A
+              - entity: sensor.go_echarger_252682_frc
+              - entity: sensor.go_echarger_252682_modelstatus
+              - decimals: 0
+                entity: sensor.goe_22kw_amps
+                name: Amps
+                unit: A
+              - decimals: 1
+                entity: sensor.sum_charged_to_zoe
+                name: Zoe
+                unit: kWh
+              - decimals: 2
+                entity: sensor.daily_energy_goe_22kw
+                name: Today
+                unit: kWh
+              horseshoe_scale:
+                color: '#6F6F6F'
+                max: 22000
+                min: 0
+                width: 6
+              layout:
+                hlines:
+                - id: 0
+                  length: 70
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  xpos: 50
+                  ypos: 40
+                - id: 1
+                  length: 70
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  xpos: 50
+                  ypos: 60
+                icons:
+                - align: start
+                  entity_index: 1
+                  id: 0
+                  size: 1
+                  xpos: 30
+                  ypos: 52
+                names:
+                - entity_index: 0
+                  id: 0
+                  styles:
+                  - font-size: 1.2em;
+                  xpos: 50
+                  ypos: 95
+                - entity_index: 9
+                  id: 1
+                  styles:
+                  - font-size: 0.5em;
+                  xpos: 50
+                  ypos: 80
+                - entity_index: 10
+                  id: 2
+                  styles:
+                  - font-size: 0.5em;
+                  - text-anchor: end;
+                  xpos: 100
+                  ypos: 9
+                - entity_index: 11
+                  id: 3
+                  styles:
+                  - font-size: 0.5em;
+                  - text-anchor: start;
+                  xpos: 0
+                  ypos: 9
+                states:
+                - entity_index: 0
+                  id: 0
+                  styles:
+                  - font-size: 3em;
+                  - opacity: 0.9;
+                  xpos: 50
+                  ypos: 34
+                - entity_index: 1
+                  id: 1
+                  styles:
+                  - font-size: 1.2em;
+                  - text-anchor: end;
+                  xpos: 34
+                  ypos: 49
+                - entity_index: 2
+                  id: 2
+                  styles:
+                  - font-size: .9em;
+                  - text-anchor: end;
+                  xpos: 34
+                  ypos: 56
+                - entity_index: 3
+                  id: 3
+                  styles:
+                  - font-size: 1.2em;
+                  xpos: 51
+                  ypos: 49
+                - entity_index: 4
+                  id: 4
+                  styles:
+                  - font-size: .9em;
+                  xpos: 51
+                  ypos: 56
+                - entity_index: 5
+                  id: 5
+                  styles:
+                  - font-size: 1.2em;
+                  - text-anchor: start;
+                  xpos: 66
+                  ypos: 49
+                - entity_index: 6
+                  id: 6
+                  styles:
+                  - font-size: .9em;
+                  - text-anchor: start;
+                  xpos: 66
+                  ypos: 56
+                - entity_index: 7
+                  id: 7
+                  styles:
+                  - font-size: .6em;
+                  xpos: 50
+                  ypos: 13
+                - entity_index: 8
+                  id: 8
+                  styles:
+                  - font-size: 0.3em;
+                  xpos: 50
+                  ypos: 16
+                - entity_index: 9
+                  id: 9
+                  styles:
+                  - font-size: 2em;
+                  xpos: 50
+                  ypos: 75
+                - entity_index: 10
+                  id: 10
+                  styles:
+                  - text-anchor: end;
+                  - font-size: 1.1em;
+                  xpos: 100
+                  ypos: 5
+                - entity_index: 11
+                  id: 11
+                  styles:
+                  - text-anchor: start;
+                  - font-size: 1.1em;
+                  xpos: 0
+                  ypos: 5
+                vlines:
+                - id: 0
+                  length: 18
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  - stroke-linecap: square;
+                  xpos: 37
+                  ypos: 50
+                - id: 1
+                  length: 18
+                  styles:
+                  - stroke: rgb(59, 60, 62);
+                  - stroke-linecap: square;
+                  xpos: 63
+                  ypos: 50
+              show:
+                horseshoe_style: autominmax
+              type: custom:flex-horseshoe-card
+              view_layout: null
             - card:
-                card_mod:
-                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
-                    \ 'Charge') %}\n      background: var(--primary-color);\n    {%\
+                align_header: center
+                align_state: center
+                animate: true
+                cache: true
+                decimals: 3
+                entities:
+                - entity: sensor.current_session_22kw
+                  name: Current Session
+                font_size: 60
+                hour24: true
+                hours_to_show: 12
+                line_width: 3
+                points_per_hour: 20
+                show:
+                  fill: false
+                  icon: false
+                  labels: false
+                  points: hover
+                smoothing: true
+                type: custom:mini-graph-card
+              conditions:
+              - above: 0
+                condition: numeric_state
+                entity: sensor.current_session_22kw
+              type: conditional
+            - cards:
+              - display_mode: buttons
+                entity: number.go_echarger_252682_amp
+                fill_container: true
+                layout: vertical
+                type: custom:mushroom-number-card
+              type: vertical-stack
+            - cards:
+              - cards:
+                - card_mod:
+                    style: "ha-card {\n    {% if is_state('select.go_echarger_252682_psm','Force\
+                      \ single phase') %}\n      background: var(--primary-color);\n\
+                      \    {% endif %}\n}\n"
+                  entity: select.go_echarger_252682_psm
+                  icon: mdi:flash-triangle
+                  icon_height: 42px
+                  name: 1 Phase
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Force single phase
+                    service: select.select_option
+                    target:
+                      entity_id:
+                      - select.go_echarger_252682_psm
+                  type: button
+                - card_mod:
+                    style: "ha-card {\n    {% if not is_state('select.go_echarger_252682_psm','Force\
+                      \ single phase') %}\n      background: var(--primary-color);\n\
+                      \    {% endif %}\n}\n"
+                  entity: select.go_echarger_252682_psm
+                  icon: mdi:flash-triangle-outline
+                  icon_height: 42px
+                  name: 3 Phase
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Force three phases
+                    service: select.select_option
+                    target:
+                      entity_id:
+                      - select.go_echarger_252682_psm
+                  type: button
+                type: horizontal-stack
+              type: vertical-stack
+            - cards:
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
+                    \ 'Card 1') %}\n      background: var(--primary-color);\n    {%\
                     \ endif %}\n}\n"
+                entity: select.go_echarger_252682_trx
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Select Zoe
+                show_icon: true
+                show_name: true
+                show_state: false
+                tap_action:
+                  action: call-service
+                  data:
+                    option: Card 1
+                  service: select.select_option
+                  target:
+                    entity_id: select.go_echarger_252682_trx
+                type: button
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
+                    \ 'Card 0') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n}\n- show_name: true\n"
+                entity: select.go_echarger_252682_trx
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Select ID.4
+                show_icon: true
+                show_name: true
+                show_state: false
+                tap_action:
+                  action: call-service
+                  data:
+                    option: Card 0
+                  service: select.select_option
+                  target:
+                    entity_id: select.go_echarger_252682_trx
+                type: button
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_trx',\
+                    \ 'Card 2') %}\n      background: var(--primary-color);\n    {%\
+                    \ endif %}\n}\n"
+                entity: select.go_echarger_252682_trx
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Select MG4
+                show_icon: true
+                show_state: false
+                tap_action:
+                  action: call-service
+                  data:
+                    option: Card 2
+                  service: select.select_option
+                  target:
+                    entity_id: select.go_echarger_252682_trx
+                type: button
+              type: horizontal-stack
+            - cards:
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                    \ \"Neutral\") %}\n      background: var(--primary-color);\n \
+                    \   {% endif %}\n}\n"
                 entity: select.go_echarger_252682_frc
                 icon: mdi:credit-card-chip
                 icon_height: 42px
-                name: Charge
+                name: Neutral
                 show_icon: true
                 show_name: true
                 show_state: false
                 tap_action:
                   action: call-service
                   data:
-                    option: Charge
+                    option: Neutral
+                  service: select.select_option
+                  target:
+                    entity_id:
+                    - select.go_echarger_252682_frc
+                type: button
+              - card_mod:
+                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                    \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
+                    \    {% endif %}\n}\n"
+                entity: select.go_echarger_252682_frc
+                icon: mdi:credit-card-chip
+                icon_height: 42px
+                name: Don't Charge
+                show_icon: true
+                show_name: true
+                show_state: false
+                tap_action:
+                  action: call-service
+                  data:
+                    option: Don't charge
                   service: select.select_option
                   target:
                     entity_id: select.go_echarger_252682_frc
                 type: button
-              conditions:
-              - condition: user
-                users:
-                - e7fe7b076dbb49a3aaa82b75c63cc302
-                - 4f7767cac0c342edb25e991662a2f56c
-              type: conditional
+              - card:
+                  card_mod:
+                    style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                      \ 'Charge') %}\n      background: var(--primary-color);\n  \
+                      \  {% endif %}\n}\n"
+                  entity: select.go_echarger_252682_frc
+                  icon: mdi:credit-card-chip
+                  icon_height: 42px
+                  name: Charge
+                  show_icon: true
+                  show_name: true
+                  show_state: false
+                  tap_action:
+                    action: call-service
+                    data:
+                      option: Charge
+                    service: select.select_option
+                    target:
+                      entity_id: select.go_echarger_252682_frc
+                  type: button
+                conditions:
+                - condition: user
+                  users:
+                  - e7fe7b076dbb49a3aaa82b75c63cc302
+                  - 4f7767cac0c342edb25e991662a2f56c
+                type: conditional
+              type: horizontal-stack
+            type: vertical-stack
+          conditions:
+          - condition: state
+            entity: input_select.go_e_select_card
+            state: 22kW
+          type: conditional
+        type: vertical-stack
+      type: grid
+    - cards:
+      - card:
+          cards:
+          - badges:
+            - color: state
+              entity: sensor.solar_power_total
+              icon: mdi:solar-power
+              show_icon: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.grid_power
+              icon: mdi:transmission-tower
+              show_icon: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            heading: Surplus
+            heading_style: title
+            icon: mdi:solar-power
+            type: heading
+          - cards:
+            - entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
+              features_position: bottom
+              hide_state: true
+              icon: mdi:ev-station
+              icon_tap_action:
+                action: more-info
+              name: 11kW Surplus
+              tap_action:
+                action: toggle
+              type: tile
+              vertical: false
+            - entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+              hide_state: true
+              icon: mdi:ev-station
+              icon_tap_action:
+                action: more-info
+              name: 22kW Surplus
+              tap_action:
+                action: toggle
+              type: tile
+              vertical: false
+            type: horizontal-stack
+          - cards:
+            - entity: sensor.esp32_c3_mini_goe11_controll_log_11kw
+              icon_tap_action:
+                action: more-info
+              name: ' '
+              type: tile
+            - entity: sensor.esp32_c3_mini_goe22_controll_log_22kw
+              icon_tap_action:
+                action: more-info
+              name: ' '
+              type: tile
             type: horizontal-stack
           type: vertical-stack
         conditions:
-        - condition: state
-          entity: input_select.go_e_select_card
-          state: 22kW
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+          - 690f4c6bedc44a9daad30c216f237d1d
+        - condition: or
+          conditions:
+          - condition: state
+            entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
+            state_not: unavailable
+          - condition: state
+            entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+            state_not: unavailable
         type: conditional
-      type: vertical-stack
-    - card:
-        cards:
+      - cards:
+        - heading: Neustart
+          heading_style: title
+          icon: mdi:fridge
+          type: heading
         - cards:
-          - entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-            hide_state: true
-            icon: mdi:ev-station
-            icon_tap_action:
-              action: more-info
-            name: 11kW Surplus
+          - entity: button.go_echarger_270862_rst
+            name: Go-eCharger 11kW Restart
+            show_icon: true
+            show_name: true
+            show_state: true
             tap_action:
               action: toggle
-            type: tile
-          - entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-            hide_state: true
-            icon: mdi:ev-station
-            icon_tap_action:
-              action: more-info
-            name: 22kW Surplus
+            type: button
+          - entity: button.go_echarger_252682_rst
+            name: Go-eCharger 22kW Restart
+            show_icon: true
+            show_name: true
+            show_state: true
             tap_action:
               action: toggle
-            type: tile
-            vertical: false
+            type: button
           type: horizontal-stack
-        - cards:
-          - entity: sensor.esp32_c3_mini_goe11_controll_log_11kw
-            icon_tap_action:
-              action: more-info
-            name: ' '
-            type: tile
-          - entity: sensor.esp32_c3_mini_goe22_controll_log_22kw
-            icon_tap_action:
-              action: more-info
-            name: ' '
-            type: tile
-          type: horizontal-stack
-        title: Suplus Charger
         type: vertical-stack
-      conditions:
-      - condition: user
-        users:
-        - 4f7767cac0c342edb25e991662a2f56c
-        - 690f4c6bedc44a9daad30c216f237d1d
-      - condition: or
-        conditions:
-        - condition: state
-          entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-          state_not: unavailable
-        - condition: state
-          entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-          state_not: unavailable
-      type: conditional
-    - cards:
-      - entity: button.go_echarger_270862_rst
-        name: Go-eCharger 11kW Restart
-        show_icon: true
-        show_name: true
-        show_state: true
-        tap_action:
-          action: toggle
-        type: button
-      - entity: button.go_echarger_252682_rst
-        name: Go-eCharger 22kW Restart
-        show_icon: true
-        show_name: true
-        show_state: true
-        tap_action:
-          action: toggle
-        type: button
-      type: horizontal-stack
-    - card_mod:
-        style: "span.tooltiptext-right {\n  display: none;\n}\n"
-      chargerImage: Generic
-      compact_view: false
-      customCardTheme: theme_default
-      customImage: /local/go-e-charger-gemini-22-kw_frontansicht.png
-      details:
-        collapsiblebuttons:
-          group1:
-            icon: mdi:speedometer
-            text: Controls
-          group2:
-            icon: mdi:information
-            text: Stats
-          group3:
-            icon: mdi:cog
-            text: Limits
-        currentlimits1:
-        - 0
-        - 6
-        - 10
-        - 16
-        - 20
-        - 25
-        - 32
-        group1:
-        - dropdownitems:
-          - Default
-          - Eco mode
-          - Automatic Stop
-          entity_id: select.go_echarger_252682_lmo
-          icon: mdi:format-list-checkbox
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_252682_lmo
-            option: '#SERVICEVAL#'
-          text: Logic mode
-          type: dropdown
-        - dropdownitems:
-          - Neutral
-          - Don't charge
-          - Charge
-          entity_id: select.go_echarger_252682_frc
-          icon: mdi:auto-fix
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_252682_frc
-            option: '#SERVICEVAL#'
-          text: Force state
-          type: dropdown
-        - dropdownitems:
-          - Normal
-          - Auto Unlock
-          - Always Locked
-          entity_id: select.go_echarger_252682_ust
-          icon: mdi:account-lock-open
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_252682_ust
-            option: '#SERVICEVAL#'
-          text: Cable unlock mode
-          type: dropdown
-        - dropdownitems:
-          - Auto
-          - Force single phase
-          - Force three phases
-          entity_id: select.go_echarger_252682_psm
-          icon: mdi:speedometer
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_252682_psm
-            option: '#SERVICEVAL#'
-          text: Phase switch mode
-          type: dropdown
-        group2:
-        - entity_id: sensor.go_echarger_252682_nrg_5
-          text: Amps L1
-          unit_show: true
-        - entity_id: sensor.go_echarger_252682_nrg_6
-          text: Amps L2
-          unit_show: true
-        - entity_id: sensor.go_echarger_252682_nrg_7
-          text: Amps L3
-          unit_show: true
-        - entity_id: sensor.go_echarger_252682_wh
-          text: Charged Energy
-          unit_show: true
-        - entity_id: sensor.go_echarger_252682_eto
-          text: Total Energy
-          unit_show: true
-        - entity_id: number.go_echarger_252682_amp
-          text: Total Amps
-          unit_show: true
-        group3:
-        - entity_id: number.go_echarger_252682_ama
-          icon: mdi:current-ac
-          service: set.go_echarger_252682_ama
-          text: Maximum current limit
-          unit_show: true
-        - entity_id: number.go_echarger_252682_amp
-          icon: mdi:current-ac
-          service: set.go_echarger_252682_amp
-          text: Requested current
-          unit_show: true
-        info_left:
-        - entity_id: sensor.go_echarger_252682_rssi
-          icon: mdi:wifi
-          text: online
-        - entity_id: sensor.grid_power
-          icon: mdi:transmission-tower
-          text: Grid Power
-        - entity_id: number.go_echarger_252682_amp
-          icon: mdi:current-ac
-          text: Allowed Current
-          unit_show: true
-        - entity_id: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-          icon: mdi:solar-power-variant
-          text: Surplus Charging
-        - entity_id: sensor.esp32_c3_mini_goe22_controll_calculated_amperage_rounded_22kw
-          icon: mdi:current-ac
-          text: Theoretical Current
-        info_right:
-        - entity_id: sensor.go_echarger_252682_nrg
-          text: Voltage
-          unit_show: true
-        - entity_id: sensor.go_echarger_252682_nrg_12
-          text: Power
-          unit_show: true
-        - entity_id: binary_sensor.go_echarger_252682_car
-          statetext:
-            'off': Idle
-            'on': Charging
-          unit_show: false
-        location: Garage
-        name: Go-e 22kW
-        statetext:
-          awaiting_start: awaiting_start
-          charging: charging
-          completed: completed
-          disconnected: disconnected
-          error: error
-          ready_to_charge: ready_to_charge
-        stats:
-          default:
-          - entity_id: sensor.current_session_22kw
-            text: Current Session
-            unit_show: true
-          - entity_id: select.go_echarger_252682_frc
-            icon: mdi:auto-fix
-            text: State
-          - entity_id: sensor.daily_energy_goe_22kw
-            text: Today Charged
-            unit_show: true
-        status:
-          entity_id: sensor.go_echarger_252682_car
-        substatus:
-          entity_id: sensor.go_echarger_252682_modelstatus
-      entity: sensor.go_echarger_252682_modelstatus
-      show_collapsibles: true
-      show_leds: false
-      show_name: true
-      show_stats: true
-      show_status: true
-      show_toolbar: false
-      type: custom:charger-card
-      visibility:
-      - condition: user
-        users: []
-    - card_mod:
-        style: "span.tooltiptext-right {\n  display: none;\n}\n"
-      compact_view: false
-      customCardTheme: theme_default
-      customImage: /local/go-e-charger-gemini-22-kw_frontansicht.png
-      details:
-        collapsiblebuttons:
-          group1:
-            icon: mdi:speedometer
-            text: Controls
-          group2:
-            icon: mdi:information
-            text: Stats
-          group3:
-            icon: mdi:cog
-            text: Limits
-        currentlimits1:
-        - 0
-        - 6
-        - 10
-        - 16
-        - 20
-        - 25
-        - 32
-        group1:
-        - dropdownitems:
-          - Default
-          - Eco mode
-          - Automatic Stop
-          entity_id: select.go_echarger_270862_lmo
-          icon: mdi:format-list-checkbox
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_270862_lmo
-            option: '#SERVICEVAL#'
-          text: Logic mode
-          type: dropdown
-        - dropdownitems:
-          - Neutral
-          - Don't charge
-          - Charge
-          entity_id: select.go_echarger_270862_frc
-          icon: mdi:auto-fix
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_270862_frc
-            option: '#SERVICEVAL#'
-          text: Force state
-          type: dropdown
-        - dropdownitems:
-          - Normal
-          - Auto Unlock
-          - Always Locked
-          entity_id: select.go_echarger_270862_ust
-          icon: mdi:account-lock-open
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_270862_ust
-            option: '#SERVICEVAL#'
-          text: Cable unlock mode
-          type: dropdown
-        - dropdownitems:
-          - Auto
-          - Force single phase
-          - Force three phases
-          entity_id: select.go_echarger_270862_psm
-          icon: mdi:speedometer
-          service: select.select_option
-          service_data:
-            entity_id: select.go_echarger_270862_psm
-            option: '#SERVICEVAL#'
-          text: Phase switch mode
-          type: dropdown
-        group2:
-        - entity_id: sensor.go_echarger_270862_nrg_5
-          text: Amps L1
-          unit_show: true
-        - entity_id: sensor.go_echarger_270862_nrg_6
-          text: Amps L2
-          unit_show: true
-        - entity_id: sensor.go_echarger_270862_nrg_7
-          text: Amps L3
-          unit_show: true
-        - entity_id: sensor.go_echarger_270862_wh
-          text: Charged Energy
-          unit_show: true
-        - entity_id: sensor.go_echarger_270862_eto
-          text: Total Energy
-          unit_show: true
-        - entity_id: number.go_echarger_270862_amp
-          text: Total Amps
-          unit_show: true
-        group3:
-        - entity_id: number.go_echarger_270862_ama
-          icon: mdi:current-ac
-          service: set.go_echarger_270862_ama
-          text: Maximum current limit
-          unit_show: true
-        - entity_id: number.go_echarger_270862_amp
-          icon: mdi:current-ac
-          service: set.go_echarger_270862_amp
-          text: Requested current
-          unit_show: true
-        info_left:
-        - entity_id: sensor.go_echarger_270862_rssi
-          icon: mdi:wifi
-          text: online
-        - entity_id: sensor.grid_power
-          icon: mdi:transmission-tower
-          text: Grid Power
-        - entity_id: number.go_echarger_270862_amp
-          icon: mdi:current-ac
-          text: Allowed Current
-          unit_show: true
-        - entity_id: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-          icon: mdi:solar-power-variant
-          text: Surplus Charging
-        - entity_id: sensor.esp32_c3_mini_goe11_controll_calculated_amperage_rounded_11kw
-          icon: mdi:current-ac
-          text: Theoretical Current
-        info_right:
-        - entity_id: sensor.go_echarger_270862_nrg
-          text: Voltage
-          unit_show: true
-        - entity_id: sensor.go_echarger_270862_nrg_12
-          text: Power
-          unit_show: true
-        - entity_id: binary_sensor.go_echarger_270862_car
-          statetext:
-            'off': Idle
-            'on': Charging
-          unit_show: false
-        location: Stellplatz
-        name: Go-e 11kW
-        statetext:
-          awaiting_start: awaiting_start
-          charging: charging
-          completed: completed
-          disconnected: disconnected
-          error: error
-          ready_to_charge: ready_to_charge
-        stats:
-          default:
-          - entity_id: sensor.goe_current_session_11kw
-            text: Current Session
-            unit_show: true
-          - entity_id: select.go_echarger_270862_frc
-            icon: mdi:auto-fix
-            text: State
-          - entity_id: sensor.daily_energy_goe_11kw
-            text: Today Charged
-            unit_show: true
-        status:
-          entity_id: sensor.go_echarger_270862_car
-        substatus:
-          entity_id: sensor.go_echarger_270862_modelstatus
-      entity: sensor.go_echarger_270862_modelstatus
-      show_collapsibles: true
-      show_leds: false
-      show_name: true
-      show_stats: true
-      show_status: true
-      show_toolbar: false
-      type: custom:charger-card
-      visibility:
-      - condition: user
-        users: []
-    icon: mdi:ev-plug-type2
-    path: goe
+      type: grid
     subview: false
     title: Goe
+    type: sections
     visible:
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: 690f4c6bedc44a9daad30c216f237d1d
@@ -6563,6 +6245,7 @@ config:
         - entity: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
           name: Was in Bed
         - entity: number.esp32_s3_zero_lichtschranke_person_counter
+          name: Person Counter
         type: entities
       type: vertical-stack
     - cards:
@@ -6717,6 +6400,8 @@ config:
     title: Duncan
   - cards: []
     icon: mdi:snake
+    max_columns: 4
+    path: terrarium
     sections:
     - cards:
       - heading: Kontrolle
@@ -7770,445 +7455,91 @@ config:
     title: Internet
     type: sections
   - badges: []
-    cards:
+    cards: []
+    icon: mdi:robot-vacuum
+    max_columns: 4
+    path: dreame
+    sections:
     - cards:
-      - additional_presets: []
-        calibration_source:
-          camera: true
-        entity: vacuum.dreamebot_d10_plus
-        icons:
-        - conditions:
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: cleaning
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: error
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: returning
-          icon: mdi:play
-          tap_action:
-            action: call-service
-            service: vacuum.start
-            service_data:
-              entity_id: vacuum.dreamebot_d10_plus
-          tooltip: Start
-        - conditions:
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: docked
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: idle
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: error
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: paused
-          icon: mdi:pause
-          tap_action:
-            action: call-service
-            service: vacuum.pause
-            service_data:
-              entity_id: vacuum.dreamebot_d10_plus
-          tooltip: Pause
-        - conditions:
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: docked
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: idle
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: error
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: paused
-          icon: mdi:stop
-          tap_action:
-            action: call-service
-            service: vacuum.stop
-            service_data:
-              entity_id: vacuum.dreamebot_d10_plus
-          tooltip: Stop
-        - conditions:
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: docked
-          - entity: vacuum.dreamebot_d10_plus
-            value_not: returning
-          icon: mdi:home-map-marker
-          tap_action:
-            action: call-service
-            service: vacuum.return_to_base
-            service_data:
-              entity_id: vacuum.dreamebot_d10_plus
-          tooltip: Return to base
-        - icon: mdi:map-marker
-          tap_action:
-            action: call-service
-            service: vacuum.locate
-            service_data:
-              entity_id: vacuum.dreamebot_d10_plus
-          tooltip: Locate
-        map_locked: false
-        map_modes:
-        - coordinates_rounding: true
-          coordinates_to_meters_divider: 1000
-          icon: mdi:select-drag
-          max_repeats: 3
-          max_selections: 20
-          name: Zone cleanup
-          predefined_selections: []
-          repeats_type: EXTERNAL
-          run_immediately: false
-          selection_type: MANUAL_RECTANGLE
-          service_call_schema:
-            service: dreame_vacuum.vacuum_clean_zone
-            service_data:
-              entity_id: '[[entity_id]]'
-              repeats: '[[repeats]]'
-              zone: '[[selection]]'
-          variables: {}
-        - coordinates_rounding: true
-          coordinates_to_meters_divider: 1000
-          icon: mdi:map-marker-plus
-          max_repeats: 3
-          max_selections: 999
-          name: Clean point
-          predefined_selections: []
-          repeats_type: EXTERNAL
-          run_immediately: false
-          selection_type: MANUAL_POINT
-          service_call_schema:
-            service: dreame_vacuum.vacuum_clean_spot
-            service_data:
-              entity_id: '[[entity_id]]'
-              points: '[[selection]]'
-              repeats: '[[repeats]]'
-          variables: {}
-        - coordinates_rounding: true
-          coordinates_to_meters_divider: 1000
-          icon: mdi:floor-plan
-          max_repeats: 3
-          max_selections: 60
-          name: Rooms
-          predefined_selections:
-          - icon:
-              name: mdi:home-outline
-              x: -800
-              y: -1200
-            id: '1'
-            label:
-              offset_y: 35
-              text: Eltern
-              x: -800
-              y: -1200
-            outline:
-            - - -2550
-              - -3600
-            - - 1250
-              - -3600
-            - - 1250
-              - 1100
-            - - -2550
-              - 1100
-          - icon:
-              name: mdi:home-outline
-              x: -4400
-              y: -1400
-            id: '2'
-            label:
-              offset_y: 35
-              text: Enya
-              x: -4400
-              y: -1400
-            outline:
-            - - -6200
-              - -4550
-            - - -2150
-              - -4550
-            - - -2150
-              - 800
-            - - -6200
-              - 800
-          - icon:
-              name: mdi:home-outline
-              x: 2600
-              y: -2950
-            id: '3'
-            label:
-              offset_y: 35
-              text: "B\xFCro"
-              x: 2600
-              y: -2950
-            outline:
-            - - 1050
-              - -5000
-            - - 4100
-              - -5000
-            - - 4100
-              - -700
-            - - 1050
-              - -700
-          - icon:
-              name: mdi:home-outline
-              x: -4100
-              y: -7300
-            id: '4'
-            label:
-              offset_y: 35
-              text: Duncan
-              x: -4100
-              y: -7300
-            outline:
-            - - -6250
-              - -9350
-            - - -1900
-              - -9350
-            - - -1900
-              - -4650
-            - - -6250
-              - -4650
-          - icon:
-              name: mdi:home-outline
-              x: 1000
-              y: -4300
-            id: '5'
-            label:
-              offset_y: 35
-              text: Room 5
-              x: 1000
-              y: -4300
-            outline:
-            - - 200
-              - -5750
-            - - 1950
-              - -5750
-            - - 1950
-              - -3500
-            - - 200
-              - -3500
-          - icon:
-              name: mdi:home-outline
-              x: -700
-              y: -7400
-            id: '6'
-            label:
-              offset_y: 35
-              text: Kinderbad
-              x: -700
-              y: -7400
-            outline:
-            - - -2050
-              - -9050
-            - - 350
-              - -9050
-            - - 350
-              - -5650
-            - - -2050
-              - -5650
-          - icon:
-              name: mdi:home-outline
-              x: 2950
-              y: -6700
-            id: '7'
-            label:
-              offset_y: 35
-              text: Bad
-              x: 2950
-              y: -6700
-            outline:
-            - - 1450
-              - -8450
-            - - 4050
-              - -8450
-            - - 4050
-              - -5000
-            - - 1450
-              - -5000
-          - icon:
-              name: mdi:home-outline
-              x: -1150
-              y: -4650
-            id: '9'
-            label:
-              offset_y: 35
-              text: Gang
-              x: -1150
-              y: -4650
-            outline:
-            - - -2700
-              - -5800
-            - - 650
-              - -5800
-            - - 650
-              - -3550
-            - - -2700
-              - -3550
-          repeats_type: EXTERNAL
-          run_immediately: false
-          selection_type: ROOM
-          service_call_schema:
-            service: dreame_vacuum.vacuum_clean_segment
-            service_data:
-              entity_id: '[[entity_id]]'
-              repeats: '[[repeats]]'
-              segments: '[[selection]]'
-          variables: {}
-        map_source:
-          camera: camera.dreamebot_d10_plus_map
-        tiles:
-        - attribute: status
+      - badges:
+        - color: state
           entity: vacuum.dreamebot_d10_plus
-          icon: mdi:robot-vacuum
-          label: Status
-          tile_id: status
-          translations:
-            charger disconnected: Charger disconnected
-            charging: Charging
-            charging complete: Charging complete
-            charging problem: Charging problem
-            cleaning: Cleaning
-            device offline: Device offline
-            docking: Docking
-            emptying the bin: Emptying the bin
-            error: Error
-            going to target: Going to target
-            idle: Idle
-            manual mode: Manual mode
-            paused: Paused
-            remote control active: Remote control active
-            returning home: Returning home
-            segment cleaning: Segment cleaning
-            shutting down: Shutting down
-            spot cleaning: Spot cleaning
-            starting: Starting
-            updating: Updating
-            zoned cleaning: Zoned cleaning
-        - attribute: battery_level
-          entity: vacuum.dreamebot_d10_plus
-          icon_source: vacuum.dreamebot_d10_plus.attributes.battery_icon
-          label: Battery
-          tile_id: battery_level
-          unit: '%'
-        - attribute: suction_level
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:fan
-          label: Fan speed
-          tile_id: fan_speed
-          translations:
-            auto: Auto
-            gentle: Gentle
-            medium: Medium
-            silent: Silent
-            standard: Standard
-            turbo: Turbo
-        - attribute: water_volume
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:water
-          label: Water volume
-          precision: 0
-          tile_id: water_volume
-          translations: {}
-        - attribute: cleaned_area
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:ruler-square
-          label: Cleaned area
-          precision: 0
-          tile_id: cleaned_area
-          translations: {}
-          unit: "m\xB2"
-        - attribute: cleaning_time
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:timer-sand
-          label: Cleaning time
-          precision: 0
-          tile_id: cleaning_time
-          translations: {}
-          unit: min
-        - attribute: cleaning_count
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:counter
-          label: Cleaning count
-          precision: 0
-          tile_id: cleaning_count
-          translations: {}
-          unit: x
-        - attribute: total_cleaned_area
-          entity: vacuum.dreamebot_d10_plus
-          icon: mdi:set-square
-          label: Total cleaned area
-          precision: 0
-          tile_id: total_cleaned_area
-          translations: {}
-          unit: "m\xB2"
-        two_finger_pan: true
-        type: custom:xiaomi-vacuum-map-card
-        vacuum_platform: Tasshack/dreame-vacuum
-      type: vertical-stack
-    - cards:
+          show_icon: true
+          show_state: true
+          type: entity
+        heading: OG
+        heading_style: title
+        type: heading
       - cards:
         - additional_presets: []
           calibration_source:
             camera: true
-          entity: vacuum.d9_max_gen_2
+          entity: vacuum.dreamebot_d10_plus
           icons:
           - conditions:
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: cleaning
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: error
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: returning
             icon: mdi:play
             tap_action:
               action: call-service
               service: vacuum.start
               service_data:
-                entity_id: vacuum.d9_max_gen_2
+                entity_id: vacuum.dreamebot_d10_plus
             tooltip: Start
           - conditions:
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: docked
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: idle
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: error
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: paused
             icon: mdi:pause
             tap_action:
               action: call-service
               service: vacuum.pause
               service_data:
-                entity_id: vacuum.d9_max_gen_2
+                entity_id: vacuum.dreamebot_d10_plus
             tooltip: Pause
           - conditions:
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: docked
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: idle
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: error
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: paused
             icon: mdi:stop
             tap_action:
               action: call-service
               service: vacuum.stop
               service_data:
-                entity_id: vacuum.d9_max_gen_2
+                entity_id: vacuum.dreamebot_d10_plus
             tooltip: Stop
           - conditions:
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: docked
-            - entity: vacuum.d9_max_gen_2
+            - entity: vacuum.dreamebot_d10_plus
               value_not: returning
             icon: mdi:home-map-marker
             tap_action:
               action: call-service
               service: vacuum.return_to_base
               service_data:
-                entity_id: vacuum.d9_max_gen_2
+                entity_id: vacuum.dreamebot_d10_plus
             tooltip: Return to base
           - icon: mdi:map-marker
             tap_action:
               action: call-service
               service: vacuum.locate
               service_data:
-                entity_id: vacuum.d9_max_gen_2
+                entity_id: vacuum.dreamebot_d10_plus
             tooltip: Locate
           map_locked: false
           map_modes:
@@ -8255,175 +7586,156 @@ config:
             predefined_selections:
             - icon:
                 name: mdi:home-outline
-                x: -6250
-                y: 2750
+                x: -800
+                y: -1200
               id: '1'
               label:
                 offset_y: 35
-                text: "K\xFCche"
-                x: -6250
-                y: 2750
+                text: Eltern
+                x: -800
+                y: -1200
               outline:
-              - - -6900
-                - 1750
-              - - -5600
-                - 1750
-              - - -5600
-                - 3700
-              - - -6900
-                - 3700
+              - - -2550
+                - -3600
+              - - 1250
+                - -3600
+              - - 1250
+                - 1100
+              - - -2550
+                - 1100
             - icon:
                 name: mdi:home-outline
-                x: -8550
-                y: -750
+                x: -4400
+                y: -1400
               id: '2'
               label:
                 offset_y: 35
-                text: Gang
-                x: -8550
-                y: -750
+                text: Enya
+                x: -4400
+                y: -1400
               outline:
-              - - -9900
-                - -2900
-              - - -4000
-                - -2900
-              - - -4000
-                - 1800
-              - - -9900
-                - 1800
+              - - -6200
+                - -4550
+              - - -2150
+                - -4550
+              - - -2150
+                - 800
+              - - -6200
+                - 800
             - icon:
                 name: mdi:home-outline
-                x: -6300
+                x: 2600
                 y: -2950
+              id: '3'
+              label:
+                offset_y: 35
+                text: "B\xFCro"
+                x: 2600
+                y: -2950
+              outline:
+              - - 1050
+                - -5000
+              - - 4100
+                - -5000
+              - - 4100
+                - -700
+              - - 1050
+                - -700
+            - icon:
+                name: mdi:home-outline
+                x: -4100
+                y: -7300
+              id: '4'
+              label:
+                offset_y: 35
+                text: Duncan
+                x: -4100
+                y: -7300
+              outline:
+              - - -6250
+                - -9350
+              - - -1900
+                - -9350
+              - - -1900
+                - -4650
+              - - -6250
+                - -4650
+            - icon:
+                name: mdi:home-outline
+                x: 1000
+                y: -4300
               id: '5'
               label:
                 offset_y: 35
-                text: "K\xE4mmerchen"
-                x: -6300
-                y: -2950
+                text: Room 5
+                x: 1000
+                y: -4300
               outline:
-              - - -7400
-                - -4000
-              - - -5750
-                - -4000
-              - - -5750
-                - -2000
-              - - -7400
-                - -2000
+              - - 200
+                - -5750
+              - - 1950
+                - -5750
+              - - 1950
+                - -3500
+              - - 200
+                - -3500
             - icon:
                 name: mdi:home-outline
-                x: -2150
-                y: -2050
+                x: -700
+                y: -7400
               id: '6'
               label:
                 offset_y: 35
-                text: Ankleidezimmer
-                x: -2150
-                y: -2050
+                text: Kinderbad
+                x: -700
+                y: -7400
               outline:
-              - - -5450
-                - -3500
-              - - -800
-                - -3500
-              - - -800
-                - -750
-              - - -5450
-                - -750
+              - - -2050
+                - -9050
+              - - 350
+                - -9050
+              - - 350
+                - -5650
+              - - -2050
+                - -5650
             - icon:
                 name: mdi:home-outline
-                x: -2150
-                y: -4300
+                x: 2950
+                y: -6700
               id: '7'
               label:
                 offset_y: 35
-                text: Room 7
-                x: -2150
-                y: -4300
+                text: Bad
+                x: 2950
+                y: -6700
               outline:
-              - - -5050
-                - -6050
-              - - -650
-                - -6050
-              - - -650
-                - -3400
-              - - -5050
-                - -3400
+              - - 1450
+                - -8450
+              - - 4050
+                - -8450
+              - - 4050
+                - -5000
+              - - 1450
+                - -5000
             - icon:
                 name: mdi:home-outline
-                x: -7750
-                y: -3450
+                x: -1150
+                y: -4650
               id: '9'
               label:
                 offset_y: 35
-                text: Klo
-                x: -7750
-                y: -3450
+                text: Gang
+                x: -1150
+                y: -4650
               outline:
-              - - -8500
-                - -4000
-              - - -6950
-                - -4000
-              - - -6950
-                - -2900
-              - - -8500
-                - -2900
-            - icon:
-                name: mdi:home-outline
-                x: -7000
-                y: 5100
-              id: '10'
-              label:
-                offset_y: 35
-                text: Esszimmer
-                x: -7000
-                y: 5100
-              outline:
-              - - -9550
-                - 950
-              - - -4150
-                - 950
-              - - -4150
-                - 6650
-              - - -9550
-                - 6650
-            - icon:
-                name: mdi:home-outline
-                x: 1150
-                y: 4900
-              id: '11'
-              label:
-                offset_y: 35
-                text: Wintergarten
-                x: 1150
-                y: 4900
-              outline:
-              - - 300
-                - 2450
-              - - 2550
-                - 2450
-              - - 2550
-                - 6450
-              - - 300
-                - 6450
-            - icon:
-                name: mdi:home-outline
-                x: -3350
-                y: 2850
-              id: '12'
-              label:
-                offset_y: 35
-                text: Wohnzimmer
-                x: -3350
-                y: 2850
-              outline:
-              - - -4750
-                - -700
-              - - 450
-                - -700
-              - - 450
-                - 6450
-              - - -4750
-                - 6450
+              - - -2700
+                - -5800
+              - - 650
+                - -5800
+              - - 650
+                - -3550
+              - - -2700
+                - -3550
             repeats_type: EXTERNAL
             run_immediately: false
             selection_type: ROOM
@@ -8435,10 +7747,10 @@ config:
                 segments: '[[selection]]'
             variables: {}
           map_source:
-            camera: camera.d9_max_gen_2_map
+            camera: camera.dreamebot_d10_plus_map
           tiles:
           - attribute: status
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:robot-vacuum
             label: Status
             tile_id: status
@@ -8465,13 +7777,13 @@ config:
               updating: Updating
               zoned cleaning: Zoned cleaning
           - attribute: battery_level
-            entity: vacuum.d9_max_gen_2
-            icon_source: vacuum.d9_max_gen_2.attributes.battery_icon
+            entity: vacuum.dreamebot_d10_plus
+            icon_source: vacuum.dreamebot_d10_plus.attributes.battery_icon
             label: Battery
             tile_id: battery_level
             unit: '%'
           - attribute: suction_level
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:fan
             label: Fan speed
             tile_id: fan_speed
@@ -8483,14 +7795,14 @@ config:
               standard: Standard
               turbo: Turbo
           - attribute: water_volume
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:water
             label: Water volume
             precision: 0
             tile_id: water_volume
             translations: {}
           - attribute: cleaned_area
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:ruler-square
             label: Cleaned area
             precision: 0
@@ -8498,7 +7810,7 @@ config:
             translations: {}
             unit: "m\xB2"
           - attribute: cleaning_time
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:timer-sand
             label: Cleaning time
             precision: 0
@@ -8506,7 +7818,7 @@ config:
             translations: {}
             unit: min
           - attribute: cleaning_count
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:counter
             label: Cleaning count
             precision: 0
@@ -8514,7 +7826,7 @@ config:
             translations: {}
             unit: x
           - attribute: total_cleaned_area
-            entity: vacuum.d9_max_gen_2
+            entity: vacuum.dreamebot_d10_plus
             icon: mdi:set-square
             label: Total cleaned area
             precision: 0
@@ -8524,12 +7836,407 @@ config:
           two_finger_pan: true
           type: custom:xiaomi-vacuum-map-card
           vacuum_platform: Tasshack/dreame-vacuum
-        type: horizontal-stack
-      type: vertical-stack
-    icon: mdi:robot-vacuum
-    path: dreame
+        type: vertical-stack
+      type: grid
+    - cards:
+      - badges:
+        - entity: vacuum.d9_max_gen_2
+          type: entity
+        heading: EG
+        heading_style: title
+        type: heading
+      - cards:
+        - cards:
+          - additional_presets: []
+            calibration_source:
+              camera: true
+            entity: vacuum.d9_max_gen_2
+            icons:
+            - conditions:
+              - entity: vacuum.d9_max_gen_2
+                value_not: cleaning
+              - entity: vacuum.d9_max_gen_2
+                value_not: error
+              - entity: vacuum.d9_max_gen_2
+                value_not: returning
+              icon: mdi:play
+              tap_action:
+                action: call-service
+                service: vacuum.start
+                service_data:
+                  entity_id: vacuum.d9_max_gen_2
+              tooltip: Start
+            - conditions:
+              - entity: vacuum.d9_max_gen_2
+                value_not: docked
+              - entity: vacuum.d9_max_gen_2
+                value_not: idle
+              - entity: vacuum.d9_max_gen_2
+                value_not: error
+              - entity: vacuum.d9_max_gen_2
+                value_not: paused
+              icon: mdi:pause
+              tap_action:
+                action: call-service
+                service: vacuum.pause
+                service_data:
+                  entity_id: vacuum.d9_max_gen_2
+              tooltip: Pause
+            - conditions:
+              - entity: vacuum.d9_max_gen_2
+                value_not: docked
+              - entity: vacuum.d9_max_gen_2
+                value_not: idle
+              - entity: vacuum.d9_max_gen_2
+                value_not: error
+              - entity: vacuum.d9_max_gen_2
+                value_not: paused
+              icon: mdi:stop
+              tap_action:
+                action: call-service
+                service: vacuum.stop
+                service_data:
+                  entity_id: vacuum.d9_max_gen_2
+              tooltip: Stop
+            - conditions:
+              - entity: vacuum.d9_max_gen_2
+                value_not: docked
+              - entity: vacuum.d9_max_gen_2
+                value_not: returning
+              icon: mdi:home-map-marker
+              tap_action:
+                action: call-service
+                service: vacuum.return_to_base
+                service_data:
+                  entity_id: vacuum.d9_max_gen_2
+              tooltip: Return to base
+            - icon: mdi:map-marker
+              tap_action:
+                action: call-service
+                service: vacuum.locate
+                service_data:
+                  entity_id: vacuum.d9_max_gen_2
+              tooltip: Locate
+            map_locked: false
+            map_modes:
+            - coordinates_rounding: true
+              coordinates_to_meters_divider: 1000
+              icon: mdi:select-drag
+              max_repeats: 3
+              max_selections: 20
+              name: Zone cleanup
+              predefined_selections: []
+              repeats_type: EXTERNAL
+              run_immediately: false
+              selection_type: MANUAL_RECTANGLE
+              service_call_schema:
+                service: dreame_vacuum.vacuum_clean_zone
+                service_data:
+                  entity_id: '[[entity_id]]'
+                  repeats: '[[repeats]]'
+                  zone: '[[selection]]'
+              variables: {}
+            - coordinates_rounding: true
+              coordinates_to_meters_divider: 1000
+              icon: mdi:map-marker-plus
+              max_repeats: 3
+              max_selections: 999
+              name: Clean point
+              predefined_selections: []
+              repeats_type: EXTERNAL
+              run_immediately: false
+              selection_type: MANUAL_POINT
+              service_call_schema:
+                service: dreame_vacuum.vacuum_clean_spot
+                service_data:
+                  entity_id: '[[entity_id]]'
+                  points: '[[selection]]'
+                  repeats: '[[repeats]]'
+              variables: {}
+            - coordinates_rounding: true
+              coordinates_to_meters_divider: 1000
+              icon: mdi:floor-plan
+              max_repeats: 3
+              max_selections: 60
+              name: Rooms
+              predefined_selections:
+              - icon:
+                  name: mdi:home-outline
+                  x: -6250
+                  y: 2750
+                id: '1'
+                label:
+                  offset_y: 35
+                  text: "K\xFCche"
+                  x: -6250
+                  y: 2750
+                outline:
+                - - -6900
+                  - 1750
+                - - -5600
+                  - 1750
+                - - -5600
+                  - 3700
+                - - -6900
+                  - 3700
+              - icon:
+                  name: mdi:home-outline
+                  x: -8550
+                  y: -750
+                id: '2'
+                label:
+                  offset_y: 35
+                  text: Gang
+                  x: -8550
+                  y: -750
+                outline:
+                - - -9900
+                  - -2900
+                - - -4000
+                  - -2900
+                - - -4000
+                  - 1800
+                - - -9900
+                  - 1800
+              - icon:
+                  name: mdi:home-outline
+                  x: -6300
+                  y: -2950
+                id: '5'
+                label:
+                  offset_y: 35
+                  text: "K\xE4mmerchen"
+                  x: -6300
+                  y: -2950
+                outline:
+                - - -7400
+                  - -4000
+                - - -5750
+                  - -4000
+                - - -5750
+                  - -2000
+                - - -7400
+                  - -2000
+              - icon:
+                  name: mdi:home-outline
+                  x: -2150
+                  y: -2050
+                id: '6'
+                label:
+                  offset_y: 35
+                  text: Ankleidezimmer
+                  x: -2150
+                  y: -2050
+                outline:
+                - - -5450
+                  - -3500
+                - - -800
+                  - -3500
+                - - -800
+                  - -750
+                - - -5450
+                  - -750
+              - icon:
+                  name: mdi:home-outline
+                  x: -2150
+                  y: -4300
+                id: '7'
+                label:
+                  offset_y: 35
+                  text: Room 7
+                  x: -2150
+                  y: -4300
+                outline:
+                - - -5050
+                  - -6050
+                - - -650
+                  - -6050
+                - - -650
+                  - -3400
+                - - -5050
+                  - -3400
+              - icon:
+                  name: mdi:home-outline
+                  x: -7750
+                  y: -3450
+                id: '9'
+                label:
+                  offset_y: 35
+                  text: Klo
+                  x: -7750
+                  y: -3450
+                outline:
+                - - -8500
+                  - -4000
+                - - -6950
+                  - -4000
+                - - -6950
+                  - -2900
+                - - -8500
+                  - -2900
+              - icon:
+                  name: mdi:home-outline
+                  x: -7000
+                  y: 5100
+                id: '10'
+                label:
+                  offset_y: 35
+                  text: Esszimmer
+                  x: -7000
+                  y: 5100
+                outline:
+                - - -9550
+                  - 950
+                - - -4150
+                  - 950
+                - - -4150
+                  - 6650
+                - - -9550
+                  - 6650
+              - icon:
+                  name: mdi:home-outline
+                  x: 1150
+                  y: 4900
+                id: '11'
+                label:
+                  offset_y: 35
+                  text: Wintergarten
+                  x: 1150
+                  y: 4900
+                outline:
+                - - 300
+                  - 2450
+                - - 2550
+                  - 2450
+                - - 2550
+                  - 6450
+                - - 300
+                  - 6450
+              - icon:
+                  name: mdi:home-outline
+                  x: -3350
+                  y: 2850
+                id: '12'
+                label:
+                  offset_y: 35
+                  text: Wohnzimmer
+                  x: -3350
+                  y: 2850
+                outline:
+                - - -4750
+                  - -700
+                - - 450
+                  - -700
+                - - 450
+                  - 6450
+                - - -4750
+                  - 6450
+              repeats_type: EXTERNAL
+              run_immediately: false
+              selection_type: ROOM
+              service_call_schema:
+                service: dreame_vacuum.vacuum_clean_segment
+                service_data:
+                  entity_id: '[[entity_id]]'
+                  repeats: '[[repeats]]'
+                  segments: '[[selection]]'
+              variables: {}
+            map_source:
+              camera: camera.d9_max_gen_2_map
+            tiles:
+            - attribute: status
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:robot-vacuum
+              label: Status
+              tile_id: status
+              translations:
+                charger disconnected: Charger disconnected
+                charging: Charging
+                charging complete: Charging complete
+                charging problem: Charging problem
+                cleaning: Cleaning
+                device offline: Device offline
+                docking: Docking
+                emptying the bin: Emptying the bin
+                error: Error
+                going to target: Going to target
+                idle: Idle
+                manual mode: Manual mode
+                paused: Paused
+                remote control active: Remote control active
+                returning home: Returning home
+                segment cleaning: Segment cleaning
+                shutting down: Shutting down
+                spot cleaning: Spot cleaning
+                starting: Starting
+                updating: Updating
+                zoned cleaning: Zoned cleaning
+            - attribute: battery_level
+              entity: vacuum.d9_max_gen_2
+              icon_source: vacuum.d9_max_gen_2.attributes.battery_icon
+              label: Battery
+              tile_id: battery_level
+              unit: '%'
+            - attribute: suction_level
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:fan
+              label: Fan speed
+              tile_id: fan_speed
+              translations:
+                auto: Auto
+                gentle: Gentle
+                medium: Medium
+                silent: Silent
+                standard: Standard
+                turbo: Turbo
+            - attribute: water_volume
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:water
+              label: Water volume
+              precision: 0
+              tile_id: water_volume
+              translations: {}
+            - attribute: cleaned_area
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:ruler-square
+              label: Cleaned area
+              precision: 0
+              tile_id: cleaned_area
+              translations: {}
+              unit: "m\xB2"
+            - attribute: cleaning_time
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:timer-sand
+              label: Cleaning time
+              precision: 0
+              tile_id: cleaning_time
+              translations: {}
+              unit: min
+            - attribute: cleaning_count
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:counter
+              label: Cleaning count
+              precision: 0
+              tile_id: cleaning_count
+              translations: {}
+              unit: x
+            - attribute: total_cleaned_area
+              entity: vacuum.d9_max_gen_2
+              icon: mdi:set-square
+              label: Total cleaned area
+              precision: 0
+              tile_id: total_cleaned_area
+              translations: {}
+              unit: "m\xB2"
+            two_finger_pan: true
+            type: custom:xiaomi-vacuum-map-card
+            vacuum_platform: Tasshack/dreame-vacuum
+          type: horizontal-stack
+        type: vertical-stack
+      type: grid
     subview: true
     title: Dreame
+    type: sections
     visible:
     - user: 2950af301cff4dbfa321eb69a51307b0
     - user: a83d0514cb88427e9f46c2eaacd1817b
@@ -8538,950 +8245,895 @@ config:
     - user: 690f4c6bedc44a9daad30c216f237d1d
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
-  - cards:
-    - cards:
-      - entity: sensor.gesamt_kosten_pv
-        fill_container: true
-        layout: vertical
-        name: Gesamt Kosten
-        primary_info: state
-        secondary_info: name
-        type: custom:mushroom-entity-card
-      - cards:
-        - entity: sensor.break_even_time_solar
-          fill_container: true
-          layout: vertical
-          name: Break Even
-          primary_info: state
-          secondary_info: name
-          type: custom:mushroom-entity-card
-        - entity: sensor.gesamt_kosten_change
-          fill_container: true
-          layout: vertical
-          name: Daily Change
-          primary_info: state
-          secondary_info: name
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
-      title: Costs & Time
-      type: vertical-stack
-      visibility:
-      - condition: user
-        users:
-        - 4f7767cac0c342edb25e991662a2f56c
-    - cards:
-      - entity: sensor.night_battery_energy_discharged
-        fill_container: true
-        icon_type: none
-        layout: vertical
-        name: Discharged Day/Night
-        type: custom:mushroom-entity-card
-      - cards:
-        - entity: input_number.last_day_battery_discharged
-          icon: ''
-          layout: vertical
-          primary: Last Day
-          secondary: '{{ states(''input_number.last_day_battery_discharged'') | float(0)
-            | round(2) }} kWh'
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
-        - entity: input_number.last_night_battery_discharged
-          icon: ''
-          layout: vertical
-          primary: Last Night
-          secondary: '{{ states(''input_number.last_night_battery_discharged'') |
-            float(0) | round(2) }} kWh'
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
-        type: horizontal-stack
-      title: Discharge
-      type: vertical-stack
-    - cards:
-      - entity: sensor.day_night_battery_charged_energy
-        fill_container: true
-        icon_type: none
-        layout: vertical
-        name: Charged Day/Night
-        type: custom:mushroom-entity-card
-      - cards:
-        - entity: input_number.last_day_battery_charged
-          icon: ''
-          layout: vertical
-          primary: Last Day
-          secondary: '{{ states(''input_number.last_day_battery_charged'') | float(0)
-            | round(2) }} kWh'
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
-        - entity: input_number.last_night_battery_charged
-          icon: ''
-          layout: vertical
-          primary: Last Night
-          secondary: '{{ states(''input_number.last_night_battery_charged'') | float(0)
-            | round(2) }} kWh'
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
-        type: horizontal-stack
-      title: Charge
-      type: vertical-stack
-    - entities:
-      - entities:
-        - entity: sensor.inverter_battery_voltage
-          format: precision1
-          name: false
-        - entity: sensor.inverter_battery_voltage
-          icon: mdi:multiplication
-          name: false
-          show_state: false
-        - entity: sensor.inverter_battery_current
-          format: precision1
-          name: false
-        - entity: sensor.inverter_battery_power
-          icon: mdi:equal
-          name: false
-          show_state: false
-        - entity: sensor.inverter_battery_power
-          format: precision1
-          name: false
-        - entity: sensor.inverter_battery
-          icon: mdi:at
-          name: false
-          show_state: false
-        - entity: sensor.inverter_battery
-          name: false
-        entity: sensor.inverter_battery
-        name: false
-        show_state: false
-        state_color: true
-        type: custom:multiple-entity-row
-      show_header_toggle: false
-      state_color: true
-      type: entities
-    - cards:
-      - cards:
-        - entity: sensor.inverter_total_battery_discharge_hourly_energy_cost
-          layout: vertical
-          name: Hourly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_discharge_daily_energy_cost
-          layout: vertical
-          name: Daily
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_discharge_weekly_energy_cost
-          layout: vertical
-          name: Weekly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_discharge_monthly_energy_cost
-          layout: vertical
-          name: Monthly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_discharge_yearly_energy_cost
-          layout: vertical
-          name: Yearly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_discharge_manual_energy_cost
-          layout: vertical
-          name: Total
-          type: custom:mushroom-entity-card
-        title: Saved Money using Battery
-        type: horizontal-stack
-      - cards:
-        - entity: sensor.solar_to_home_hourly_energy_cost
-          layout: vertical
-          name: Hourly
-          type: custom:mushroom-entity-card
-        - entity: sensor.solar_to_home_daily_energy_cost
-          layout: vertical
-          name: Daily
-          type: custom:mushroom-entity-card
-        - entity: sensor.solar_to_home_weekly_energy_cost
-          layout: vertical
-          name: Weekly
-          type: custom:mushroom-entity-card
-        - entity: sensor.solar_to_home_monthly_energy_cost
-          layout: vertical
-          name: Monthly
-          type: custom:mushroom-entity-card
-        - entity: sensor.solar_to_home_yearly_energy_cost
-          layout: vertical
-          name: Yearly
-          type: custom:mushroom-entity-card
-        - entity: sensor.solar_to_home_manual_energy_cost
-          layout: vertical
-          name: Total
-          type: custom:mushroom-entity-card
-        title: Saved Money using Solar
-        type: horizontal-stack
-      - cards:
-        - entity: sensor.inverter_total_battery_charge_hourly_energy_cost
-          layout: vertical
-          name: Hourly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_charge_daily_energy_cost
-          layout: vertical
-          name: Daily
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_charge_weekly_energy_cost
-          layout: vertical
-          name: Weekly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_charge_monthly_energy_cost
-          layout: vertical
-          name: Monthly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_charge_yearly_energy_cost
-          layout: vertical
-          name: Yearly
-          type: custom:mushroom-entity-card
-        - entity: sensor.inverter_total_battery_charge_manual_energy_cost
-          layout: vertical
-          name: Total
-          type: custom:mushroom-entity-card
-        title: Used Money Charging Battery
-        type: horizontal-stack
-      - cards:
-        - entity: sensor.battery_charge_from_solar_hourly_energy_cost
-          layout: vertical
-          name: Hourly
-          type: custom:mushroom-entity-card
-        - entity: sensor.battery_charge_from_solar_daily_energy_cost
-          layout: vertical
-          name: Daily
-          type: custom:mushroom-entity-card
-        - entity: sensor.battery_charge_from_solar_weekly_energy_cost
-          layout: vertical
-          name: Weekly
-          type: custom:mushroom-entity-card
-        - entity: sensor.battery_charge_from_solar_monthly_energy_cost
-          layout: vertical
-          name: Monthly
-          type: custom:mushroom-entity-card
-        - entity: sensor.battery_charge_from_solar_yearly_energy_cost
-          layout: vertical
-          name: Yearly
-          type: custom:mushroom-entity-card
-        - entity: sensor.battery_charge_from_solar_manual_energy_cost
-          layout: vertical
-          name: Total
-          type: custom:mushroom-entity-card
-        title: Solar Enegry Charged Savings
-        type: horizontal-stack
-      type: vertical-stack
-      visibility:
-      - condition: user
-        users:
-        - 4f7767cac0c342edb25e991662a2f56c
-    - button-background: transparent
-      cards:
-      - bar_size: large
-        decimal: 0
-        entity: sensor.felicity_ess_bat1_soc
-        layout: horizontal
-        name: BMS1
-        show_more_info: true
-        theme: battery
-        type: custom:entity-progress-card
-        unit: '%'
-      - bar_size: large
-        decimal: 0
-        entity: sensor.felicity_ess_bat2_soc
-        layout: horizontal
-        name: BMS2
-        show_more_info: true
-        theme: battery
-        type: custom:entity-progress-card
-        unit: '%'
-      child-padding: 0em
-      clear: false
-      clear-children: false
-      gap: 0.2em
-      overlay-margin: 2em
-      padding: 0em
-      title: Expander
-      title-card:
-        bar_size: large
-        decimal: 1
-        entity: sensor.felicity_ess_soc_avg
-        layout: horizontal
-        name: AVG
-        show_more_info: true
-        theme: battery
-        type: custom:entity-progress-card
-        unit: '%'
-      type: custom:expander-card
-    - cards:
-      - card:
-          entities:
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_1_power
-              name: Power
-            - entity: sensor.time_of_use_1
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_2
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_1_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
-            name: Timeslot 1
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_2_power
-              name: Power
-            - entity: sensor.time_of_use_2
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_3
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_2_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
-            name: Timeslot 2
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_3_power
-              name: Power
-            - entity: sensor.time_of_use_3
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_4
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_3_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
-            name: Timeslot 3
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_4_power
-              name: Power
-            - entity: sensor.time_of_use_4
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_5
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_4_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
-            name: Timeslot 4
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_5_power
-              name: Power
-            - entity: sensor.time_of_use_5
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_6
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_5_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
-            name: Timeslot 5
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_6_power
-              name: Power
-            - entity: sensor.time_of_use_6
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_1
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_6_voltage
-              format: precision1
-              name: Voltage
-            entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
-            name: Timeslot 6
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_monday
-              name: Mo
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_tuesday
-              name: Di
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_wednesday
-              name: Mi
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_thursday
-              name: Do
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_friday
-              name: Fr
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_saturday
-              name: Sa
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_sunday
-              name: So
-            entity: switch.esp32_s3_zero_deye8k_time_of_use
-            name: Time of Use
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          type: entities
-        conditions:
-        - condition: state
-          entity: select.esp32_s3_zero_deye8k_battery_operation
-          state: Use V
-        type: conditional
-      - card:
-          entities:
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_1_power
-              name: Power
-            - entity: sensor.time_of_use_1
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_2
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_1_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
-            name: Timeslot 1
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_2_power
-              name: Power
-            - entity: sensor.time_of_use_2
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_3
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_2_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
-            name: Timeslot 2
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_3_power
-              name: Power
-            - entity: sensor.time_of_use_3
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_4
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_3_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
-            name: Timeslot 3
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_4_power
-              name: Power
-            - entity: sensor.time_of_use_4
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_5
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_4_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
-            name: Timeslot 4
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_5_power
-              name: Power
-            - entity: sensor.time_of_use_5
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_6
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_5_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
-            name: Timeslot 5
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: number.esp32_s3_zero_deye8k_time_point_6_power
-              name: Power
-            - entity: sensor.time_of_use_6
-              format: precision0
-              name: From
-            - entity: sensor.time_of_use_1
-              format: precision0
-              name: To
-            - entity: number.esp32_s3_zero_deye8k_time_point_6_capacity
-              format: precision0
-              name: SOC
-            entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
-            name: Timeslot 6
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          - entities:
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_monday
-              name: Mo
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_tuesday
-              name: Di
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_wednesday
-              name: Mi
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_thursday
-              name: Do
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_friday
-              name: Fr
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_saturday
-              name: Sa
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use_sunday
-              name: So
-            entity: switch.esp32_s3_zero_deye8k_time_of_use
-            name: Time of Use
-            state_color: true
-            state_header: Charge
-            type: custom:multiple-entity-row
-          type: entities
-        conditions:
-        - condition: state
-          entity: select.esp32_s3_zero_deye8k_battery_operation
-          state: Use %
-        type: conditional
-      type: horizontal-stack
-    - entities:
-      - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
-        name: Enable Autpmations
-      - entity: switch.esp32_s3_zero_deye8k_battery_charge_solar
-        name: 'Automation: Charge Solar'
-      - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
-        name: 'Automation: Charge Grid'
-      - entity: switch.esp32_s3_zero_deye8k_grid_charge
-        name: Grid Charge
-      - entity: button.esp32_s3_zero_deye8k_select_time_slot
-        name: 'Script: Select Time Slot'
-      - entity: button.esp32_s3_zero_deye8k_turn_off_time_slots
-        name: 'Script: Turn Off Time Slot'
-      - entity: button.esp32_s3_zero_deye8k_use_solar_reference
-      - entity: button.esp32_s3_zero_deye8k_use_grid_reference
-      - entity: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
-        name: Battery Grid Charge Upto %
-      - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
-        name: Grid Charge Buffer Power
-      - entity: number.esp32_s3_zero_deye8k_max_grid_power
-        name: Max Grid Power
-      - entity: number.esp32_s3_zero_deye8k_amp_offset
-        name: Amp Offset
-      - entity: number.esp32_s3_zero_deye8k_time_point_soc
-        name: Time Point SOC
-      - entity: number.esp32_s3_zero_deye8k_time_point_voltage
-        name: Time Point Voltage
-      - entity: number.esp32_s3_zero_deye8k_grid_charge_power_buffer
-        name: Grid Charge Buffer Power
-      - entity: number.esp32_s3_zero_deye8k_solar_charge_power_buffer
-        name: Solar Charge Buffer Power
-      - entity: number.inverter_battery_capacity
-      - entity: sensor.inverter_battery_corrected_capacity
-        name: Battery AH Calculated DEYE
-      - entity: select.inverter_battery_operation_mode
-      - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
-        name: Theoretical Current
-      - entity: sensor.inverter_battery_current
-      type: entities
-    - align_header: center
-      align_state: center
-      animate: true
-      cache: true
-      card_mod:
-        style: "ha-card {\n  transform: scale(1.0);\n  height: 95%;\n  width: 100%;\n\
-          \  margin: -0px;\n  padding-top: 0px;\n}\n      .header.flex .name.flex\
-          \ .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.inverter_battery')\
-          \ | round(1)}}%\";\n  white-space: pre;\n}\n.states.flex::after {\n  color:\
-          \ white;\n  content: \"Charge: {{states('sensor.inverter_today_battery_charge')\
-          \ | round(2)}} kWh \\A Discharge: {{states('sensor.inverter_today_battery_discharge')\
-          \ | round(2)}} kWh\";\n  white-space: pre;\n  background-color: rgba(50,50,50,0.1);\n\
-          \  padding: 2px 2px 2px 2px;\n  border-radius: 5px;\n  font-size: 15px;\n\
-          \  margin-right: -30px;\n}\n"
-      color_thresholds:
-      - color: '#006400'
-        value: -5000
-      - color: '#32CD12'
-        value: -1000
-      - color: '#00CD71'
-        value: -100
-      - color: '#FFFFFF'
-        value: -10
-      - color: '#FFFFFF'
-        value: 10
-      - color: '#00BFFF'
-        value: 100
-      - color: '#1E90FF'
-        value: 1000
-      - color: '#00008B'
-        value: 5000
-      color_thresholds_transition: hard
-      decimals: 1
-      entities:
-      - sensor.inverter_battery_power
-      font_size: 65
-      hold_action:
-        action: more-info
-      hour24: true
-      hours_to_show: 12
-      line_width: 2
-      name: Battery
-      points_per_hour: 60
-      show:
-        extrema: true
-        fill: fade
-        icon: false
-        labels: hover
-        points: hover
-      type: custom:mini-graph-card
-    - apex_config:
-        dataLabels:
-          distributed: true
-          enabled: true
-        tooltip:
-          fixed:
-            enabled: true
-            position: left
-          followCursor: false
-          x:
-            show: false
-        xaxis:
-          tooltip:
-            enabled: false
-        yaxis:
-        - decimalsInFloat: 1
-          id: price
-          max: 50
-          min: 0
-          opposite: false
-          tickAmount: 5
-        - decimalsInFloat: 0
-          id: Batterie
-          max: 100
-          min: 0
-          opposite: true
-          tickAmount: 5
-        - id: Netzladen
-          max: 100
-          min: 0
-          show: false
-        - id: Solarladen
-          max: 100
-          min: 0
-          show: false
-        - id: Grid
-          max: 25000
-          min: -15000
-          show: false
-        - id: Solar
-          min: 0
-          show: false
-        - id: BatteryPower
-          max: 8000
-          min: 0
-          show: false
-      experimental:
-        color_threshold: true
-        hidden_by_default: true
-      graph_span: 76h
-      header:
-        colorize_states: true
-        show: true
-        show_states: true
-        title: Preis & Batterie
-      now:
-        color: 9E9E9E
-        label: Jetzt
-        show: true
-      series:
-      - color: green
-        color_threshold:
-        - color: lime
-          value: 0
-        - color: green
-          value: 15
-        - color: Khaki
-          value: 20
-        - color: Gold
-          value: 25
-        - color: darkorange
-          value: 30
-        - color: orangered
-          value: 35
-        - color: red
-          value: 40
-        curve: stepline
-        entity: sensor.energy_price_weinbergstr_9
-        extend_to: now
-        float_precision: 2
-        name: Preis
-        show:
-          header_color_threshold: false
-          in_header: true
-          legend_value: false
-          name_in_header: false
-        stroke_width: 2
-        transform: return x * 100;
-        type: line
-        unit: ' Ct/kWh'
-        yaxis_id: price
-      - color: '#2288EE'
-        entity: sensor.felicity_ess_soc_avg
-        extend_to: false
-        float_precision: 0
-        group_by:
-          duration: 15m
-          func: avg
-        name: Batterie
-        show:
-          in_header: true
-          legend_value: false
-        stroke_width: 4
-        yaxis_id: Batterie
-      - color: orange
-        curve: stepline
-        entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
-        extend_to: now
-        name: Netzladen
-        opacity: 0.3
-        show:
-          in_header: false
-          legend_value: false
-        stroke_width: 0
-        transform: 'return x === ''on'' ? 100 : 0;'
-        type: area
-        yaxis_id: Netzladen
-      - color: green
-        curve: stepline
-        entity: binary_sensor.battery_charging_from_solar
-        extend_to: now
-        name: Solarladen
-        opacity: 0.3
-        show:
-          in_header: false
-          legend_value: false
-        stroke_width: 0
-        transform: 'return x === ''on'' ? 100 : 0;'
-        type: area
-        yaxis_id: Solarladen
-      - color: cyan
-        entity: sensor.grid_power
-        extend_to: false
-        float_precision: 0
-        group_by:
-          duration: 15m
-          func: avg
-        name: Grid Power
-        show:
-          hidden_by_default: true
-          in_header: false
-          legend_value: false
-        statistics:
-          period: 5minute
-          type: mean
-        stroke_width: 2
-        yaxis_id: Grid
-      - color: yellow
-        entity: sensor.solar_power_total
-        extend_to: false
-        float_precision: 0
-        group_by:
-          duration: 15m
-          func: avg
-        name: Solar Power
-        show:
-          hidden_by_default: true
-          in_header: false
-          legend_value: false
-        statistics:
-          period: 5minute
-          type: mean
-        stroke_width: 1
-        yaxis_id: Solar
-      - color: blue
-        entity: sensor.battery_charge
-        extend_to: false
-        float_precision: 0
-        group_by:
-          duration: 15m
-          func: avg
-        name: Battery Charge Power
-        show:
-          hidden_by_default: true
-          in_header: false
-          legend_value: false
-        statistics:
-          period: 5minute
-          type: mean
-        stroke_width: 1
-        yaxis_id: BatteryPower
-      span:
-        offset: -24h
-        start: day
-      type: custom:apexcharts-card
-      update_interval: 30sec
-    - auto_swipe_interval: 15000
-      card_spacing: 15
-      cards:
-      - cellColumns: 4
-        cellCount: 16
-        cellLayout: bankMode
-        entities:
-          average_cell_voltage: sensor.felicity_ess_bat1_average_cell_voltage
-          balance_trigger_voltage: ''
-          balancer: ''
-          balancing_current: ''
-          capacity_remaining: sensor.felicity_ess_bat1_remaining_energy
-          cell_resistance_1: ''
-          cell_resistance_10: ''
-          cell_resistance_11: ''
-          cell_resistance_12: ''
-          cell_resistance_13: ''
-          cell_resistance_14: ''
-          cell_resistance_15: ''
-          cell_resistance_16: ''
-          cell_resistance_2: ''
-          cell_resistance_3: ''
-          cell_resistance_4: ''
-          cell_resistance_5: ''
-          cell_resistance_6: ''
-          cell_resistance_7: ''
-          cell_resistance_8: ''
-          cell_resistance_9: ''
-          cell_voltage_1: sensor.felicity_ess_bat1_cell_01
-          cell_voltage_10: sensor.felicity_ess_bat1_cell_10
-          cell_voltage_11: sensor.felicity_ess_bat1_cell_11
-          cell_voltage_12: sensor.felicity_ess_bat1_cell_12
-          cell_voltage_13: sensor.felicity_ess_bat1_cell_13
-          cell_voltage_14: sensor.felicity_ess_bat1_cell_14
-          cell_voltage_15: sensor.felicity_ess_bat1_cell_15
-          cell_voltage_16: sensor.felicity_ess_bat1_cell_16
-          cell_voltage_2: sensor.felicity_ess_bat1_cell_02
-          cell_voltage_3: sensor.felicity_ess_bat1_cell_03
-          cell_voltage_4: sensor.felicity_ess_bat1_cell_04
-          cell_voltage_5: sensor.felicity_ess_bat1_cell_05
-          cell_voltage_6: sensor.felicity_ess_bat1_cell_06
-          cell_voltage_7: sensor.felicity_ess_bat1_cell_07
-          cell_voltage_8: sensor.felicity_ess_bat1_cell_08
-          cell_voltage_9: sensor.felicity_ess_bat1_cell_09
-          charging: ''
-          charging_cycles: sensor.inverter_total_battery_life_cycles
-          current: sensor.felicity_ess_bat1_current
-          delta_cell_voltage: sensor.felicity_ess_bat1_cell_voltage_difference
-          discharging: ''
-          errors: sensor.felicity_ess_bat1_fault_status
-          max_voltage_cell: ''
-          min_voltage_cell: ''
-          power: sensor.felicity_ess_bat1_power
-          power_tube_temperature: sensor.felicity_ess_bat1_bms_temperature
-          state_of_charge: sensor.felicity_ess_bat1_soc
-          total_battery_capacity_setting: number.felicity_ess_battery1_capacity
-          total_charging_cycle_capacity: ''
-          total_runtime_formatted: ''
-          total_voltage: sensor.felicity_ess_bat1_voltage
-        prefix: jk_bms
-        title: Battery 1
-        type: custom:jk-bms-card
-      - cellColumns: 4
-        cellCount: 16
-        cellLayout: bankMode
-        entities:
-          average_cell_voltage: sensor.felicity_ess_bat2_average_cell_voltage
-          balance_trigger_voltage: ''
-          balancer: ''
-          balancing_current: ''
-          capacity_remaining: sensor.felicity_ess_bat2_remaining_energy
-          cell_resistance_1: ''
-          cell_resistance_10: ''
-          cell_resistance_11: ''
-          cell_resistance_12: ''
-          cell_resistance_13: ''
-          cell_resistance_14: ''
-          cell_resistance_15: ''
-          cell_resistance_16: ''
-          cell_resistance_2: ''
-          cell_resistance_3: ''
-          cell_resistance_4: ''
-          cell_resistance_5: ''
-          cell_resistance_6: ''
-          cell_resistance_7: ''
-          cell_resistance_8: ''
-          cell_resistance_9: ''
-          cell_voltage_1: sensor.felicity_ess_bat2_cell_01
-          cell_voltage_10: sensor.felicity_ess_bat2_cell_10
-          cell_voltage_11: sensor.felicity_ess_bat2_cell_11
-          cell_voltage_12: sensor.felicity_ess_bat2_cell_12
-          cell_voltage_13: sensor.felicity_ess_bat2_cell_13
-          cell_voltage_14: sensor.felicity_ess_bat2_cell_14
-          cell_voltage_15: sensor.felicity_ess_bat2_cell_15
-          cell_voltage_16: sensor.felicity_ess_bat2_cell_16
-          cell_voltage_2: sensor.felicity_ess_bat2_cell_02
-          cell_voltage_3: sensor.felicity_ess_bat2_cell_03
-          cell_voltage_4: sensor.felicity_ess_bat2_cell_04
-          cell_voltage_5: sensor.felicity_ess_bat2_cell_05
-          cell_voltage_6: sensor.felicity_ess_bat2_cell_06
-          cell_voltage_7: sensor.felicity_ess_bat2_cell_07
-          cell_voltage_8: sensor.felicity_ess_bat2_cell_08
-          cell_voltage_9: sensor.felicity_ess_bat2_cell_09
-          charging: ''
-          charging_cycles: sensor.inverter_total_battery_life_cycles
-          current: sensor.felicity_ess_bat2_current
-          delta_cell_voltage: sensor.felicity_ess_bat2_cell_voltage_difference
-          discharging: ''
-          errors: sensor.felicity_ess_bat2_fault_status
-          max_voltage_cell: ''
-          min_voltage_cell: ''
-          power: sensor.felicity_ess_bat2_power
-          power_tube_temperature: sensor.felicity_ess_bat2_bms_temperature
-          state_of_charge: sensor.felicity_ess_bat2_soc
-          total_battery_capacity_setting: number.felicity_ess_battery2_capacity_capacity
-          total_charging_cycle_capacity: ''
-          total_runtime_formatted: ''
-          total_voltage: sensor.felicity_ess_bat2_voltage
-        prefix: jk_bms
-        title: Battery 2
-        type: custom:jk-bms-card
-      enable_auto_swipe: false
-      enable_loopback: true
-      enable_reset_after: true
-      reset_after_timeout: 30000
-      reset_target_card: 1
-      show_pagination: false
-      swipe_direction: horizontal
-      type: custom:simple-swipe-card
+  - cards: []
     icon: mdi:fuel-cell
+    max_columns: 4
     path: solar-battery
+    sections:
+    - cards:
+      - badges:
+        - color: state
+          entity: sensor.break_even_time_solar
+          name: Break Even
+          show_icon: false
+          show_state: true
+          state_content:
+          - name
+          - state
+          tap_action:
+            action: more-info
+          type: entity
+        - entity: sensor.gesamt_kosten_change
+          name: Daily Change
+          show_icon: false
+          show_state: true
+          state_content:
+          - name
+          - state
+          tap_action:
+            action: more-info
+          type: entity
+        heading: Costs & Time
+        heading_style: title
+        type: heading
+      - cards:
+        - entity: sensor.gesamt_kosten_pv
+          fill_container: true
+          layout: vertical
+          name: Gesamt Kosten
+          primary_info: state
+          secondary_info: name
+          type: custom:mushroom-entity-card
+        type: vertical-stack
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+      - cards:
+        - cards:
+          - entity: sensor.inverter_total_battery_discharge_hourly_energy_cost
+            layout: vertical
+            name: Hourly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_discharge_daily_energy_cost
+            layout: vertical
+            name: Daily
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_discharge_weekly_energy_cost
+            layout: vertical
+            name: Weekly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_discharge_monthly_energy_cost
+            layout: vertical
+            name: Monthly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_discharge_yearly_energy_cost
+            layout: vertical
+            name: Yearly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_discharge_manual_energy_cost
+            layout: vertical
+            name: Total
+            type: custom:mushroom-entity-card
+          title: Saved Money using Battery
+          type: horizontal-stack
+        - cards:
+          - entity: sensor.solar_to_home_hourly_energy_cost
+            layout: vertical
+            name: Hourly
+            type: custom:mushroom-entity-card
+          - entity: sensor.solar_to_home_daily_energy_cost
+            layout: vertical
+            name: Daily
+            type: custom:mushroom-entity-card
+          - entity: sensor.solar_to_home_weekly_energy_cost
+            layout: vertical
+            name: Weekly
+            type: custom:mushroom-entity-card
+          - entity: sensor.solar_to_home_monthly_energy_cost
+            layout: vertical
+            name: Monthly
+            type: custom:mushroom-entity-card
+          - entity: sensor.solar_to_home_yearly_energy_cost
+            layout: vertical
+            name: Yearly
+            type: custom:mushroom-entity-card
+          - entity: sensor.solar_to_home_manual_energy_cost
+            layout: vertical
+            name: Total
+            type: custom:mushroom-entity-card
+          title: Saved Money using Solar
+          type: horizontal-stack
+        - cards:
+          - entity: sensor.inverter_total_battery_charge_hourly_energy_cost
+            layout: vertical
+            name: Hourly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_charge_daily_energy_cost
+            layout: vertical
+            name: Daily
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_charge_weekly_energy_cost
+            layout: vertical
+            name: Weekly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_charge_monthly_energy_cost
+            layout: vertical
+            name: Monthly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_charge_yearly_energy_cost
+            layout: vertical
+            name: Yearly
+            type: custom:mushroom-entity-card
+          - entity: sensor.inverter_total_battery_charge_manual_energy_cost
+            layout: vertical
+            name: Total
+            type: custom:mushroom-entity-card
+          title: Used Money Charging Battery
+          type: horizontal-stack
+        - cards:
+          - entity: sensor.battery_charge_from_solar_hourly_energy_cost
+            layout: vertical
+            name: Hourly
+            type: custom:mushroom-entity-card
+          - entity: sensor.battery_charge_from_solar_daily_energy_cost
+            layout: vertical
+            name: Daily
+            type: custom:mushroom-entity-card
+          - entity: sensor.battery_charge_from_solar_weekly_energy_cost
+            layout: vertical
+            name: Weekly
+            type: custom:mushroom-entity-card
+          - entity: sensor.battery_charge_from_solar_monthly_energy_cost
+            layout: vertical
+            name: Monthly
+            type: custom:mushroom-entity-card
+          - entity: sensor.battery_charge_from_solar_yearly_energy_cost
+            layout: vertical
+            name: Yearly
+            type: custom:mushroom-entity-card
+          - entity: sensor.battery_charge_from_solar_manual_energy_cost
+            layout: vertical
+            name: Total
+            type: custom:mushroom-entity-card
+          title: Solar Enegry Charged Savings
+          type: horizontal-stack
+        type: vertical-stack
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+      type: grid
+    - cards:
+      - heading: Charge & Discharge
+        heading_style: title
+        type: heading
+      - cards:
+        - entity: sensor.day_night_battery_charged_energy
+          fill_container: true
+          icon_type: none
+          layout: vertical
+          name: Charged Day/Night
+          type: custom:mushroom-entity-card
+        - cards:
+          - entity: input_number.last_day_battery_charged
+            icon: ''
+            layout: vertical
+            primary: Last Day
+            secondary: '{{ states(''input_number.last_day_battery_charged'') | float(0)
+              | round(2) }} kWh'
+            tap_action:
+              action: more-info
+            type: custom:mushroom-template-card
+          - entity: input_number.last_night_battery_charged
+            icon: ''
+            layout: vertical
+            primary: Last Night
+            secondary: '{{ states(''input_number.last_night_battery_charged'') | float(0)
+              | round(2) }} kWh'
+            tap_action:
+              action: more-info
+            type: custom:mushroom-template-card
+          type: horizontal-stack
+        type: vertical-stack
+      - cards:
+        - entity: sensor.night_battery_energy_discharged
+          fill_container: true
+          icon_type: none
+          layout: vertical
+          name: Discharged Day/Night
+          type: custom:mushroom-entity-card
+        - cards:
+          - entity: input_number.last_day_battery_discharged
+            icon: ''
+            layout: vertical
+            primary: Last Day
+            secondary: '{{ states(''input_number.last_day_battery_discharged'') |
+              float(0) | round(2) }} kWh'
+            tap_action:
+              action: more-info
+            type: custom:mushroom-template-card
+          - entity: input_number.last_night_battery_discharged
+            icon: ''
+            layout: vertical
+            primary: Last Night
+            secondary: '{{ states(''input_number.last_night_battery_discharged'')
+              | float(0) | round(2) }} kWh'
+            tap_action:
+              action: more-info
+            type: custom:mushroom-template-card
+          type: horizontal-stack
+        type: vertical-stack
+      - badges:
+        - entity: sensor.felicity_ess_soc_avg
+          show_icon: true
+          show_state: true
+          tap_action:
+            action: more-info
+          type: entity
+        heading: Stats
+        heading_style: title
+        type: heading
+      - align_header: center
+        align_state: center
+        animate: true
+        cache: true
+        card_mod:
+          style: "ha-card {\n  transform: scale(1.0);\n  height: 95%;\n  width: 100%;\n\
+            \  margin: -0px;\n  padding-top: 0px;\n}\n      .header.flex .name.flex\
+            \ .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.inverter_battery')\
+            \ | round(1)}}%\";\n  white-space: pre;\n}\n.states.flex::after {\n  color:\
+            \ white;\n  content: \"Charge: {{states('sensor.inverter_today_battery_charge')\
+            \ | round(2)}} kWh \\A Discharge: {{states('sensor.inverter_today_battery_discharge')\
+            \ | round(2)}} kWh\";\n  white-space: pre;\n  background-color: rgba(50,50,50,0.1);\n\
+            \  padding: 2px 2px 2px 2px;\n  border-radius: 5px;\n  font-size: 15px;\n\
+            \  margin-right: -30px;\n}\n"
+        color_thresholds:
+        - color: '#006400'
+          value: -5000
+        - color: '#32CD12'
+          value: -1000
+        - color: '#00CD71'
+          value: -100
+        - color: '#FFFFFF'
+          value: -10
+        - color: '#FFFFFF'
+          value: 10
+        - color: '#00BFFF'
+          value: 100
+        - color: '#1E90FF'
+          value: 1000
+        - color: '#00008B'
+          value: 5000
+        color_thresholds_transition: hard
+        decimals: 1
+        entities:
+        - sensor.inverter_battery_power
+        font_size: 65
+        hold_action:
+          action: more-info
+        hour24: true
+        hours_to_show: 12
+        line_width: 2
+        name: Battery
+        points_per_hour: 60
+        show:
+          fill: fade
+          icon: false
+          labels: hover
+          points: hover
+        type: custom:mini-graph-card
+      - auto_swipe_interval: 15000
+        card_spacing: 15
+        cards:
+        - cellColumns: 4
+          cellCount: 16
+          cellLayout: bankMode
+          entities:
+            average_cell_voltage: sensor.felicity_ess_bat1_average_cell_voltage
+            balance_trigger_voltage: ''
+            balancer: ''
+            balancing_current: ''
+            capacity_remaining: sensor.felicity_ess_bat1_remaining_energy
+            cell_resistance_1: ''
+            cell_resistance_10: ''
+            cell_resistance_11: ''
+            cell_resistance_12: ''
+            cell_resistance_13: ''
+            cell_resistance_14: ''
+            cell_resistance_15: ''
+            cell_resistance_16: ''
+            cell_resistance_2: ''
+            cell_resistance_3: ''
+            cell_resistance_4: ''
+            cell_resistance_5: ''
+            cell_resistance_6: ''
+            cell_resistance_7: ''
+            cell_resistance_8: ''
+            cell_resistance_9: ''
+            cell_voltage_1: sensor.felicity_ess_bat1_cell_01
+            cell_voltage_10: sensor.felicity_ess_bat1_cell_10
+            cell_voltage_11: sensor.felicity_ess_bat1_cell_11
+            cell_voltage_12: sensor.felicity_ess_bat1_cell_12
+            cell_voltage_13: sensor.felicity_ess_bat1_cell_13
+            cell_voltage_14: sensor.felicity_ess_bat1_cell_14
+            cell_voltage_15: sensor.felicity_ess_bat1_cell_15
+            cell_voltage_16: sensor.felicity_ess_bat1_cell_16
+            cell_voltage_2: sensor.felicity_ess_bat1_cell_02
+            cell_voltage_3: sensor.felicity_ess_bat1_cell_03
+            cell_voltage_4: sensor.felicity_ess_bat1_cell_04
+            cell_voltage_5: sensor.felicity_ess_bat1_cell_05
+            cell_voltage_6: sensor.felicity_ess_bat1_cell_06
+            cell_voltage_7: sensor.felicity_ess_bat1_cell_07
+            cell_voltage_8: sensor.felicity_ess_bat1_cell_08
+            cell_voltage_9: sensor.felicity_ess_bat1_cell_09
+            charging: ''
+            charging_cycles: sensor.inverter_total_battery_life_cycles
+            current: sensor.felicity_ess_bat1_current
+            delta_cell_voltage: sensor.felicity_ess_bat1_cell_voltage_difference
+            discharging: ''
+            errors: sensor.felicity_ess_bat1_fault_status
+            max_voltage_cell: ''
+            min_voltage_cell: ''
+            power: sensor.felicity_ess_bat1_power
+            power_tube_temperature: sensor.felicity_ess_bat1_bms_temperature
+            state_of_charge: sensor.felicity_ess_bat1_soc
+            total_battery_capacity_setting: number.felicity_ess_battery1_capacity
+            total_charging_cycle_capacity: ''
+            total_runtime_formatted: ''
+            total_voltage: sensor.felicity_ess_bat1_voltage
+          prefix: jk_bms
+          title: Battery 1
+          type: custom:jk-bms-card
+        - cellColumns: 4
+          cellCount: 16
+          cellLayout: bankMode
+          entities:
+            average_cell_voltage: sensor.felicity_ess_bat2_average_cell_voltage
+            balance_trigger_voltage: ''
+            balancer: ''
+            balancing_current: ''
+            capacity_remaining: sensor.felicity_ess_bat2_remaining_energy
+            cell_resistance_1: ''
+            cell_resistance_10: ''
+            cell_resistance_11: ''
+            cell_resistance_12: ''
+            cell_resistance_13: ''
+            cell_resistance_14: ''
+            cell_resistance_15: ''
+            cell_resistance_16: ''
+            cell_resistance_2: ''
+            cell_resistance_3: ''
+            cell_resistance_4: ''
+            cell_resistance_5: ''
+            cell_resistance_6: ''
+            cell_resistance_7: ''
+            cell_resistance_8: ''
+            cell_resistance_9: ''
+            cell_voltage_1: sensor.felicity_ess_bat2_cell_01
+            cell_voltage_10: sensor.felicity_ess_bat2_cell_10
+            cell_voltage_11: sensor.felicity_ess_bat2_cell_11
+            cell_voltage_12: sensor.felicity_ess_bat2_cell_12
+            cell_voltage_13: sensor.felicity_ess_bat2_cell_13
+            cell_voltage_14: sensor.felicity_ess_bat2_cell_14
+            cell_voltage_15: sensor.felicity_ess_bat2_cell_15
+            cell_voltage_16: sensor.felicity_ess_bat2_cell_16
+            cell_voltage_2: sensor.felicity_ess_bat2_cell_02
+            cell_voltage_3: sensor.felicity_ess_bat2_cell_03
+            cell_voltage_4: sensor.felicity_ess_bat2_cell_04
+            cell_voltage_5: sensor.felicity_ess_bat2_cell_05
+            cell_voltage_6: sensor.felicity_ess_bat2_cell_06
+            cell_voltage_7: sensor.felicity_ess_bat2_cell_07
+            cell_voltage_8: sensor.felicity_ess_bat2_cell_08
+            cell_voltage_9: sensor.felicity_ess_bat2_cell_09
+            charging: ''
+            charging_cycles: sensor.inverter_total_battery_life_cycles
+            current: sensor.felicity_ess_bat2_current
+            delta_cell_voltage: sensor.felicity_ess_bat2_cell_voltage_difference
+            discharging: ''
+            errors: sensor.felicity_ess_bat2_fault_status
+            max_voltage_cell: ''
+            min_voltage_cell: ''
+            power: sensor.felicity_ess_bat2_power
+            power_tube_temperature: sensor.felicity_ess_bat2_bms_temperature
+            state_of_charge: sensor.felicity_ess_bat2_soc
+            total_battery_capacity_setting: number.felicity_ess_battery2_capacity_capacity
+            total_charging_cycle_capacity: ''
+            total_runtime_formatted: ''
+            total_voltage: sensor.felicity_ess_bat2_voltage
+          prefix: jk_bms
+          title: Battery 2
+          type: custom:jk-bms-card
+        enable_auto_swipe: false
+        enable_loopback: true
+        enable_reset_after: true
+        reset_after_timeout: 30000
+        reset_target_card: 1
+        show_pagination: false
+        swipe_direction: horizontal
+        type: custom:simple-swipe-card
+      - apex_config:
+          dataLabels:
+            distributed: true
+            enabled: true
+          tooltip:
+            fixed:
+              enabled: true
+              position: left
+            followCursor: false
+            x:
+              show: false
+          xaxis:
+            tooltip:
+              enabled: false
+          yaxis:
+          - decimalsInFloat: 1
+            id: price
+            max: 50
+            min: 0
+            opposite: false
+            tickAmount: 5
+          - decimalsInFloat: 0
+            id: Batterie
+            max: 100
+            min: 0
+            opposite: true
+            tickAmount: 5
+          - id: Netzladen
+            max: 100
+            min: 0
+            show: false
+          - id: Solarladen
+            max: 100
+            min: 0
+            show: false
+          - id: Grid
+            max: 25000
+            min: -15000
+            show: false
+          - id: Solar
+            min: 0
+            show: false
+          - id: BatteryPower
+            max: 8000
+            min: 0
+            show: false
+        experimental:
+          color_threshold: true
+          hidden_by_default: true
+        graph_span: 76h
+        header:
+          colorize_states: true
+          show: true
+          show_states: true
+          title: Preis & Batterie
+        now:
+          color: 9E9E9E
+          label: Jetzt
+          show: true
+        series:
+        - color: green
+          color_threshold:
+          - color: lime
+            value: 0
+          - color: green
+            value: 15
+          - color: Khaki
+            value: 20
+          - color: Gold
+            value: 25
+          - color: darkorange
+            value: 30
+          - color: orangered
+            value: 35
+          - color: red
+            value: 40
+          curve: stepline
+          entity: sensor.energy_price_weinbergstr_9
+          extend_to: now
+          float_precision: 2
+          name: Preis
+          show:
+            header_color_threshold: false
+            in_header: true
+            legend_value: false
+            name_in_header: false
+          stroke_width: 2
+          transform: return x * 100;
+          type: line
+          unit: ' Ct/kWh'
+          yaxis_id: price
+        - color: '#2288EE'
+          entity: sensor.felicity_ess_soc_avg
+          extend_to: false
+          float_precision: 0
+          group_by:
+            duration: 15m
+            func: avg
+          name: Batterie
+          show:
+            in_header: true
+            legend_value: false
+          stroke_width: 4
+          yaxis_id: Batterie
+        - color: orange
+          curve: stepline
+          entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          extend_to: now
+          name: Netzladen
+          opacity: 0.3
+          show:
+            in_header: false
+            legend_value: false
+          stroke_width: 0
+          transform: 'return x === ''on'' ? 100 : 0;'
+          type: area
+          yaxis_id: Netzladen
+        - color: green
+          curve: stepline
+          entity: binary_sensor.battery_charging_from_solar
+          extend_to: now
+          name: Solarladen
+          opacity: 0.3
+          show:
+            in_header: false
+            legend_value: false
+          stroke_width: 0
+          transform: 'return x === ''on'' ? 100 : 0;'
+          type: area
+          yaxis_id: Solarladen
+        - color: cyan
+          entity: sensor.grid_power
+          extend_to: false
+          float_precision: 0
+          group_by:
+            duration: 15m
+            func: avg
+          name: Grid Power
+          show:
+            hidden_by_default: true
+            in_header: false
+            legend_value: false
+          statistics:
+            period: 5minute
+            type: mean
+          stroke_width: 2
+          yaxis_id: Grid
+        - color: yellow
+          entity: sensor.solar_power_total
+          extend_to: false
+          float_precision: 0
+          group_by:
+            duration: 15m
+            func: avg
+          name: Solar Power
+          show:
+            hidden_by_default: true
+            in_header: false
+            legend_value: false
+          statistics:
+            period: 5minute
+            type: mean
+          stroke_width: 1
+          yaxis_id: Solar
+        - color: blue
+          entity: sensor.battery_charge
+          extend_to: false
+          float_precision: 0
+          group_by:
+            duration: 15m
+            func: avg
+          name: Battery Charge Power
+          show:
+            hidden_by_default: true
+            in_header: false
+            legend_value: false
+          statistics:
+            period: 5minute
+            type: mean
+          stroke_width: 1
+          yaxis_id: BatteryPower
+        span:
+          offset: -24h
+          start: day
+        type: custom:apexcharts-card
+        update_interval: 30sec
+      type: grid
+    - cards:
+      - heading: Kontrolle
+        heading_style: title
+        type: heading
+      - entities:
+        - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
+          name: Enable Autpmations
+        - entity: switch.esp32_s3_zero_deye8k_battery_charge_solar
+          name: 'Automation: Charge Solar'
+        - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          name: 'Automation: Charge Grid'
+        - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
+          name: Grid Charge Buffer Power
+        - entity: number.esp32_s3_zero_deye8k_max_grid_power
+          name: Max Grid Power
+        - entity: number.esp32_s3_zero_deye8k_amp_offset
+          name: Amp Offset
+        - entity: number.esp32_s3_zero_deye8k_grid_charge_power_buffer
+          name: Grid Charge Buffer Power
+        - entity: number.esp32_s3_zero_deye8k_solar_charge_power_buffer
+          name: Solar Charge Buffer Power
+        - entity: number.inverter_battery_capacity
+        - entity: sensor.inverter_battery_corrected_capacity
+          name: Battery AH Calculated DEYE
+        - entity: select.inverter_battery_operation_mode
+        - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
+          name: Theoretical Current
+        - entity: sensor.inverter_battery_current
+        type: entities
+      - cards:
+        - card:
+            entities:
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_1_power
+                name: Power
+              - entity: sensor.time_of_use_1
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_2
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_1_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
+              name: Timeslot 1
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_2_power
+                name: Power
+              - entity: sensor.time_of_use_2
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_3
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_2_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
+              name: Timeslot 2
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_3_power
+                name: Power
+              - entity: sensor.time_of_use_3
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_4
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_3_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
+              name: Timeslot 3
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_4_power
+                name: Power
+              - entity: sensor.time_of_use_4
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_5
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_4_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
+              name: Timeslot 4
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_5_power
+                name: Power
+              - entity: sensor.time_of_use_5
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_6
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_5_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
+              name: Timeslot 5
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_6_power
+                name: Power
+              - entity: sensor.time_of_use_6
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_1
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_6_voltage
+                format: precision1
+                name: Voltage
+              entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
+              name: Timeslot 6
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_monday
+                name: Mo
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_tuesday
+                name: Di
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_wednesday
+                name: Mi
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_thursday
+                name: Do
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_friday
+                name: Fr
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_saturday
+                name: Sa
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_sunday
+                name: So
+              entity: switch.esp32_s3_zero_deye8k_time_of_use
+              name: Time of Use
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            type: entities
+          conditions:
+          - condition: state
+            entity: select.esp32_s3_zero_deye8k_battery_operation
+            state: Use V
+          type: conditional
+        - card:
+            entities:
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_1_power
+                name: Power
+              - entity: sensor.time_of_use_1
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_2
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_1_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
+              name: Timeslot 1
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_2_power
+                name: Power
+              - entity: sensor.time_of_use_2
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_3
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_2_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
+              name: Timeslot 2
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_3_power
+                name: Power
+              - entity: sensor.time_of_use_3
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_4
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_3_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
+              name: Timeslot 3
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_4_power
+                name: Power
+              - entity: sensor.time_of_use_4
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_5
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_4_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
+              name: Timeslot 4
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_5_power
+                name: Power
+              - entity: sensor.time_of_use_5
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_6
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_5_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
+              name: Timeslot 5
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: number.esp32_s3_zero_deye8k_time_point_6_power
+                name: Power
+              - entity: sensor.time_of_use_6
+                format: precision0
+                name: From
+              - entity: sensor.time_of_use_1
+                format: precision0
+                name: To
+              - entity: number.esp32_s3_zero_deye8k_time_point_6_capacity
+                format: precision0
+                name: SOC
+              entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
+              name: Timeslot 6
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            - entities:
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_monday
+                name: Mo
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_tuesday
+                name: Di
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_wednesday
+                name: Mi
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_thursday
+                name: Do
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_friday
+                name: Fr
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_saturday
+                name: Sa
+              - entity: switch.esp32_s3_zero_deye8k_time_of_use_sunday
+                name: So
+              entity: switch.esp32_s3_zero_deye8k_time_of_use
+              name: Time of Use
+              state_color: true
+              state_header: Charge
+              type: custom:multiple-entity-row
+            type: entities
+          conditions:
+          - condition: state
+            entity: select.esp32_s3_zero_deye8k_battery_operation
+            state: Use %
+          type: conditional
+        type: horizontal-stack
+      type: grid
     subview: true
-    title: Solar Battery
+    title: Home Battery
+    type: sections
   - cards: []
     max_columns: 4
     path: enya
@@ -9504,83 +9156,6 @@ config:
     type: sections
     visible:
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
-  - cards: []
-    icon: mdi:jellyfish
-    max_columns: 1
-    path: octopus
-    sections:
-    - cards:
-      - entity: sensor.octopus_a_10a76963_electricity_price
-        grid_options:
-          columns: 12
-          rows: 1
-        icon: ''
-        layout: vertical
-        primary: "{{ state_attr('sensor.octopus_a_10a76963_electricity_price','active_timeslot')}}:\
-          \ {{ states('sensor.octopus_a_10a76963_electricity_price') | round(3)}}\u20AC\
-          /kWh --- Balance: {{ state_attr('sensor.octopus_a_10a76963_electricity_price','electricity_balance')}}"
-        secondary: '{{ state_attr(''sensor.octopus_a_10a76963_electricity_price'',''active_timeslot_from'')}}
-          Uhr - {{ state_attr(''sensor.octopus_a_10a76963_electricity_price'',''active_timeslot_to'')}}
-          Uhr'
-        tap_action:
-          action: more-info
-        type: custom:mushroom-template-card
-      - content: "{%- set sensor_name = 'sensor.octopus_a_10a76963_electricity_price'\
-          \ %}\n\n## Octopus\n- **Account:** {{ state_attr(sensor_name, 'account_number')\
-          \ }}\n- **Guthaben:** {{ state_attr(sensor_name, 'electricity_balance')\
-          \ }}\n\n### Tarif\n- **Name:** {{ state_attr(sensor_name, 'name') }}\n-\
-          \ **Code:** {{ state_attr(sensor_name, 'code') }}\n- **Beschreibung:** {{\
-          \ state_attr(sensor_name, 'description') }}\n- **Bruttopreis:** {{ states(sensor_name)\
-          \ }} ct/kWh\n- **G\xFCltig:** {{ as_datetime(state_attr(sensor_name, 'valid_from')).strftime('%d.%m.%Y')\
-          \ }} bis {{ as_datetime(state_attr(sensor_name, 'valid_to')).strftime('%d.%m.%Y')\
-          \ }}\n\n### Z\xE4hler\n- **MaLo:** {{ state_attr(sensor_name, 'malo_number')\
-          \ }}\n- **MeLo:** {{ state_attr(sensor_name, 'melo_number') }}\n- **ID:**\
-          \ {{ state_attr(sensor_name, 'meter_id') }}\n- **Typ:** {{ state_attr(sensor_name,\
-          \ 'meter_type') }}\n- **Nummer:** {{ state_attr(sensor_name, 'meter_number')\
-          \ }}"
-        type: markdown
-      - content: "{%- set sensor_name = 'binary_sensor.octopus_a_10a76963_intelligent_dispatching'\
-          \ %}\n{%- set switch_name = 'switch.octopus_a_10a76963_device_smart_control'\
-          \ %}\n\n\n\n{% set device = state_attr(sensor_name, 'devices')[0] %}\n{%\
-          \ set schedules = device.preferences.schedules %}\n{% set day_map = {\n\
-          \  'MONDAY': 'Mo',\n  'TUESDAY': 'Di',\n  'WEDNESDAY': 'Mi',\n  'THURSDAY':\
-          \ 'Do',\n  'FRIDAY': 'Fr',\n  'SATURDAY': 'Sa',\n  'SUNDAY': 'So'\n} %}\n\
-          \n### {{ device.name }} ({{ device.model }}, {{ device.battery_size }} kWh)\n\
-          \n**Smart Charging:** {{ '\U0001F7E2' if is_state(switch_name,'on') else\
-          \ '\U0001F534'}}\n**Status:** {{ device.status }}    \n**Modus:** {{ device.preferences.mode\
-          \ }}  \n**Provider:** {{ device.provider }}  \n\n\n---\n\n#### \U0001F5D3\
-          \uFE0F Ladeplan\n\n{% set ns = namespace(schedule_map={}) %}\n{% for s in\
-          \ schedules %}\n  {% set key = s.time[:5] ~ '|' ~ ('%.0f' % s.max) %}\n\
-          \  {% if key in ns.schedule_map %}\n    {% set ns.schedule_map = ns.schedule_map\
-          \ | combine({ key: ns.schedule_map[key] + [day_map[s.day]] }) %}\n  {% else\
-          \ %}\n    {% set ns.schedule_map = ns.schedule_map | combine({ key: [day_map[s.day]]\
-          \ }) %}\n  {% endif %}\n{% endfor %}\n\n\n\n| Tage | Zeit | Ziel-SoC (%)\
-          \ |\n|:---|:---|:---:|\n{% for key, days in ns.schedule_map | dictsort %}\n\
-          \    {%- set parts = key.split('|') -%}\n    | {{ days | join(', ') }} |\
-          \ {{ parts[0] }} | {{ parts[1] }} |\n{% endfor %}\n\n\n\n{% if ns.schedule_map\
-          \ | length == 1 %}\n\u2705 **Einheitlicher Ladeplan:**  \nT\xE4glich um\
-          \ **{{ schedules[0].time[:5] }} Uhr** auf **{{ \"%.0f\"|format(schedules[0].max)\
-          \ }}\u202F%** laden.\n{% else %}\n> \u26A0\uFE0F Unterschiedliche Ladepl\xE4\
-          ne je Wochentag.\n{% endif %}\n\n---\n\n#### Planned Dispatches\n\n| Start\
-          \ | Ladung (kWh) | Ende | Quelle | Standort |\n|:---:|:---:|:---:|:---:|:---:|\n\
-          {% for item in state_attr(sensor_name, 'planned_dispatches') -%}\n| {{ as_timestamp(item.start)\
-          \ | timestamp_custom('%d.%m.%y %H:%M', true) }} | {{ item.charge_kwh if\
-          \ item.charge_in_kwh is not none else '-' }} | {{ as_timestamp(item.end)\
-          \ | timestamp_custom('%d.%m.%y %H:%M', true) }} |  {{ item.source if item.source\
-          \ else '-' }} | {{ item.location if item.location else '-' }} |\n{% endfor\
-          \ %}\n\n---\n\n#### Completed Dispatches\n\n| Start | Ladung (kWh) | Ende\
-          \ | Quelle | Standort |\n|:---:|:---:|:---:|:---:|:---:|\n{% for item in\
-          \ state_attr(sensor_name, 'completed_dispatches') -%}\n| {{ as_timestamp(item.start)\
-          \ | timestamp_custom('%d.%m.%y %H:%M', true) }} | {{ item.charge_kwh if\
-          \ item.charge_in_kwh is not none else '-' }} | {{ as_timestamp(item.end)\
-          \ | timestamp_custom('%d.%m.%y %H:%M', true) }} |  {{ item.source if item.source\
-          \ else '-' }} | {{ item.location if item.location else '-' }} |\n{% endfor\
-          \ %}"
-        type: markdown
-      type: grid
-    subview: true
-    title: "Octopus \U0001F991"
-    type: sections
   - badges: []
     cards:
     - card:
