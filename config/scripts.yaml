@@ -1161,50 +1161,106 @@ folding_home:
   mode: queued
   icon: mdi:television-ambient-light
 charge_ev_message_with_optional_disable:
-  alias: Charge EV Message with optional Disable Poco f6
-  use_blueprint:
-    path: homeassistant/confirmable_notification.yaml
-    input:
-      notify_device: 1acbf8ccc41c43655002000aa5b1cd46
-      title: ☀️ EV Charging ☀️
-      message: Plug in a Car to charge with Solar
-      dismiss_text: Car Full or no Car
-      dismiss_action:
+  mode: restart
+  sequence:
+  - alias: Set up variables
+    variables:
+      action_confirm: '{{ ''CONFIRM_'' ~ context.id }}'
+      action_dismiss: '{{ ''DISMISS_'' ~ context.id }}'
+  - alias: Send notification
+    domain: mobile_app
+    type: notify
+    device_id: 1acbf8ccc41c43655002000aa5b1cd46
+    title: ☀️ EV Charging ☀️
+    message: Plug in a Car to charge with Solar
+    data:
+      tag: ev_duncan
+      actions:
+      - action: '{{ action_confirm }}'
+        title: Will do
+      - action: '{{ action_dismiss }}'
+        title: Car Full or no Car
+  - alias: Awaiting response
+    wait_for_trigger:
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_confirm }}'
+      trigger: event
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_dismiss }}'
+      trigger: event
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
+      sequence:
+      - type: turn_on
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 92b751a10b775683b1b0d030710be105
+        domain: switch
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
+      sequence:
       - metadata: {}
         data:
           value: 10
         target:
           entity_id: counter.ev_charging_messages
         action: counter.set_value
-      confirm_text: Will do
-      confirm_action:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+  alias: Charge EV Message with optional Disable Poco f6
   description: ''
 charge_ev_message_with_optional_disable_stephan_iphone:
-  alias: Charge EV Message with optional Disable Stephan Iphone
-  use_blueprint:
-    path: homeassistant/confirmable_notification.yaml
-    input:
-      notify_device: 3b177c6db2b7618a07b7cf691b4a3a9c
-      title: ☀️ E-Auto Laden ☀️
-      message: Lade dein Auto mit Solar
-      dismiss_text: Kein Auto oder alle voll
-      dismiss_action:
+  mode: restart
+  sequence:
+  - alias: Set up variables
+    variables:
+      action_confirm: '{{ ''CONFIRM_'' ~ context.id }}'
+      action_dismiss: '{{ ''DISMISS_'' ~ context.id }}'
+  - alias: Send notification
+    domain: mobile_app
+    type: notify
+    device_id: 3b177c6db2b7618a07b7cf691b4a3a9c
+    title: ☀️ E-Auto Laden ☀️
+    message: Lade dein Auto mit Solar
+    data:
+      tag: ev_stephan
+      actions:
+      - action: '{{ action_confirm }}'
+        title: Mach ich
+      - action: '{{ action_dismiss }}'
+        title: Kein Auto oder alle voll
+  - alias: Awaiting response
+    wait_for_trigger:
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_confirm }}'
+      trigger: event
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_dismiss }}'
+      trigger: event
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
+      sequence:
+      - type: turn_on
+        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
+        entity_id: 92b751a10b775683b1b0d030710be105
+        domain: switch
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
+      sequence:
       - metadata: {}
         data:
           value: 10
         target:
           entity_id: counter.ev_charging_messages
         action: counter.set_value
-      confirm_text: Mach ich
-      confirm_action:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+  alias: Charge EV Message with optional Disable Stephan Iphone
   description: ''
 create_timelapse:
   alias: Create Timelapse
