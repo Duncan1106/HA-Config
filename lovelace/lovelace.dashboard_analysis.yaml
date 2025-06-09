@@ -705,10 +705,13 @@ config:
           - card:
               type: entities
             filter:
-              include:
-              - name: '*Firmware Version*'
+              template: '{% set latest = states(''sensor.tasmota_newest_version'').lstrip(''v'')
+                %} {% for e in states.sensor %} {% if ''firmware_version'' in e.entity_id
+                and not e.state.startswith(latest) %} {{ e.entity_id }} {% endif %}
+                {% endfor %}
+
+                '
             sort:
-              ip: true
               method: state
             type: custom:auto-entities
           child-padding: 0.0em
@@ -716,7 +719,13 @@ config:
           gap: 0.1em
           overlay-margin: 0em
           padding: 0.1em
-          title: Tasmota Firmware Versions
+          title: Updates
+          title-card:
+            entity: sensor.tasmota_newest_version
+            features_position: bottom
+            icon: mdi:update
+            type: tile
+            vertical: false
           type: custom:expander-card
         - button-background: transparent
           cards:
@@ -756,34 +765,6 @@ config:
       padding: 0.1em
       title: Tasmota
       type: custom:expander-card
-    - cards:
-      - button-background: transparent
-        cards:
-        - card:
-            type: entities
-          filter:
-            template: '{% set latest = states(''sensor.tasmota_newest_version'').lstrip(''v'')
-              %} {% for e in states.sensor %} {% if ''firmware_version'' in e.entity_id
-              and not e.state.startswith(latest) %} {{ e.entity_id }} {% endif %}
-              {% endfor %}
-
-              '
-          sort:
-            method: state
-          type: custom:auto-entities
-        child-padding: 0.0em
-        clear: false
-        gap: 0.1em
-        overlay-margin: 0em
-        padding: 0.1em
-        title: Updates
-        title-card:
-          entity: sensor.tasmota_newest_version
-          features_position: bottom
-          type: tile
-          vertical: false
-        type: custom:expander-card
-      type: vertical-stack
     - cards:
       - button-background: transparent
         cards:
