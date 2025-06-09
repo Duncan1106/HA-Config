@@ -1874,29 +1874,42 @@ config:
         - e7fe7b076dbb49a3aaa82b75c63cc302
         - 4f7767cac0c342edb25e991662a2f56c
       type: conditional
-    - bar_radius: 4px
-      entities:
-      - active_state: below_horizon
-        end_time:
-          attribute: next_rising
+    - cards:
+      - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{%\
+          \ else %}\n  orange\n{% endif %}"
+        color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
+          \  orange\n{% endif %}"
         entity: sun.sun
-        guess_mode: true
-        icon: mdi:weather-sunset-up
-        name: Sunrise
-        translations:
-          above_horizon: "Not yet \u2600\uFE0F"
-      - active_state: above_horizon
-        end_time:
-          attribute: next_setting
+        name: "N\xE4chster Aufgang"
+        percent: "{% set max_horizon = 24 * 3600 %}  {# 6 hours window #}\n{% set\
+          \ next_rising = as_datetime(states('sensor.sun_next_rising')) %}\n{% set\
+          \ delta_seconds = (next_rising - now()).total_seconds() %}\n{% if delta_seconds\
+          \ <= 0 %}\n  100\n{% elif delta_seconds >= max_horizon %}\n  0\n{% else\
+          \ %}\n  {{ ((max_horizon - delta_seconds) / max_horizon * 100) | round(2)\
+          \ }}\n{% endif %}"
+        secondary: Sunrise in {{ time_until(states('sensor.sun_next_rising')|as_datetime,3
+          ) }}
+        tap_action:
+          action: more-info
+        type: custom:entity-progress-card-template
+      - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{%\
+          \ else %}\n  orange\n{% endif %}"
+        color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
+          \  orange\n{% endif %}"
         entity: sun.sun
-        guess_mode: true
-        icon: mdi:weather-sunset-down
-        name: Sunset
-        translations:
-          below_horizon: "Not yet \U0001F319"
-      name: Sun
-      text_width: 5em
-      type: custom:timer-bar-card
+        name: "N\xE4chster Untergang"
+        percent: "{% set max_horizon = 24 * 3600 %}  {# 6 hours window #}\n{% set\
+          \ next_setting = as_datetime(states('sensor.sun_next_setting')) %}\n{% set\
+          \ delta_seconds = (next_setting - now()).total_seconds() %}\n{% if delta_seconds\
+          \ <= 0 %}\n  100\n{% elif delta_seconds >= max_horizon %}\n  0\n{% else\
+          \ %}\n  {{ ((max_horizon - delta_seconds) / max_horizon * 100) | round(2)\
+          \ }}\n{% endif %}"
+        secondary: Sunrise in {{ time_until(states('sensor.sun_next_setting')|as_datetime,3
+          ) }}
+        tap_action:
+          action: more-info
+        type: custom:entity-progress-card-template
+      type: custom:vertical-stack-in-card
     - entities:
       - entity: sensor.scb_ac_power
         icon: mdi:solar-power
@@ -9501,6 +9514,29 @@ config:
       visibility:
       - condition: user
         users: []
+    - bar_radius: 4px
+      entities:
+      - active_state: below_horizon
+        end_time:
+          attribute: next_rising
+        entity: sun.sun
+        guess_mode: true
+        icon: mdi:weather-sunset-up
+        name: Sunrise
+        translations:
+          above_horizon: "Not yet \u2600\uFE0F"
+      - active_state: above_horizon
+        end_time:
+          attribute: next_setting
+        entity: sun.sun
+        guess_mode: true
+        icon: mdi:weather-sunset-down
+        name: Sunset
+        translations:
+          below_horizon: "Not yet \U0001F319"
+      name: Sun
+      text_width: 5em
+      type: custom:timer-bar-card
     path: test
     subview: true
     title: Test
