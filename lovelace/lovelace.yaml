@@ -1887,8 +1887,19 @@ config:
           \ <= 0 %}\n  100\n{% elif delta_seconds >= max_horizon %}\n  0\n{% else\
           \ %}\n  {{ ((max_horizon - delta_seconds) / max_horizon * 100) | round(2)\
           \ }}\n{% endif %}"
-        secondary: Sunrise in {{ time_until(states('sensor.sun_next_rising')|as_datetime,3
-          ) }}
+        secondary: '{% set next_rising = as_datetime(states(''sensor.sun_next_rising''))
+          %}
+
+          {% set delta = next_rising - now() %}
+
+          {% set hours = delta.total_seconds() // 3600 %}
+
+          {% set minutes = (delta.total_seconds() % 3600) // 60 %}
+
+          {% set seconds = (delta.total_seconds() % 60) %}
+
+          in {{ hours | int }}h {{ minutes | int }}m {{ ''%02d'' | format(seconds
+          | int) }}s'
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
@@ -1904,8 +1915,19 @@ config:
           \ <= 0 %}\n  100\n{% elif delta_seconds >= max_horizon %}\n  0\n{% else\
           \ %}\n  {{ ((max_horizon - delta_seconds) / max_horizon * 100) | round(2)\
           \ }}\n{% endif %}"
-        secondary: Sunrise in {{ time_until(states('sensor.sun_next_setting')|as_datetime,3
-          ) }}
+        secondary: '{% set next_rising = as_datetime(states(''sensor.sun_next_setting''))
+          %}
+
+          {% set delta = next_rising - now() %}
+
+          {% set hours = delta.total_seconds() // 3600 %}
+
+          {% set minutes = (delta.total_seconds() % 3600) // 60 %}
+
+          {% set seconds = (delta.total_seconds() % 60) %}
+
+          in {{ hours | int }}h {{ minutes | int }}m {{ ''%02d'' | format(seconds
+          | int) }}s'
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
@@ -9514,29 +9536,6 @@ config:
       visibility:
       - condition: user
         users: []
-    - bar_radius: 4px
-      entities:
-      - active_state: below_horizon
-        end_time:
-          attribute: next_rising
-        entity: sun.sun
-        guess_mode: true
-        icon: mdi:weather-sunset-up
-        name: Sunrise
-        translations:
-          above_horizon: "Not yet \u2600\uFE0F"
-      - active_state: above_horizon
-        end_time:
-          attribute: next_setting
-        entity: sun.sun
-        guess_mode: true
-        icon: mdi:weather-sunset-down
-        name: Sunset
-        translations:
-          below_horizon: "Not yet \U0001F319"
-      name: Sun
-      text_width: 5em
-      type: custom:timer-bar-card
     path: test
     subview: true
     title: Test
