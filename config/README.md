@@ -9,7 +9,6 @@ Description | value
 Number of entities | 2662
 Number of sensors | 1371
 
-
 ## My installed extensions:
 
 ### Custom integrations
