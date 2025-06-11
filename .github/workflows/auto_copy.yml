@@ -1,4 +1,4 @@
-name: Auto-Move README
+name: Handle README Move/Cleanup
 
 on:
   push:
@@ -7,32 +7,63 @@ on:
     paths:
       - 'config/README.md'
 
+permissions:
+  contents: write
+
 jobs:
-  move-readme:
+  main_cleanup:
+    name: Main Branch Cleanup
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - name: Checkout main
         uses: actions/checkout@v3
+        with:
+          ref: main
 
-      - name: Move README.md from config to root
+      - name: Copy README and clean
         run: |
+          echo "Cleaning main branch"
           rm -f README.md
           cp config/README.md README.md
           rm -f config/README.md
 
-      - name: Commit & push if files changed
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if ! git diff --quiet; then
-            git add README.md
-            git rm -f config/README.md || true
+            git add -A
             git commit -m "Auto-move README.md from config to root"
-            git push
+            git push origin main
           else
             echo "No changes to commit"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  system_cleanup:
+    name: System Branch Cleanup
+    needs: main_cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout system
+        uses: actions/checkout@v3
+        with:
+          ref: system
+
+      - name: Delete config/README.md
+        run: |
+          echo "Cleaning up on system branch"
+          rm -f config/README.md
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet; then
+            git add -A
+            git commit -m "Cleanup: delete config/README.md on system"
+            git push origin system
+          else
+            echo "No changes to commit on system"
+          fi
