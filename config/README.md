@@ -12,8 +12,6 @@ Number of sensors | 1371
 
 ## My installed extensions:
 
-## Add-ons
-
 ### Custom integrations
 - [Ankermake](https://github.com/sondregronas/ankermake-hass-component)
 - [Anniversaries](https://github.com/pinkywafer/Anniversaries)
@@ -91,9 +89,6 @@ Number of sensors | 1371
 - [Weather Radar Card](https://github.com/Makin-Things/weather-radar-card)
 - [Wind Rose Card](https://github.com/aukedejong/lovelace-windrose-card)
 - [Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)
-
-### Themes
-
 
 ***
 
