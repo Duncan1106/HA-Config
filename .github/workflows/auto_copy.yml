@@ -1,0 +1,33 @@
+name: Auto-Copy README
+
+on:
+  push:
+    branches:
+      - system
+    paths:
+      - 'config/README.md'
+
+jobs:
+  copy-readme:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Copy config/README.md to root
+        run: cp config/README.md README.md
+
+      - name: Commit & push if README.md changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if ! git diff --quiet; then
+            git add README.md
+            git commit -m "Auto-copy config/README.md to root"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
