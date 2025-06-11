@@ -7636,3 +7636,71 @@
         data:
           addon: cff83567_ankerctl
   mode: single
+- id: '1749622712645'
+  alias: Tablet Battery Warnings at Thresholds
+  description: 'Sends a battery warning notification to notify.duncan when the Lenovo
+    Tab P11 drops below key thresholds (40%, 30%, 20%, 10%), regardless of charging
+    state. Uses trigger.from_state > to_state to avoid flapping or false alerts.
+
+    '
+  triggers:
+  - entity_id: sensor.lenovo_tab_p11_batterie
+    below: 40
+    trigger: numeric_state
+  - entity_id: sensor.lenovo_tab_p11_batterie
+    below: 30
+    trigger: numeric_state
+  - entity_id: sensor.lenovo_tab_p11_batterie
+    below: 20
+    trigger: numeric_state
+  - entity_id: sensor.lenovo_tab_p11_batterie
+    below: 10
+    trigger: numeric_state
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
+      | float(100)) > (trigger.to_state.state | float(0)) }}\n"
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ (trigger.to_state.state | float(0)) < 11 }}'
+      sequence:
+      - data:
+          title: "\U0001F534 Tablet Battery Critical!"
+          message: 'Lenovo Tab P11 battery is at {{ trigger.to_state.state }}%. Plug
+            it in now or check if it’s charging properly!
+
+            '
+        action: notify.duncan
+    - conditions:
+      - condition: template
+        value_template: '{{ (trigger.to_state.state | float(0)) < 21 }}'
+      sequence:
+      - data:
+          title: "\U0001F7E0 Tablet Battery Low"
+          message: 'Lenovo Tab P11 battery dropped to {{ trigger.to_state.state }}%.
+            Might be an issue with the charger or cable.
+
+            '
+        action: notify.duncan
+    - conditions:
+      - condition: template
+        value_template: '{{ (trigger.to_state.state | float(0)) < 31 }}'
+      sequence:
+      - data:
+          title: "\U0001F7E1 Tablet Battery Getting Low"
+          message: 'Lenovo Tab P11 is now at {{ trigger.to_state.state }}%. Consider
+            checking if it''s still charging as expected.
+
+            '
+        action: notify.duncan
+    default:
+    - data:
+        title: ⚠️ Tablet Battery Notice
+        message: 'Lenovo Tab P11 battery is at {{ trigger.to_state.state }}%. Might
+          need attention soon.
+
+          '
+      action: notify.duncan
+  mode: single
