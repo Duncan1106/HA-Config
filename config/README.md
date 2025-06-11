@@ -9,7 +9,7 @@ Description | value
 Number of entities | 2662
 Number of sensors | 1371
 
-Number of automations | 2 inaktive |  108 aktive
+Number of automations: 2 inactive and 108 active
 
 ## My installed extensions:
 
