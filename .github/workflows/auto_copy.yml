@@ -1,33 +1,35 @@
-name: Auto-Copy README
+name: Auto-Move README
 
 on:
   push:
     branches:
-      - main
+      - system
     paths:
       - 'config/README.md'
 
 jobs:
-  copy-readme:
+  move-readme:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Delete existing README.md and copy new one
+      - name: Move README.md from config to root
         run: |
           rm -f README.md
           cp config/README.md README.md
+          rm -f config/README.md
 
-      - name: Commit & push if README.md changed
+      - name: Commit & push if files changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if ! git diff --quiet; then
             git add README.md
-            git commit -m "Auto-update root README from config"
+            git rm -f config/README.md || true
+            git commit -m "Auto-move README.md from config to root"
             git push
           else
             echo "No changes to commit"
