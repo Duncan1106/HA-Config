@@ -6,8 +6,8 @@ This is my Home Assistant installation.
 
 Description | value
 -- | --
-Number of entities | 2662
-Number of sensors | 1371
+Number of entities | 2664
+Number of sensors | 1376
 
 Number of automations: 2 inactive and 108 active
 
@@ -36,7 +36,6 @@ Number of automations: 2 inactive and 108 active
 - [Ics Calendar (Icalendar)](https://github.com/franc6/ics_calendar)
 - [Ingress](https://github.com/lovelylain/hass_ingress)
 - [Midea Ac Lan](https://github.com/wuwentao/midea_ac_lan)
-- [Midea Air Appliances (Lan)](https://github.com/nbogojevic/homeassistant-midea-air-appliances-lan)
 - [Multiscrape](https://github.com/danieldotnl/ha-multiscrape)
 - [Octopus Energy Germany](https://github.com/thecem/octopus_germany)
 - [Scheduler Component](https://github.com/nielsfaber/scheduler-component)
