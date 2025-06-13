@@ -7727,5 +7727,49 @@
     below: 1
     id: Zero
   conditions: []
-  actions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Change
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        above: 0
+      sequence:
+      - if:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.esp32_c3_mini_treppenhaus_licht
+            state: 'off'
+          - condition: template
+            value_template: '{% set sensor_brightness = (states(''sensor.light_brighness'')
+              | float(0) * 2.55) | int(0) %}
+
+              {% set current = state_attr(''light.esp32_c3_mini_treppenhaus_licht'',
+              ''brightness'') | int(0) %}
+
+              {{ sensor_brightness != current }}'
+        then:
+        - action: light.turn_on
+          metadata: {}
+          data:
+            brightness_pct: '{{ states(''sensor.light_brighness'') | int(0) }}'
+          target:
+            entity_id: light.esp32_c3_mini_treppenhaus_licht
+      alias: On with specified Brighness
+    - conditions:
+      - condition: trigger
+        id:
+        - Zero
+      - condition: template
+        value_template: '{{ trigger.from_state.state | int > 0 }}'
+      sequence:
+      - action: light.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: light.esp32_c3_mini_treppenhaus_licht
+      alias: Off if Brightness changes to Zero
   mode: single
