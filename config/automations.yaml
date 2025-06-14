@@ -3615,8 +3615,8 @@
     above: 0.15
   conditions:
   - condition: numeric_state
-    entity_id: sensor.today_s_earnings
-    above: 0.015
+    entity_id: sensor.today_s_credits
+    above: 15
   - condition: numeric_state
     entity_id: sensor.today_s_lucky_pot_credits
     below: 0.001
@@ -7351,15 +7351,6 @@
   - action: hassio.addon_restart
     metadata: {}
     data:
-      addon: b3f9bc48_honeygain
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
       addon: b3f9bc48_packetstream
   - delay:
       hours: 0
@@ -7370,15 +7361,6 @@
     metadata: {}
     data:
       addon: b3f9bc48_pawns
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_repocket
   - delay:
       hours: 0
       minutes: 0
@@ -7771,4 +7753,37 @@
         target:
           entity_id: light.esp32_c3_mini_treppenhaus_licht
       alias: Off if Brightness changes to Zero
+  mode: single
+- id: '1749938010439'
+  alias: Reset Deye Battery Capacity closer to real
+  description: Deye I'm Inverter estimates the battery capacity and it always overshoots,
+    this is a way to hopefully combat this and keep the battery soc estimation in
+    a reasonable amount around the real soc the BMS provides, wich is unfortunately
+    not compatible in the current setup with deye 8k
+  triggers:
+  - trigger: sun
+    event: sunset
+    offset: 0
+  conditions:
+  - condition: numeric_state
+    entity_id: number.inverter_battery_capacity
+    above: 500
+  actions:
+  - action: number.set_value
+    metadata: {}
+    data:
+      value: '501'
+    target:
+      entity_id: number.inverter_battery_capacity
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 15
+      milliseconds: 0
+  - action: number.set_value
+    metadata: {}
+    data:
+      value: '500'
+    target:
+      entity_id: number.inverter_battery_capacity
   mode: single
