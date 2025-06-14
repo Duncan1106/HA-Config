@@ -1178,6 +1178,7 @@ config:
                 {% if pollen_level <= 0.5 %}\n  green\n{% elif pollen_level <= 1.5\
                 \ %}\n  lime\n{% elif pollen_level <= 2.5 %}\n  orange\n{% else %}\n\
                 \  red\n{% endif %}"
+              bar_size: medium
               color: "{% set pollen_level = states('this.entity_id') | float(0) %}\n\
                 {% if pollen_level <= 0.5 %}\n  green\n{% elif pollen_level <= 1.5\
                 \ %}\n  lime\n{% elif pollen_level <= 2.5 %}\n  orange\n{% else %}\n\
@@ -1190,10 +1191,13 @@ config:
 
                 {{ (pollen_level / 3 * 100) | round(0) }}'
               secondary: "{% set desc = state_attr('this.entity_id', 'state_tomorrow_desc')\
-                \ %}\n{% if desc %}\n  {% set words = desc.split(' ') %}\n  {% if\
-                \ words | length > 2 %}\n    Morgen: ~{{ words[-2:] | join(' ') }}\n\
-                \  {% else %}\n    Morgen: {{ desc }}\n  {% endif %}\n{% else %}\n\
-                \  Morgen: N/A\n{% endif %}"
+                \ %} {% if desc %}\n  {% set words = desc.strip().split() %}\n  {%\
+                \ set wlen = words | length %}\n  {% set penultimate_raw = words[-2]\
+                \ if wlen > 1 else '' %}\n  {% set penultimate = (penultimate_raw[:3]\
+                \ ~ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
+                \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  Tomorrow:\
+                \ {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{ ' ' if penultimate\
+                \ }}{{ last }}\n{% else %}\n  Morgen: N/A\n{% endif %} "
               tap_action:
                 action: more-info
               type: custom:entity-progress-card-template
@@ -3534,11 +3538,10 @@ config:
     - cards:
       - button-background: transparent
         cards:
-          card:
+        - card:
             cards:
             - cards:
               - entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                features_position: bottom
                 hide_state: true
                 icon: mdi:ev-station
                 icon_tap_action:
@@ -3547,7 +3550,6 @@ config:
                 tap_action:
                   action: toggle
                 type: tile
-                vertical: false
               - entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
                 hide_state: true
                 icon: mdi:ev-station
@@ -3585,15 +3587,26 @@ config:
         child-padding: 0em
         clear: true
         clear-children: false
-        expanded: false
+        expanded: true
         gap: 0em
-        heading: EV Lade Statistik
-        heading_style: title
         overlay-margin: 0em
         padding: 0em
-        title: Expander
         title-card:
           badges:
+          - color: state
+            entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
+            name: 11kW
+            show_icon: true
+            show_state: true
+            state_content: name
+            type: entity
+          - color: state
+            entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+            name: 22kW
+            show_icon: true
+            show_state: true
+            state_content: name
+            type: entity
           - color: state
             entity: sensor.solar_power_total
             icon: mdi:solar-power
