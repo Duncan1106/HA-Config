@@ -6,10 +6,10 @@ This is my Home Assistant installation.
 
 Description | value
 -- | --
-Number of entities | 2664
-Number of sensors | 1376
+Number of entities | 2669
+Number of sensors | 1377
 
-Number of automations: 2 inactive and 108 active
+Number of automations: 3 inactive and 108 active
 
 ## My installed extensions:
 
@@ -63,7 +63,7 @@ Number of automations: 2 inactive and 108 active
 - [Energy Flow Card Plus](https://github.com/flixlix/energy-flow-card-plus)
 - [Energy Period Selector Plus](https://github.com/flixlix/energy-period-selector-plus)
 - [Entity Progress Card](https://github.com/francois-le-ko4la/lovelace-entity-progress-card)
-- [Expander Card](https://github.com/Alia5/lovelace-expander-card)
+- [Expander Card](https://github.com/MelleD/lovelace-expander-card)
 - [Flexible Horseshoe Card For Lovelace](https://github.com/AmoebeLabs/flex-horseshoe-card)
 - [Gallery Card 2024](https://github.com/lukelalo/gallery-card)
 - [History Explorer Card](https://github.com/SpangleLabs/history-explorer-card)
