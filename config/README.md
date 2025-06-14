@@ -6,7 +6,7 @@ This is my Home Assistant installation.
 
 Description | value
 -- | --
-Number of entities | 2669
+Number of entities | 2675
 Number of sensors | 1377
 
 Number of automations: 3 inactive and 108 active
@@ -34,7 +34,6 @@ Number of automations: 3 inactive and 108 active
 - [Honeygain](https://github.com/SplinterHead/ha-honeygain)
 - [Icloud3 V3 Idevice Tracker](https://github.com/gcobb321/icloud3)
 - [Ics Calendar (Icalendar)](https://github.com/franc6/ics_calendar)
-- [Ingress](https://github.com/lovelylain/hass_ingress)
 - [Midea Ac Lan](https://github.com/wuwentao/midea_ac_lan)
 - [Multiscrape](https://github.com/danieldotnl/ha-multiscrape)
 - [Octopus Energy Germany](https://github.com/thecem/octopus_germany)
