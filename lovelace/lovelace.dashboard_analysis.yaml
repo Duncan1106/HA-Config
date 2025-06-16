@@ -694,20 +694,19 @@ config:
           secondary_info: none
         state_color: false
         type: entities
-      - content: "{% set search_term = states('input_text.batterie_suche') | trim\
-          \ | upper %}\n{% if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011\
-          Ger\xE4te #}\n  {% set devices = states\n     | selectattr('entity_id',\
-          \ 'search', '_battery_plus$')\n     | selectattr('attributes.battery_type',\
-          \ 'defined')\n     | list %}\n\n  {# 2. Mutable container anlegen #}\n \
-          \ {% set ns = namespace(buffer=[]) %}\n\n  {# 3. Matches sammeln als dicts\
-          \ mit numeric lvl #}\n  {% for device in devices %}\n    {% set bt_raw \
-          \  = device.attributes.battery_type | trim %}\n    {% set bt_upper = bt_raw\
-          \ | upper %}\n    {% if search_term in bt_upper %}\n      {% set entry =\
-          \ {\n        'lvl': device.state | int,\n        'line': bt_raw ~ ': ' ~\
-          \ device.name ~ ': ' ~ device.state ~ '%'\n      } %}\n      {% set ns.buffer\
-          \ = ns.buffer + [ entry ] %}\n    {% endif %}\n  {% endfor %}\n\n  {% if\
-          \ ns.buffer | length > 0 %}\n    {# 4. Numeric\u2011sortieren und dann alle\
-          \ lines joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
+      - content: "{% set search_term = states('input_text.batterie_suche') %}\n{%\
+          \ if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011Ger\xE4te #}\n\
+          \  {% set devices = states\n     | selectattr('entity_id', 'search', '_battery_plus$')\n\
+          \     | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
+          \     | list %}\n\n  {# 2. Mutable container anlegen #}\n  {% set ns = namespace(buffer=[])\
+          \ %}\n\n  {# 3. Matches sammeln als dicts mit numeric lvl #}\n  {% for device\
+          \ in devices %}\n    {% set bt_raw = device.attributes.battery_type_and_quantity\
+          \ | replace('\xD7','x') %}\n    {% if search_term in bt_raw %}\n      {%\
+          \ set entry = {\n        'lvl': device.state | int,\n        'line': bt_raw\
+          \ ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%'\n      } %}\n      {%\
+          \ set ns.buffer = ns.buffer + [ entry ] %}\n    {% endif %}\n  {% endfor\
+          \ %}\n\n  {% if ns.buffer | length > 0 %}\n    {# 4. Numeric\u2011sortieren\
+          \ und dann alle lines joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
           \       | map(attribute='line')\n       | list\n       | join('\\n') }}\n\
           \  {% else %}\n    Keine Ger\xE4te mit diesem Batterietyp gefunden.\n  {%\
           \ endif %}\n{% else %}\n  Search result\n{% endif %}\n"
