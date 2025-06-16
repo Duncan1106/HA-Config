@@ -1565,11 +1565,17 @@ config:
           \ <= 0 %}\n  100\n{% elif time_until_next_rise >= max_time_difference %}\n\
           \  0\n{% else %}\n  {{ ((max_time_difference - time_until_next_rise) / max_time_difference\
           \ * 100) | round(2) }}\n{% endif %}"
-        secondary: '{% set next_rising = as_datetime(states(''sensor.sun_next_rising''))
-          %} {% set delta = next_rising - now() %} {% set hours = delta.total_seconds()
-          // 3600 %} {% set minutes = (delta.total_seconds() % 3600) // 60 %} {% set
-          seconds = (delta.total_seconds() % 60) %} in {{ hours | int }}h {{ minutes
-          | int }}m {{ ''%02d'' | format(seconds | int)}}s'
+        secondary: "{% set next_rising = as_datetime(states('sensor.sun_next_rising'))\
+          \ %} {% if next_rising %}\n  {% set delta = next_rising - now() %}\n  {%\
+          \ set total_seconds = delta.total_seconds() %}\n  {% if total_seconds >\
+          \ 0 %}\n    {% set days = (total_seconds // 86400) | int %}\n    {% set\
+          \ hours = (total_seconds % 86400) // 3600 %}\n    {% set minutes = (total_seconds\
+          \ % 3600) // 60 %}\n    {% set seconds = total_seconds % 60 %}\n    {% if\
+          \ days > 0 %}\n      in {{ days }}d {{ '%02d:%02d:%02d' | format(hours |\
+          \ int, minutes | int, seconds | int) }}\n    {% else %}\n      in {{ '%02d:%02d:%02d'\
+          \ | format(hours | int, minutes | int, seconds | int) }}\n    {% endif %}\n\
+          \  {% else %}\n    00:00:00\n  {% endif %}\n{% else %}\n  --:--:--\n{% endif\
+          \ %}"
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
@@ -1586,15 +1592,64 @@ config:
           \ <= 0 %}\n  100\n{% elif time_until_next_rise >= max_time_difference %}\n\
           \  0\n{% else %}\n  {{ ((max_time_difference - time_until_next_rise) / max_time_difference\
           \ * 100) | round(2) }}\n{% endif %}"
-        secondary: '{% set next_rising = as_datetime(states(''sensor.sun_next_setting''))
-          %} {% set delta = next_rising - now() %} {% set hours = delta.total_seconds()
-          // 3600 %} {% set minutes = (delta.total_seconds() % 3600) // 60 %} {% set
-          seconds = (delta.total_seconds() % 60) %} in {{ hours | int }}h {{ minutes
-          | int }}m {{ ''%02d'' | format(seconds | int)}}s'
+        secondary: "{% set next_rising = as_datetime(states('sensor.sun_next_setting'))\
+          \ %} {% if next_rising %}\n  {% set delta = next_rising - now() %}\n  {%\
+          \ set total_seconds = delta.total_seconds() %}\n  {% if total_seconds >\
+          \ 0 %}\n    {% set days = (total_seconds // 86400) | int %}\n    {% set\
+          \ hours = (total_seconds % 86400) // 3600 %}\n    {% set minutes = (total_seconds\
+          \ % 3600) // 60 %}\n    {% set seconds = total_seconds % 60 %}\n    {% if\
+          \ days > 0 %}\n      in {{ days }}d {{ '%02d:%02d:%02d' | format(hours |\
+          \ int, minutes | int, seconds | int) }}\n    {% else %}\n      in {{ '%02d:%02d:%02d'\
+          \ | format(hours | int, minutes | int, seconds | int) }}\n    {% endif %}\n\
+          \  {% else %}\n    00:00:00\n  {% endif %}\n{% else %}\n  --:--:--\n{% endif\
+          \ %}"
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
       type: custom:vertical-stack-in-card
+    - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{% else\
+        \ %}\n  orange\n{% endif %}\n"
+      color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
+        \  orange\n{% endif %}\n"
+      entity: sun.sun
+      name: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %} {%\
+        \ set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% if sunrise\
+        \ and sunset %}\n  {% if sunrise < sunset %}\n    N\xE4chster Aufgang: {{\
+        \ sunrise.timestamp() | timestamp_custom('%H:%M', true) }}\n  {% else %}\n\
+        \    N\xE4chster Untergang: {{ sunset.timestamp() | timestamp_custom('%H:%M',\
+        \ true) }}\n  {% endif %}\n{% else %}\n  Sonneninfo nicht verf\xFCgbar\n{%\
+        \ endif %}\n"
+      percent: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
+        \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% set\
+        \ now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise < sunset\
+        \ %}\n    {% set next_event = sunrise %}\n    {% set last_event = sunrise\
+        \ - timedelta(days=1) %}\n  {% else %}\n    {% set next_event = sunset %}\n\
+        \    {% set last_event = sunset - timedelta(days=1) %}\n  {% endif %}\n  {%\
+        \ set total = (next_event - last_event).total_seconds() %}\n  {% set elapsed\
+        \ = (now_time - last_event).total_seconds() %}\n  {% if total > 0 %}\n   \
+        \ {{ ((elapsed / total) * 100) | round(2) }}\n  {% else %}\n    0\n  {% endif\
+        \ %}\n{% else %}\n  0\n{% endif %}\n"
+      secondary: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
+        \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% set\
+        \ now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise < sunset\
+        \ %}\n    {% set next_event = sunrise %}\n    {% set last_event = sunrise\
+        \ - timedelta(days=1) %}\n  {% else %}\n    {% set next_event = sunset %}\n\
+        \    {% set last_event = sunset - timedelta(days=1) %}\n  {% endif %}\n  {%\
+        \ set delta = next_event - now_time %}\n  {% set total_seconds = delta.total_seconds()\
+        \ %}\n  {% if total_seconds > 0 %}\n    {% set days = (total_seconds // 86400)\
+        \ | int %}\n    {% set hours = (total_seconds % 86400) // 3600 %}\n    {%\
+        \ set minutes = (total_seconds % 3600) // 60 %}\n    {% set seconds = (total_seconds\
+        \ % 60) %}\n    in\n    {% if days > 0 %}\n      {{ days }}d\n    {% endif\
+        \ %}\n    {{ '%02d:%02d:%02d' | format(hours | int, minutes | int, seconds\
+        \ | int) }}\n  {% else %}\n    00:00:00\n  {% endif %}\n{% else %}\n  --:--:--\n\
+        {% endif %}\n"
+      tap_action:
+        action: more-info
+      type: custom:entity-progress-card-template
+      visibility:
+      - condition: user
+        users:
+        - 4f7767cac0c342edb25e991662a2f56c
     - entities:
       - entity: sensor.scb_ac_power
         icon: mdi:solar-power
@@ -2365,6 +2420,25 @@ config:
         show: true
       - id: header_only
         show: false
+    - animation_duration: 5s
+      bar_color_end: '#00cc66'
+      bar_color_start: '#ffcc00'
+      entity_day3: sensor.solcast_pv_forecast_prognose_tag_3
+      entity_day4: sensor.solcast_pv_forecast_prognose_tag_4
+      entity_day5: sensor.solcast_pv_forecast_prognose_tag_5
+      entity_day6: sensor.solcast_pv_forecast_prognose_tag_6
+      entity_day7: sensor.solcast_pv_forecast_prognose_tag_7
+      entity_today: sensor.solcast_pv_forecast_prognose_heute
+      entity_tomorrow: sensor.solcast_pv_forecast_prognose_morgen
+      max_value: 120
+      remaining_blink: true
+      remaining_color_end: '#f1c40f'
+      remaining_color_start: '#e67e22'
+      remaining_low_color_end: '#ffa500'
+      remaining_low_color_start: '#ff0000'
+      remaining_threshold: 5
+      show_tooltips: true
+      type: custom:clock-pv-forecast-card
     icon: mdi:solar-power
     path: energie
     theme: Backend-selected
@@ -5056,6 +5130,13 @@ config:
           secondary_info: none
           type: custom:mushroom-entity-card
         type: horizontal-stack
+      - entity: binary_sensor.close_dachfenster_rolladen
+        name: Dachfenster Heat
+        type: custom:mushroom-entity-card
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
       title: Wintergarten Dachfenster
       type: vertical-stack
     - cards:
