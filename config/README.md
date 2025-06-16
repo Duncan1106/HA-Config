@@ -6,10 +6,17 @@ This is my Home Assistant installation.
 
 Description | value
 -- | --
-Number of entities | 2675
-Number of sensors | 1377
+Number of entities | 2664
+Number of sensors | 1370
 
-Number of automations: 3 inactive and 108 active
+Number of automations: 3 inactive and 109 active
+
+Database:
+Name | value
+-- | --
+Size | 7.2 GB
+Rows | 17.8 Mio Rows
+
 
 ## My installed extensions:
 
