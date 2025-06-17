@@ -1,0 +1,132 @@
+substitutions:
+  name: esp32-c3-mini--dht22-sensor
+  friendly_name: ESP32 C3 mini - DHT22 Compact
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  min_version: 2024.6.0
+  name_add_mac_suffix: false
+  on_boot: 
+    then:
+      - button.press: status_led_btn
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: VERBOSE
+  initial_level: INFO
+
+select:
+  - platform: logger
+    name: Logger Level 
+    id: logger_select
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "AXfsQvDFfThiaps/L9S07/t/2DHDBJ7U04cOm4pHEWY="
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+      priority: 10
+      manual_ip: 
+        gateway: 192.168.2.1
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.45
+        subnet: 255.255.255.0
+    - ssid: !secret wifi_ssid2
+      password: !secret wifi_password
+      priority: 8
+      manual_ip: 
+        gateway: 192.168.2.1
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.45
+        subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "DHT22 Compact Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+
+output:
+  - platform: gpio
+    pin: 
+      number: GPIO8
+      ignore_strapping_warning: True
+      inverted: True
+    id: led_blue
+
+button:
+  - platform: output
+    output: led_blue
+    name: Status LED
+    id: status_led_btn
+    duration: 
+      milliseconds: 250
+
+  - platform: restart
+    name: Restart
+
+binary_sensor:
+  - platform: status
+    name: Status
+    id: status_bin
+    on_state: 
+      then:
+        - if: 
+            condition: 
+              - binary_sensor.is_on: status_bin
+            then: 
+              - button.press: status_led_btn
+
+sensor:  
+  - platform: dht
+    update_interval: 15s
+    pin: GPIO4
+    temperature: 
+      accuracy_decimals: 2
+      name: Temperature
+      id: temperature
+      filters:
+        - or:
+          - throttle: 120s
+          - delta: 4%
+    humidity: 
+      accuracy_decimals: 2
+      name: Humidity
+      id: humidity
+      filters:
+        - or:
+          - throttle: 120s
+          - delta: 4%
+
+  - platform: uptime
+    name: Uptime
+    update_interval: 60s
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: WiFi Signal dB
+    id: wifi_signal_db
+    update_interval: 5s
+    entity_category: "diagnostic"
+    filters: 
+        - or: 
+          - throttle: 120s
+          - delta: 2%
