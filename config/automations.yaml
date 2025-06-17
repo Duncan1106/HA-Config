@@ -6351,12 +6351,12 @@
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_solar_lux
-    below: 16000
+    below: 10000
     id: sunset
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_solar_lux
-    below: 15000
+    below: 9000
     id: sunset
   - trigger: numeric_state
     entity_id:
@@ -7793,4 +7793,62 @@
       value: '500'
     target:
       entity_id: number.inverter_battery_capacity
+  mode: single
+- id: '1750196437853'
+  alias: Octopus night usage, turn battery off
+  description: ''
+  triggers:
+  - trigger: time
+    at: 00:00:00
+    id: 'Off'
+  - trigger: time
+    at: 05:00:00
+    id: 'On'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 10
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            state: 'off'
+      alias: 'Turn off at midnight '
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 10
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            state: 'on'
+      alias: 'Turn on at 5 o''clock '
   mode: single
