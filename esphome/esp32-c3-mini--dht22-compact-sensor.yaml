@@ -10,6 +10,17 @@ esphome:
   on_boot: 
     then:
       - button.press: status_led_btn
+      - deep_sleep.prevent: deep
+      - if: 
+          condition:
+            - switch.is_off: disable_deepsleep
+          then:
+            - delay: 60s
+            - if: 
+                condition:
+                  - switch.is_off: disable_deepsleep
+                then:
+                  - deep_sleep.allow: deep
 esp32:
   board: esp32-c3-devkitm-1
   framework:
@@ -33,7 +44,17 @@ api:
 ota:
   - platform: esphome
     password: !secret ota_password
+    on_state_change: 
+      then:
+        - deep_sleep.prevent: deep
 
+deep_sleep:
+  id: deep
+  sleep_duration: 
+    minutes: 4.5
+  run_duration: 
+    seconds: 30
+      
 wifi:
   networks:
     - ssid: !secret wifi_ssid
@@ -72,6 +93,20 @@ output:
       ignore_strapping_warning: True
       inverted: True
     id: led_blue
+
+switch:
+  - platform: template
+    assumed_state: False
+    id: disable_deepsleep
+    restore_mode: RESTORE_DEFAULT_OFF
+    name: Disable Deepsleep
+    optimistic: True
+    on_turn_on: 
+      then:
+        - deep_sleep.prevent: deep
+    on_turn_off: 
+      then:
+        - deep_sleep.allow: deep
 
 button:
   - platform: output
