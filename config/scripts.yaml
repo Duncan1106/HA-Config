@@ -1184,6 +1184,7 @@ charge_ev_message_with_optional_disable:
         title: Will do
       - action: '{{ action_dismiss }}'
         title: Car Full or no Car
+    enabled: true
   - alias: Awaiting response
     wait_for_trigger:
     - event_type: mobile_app_notification_action
@@ -1600,3 +1601,67 @@ trockner_actionable_duncan:
       message: Bitte ausräumen
   alias: Trockner Actionable Duncan
   description: ''
+test_duncan_notify_response_echo:
+  alias: Test Duncan Confirm & Deny with Clear Notification
+  mode: restart
+  sequence:
+  - alias: Send confirmable notification via notify.duncan
+    data:
+      title: Test
+      message: Doppelt gemoppelt
+      data:
+        tag: test_duncan_confirm
+        actions:
+        - action: CONFIRM
+          title: 'Yes'
+        - action: DENY
+          title: 'No'
+    action: notify.duncan
+  - alias: Wait for button click
+    wait_for_trigger:
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: CONFIRM
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: DENY
+  - alias: Custom action based on button
+    choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''CONFIRM'' }}'
+      sequence:
+      - data:
+          title: ✅ Bestätigung
+          message: Du hast 'Yes' gewählt.
+        action: notify.duncan
+      - data:
+          message: clear_notification
+          data:
+            tag: test_duncan_confirm
+        action: notify.duncan
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.event.data.action == ''DENY'' }}'
+      sequence:
+      - data:
+          title: ❌ Ablehnung
+          message: Du hast 'No' gewählt.
+        action: notify.duncan
+      - data:
+          message: clear_notification
+          data:
+            tag: test_duncan_confirm
+        action: notify.duncan
+    default:
+    - data:
+        title: ⚠️ Unbekannte Antwort
+        message: Die Antwort konnte nicht erkannt werden.
+      action: notify.duncan
+    - data:
+        message: clear_notification
+        data:
+          tag: test_duncan_confirm
+      action: notify.duncan
