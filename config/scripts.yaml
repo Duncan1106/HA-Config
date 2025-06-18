@@ -1184,6 +1184,7 @@ charge_ev_message_with_optional_disable:
         title: Will do
       - action: '{{ action_dismiss }}'
         title: Car Full or no Car
+    enabled: true
   - alias: Awaiting response
     wait_for_trigger:
     - event_type: mobile_app_notification_action
@@ -1599,4 +1600,30 @@ trockner_actionable_duncan:
           entity_id: input_boolean.trockner_fertig
       message: Bitte ausräumen
   alias: Trockner Actionable Duncan
+  description: ''
+test_duncan_notify_response_echo:
+  alias: Test Duncan Notify Response Echo
+  mode: restart
+  sequence:
+  - alias: Send confirmable notification via notify.duncan
+    data:
+      title: Test
+      message: Doppelt gemoppelt
+      data:
+        tag: test_duncan_notify
+        actions:
+        - action: CONFIRM
+          title: 'Yes'
+    action: notify.duncan
+  - alias: Wait for confirmation action
+    wait_for_trigger:
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: CONFIRM
+  - alias: Send follow-up with clicked button title
+    data:
+      title: "\U0001F9EA Button Clicked"
+      message: 'Yes'
+    action: notify.duncan
   description: ''
