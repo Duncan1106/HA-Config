@@ -4640,7 +4640,7 @@
         - sensor.esp32_c3_zero_epever_pv_array_input_current
         - sensor.esp32_c3_zero_epever_pv_array_input_power
         - sensor.esp32_c3_zero_epever_pv_array_input_voltage
-        - sensor.esp32_c3_zero_epever_length_of_night
+        - sensor.esp32_c3_zero_epever_nighttime_duration
         - sensor.esp32_c3_zero_epever_discharger_status
         - sensor.esp32_c3_zero_epever_power_components_temperature
         - sensor.esp32_c3_zero_epever_device_temperature
@@ -6240,55 +6240,6 @@
           message: clear_notification
   mode: parallel
   max: 10
-- id: '1740093536851'
-  alias: Wallpanel Restart Auto Charging
-  description: ''
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.lenovo_tab_p11_batterie
-  conditions:
-  - condition: numeric_state
-    entity_id: sensor.lenovo_tab_p11_batterie
-    below: 40
-  actions:
-  - sequence:
-    - variables:
-        counter: 0
-        max_retries: 10
-    - repeat:
-        sequence:
-        - variables:
-            counter: '{{ counter + 1 }}'
-        - action: switch.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: switch.mikrowelle_2
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 5
-            milliseconds: 0
-        - action: switch.turn_on
-          metadata: {}
-          data: {}
-          target:
-            entity_id: switch.mikrowelle_2
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 5
-            milliseconds: 0
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: binary_sensor.lenovo_tab_p11_eingesteckt
-            state: 'on'
-          - condition: template
-            value_template: '{{ counter >= max_retries }}'
-  mode: single
 - id: '1740094506579'
   alias: Wallpanel Reload Browser if -> low memory or 02:00
   description: ''
@@ -7773,7 +7724,7 @@
     at: 00:00:00
   conditions:
   - condition: numeric_state
-    entity_id: number.inverter_battery_capacity
+    entity_id: sensor.inverter_battery_corrected_capacity
     above: 500
   actions:
   - action: number.set_value
