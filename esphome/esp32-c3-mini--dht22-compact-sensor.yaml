@@ -79,7 +79,7 @@ button:
     name: Status LED
     id: status_led_btn
     duration: 
-      milliseconds: 250
+      milliseconds: 125
 
   - platform: restart
     name: Restart
@@ -98,28 +98,40 @@ binary_sensor:
 
 sensor:  
   - platform: dht
-    update_interval: 15s
-    pin: GPIO4
+    update_interval: 5s
+    pin:
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+    model: DHT22
     temperature: 
       accuracy_decimals: 2
       name: Temperature
       id: temperature
+      on_value: 
+        then:
+          - button.press: status_led_btn
       filters:
         - or:
-          - throttle: 120s
-          - delta: 4%
+          - throttle: 60s
+          - delta: 3%
     humidity: 
       accuracy_decimals: 2
       name: Humidity
       id: humidity
       filters:
         - or:
-          - throttle: 120s
-          - delta: 4%
+          - throttle: 60s
+          - delta: 3%
 
   - platform: uptime
     name: Uptime
-    update_interval: 60s
+    update_interval: 5s
+    filters:
+      - or:
+        - throttle: 60s
+        - delta: 5%
 
   - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
     name: WiFi Signal dB

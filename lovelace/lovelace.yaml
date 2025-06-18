@@ -315,7 +315,7 @@ config:
             card_mod:
               style: "ha-card {\n  transform: scale(1.0);\n  height: 95%;\n  width:\
                 \ 100%;\n  margin: -0px;\n  padding-top: 0px;\n}\n      .header.flex\
-                \ .name.flex .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.inverter_battery')\
+                \ .name.flex .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.felicity_ess_soc_avg')\
                 \ | round(1)}}%\";\n  white-space: pre;\n}\n.states.flex::after {\n\
                 \  color: white;\n  content: \"Charge: {{states('sensor.inverter_today_battery_charge')\
                 \ | round(2)}} kWh \\A Discharge: {{states('sensor.inverter_today_battery_discharge')\
@@ -369,7 +369,7 @@ config:
               state_not: FeedIn
             - below: 95
               condition: numeric_state
-              entity: sensor.inverter_battery
+              entity: sensor.felicity_ess_soc_avg
             - above: 50
               condition: numeric_state
               entity: sensor.inverter_battery_power
@@ -1417,7 +1417,7 @@ config:
           icon: mdi:solar-panel
           invert_state: false
           show_state_of_charge: true
-          state_of_charge: sensor.inverter_battery
+          state_of_charge: sensor.felicity_ess_soc_avg
           state_of_charge_decimals: 1
           state_of_charge_unit_white_space: false
           use_metadata: false
@@ -1536,21 +1536,6 @@ config:
       use_new_flow_rate_model: true
       w_decimals: 1
       watt_threshold: 1100
-    - card:
-        entities:
-        - entity: sensor.scb_inverter_state
-        - entity: binary_sensor.inverter
-        hours_to_show: 24
-        logarithmic_scale: false
-        show_names: false
-        title: Inverter State
-        type: history-graph
-      conditions:
-      - condition: user
-        users:
-        - e7fe7b076dbb49a3aaa82b75c63cc302
-        - 4f7767cac0c342edb25e991662a2f56c
-      type: conditional
     - cards:
       - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{%\
           \ else %}\n  orange\n{% endif %}"
@@ -4400,11 +4385,12 @@ config:
           entity: sensor.lsjwh4097rn105299_soc_kwh
           icon: ''
         - action_config:
-            entity: sensor.mg4_max_range
             tap_action:
               action: more-info
           entity: sensor.mg4_max_range
           icon: mdi:arrow-collapse-up
+          visibility: '{{ states(''sensor.lsjwh4097rn105299_soc'') | float(0) < 100
+            }}'
         - action_config:
             double_tap_action:
               action: none
@@ -5425,7 +5411,7 @@ config:
           \ %}\n  orange\n{% elif pool_temp > 22.0 %}\n  yellow\n{% else %} {# This\
           \ covers pool_temp <= 22.0 #}\n  lightblue\n{% endif %}"
         color: "{% set pool_temp = states('sensor.esp32_c3_mini_pool_temperature_pool_temperature')\
-          \ | float(0) %}\n{% if pool_temp > 30.0 %}\n  red\n{% elif pool_temp > 26.0\
+          \ | float(0) %} {% if pool_temp > 30.0 %}\n  red\n{% elif pool_temp > 26.0\
           \ %}\n  orange\n{% elif pool_temp > 22.0 %}\n  yellow\n{% else %} {# This\
           \ covers pool_temp <= 22.0 #}\n  lightblue\n{% endif %}"
         decimal: 1
@@ -5437,9 +5423,9 @@ config:
         min_value: 10
         name: "Pool Temperature: {{states('sensor.esp32_c3_mini_pool_temperature_pool_temperature')\
           \ | float(0) | round(2) }}\xB0C"
-        percent: "{% set min_pool_temp = 10 %}\n{% set max_pool_temp = 40 %}\n{% set\
+        percent: "{% set min_pool_temp = 10 %} {% set max_pool_temp = 40 %} {% set\
           \ current_pool_temp = states('sensor.esp32_c3_mini_pool_temperature_pool_temperature')\
-          \ | float(-999) %}\n{% set normalized_percentage = 0 %}\n\n{% if current_pool_temp\
+          \ | float(-999) %} {% set normalized_percentage = 0 %} {% if current_pool_temp\
           \ == -999 %}\n  {# Handle cases where the sensor state is unavailable or\
           \ not a valid number #}\n  {% set normalized_percentage = 0 %}\n{% elif\
           \ current_pool_temp <= min_pool_temp %}\n  {% set normalized_percentage\
@@ -6100,10 +6086,6 @@ config:
         use_light_color: true
       title: Paludarien
       type: vertical-stack
-    - entities:
-      - entity: sensor.known_power
-      - entity: sensor.known_energy
-      type: entities
     path: smart
     subview: true
     title: Smart
@@ -8273,11 +8255,11 @@ config:
         - condition: user
           users:
           - 4f7767cac0c342edb25e991662a2f56c
-      type: grid
-    - cards:
       - heading: Charge & Discharge
         heading_style: title
         type: heading
+      type: grid
+    - cards:
       - cards:
         - entity: sensor.day_night_battery_charged_energy
           fill_container: true
@@ -8351,7 +8333,7 @@ config:
         card_mod:
           style: "ha-card {\n  transform: scale(1.0);\n  height: 95%;\n  width: 100%;\n\
             \  margin: -0px;\n  padding-top: 0px;\n}\n      .header.flex .name.flex\
-            \ .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.inverter_battery')\
+            \ .ellipsis::after{\n  color: white;\n  content: \": {{states('sensor.felicity_ess_soc_avg')\
             \ | round(1)}}%\";\n  white-space: pre;\n}\n.states.flex::after {\n  color:\
             \ white;\n  content: \"Charge: {{states('sensor.inverter_today_battery_charge')\
             \ | round(2)}} kWh \\A Discharge: {{states('sensor.inverter_today_battery_discharge')\
@@ -8713,31 +8695,6 @@ config:
       - heading: Kontrolle
         heading_style: title
         type: heading
-      - entities:
-        - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
-          name: Enable Autpmations
-        - entity: switch.esp32_s3_zero_deye8k_battery_charge_solar
-          name: 'Automation: Charge Solar'
-        - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
-          name: 'Automation: Charge Grid'
-        - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
-          name: Grid Charge Buffer Power
-        - entity: number.esp32_s3_zero_deye8k_max_grid_power
-          name: Max Grid Power
-        - entity: number.esp32_s3_zero_deye8k_amp_offset
-          name: Amp Offset
-        - entity: number.esp32_s3_zero_deye8k_grid_charge_power_buffer
-          name: Grid Charge Buffer Power
-        - entity: number.esp32_s3_zero_deye8k_solar_charge_power_buffer
-          name: Solar Charge Buffer Power
-        - entity: number.inverter_battery_capacity
-        - entity: sensor.inverter_battery_corrected_capacity
-          name: Battery AH Calculated DEYE
-        - entity: select.inverter_battery_operation_mode
-        - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
-          name: Theoretical Current
-        - entity: sensor.inverter_battery_current
-        type: entities
       - cards:
         - card:
             entities:
@@ -9000,6 +8957,31 @@ config:
             state: Use %
           type: conditional
         type: horizontal-stack
+      - entities:
+        - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
+          name: Enable Autpmations
+        - entity: switch.esp32_s3_zero_deye8k_battery_charge_solar
+          name: 'Automation: Charge Solar'
+        - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          name: 'Automation: Charge Grid'
+        - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
+          name: Grid Charge Buffer Power
+        - entity: number.esp32_s3_zero_deye8k_max_grid_power
+          name: Max Grid Power
+        - entity: number.esp32_s3_zero_deye8k_amp_offset
+          name: Amp Offset
+        - entity: number.esp32_s3_zero_deye8k_grid_charge_power_buffer
+          name: Grid Charge Buffer Power
+        - entity: number.esp32_s3_zero_deye8k_solar_charge_power_buffer
+          name: Solar Charge Buffer Power
+        - entity: number.inverter_battery_capacity
+        - entity: sensor.inverter_battery_corrected_capacity
+          name: Battery AH Calculated DEYE
+        - entity: select.inverter_battery_operation_mode
+        - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
+          name: Theoretical Current
+        - entity: sensor.inverter_battery_current
+        type: entities
       type: grid
     subview: true
     title: Home Battery
