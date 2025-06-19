@@ -689,7 +689,7 @@
         minutes: 0
         seconds: 0
       include_watchdog: enable_watchdog
-      running_dead_zone: 20
+      running_dead_zone: 15
       end_message_kwh: 'Consumption: '
       end_repeat_count: 1
       watchdog_title: ⚠️ Waschmaschine ⚠️
@@ -3403,28 +3403,27 @@
         below: 0.1
     then:
     - if:
-      - condition: template
-        enabled: true
-        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
-          int(1) < 28 }}'
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        below: 0.1
       then:
-      - type: turn_on
-        device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
-        entity_id: 564e927e962a99447ddb8d55d189ca32
-        domain: light
-        brightness_pct: 75
-        enabled: true
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 0
-          milliseconds: 10
       - action: light.turn_on
         metadata: {}
         data:
           brightness_pct: 10
         target:
           entity_id: light.esp32_c3_mini_treppenhaus_licht
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 0
+          milliseconds: 10
+      - type: turn_on
+        device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+        entity_id: 564e927e962a99447ddb8d55d189ca32
+        domain: light
+        brightness_pct: 75
+        enabled: true
     - sequence:
       - wait_for_trigger:
         - trigger: state
