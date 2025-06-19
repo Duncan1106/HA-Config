@@ -436,6 +436,70 @@ config:
         type: conditional
       type: vertical-stack
     - cards:
+      - entity: input_boolean.show_mqtt_details
+        fill_container: true
+        icon: ''
+        layout: vertical
+        primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
+          3)}}'
+        secondary: MQTT Uptime
+        tap_action:
+          action: toggle
+        type: custom:mushroom-template-card
+      - card:
+          cards:
+          - cards:
+            - entity: sensor.mqtt_stats_bytes_received
+              fill_container: true
+              icon: mdi:call-received
+              layout: vertical
+              primary: '{{ states(''sensor.mqtt_stats_bytes_received'') | filesizeformat()
+                }}'
+              secondary: ''
+              tap_action:
+                action: more-info
+              type: custom:mushroom-template-card
+            - entity: sensor.mqtt_stats_bytes_sent
+              fill_container: true
+              icon: mdi:call-made
+              layout: vertical
+              primary: '{{ states(''sensor.mqtt_stats_bytes_sent'') | filesizeformat()
+                }}'
+              secondary: ''
+              tap_action:
+                action: more-info
+              type: custom:mushroom-template-card
+            type: horizontal-stack
+          - aggregate_func: dif
+            align_header: center
+            entities:
+            - entity: sensor.mqtt_stats_messages_received
+              name: Received
+              show_state: true
+            - entity: sensor.mqtt_stats_messages_sent
+              name: Sent
+              show_state: true
+              show_unit: false
+            group_by: hour
+            height: 100
+            hour24: true
+            hours_to_show: 48
+            name: 'Messages: Received / Sent'
+            points_per_hour: 10
+            show:
+              icon: false
+              labels: false
+              legend: false
+            type: custom:mini-graph-card
+            unit: ' '
+          type: vertical-stack
+        conditions:
+        - condition: state
+          entity: input_boolean.show_mqtt_details
+          state: 'on'
+        type: conditional
+      type: vertical-stack
+    - cards:
       - double_tap_action:
           action: call-service
           service: script.1707895746671
@@ -645,134 +709,86 @@ config:
     subview: false
     title: Tasmota
   - badges: []
-    cards:
-    - card:
-        columns: 1
-        square: false
-        type: grid
-      card_param: cards
-      filter:
-        include:
-        - entity_id: '*battery_plus'
-          options:
-            tap_action:
-              action: more-info
-            theme: battery
-            type: custom:entity-progress-card
-      show_empty: true
-      sort:
-        ignore_case: true
-        method: state
-        numeric: true
-      type: custom:auto-entities
-    - card_mod:
-        style:
-          ha-markdown$: 'table { width: 100%; border-collapse: separate; border-spacing:
-            0px; } tbody tr:nth-child(2n+1) { background-color: var(--table-row-background-color);
-            } thead tr th, tbody tr td {padding: 4px 10px; }
-
-            '
-      content: "{% set ns_batteries = namespace(batteries={}) %}\n{% for entity_id\
-        \ in integration_entities('battery_notes') if entity_id is search('_battery_type$',\
-        \ ignorecase=False) -%}\n    {% set battery_type = states[entity_id].state\
-        \ %}\n    {% set battery_split = battery_type.split('x') %}\n    {% if battery_split\
-        \ | length > 1 %}\n      {% set battery_type = battery_split[-1] | trim %}\n\
-        \      {% set battery_count = battery_split[0] | int(1) %}\n    {% else %}\n\
-        \      {% set battery_count = 1 %}\n    {% endif %}\n    {% if battery_type\
-        \ not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
-        \ = dict(ns_batteries.batteries, **{battery_type: battery_count}) %}\n   \
-        \   {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
-        \ **{battery_type: ns_batteries.batteries[battery_type] + battery_count})\
-        \ %}\n    {% endif %}\n{% endfor %}\n\n| Type | Count |\n| :-- | --: |\n{%\
-        \ for bt in ns_batteries.batteries | dictsort(False, 'value') | reverse -%}\n\
-        \  | {{ bt[0] }} | {{ [bt][0][1] }} |\n{% endfor %}\n"
-      title: Battery Summary
-      type: markdown
-    - cards:
-      - entities:
-        - entity: input_text.batterie_suche
-          icon: mdi:magnify
-          name: Serch by battery type
-          secondary_info: none
-        state_color: false
-        type: entities
-      - content: "{% set search_term = states('input_text.batterie_suche') %}\n{%\
-          \ if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011Ger\xE4te #}\n\
-          \  {% set devices = states\n     | selectattr('entity_id', 'search', '_battery_plus$')\n\
-          \     | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
-          \     | list %}\n\n  {# 2. Mutable container anlegen #}\n  {% set ns = namespace(buffer=[])\
-          \ %}\n\n  {# 3. Matches sammeln als dicts mit numeric lvl #}\n  {% for device\
-          \ in devices %}\n    {% set bt_raw = device.attributes.battery_type_and_quantity\
-          \ | replace('\xD7','x') %}\n    {% if search_term in bt_raw %}\n      {%\
-          \ set entry = {\n        'lvl': device.state | int,\n        'line': bt_raw\
-          \ ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%'\n      } %}\n      {%\
-          \ set ns.buffer = ns.buffer + [ entry ] %}\n    {% endif %}\n  {% endfor\
-          \ %}\n\n  {% if ns.buffer | length > 0 %}\n    {# 4. Numeric\u2011sortieren\
-          \ und dann alle lines joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
-          \       | map(attribute='line')\n       | list\n       | join('\\n') }}\n\
-          \  {% else %}\n    Keine Ger\xE4te mit diesem Batterietyp gefunden.\n  {%\
-          \ endif %}\n{% else %}\n  Search result\n{% endif %}\n"
-        type: markdown
-      type: vertical-stack
+    cards: []
     icon: mdi:battery
+    max_columns: 2
     path: batterys
-    title: Batterys
-    type: masonry
-  - badges: []
-    cards:
-    - entity: sensor.mqtt_stats_uptime
-      icon_type: none
-      layout: vertical
-      name: Uptime
-      primary_info: state
-      secondary_info: name
-      type: custom:mushroom-entity-card
+    sections:
     - cards:
-      - entity: sensor.mqtt_stats_bytes_received
-        fill_container: true
-        icon: mdi:call-received
-        layout: vertical
-        primary: '{{ states(''sensor.mqtt_stats_bytes_received'') | filesizeformat()
-          }}'
-        secondary: ''
-        tap_action:
-          action: more-info
-        type: custom:mushroom-template-card
-      - entity: sensor.mqtt_stats_bytes_sent
-        fill_container: true
-        icon: mdi:call-made
-        layout: vertical
-        primary: '{{ states(''sensor.mqtt_stats_bytes_sent'') | filesizeformat() }}'
-        secondary: ''
-        tap_action:
-          action: more-info
-        type: custom:mushroom-template-card
-      type: horizontal-stack
-    - aggregate_func: dif
-      align_header: center
-      entities:
-      - entity: sensor.mqtt_stats_messages_received
-        name: Received
-        show_state: true
-      - entity: sensor.mqtt_stats_messages_sent
-        name: Sent
-        show_state: true
-        show_unit: false
-      group_by: hour
-      height: 100
-      hour24: true
-      hours_to_show: 48
-      name: 'Messages: Received / Sent'
-      points_per_hour: 10
-      show:
-        icon: false
-        labels: false
-        legend: false
-      type: custom:mini-graph-card
-      unit: ' '
-    icon: mdi:quality-medium
-    path: mqtt
-    title: MQTT
+      - card:
+          columns: 1
+          square: false
+          type: grid
+        card_param: cards
+        filter:
+          include:
+          - entity_id: '*battery_plus'
+            options:
+              tap_action:
+                action: more-info
+              theme: battery
+              type: custom:entity-progress-card
+        show_empty: true
+        sort:
+          ignore_case: true
+          method: state
+          numeric: true
+        type: custom:auto-entities
+      type: grid
+    - cards:
+      - card_mod:
+          style:
+            ha-markdown$: 'table { width: 100%; border-collapse: separate; border-spacing:
+              0px; } tbody tr:nth-child(2n+1) { background-color: var(--table-row-background-color);
+              } thead tr th, tbody tr td {padding: 4px 10px; }
+
+              '
+        content: "{% set ns_batteries = namespace(batteries={}) %}\n{% for entity_id\
+          \ in integration_entities('battery_notes') if entity_id is search('_battery_type$',\
+          \ ignorecase=False) -%}\n    {% set battery_type = states[entity_id].state\
+          \ %}\n    {% set battery_split = battery_type.split('x') %}\n    {% if battery_split\
+          \ | length > 1 %}\n      {% set battery_type = battery_split[-1] | trim\
+          \ %}\n      {% set battery_count = battery_split[0] | int(1) %}\n    {%\
+          \ else %}\n      {% set battery_count = 1 %}\n    {% endif %}\n    {% if\
+          \ battery_type not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
+          \ = dict(ns_batteries.batteries, **{battery_type: battery_count}) %}\n \
+          \     {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
+          \ **{battery_type: ns_batteries.batteries[battery_type] + battery_count})\
+          \ %}\n    {% endif %}\n{% endfor %}\n\n| Type | Count |\n| :-- | --: |\n\
+          {% for bt in ns_batteries.batteries | dictsort(False, 'value') | reverse\
+          \ -%}\n  | {{ bt[0] }} | {{ [bt][0][1] }} |\n{% endfor %}\n"
+        title: Battery Summary
+        type: markdown
+      - cards:
+        - entities:
+          - entity: input_text.batterie_suche
+            icon: mdi:magnify
+            name: Serch by battery type
+            secondary_info: none
+          state_color: false
+          type: entities
+        - content: "{% set search_term = states('input_text.batterie_suche') %}\n\
+            {% if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011Ger\xE4\
+            te #}\n  {% set devices = states\n     | selectattr('entity_id', 'search',\
+            \ '_battery_plus$')\n     | selectattr('attributes.battery_type_and_quantity',\
+            \ 'defined')\n     | list %}\n\n  {# 2. Mutable container anlegen #}\n\
+            \  {% set ns = namespace(buffer=[]) %}\n\n  {# 3. Matches sammeln als\
+            \ dicts mit numeric lvl #}\n  {% for device in devices %}\n    {% set\
+            \ bt_raw = device.attributes.battery_type_and_quantity | replace('\xD7\
+            ','x') %}\n    {% if search_term in bt_raw %}\n      {% set entry = {\n\
+            \        'lvl': device.state | int,\n        'line': bt_raw ~ ': ' ~ device.name\
+            \ ~ ': ' ~ device.state ~ '%'\n      } %}\n      {% set ns.buffer = ns.buffer\
+            \ + [ entry ] %}\n    {% endif %}\n  {% endfor %}\n\n  {% if ns.buffer\
+            \ | length > 0 %}\n    {# 4. Numeric\u2011sortieren und dann alle lines\
+            \ joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
+            \       | map(attribute='line')\n       | list\n       | join('\\n') }}\n\
+            \  {% else %}\n    Keine Ger\xE4te mit diesem Batterietyp gefunden.\n\
+            \  {% endif %}\n{% else %}\n  Search result\n{% endif %}\n"
+          type: markdown
+        type: vertical-stack
+      type: grid
+    title: Batterys
+    type: sections
   - badges: []
     cards:
     - entity: input_select.smart_home_status
@@ -868,123 +884,127 @@ config:
     icon: mdi:home-automation
     path: automations-scripts
     title: Automations & Scripts
-  - cards:
+  - cards: []
+    icon: mdi:apple
+    max_columns: 1
+    path: apple-icloud
+    sections:
     - cards:
       - cards:
         - cards:
-          - columns: 5
-            entities:
-            - entity: device_tracker.enyas_iphone
-              name: Enya
-            - entity: sensor.enyas_iphone_arrival_time
-              name: Arrive
-            - entity: sensor.enyas_iphone_home_distance
-              name: Distance
-            - entity: sensor.enyas_iphone_travel_time_hhmm
-              name: TravTime
-            - entity: sensor.enyas_iphone_next_update
-              name: NextUpdt
-            show_icon: true
-            show_name: true
-            show_state: true
-            state_color: true
-            type: glance
-          - columns: 5
-            entities:
-            - entity: sensor.enyas_iphone_battery
-              name: Battery
-            - entity: sensor.enyas_iphone_interval
-              name: Interval
-            - entity: sensor.enyas_iphone_moved_distance
-              name: Moved
-            - entity: sensor.enyas_iphone_last_located
-              name: Located
-            - entity: sensor.enyas_iphone_last_update
-              name: LastUpdt
-            type: glance
-          - entities:
-            - entity: sensor.enyas_iphone_info
-              icon: mdi:information-outline
-              name: Info
-            type: entities
-          columns: 1
-          square: false
-          type: grid
-        - cards:
-          - columns: 5
-            entities:
-            - entity: device_tracker.stephans_iphone
-              name: Stephan
-            - entity: sensor.stephans_iphone_arrival_time
-              name: Arrive
-            - entity: sensor.stephans_iphone_home_distance
-              name: Distance
-            - entity: sensor.stephans_iphone_travel_time_hhmm
-              name: TravTime
-            - entity: sensor.stephans_iphone_next_update
-              name: NextUpdt
-            show_icon: true
-            show_name: true
-            show_state: true
-            state_color: true
-            type: glance
-          - columns: 5
-            entities:
-            - entity: sensor.stephans_iphone_battery
-              name: Battery
-            - entity: sensor.stephans_iphone_interval
-              name: Interval
-            - entity: sensor.stephans_iphone_moved_distance
-              name: Moved
-            - entity: sensor.stephans_iphone_last_located
-              name: Located
-            - entity: sensor.stephans_iphone_last_update
-              name: LastUpdt
-            type: glance
-          - entities:
-            - entity: sensor.stephans_iphone_info
-              icon: mdi:information-outline
-              name: Info
-            type: entities
-          columns: 1
-          square: false
-          type: grid
-        parameters:
-          //#   delay: 10000
-          //# autoplay: null
-          //# speed: 1500
-          loop: true
-        type: custom:swiper-card
-      - type: custom:icloud3-event-log-card
-      type: vertical-stack
-    - cards:
-      - entity: device_tracker.stephans_iphone
-        fill_container: true
-        layout: vertical
-        tap_action:
-          action: perform-action
-          data:
-            command: Locate Device(s) using iCloud
-            device_name: 3675fe049f5a257fe6eebb6533252e74
-          perform_action: icloud3.action
-          target: {}
-        type: custom:mushroom-entity-card
-      - entity: device_tracker.enyas_iphone
-        fill_container: true
-        layout: vertical
-        tap_action:
-          action: perform-action
-          data:
-            command: Locate Device(s) using iCloud
-            device_name: e146d7ea7dd792848fa6d8090a91ff6c
-          perform_action: icloud3.action
-          target: {}
-        type: custom:mushroom-entity-card
-      type: horizontal-stack
-    icon: mdi:apple
-    path: apple-icloud
+          - cards:
+            - columns: 5
+              entities:
+              - entity: device_tracker.enyas_iphone
+                name: Enya
+              - entity: sensor.enyas_iphone_arrival_time
+                name: Arrive
+              - entity: sensor.enyas_iphone_home_distance
+                name: Distance
+              - entity: sensor.enyas_iphone_travel_time_hhmm
+                name: TravTime
+              - entity: sensor.enyas_iphone_next_update
+                name: NextUpdt
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_color: true
+              type: glance
+            - columns: 5
+              entities:
+              - entity: sensor.enyas_iphone_battery
+                name: Battery
+              - entity: sensor.enyas_iphone_interval
+                name: Interval
+              - entity: sensor.enyas_iphone_moved_distance
+                name: Moved
+              - entity: sensor.enyas_iphone_last_located
+                name: Located
+              - entity: sensor.enyas_iphone_last_update
+                name: LastUpdt
+              type: glance
+            - entities:
+              - entity: sensor.enyas_iphone_info
+                icon: mdi:information-outline
+                name: Info
+              type: entities
+            columns: 1
+            square: false
+            type: grid
+          - cards:
+            - columns: 5
+              entities:
+              - entity: device_tracker.stephans_iphone
+                name: Stephan
+              - entity: sensor.stephans_iphone_arrival_time
+                name: Arrive
+              - entity: sensor.stephans_iphone_home_distance
+                name: Distance
+              - entity: sensor.stephans_iphone_travel_time_hhmm
+                name: TravTime
+              - entity: sensor.stephans_iphone_next_update
+                name: NextUpdt
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_color: true
+              type: glance
+            - columns: 5
+              entities:
+              - entity: sensor.stephans_iphone_battery
+                name: Battery
+              - entity: sensor.stephans_iphone_interval
+                name: Interval
+              - entity: sensor.stephans_iphone_moved_distance
+                name: Moved
+              - entity: sensor.stephans_iphone_last_located
+                name: Located
+              - entity: sensor.stephans_iphone_last_update
+                name: LastUpdt
+              type: glance
+            - entities:
+              - entity: sensor.stephans_iphone_info
+                icon: mdi:information-outline
+                name: Info
+              type: entities
+            columns: 1
+            square: false
+            type: grid
+          parameters:
+            //#   delay: 10000
+            //# autoplay: null
+            //# speed: 1500
+            loop: true
+          type: custom:swiper-card
+        - type: custom:icloud3-event-log-card
+        type: vertical-stack
+      - cards:
+        - entity: device_tracker.stephans_iphone
+          fill_container: true
+          layout: vertical
+          tap_action:
+            action: perform-action
+            data:
+              command: Locate Device(s) using iCloud
+              device_name: 3675fe049f5a257fe6eebb6533252e74
+            perform_action: icloud3.action
+            target: {}
+          type: custom:mushroom-entity-card
+        - entity: device_tracker.enyas_iphone
+          fill_container: true
+          layout: vertical
+          tap_action:
+            action: perform-action
+            data:
+              command: Locate Device(s) using iCloud
+              device_name: e146d7ea7dd792848fa6d8090a91ff6c
+            perform_action: icloud3.action
+            target: {}
+          type: custom:mushroom-entity-card
+        type: horizontal-stack
+      type: grid
     title: Apple Icloud
-    type: masonry
+    type: sections
   - cards:
     - cards:
       - double_tap_action:
