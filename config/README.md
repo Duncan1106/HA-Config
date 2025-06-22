@@ -24,7 +24,7 @@ Rows | 17.9 Mio Rows
 
 ## My installed extensions:
 <details>
-<summary>### Custom integrations</summary>
+<summary>Custom integrations</summary>
 - [Ankermake](https://github.com/sondregronas/ankermake-hass-component)
 - [Anniversaries](https://github.com/pinkywafer/Anniversaries)
 - [Anylist](https://github.com/kevdliu/hacs-anylist)
@@ -62,7 +62,7 @@ Rows | 17.9 Mio Rows
 </details>
 
 <details>
-<summary>### Lovelace plugins</summary>
+<summary>Lovelace plugins</summary>
 - [Apexcharts Card](https://github.com/RomRider/apexcharts-card)
 - [Atomic Calendar Revive](https://github.com/totaldebug/atomic-calendar-revive)
 - [Auto Entities](https://github.com/thomasloven/lovelace-auto-entities)
