@@ -63,45 +63,45 @@ Rows | 17.9 Mio Rows
 
 <details>
 <summary>Lovelace plugins</summary>
-- [Apexcharts Card](https://github.com/RomRider/apexcharts-card)<br>
-- [Atomic Calendar Revive](https://github.com/totaldebug/atomic-calendar-revive)<br>
-- [Auto Entities](https://github.com/thomasloven/lovelace-auto-entities)<br>
-- [Bubble Card](https://github.com/Clooos/Bubble-Card)<br>
-- [Button Card](https://github.com/custom-cards/button-card)<br>
-- [Card Mod](https://github.com/thomasloven/lovelace-card-mod)<br>
-- [Charger Card](https://github.com/tmjo/charger-card)<br>
-- [Clock Weather Card Hui Icons](https://github.com/samuelgoodell/clock-weather-card-hui-icons)<br>
-- [Config Template Card](https://github.com/iantrich/config-template-card)<br>
-- [Custom Sidebar](https://github.com/elchininet/custom-sidebar)<br>
-- [Energy Flow Card Plus](https://github.com/flixlix/energy-flow-card-plus)<br>
-- [Energy Period Selector Plus](https://github.com/flixlix/energy-period-selector-plus)<br>
-- [Entity Progress Card](https://github.com/francois-le-ko4la/lovelace-entity-progress-card)<br>
-- [Expander Card](https://github.com/MelleD/lovelace-expander-card)<br>
-- [Flexible Horseshoe Card For Lovelace](https://github.com/AmoebeLabs/flex-horseshoe-card)<br>
-- [Gallery Card 2024](https://github.com/lukelalo/gallery-card)<br>
-- [Home Assistant Swipe Navigation](https://github.com/zanna-37/hass-swipe-navigation)<br>
-- [Jk Bms Card](https://github.com/Pho3niX90/jk-bms-card)<br>
-- [Kiosk Mode](https://github.com/NemesisRE/kiosk-mode)<br>
-- [Mini Graph Card](https://github.com/kalkih/mini-graph-card)<br>
-- [Multiple Entity Row](https://github.com/benct/lovelace-multiple-entity-row)<br>
-- [Mushroom](https://github.com/piitaya/lovelace-mushroom)<br>
-- [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus)<br>
-- [Pv Forecast Card](https://github.com/dropqube/pv-forecast-card)<br>
-- [Rain Gauge Card](https://github.com/t1gr0u/rain-gauge-card)<br>
-- [Sankey Chart Card](https://github.com/MindFreeze/ha-sankey-chart)<br>
-- [Scheduler Card](https://github.com/nielsfaber/scheduler-card)<br>
-- [Simple Swipe Card](https://github.com/nutteloost/simple-swipe-card)<br>
-- [Stack In Card](https://github.com/custom-cards/stack-in-card)<br>
-- [Sunsynk Power Flow Card](https://github.com/slipx06/sunsynk-power-flow-card)<br>
-- [Swiper Card](https://github.com/ghrsa/swiper-card)<br>
-- [Trashcard](https://github.com/idaho/hassio-trash-card)<br>
-- [Ultra Vehicle Card](https://github.com/WJDDesigns/Ultra-Vehicle-Card)<br>
-- [Uptime Card](https://github.com/dylandoamaral/uptime-card)<br>
-- [Vehicle Status Card](https://github.com/ngocjohn/vehicle-status-card)<br>
-- [Vertical Stack In Card](https://github.com/ofekashery/vertical-stack-in-card)<br>
-- [Weather Radar Card](https://github.com/Makin-Things/weather-radar-card)<br>
-- [Wind Rose Card](https://github.com/aukedejong/lovelace-windrose-card)<br>
-- [Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)<br>
+- [Apexcharts Card](https://github.com/RomRider/apexcharts-card)
+- [Atomic Calendar Revive](https://github.com/totaldebug/atomic-calendar-revive)
+- [Auto Entities](https://github.com/thomasloven/lovelace-auto-entities)
+- [Bubble Card](https://github.com/Clooos/Bubble-Card)
+- [Button Card](https://github.com/custom-cards/button-card)
+- [Card Mod](https://github.com/thomasloven/lovelace-card-mod)
+- [Charger Card](https://github.com/tmjo/charger-card)
+- [Clock Weather Card Hui Icons](https://github.com/samuelgoodell/clock-weather-card-hui-icons)
+- [Config Template Card](https://github.com/iantrich/config-template-card)
+- [Custom Sidebar](https://github.com/elchininet/custom-sidebar)
+- [Energy Flow Card Plus](https://github.com/flixlix/energy-flow-card-plus)
+- [Energy Period Selector Plus](https://github.com/flixlix/energy-period-selector-plus)
+- [Entity Progress Card](https://github.com/francois-le-ko4la/lovelace-entity-progress-card)
+- [Expander Card](https://github.com/MelleD/lovelace-expander-card)
+- [Flexible Horseshoe Card For Lovelace](https://github.com/AmoebeLabs/flex-horseshoe-card)
+- [Gallery Card 2024](https://github.com/lukelalo/gallery-card)
+- [Home Assistant Swipe Navigation](https://github.com/zanna-37/hass-swipe-navigation)
+- [Jk Bms Card](https://github.com/Pho3niX90/jk-bms-card)
+- [Kiosk Mode](https://github.com/NemesisRE/kiosk-mode)
+- [Mini Graph Card](https://github.com/kalkih/mini-graph-card)
+- [Multiple Entity Row](https://github.com/benct/lovelace-multiple-entity-row)
+- [Mushroom](https://github.com/piitaya/lovelace-mushroom)
+- [Power Flow Card Plus](https://github.com/flixlix/power-flow-card-plus)
+- [Pv Forecast Card](https://github.com/dropqube/pv-forecast-card)
+- [Rain Gauge Card](https://github.com/t1gr0u/rain-gauge-card)
+- [Sankey Chart Card](https://github.com/MindFreeze/ha-sankey-chart)
+- [Scheduler Card](https://github.com/nielsfaber/scheduler-card)
+- [Simple Swipe Card](https://github.com/nutteloost/simple-swipe-card)
+- [Stack In Card](https://github.com/custom-cards/stack-in-card)
+- [Sunsynk Power Flow Card](https://github.com/slipx06/sunsynk-power-flow-card)
+- [Swiper Card](https://github.com/ghrsa/swiper-card)
+- [Trashcard](https://github.com/idaho/hassio-trash-card)
+- [Ultra Vehicle Card](https://github.com/WJDDesigns/Ultra-Vehicle-Card)
+- [Uptime Card](https://github.com/dylandoamaral/uptime-card)
+- [Vehicle Status Card](https://github.com/ngocjohn/vehicle-status-card)
+- [Vertical Stack In Card](https://github.com/ofekashery/vertical-stack-in-card)
+- [Weather Radar Card](https://github.com/Makin-Things/weather-radar-card)
+- [Wind Rose Card](https://github.com/aukedejong/lovelace-windrose-card)
+- [Xiaomi Vacuum Map Card](https://github.com/PiotrMachowski/lovelace-xiaomi-vacuum-map-card)
 </details>
 ***
 
