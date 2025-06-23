@@ -1005,38 +1005,54 @@ config:
       type: grid
     title: Apple Icloud
     type: sections
-  - cards:
+  - cards: []
+    icon: mdi:printer-3d
+    max_columns: 3
+    path: 3d-printer
+    sections:
     - cards:
-      - double_tap_action:
-          action: more-info
-        entity: switch.ankermake_1
-        fill_container: true
-        hold_action:
-          action: more-info
-        layout: vertical
-        tap_action:
-          action: more-info
-        type: custom:mushroom-entity-card
+      - heading: Control
+        heading_style: title
+        icon: mdi:cog
+        type: heading
       - cards:
-        - entity: sensor.ankermake_power
+        - double_tap_action:
+            action: more-info
+          entity: switch.ankermake_1
+          fill_container: true
+          hold_action:
+            action: more-info
+          layout: vertical
+          tap_action:
+            action: more-info
           type: custom:mushroom-entity-card
-        - entity: sensor.ankermake_energy_today
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
-      - cards:
-        - entity: sensor.elapsed_time
-          type: custom:mushroom-entity-card
-        - entity: sensor.remaining_time
-          type: custom:mushroom-entity-card
-        - entity: sensor.total_print_time
-          type: custom:mushroom-entity-card
-        - entity: sensor.finish_time
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
+        - cards:
+          - entity: sensor.ankermake_power
+            type: custom:mushroom-entity-card
+          - entity: sensor.ankermake_energy_today
+            type: custom:mushroom-entity-card
+          type: horizontal-stack
+        type: vertical-stack
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+          - e7fe7b076dbb49a3aaa82b75c63cc302
+      - image_entity: image.ankermake_m5c_gcode_image
+        type: picture
+      type: grid
+    - cards:
+      - heading: Status
+        heading_style: title
+        icon: mdi:printer-3d-nozzle-heat-outline
+        type: heading
       - bar_color: green
         bar_size: medium
         decimal: 1
         entity: sensor.ankermake_m5c_progress
+        grid_options:
+          columns: 12
+          rows: 2
         icon: mdi:printer-3d
         layout: vertical
         name: Print Status
@@ -1045,6 +1061,9 @@ config:
           action: more-info
         entity: sensor.ankermake_m5c_job_name_2
         fill_container: true
+        grid_options:
+          columns: 12
+          rows: 1
         hold_action:
           action: more-info
         icon: ''
@@ -1055,8 +1074,6 @@ config:
         tap_action:
           action: more-info
         type: custom:mushroom-template-card
-      - image_entity: image.ankermake_m5c_gcode_image
-        type: picture
       - muted: true
         server: http://192.168.2.205:1984/
         streams:
@@ -1066,39 +1083,56 @@ config:
         type: custom:webrtc-camera
         ui: true
       - cards:
-        - name: Make Timelapse and Delete Pictures
-          show_icon: true
-          show_name: true
-          tap_action:
-            action: perform-action
-            perform_action: script.create_timelapse
-            target: {}
-          type: button
+        - entity: sensor.elapsed_time
+          icon_type: none
+          type: custom:mushroom-entity-card
+        - entity: sensor.remaining_time
+          icon_type: none
+          type: custom:mushroom-entity-card
+        - entity: sensor.total_print_time
+          icon_type: none
+          type: custom:mushroom-entity-card
+        - entity: sensor.finish_time
+          icon_type: none
+          type: custom:mushroom-entity-card
         type: horizontal-stack
-      type: vertical-stack
-      visibility:
-      - condition: user
-        users:
-        - 4f7767cac0c342edb25e991662a2f56c
-        - e7fe7b076dbb49a3aaa82b75c63cc302
-    - entity: sensor.m5c_cam_folder_size
-      fill_container: true
-      layout: vertical
-      type: custom:mushroom-entity-card
-    - entities:
-      - media-source://media_source/3dprinter/
-      file_name_format: video_DD_MM_yyyy_HH_mm_ss--*
-      include_images: false
-      maximum_files: 32
-      menu_alignment: Responsive
-      parsed_date_sort: true
-      reverse_sort: true
-      show_reload: true
-      type: custom:gallery-card
-      video_loop: true
-    icon: mdi:printer-3d
-    path: 3d-printer
+      type: grid
+    - cards:
+      - heading: Timelapse
+        heading_style: title
+        icon: mdi:timelapse
+        type: heading
+      - entity: sensor.m5c_cam_folder_size
+        fill_container: true
+        layout: vertical
+        type: custom:mushroom-entity-card
+      - grid_options:
+          columns: 6
+          rows: 2
+        name: Make Timelapse and then Delete Pictures
+        show_icon: true
+        show_name: true
+        tap_action:
+          action: perform-action
+          confirmation:
+            text: Are you sure?
+          perform_action: script.create_timelapse
+          target: {}
+        type: button
+      - entities:
+        - media-source://media_source/3dprinter/
+        file_name_format: video_DD_MM_yyyy_HH_mm_ss--*
+        include_images: false
+        maximum_files: 32
+        menu_alignment: Responsive
+        parsed_date_sort: true
+        reverse_sort: true
+        show_reload: true
+        type: custom:gallery-card
+        video_loop: true
+      type: grid
     title: 3D printer
+    type: sections
   - cards: []
     icon: mdi:lightning-bolt-circle
     max_columns: 4
@@ -1318,12 +1352,25 @@ config:
           entity: sensor.ugreen_nas_pool_1_volume_1_used_size
           max: 2000
           min: 0
-          name: Vol1 (3TB)
+          name: Vol1 (2TB)
           needle: true
           severity:
             green: 0
             red: 1500
             yellow: 1000
+          type: gauge
+          unit: GB
+        - card_mod:
+            style: "ha-card {\n  background: transparent;\n  overflow-y: auto;\n}\n"
+          entity: sensor.ugreen_nas_pool_1_volume_2_used_size
+          max: 512
+          min: 0
+          name: Vol1 (2TB)
+          needle: true
+          severity:
+            green: 0
+            red: 450
+            yellow: 256
           type: gauge
           unit: GB
         type: horizontal-stack
