@@ -2841,12 +2841,13 @@
       device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
       entity_id: 3f9252e0608a9d78e39a39df5a9782a9
       domain: switch
-  - if:
+  - alias: Disable Solar Heating if to hot
+    if:
     - condition: and
       conditions:
       - condition: numeric_state
         entity_id: input_number.pool_temp_start
-        above: 29
+        above: 28.5
       - condition: trigger
         id:
         - Off if to hot
@@ -2855,7 +2856,6 @@
       device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
       entity_id: 3f9252e0608a9d78e39a39df5a9782a9
       domain: switch
-    alias: Disable Solar Heating if to hot
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Fast.com
@@ -7812,7 +7812,9 @@
   alias: Adjust Grow Light Brightness from Sensor (check not unavailable or unknown)
   description: Adjust grow light brightness only if light is not unavailable or unknown
   triggers:
-  - entity_id: sensor.grow_light_brightness
+  - entity_id:
+    - sensor.grow_light_brightness
+    - sensor.grow_light_temperature
     trigger: state
   conditions:
   - condition: not
@@ -7828,5 +7830,6 @@
       entity_id: light.regal_big_led_light
     data:
       brightness_pct: '{{ states(''sensor.grow_light_brightness'') | int(0) }}'
+      color_temp_kelvin: '{{ states(''sensor.grow_light_temperature'') | int(0) }}'
     action: light.turn_on
   mode: queued
