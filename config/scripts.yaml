@@ -1636,3 +1636,59 @@ test_duncan_notify_response_echo:
             tag: confirmable_notify_trockner
         action: notify.duncan
       alias: Trockner ausgeräumt
+save_counts_and_notify_purge_status:
+  alias: Save Counts and Notify Purge Status
+  description: 'Stores current DB row count, calculates purge threshold, waits for
+    drop, and notifies if purge did not succeed within the expected time.
+
+    '
+  fields:
+    threshold_offset:
+      description: Number of rows expected to be removed (e.g. 100000)
+      example: 100000
+      default: 100000
+    timeout_minutes:
+      description: How many minutes to wait for the purge to reduce DB rows
+      example: 60
+      default: 60
+    block_id:
+      description: Identifier for this purge block (e.g. "2 Days")
+      example: 2 Days
+      default: Unknown
+  sequence:
+  - alias: Save current row count and calculate threshold
+    variables:
+      current_count: '{{ states(''sensor.maria_db_rows'') | int }}'
+      threshold: '{{ current_count - threshold_offset }}'
+  - alias: Save start row count for debugging
+    action: input_number.set_value
+    target:
+      entity_id: input_number.db_row_count_start
+    data:
+      value: '{{ current_count }}'
+  - alias: Wait for purge to complete
+    wait_for_trigger:
+    - value_template: '{{ states(''sensor.maria_db_rows'') | int < threshold }}
+
+        '
+      trigger: template
+    timeout:
+      minutes: '{{ timeout_minutes | int(60) }}'
+    continue_on_timeout: true
+  - alias: Notify if purge did not complete
+    choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not wait.completed and (states(''sensor.maria_db_rows'')
+          | int > threshold) }}
+
+          '
+      sequence:
+      - alias: Send failure notification
+        action: notify.duncan
+        data:
+          title: ⚠️ DB Purge Failed — {{ block_id }}
+          message: "The DB purge for block '{{ block_id }}' likely failed.\n• Start:
+            {{ current_count }}   • Threshold: {{ threshold }}   • Final: {{ states('sensor.maria_db_rows')
+            | int(0) }}   • Timeout after {{ timeout_minutes }} minutes.  \nConsider
+            checking your recorder and DB status manually.\n"
