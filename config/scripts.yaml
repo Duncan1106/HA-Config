@@ -1677,7 +1677,8 @@ save_counts_and_notify_purge_status:
     continue_on_timeout: true
   - alias: Notify if purge did not complete
     choose:
-    - conditions:
+    - alias: Notify on purge failure
+      conditions:
       - condition: template
         value_template: '{{ not wait.completed and (states(''sensor.maria_db_rows'')
           | int > threshold) }}
@@ -1689,6 +1690,26 @@ save_counts_and_notify_purge_status:
         data:
           title: ⚠️ DB Purge Failed — {{ block_id }}
           message: "The DB purge for block '{{ block_id }}' likely failed.\n• Start:
-            {{ current_count }}   • Threshold: {{ threshold }}   • Final: {{ states('sensor.maria_db_rows')
-            | int(0) }}   • Timeout after {{ timeout_minutes }} minutes.  \nConsider
+            {{ current_count }}   • Threshold: {{ threshold }} • Final: {{ states('sensor.maria_db_rows')
+            | int(0) }} • Removed: {{ current_count - states('sensor.maria_db_rows')
+            | int(0) }} rows   • Timed out after {{ timeout_minutes }} minutes.  \nConsider
             checking your recorder and DB status manually.\n"
+    - alias: Notify on purge success
+      conditions:
+      - condition: template
+        value_template: '{{ wait.completed and (states(''sensor.maria_db_rows'') |
+          int < current_count) }}
+
+          '
+      sequence:
+      - alias: Send success notification
+        action: notify.duncan
+        data:
+          title: ✅ DB Purge Succeeded — {{ block_id }}
+          message: 'The DB purge for block ''{{ block_id }}'' completed successfully.
+
+            • Start: {{ current_count }}   • Final: {{ states(''sensor.maria_db_rows'')
+            | int(0) }}   • Removed: {{ current_count - states(''sensor.maria_db_rows'')
+            | int(0) }} rows   • Finished in under {{ timeout_minutes }} minutes.
+
+            '
