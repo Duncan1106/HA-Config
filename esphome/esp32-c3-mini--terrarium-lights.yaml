@@ -75,14 +75,16 @@ output:
     pin: 
       number: GPIO9
       ignore_strapping_warning: True
-    frequency: 600
+    frequency: 40000
+    channel: 0
     zero_means_zero: True
     id: pin_9_out
     min_power: 0.05
 
   - platform: ledc
     pin: GPIO7
-    frequency: 600
+    frequency: 40000
+    channel: 1
     zero_means_zero: True
     id: pin_7_out
     min_power: 0.05
@@ -93,12 +95,14 @@ light:
     cold_white: pin_9_out
     warm_white: pin_7_out
     constant_brightness: True
+    restore_mode: RESTORE_DEFAULT_OFF
     cold_white_color_temperature: 6500K
     warm_white_color_temperature: 2700K
 
 button:
   - platform: output
     output: led_blue
+    id: status_led_btn
     name: Status LED
     duration: 
       milliseconds: 250
@@ -108,7 +112,15 @@ button:
 
 binary_sensor:
   - platform: status
+    id: id_status
     name: Status
+    on_state: 
+      then:
+        - if: 
+            condition:
+              - binary_sensor.is_on: id_status
+            then:
+              - button.press: status_led_btn
 
 sensor:  
   - platform: uptime
