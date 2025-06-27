@@ -683,10 +683,11 @@ terra_sunrise:
         sequence:
         - action: light.turn_on
           metadata: {}
-          data: {}
+          data:
+            brightness_step_pct: 1
           continue_on_error: true
           target:
-            entity_id: light.terrarrium_light_bar_light
+            entity_id: light.esp32_c3_mini_terrarium_lights_light_bar
         - delay:
             hours: 0
             minutes: 0
@@ -695,20 +696,24 @@ terra_sunrise:
         hours: 0
         minutes: 0
         seconds: 15
-    - type: turn_on
-      device_id: 3262fc2fbd4b74787921196150cb23ca
-      entity_id: 3152b52e9f540e2de8ee64906e1d9768
-      domain: light
-      brightness_pct: 100
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 100
+      target:
+        entity_id: light.esp32_c3_mini_terrarium_lights_light_bar
+      continue_on_error: true
     - delay:
         hours: 0
         minutes: 0
         seconds: 1
-    - type: turn_on
-      device_id: 3262fc2fbd4b74787921196150cb23ca
-      entity_id: 3152b52e9f540e2de8ee64906e1d9768
-      domain: light
-      brightness_pct: 100
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 100
+      target:
+        entity_id: light.esp32_c3_mini_terrarium_lights_light_bar
+      continue_on_error: true
     - type: turn_on
       device_id: cb754e11257e7b140e732b51b3457d49
       entity_id: 1b57dce94d224eba3ed8b7258f94ecf3
@@ -897,7 +902,7 @@ terra_sunset:
           brightness_step_pct: -1
         target:
           entity_id:
-          - light.terrarrium_light_bar_light
+          - light.esp32_c3_mini_terrarium_lights_light_bar
         continue_on_error: true
       - delay:
           hours: 0
@@ -910,10 +915,11 @@ terra_sunset:
       minutes: 0
       seconds: 10
       milliseconds: 0
-  - type: turn_off
-    device_id: 3262fc2fbd4b74787921196150cb23ca
-    entity_id: 3152b52e9f540e2de8ee64906e1d9768
-    domain: light
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.esp32_c3_mini_terrarium_lights_light_bar
   - delay:
       hours: 0
       minutes: 0
@@ -1689,11 +1695,16 @@ save_counts_and_notify_purge_status:
         action: notify.duncan
         data:
           title: ⚠️ DB Purge Failed — {{ block_id }}
-          message: "The DB purge for block '{{ block_id }}' likely failed.\n• Start:
-            {{ current_count }}   • Threshold: {{ threshold }} • Final: {{ states('sensor.maria_db_rows')
-            | int(0) }} • Removed: {{ current_count - states('sensor.maria_db_rows')
-            | int(0) }} rows   • Timed out after {{ timeout_minutes }} minutes.  \nConsider
-            checking your recorder and DB status manually.\n"
+          message: 'The DB purge for block ''{{ block_id }}'' likely failed.\n
+
+            • Start: {{ current_count }}\n • Threshold: {{ threshold }}\n • Final:
+            {{ states(''sensor.maria_db_rows'') | int(0) }}\n • Removed: {{ current_count
+            - states(''sensor.maria_db_rows'') | int(0) }} rows\n • Timed out after
+            {{ timeout_minutes }} minutes.\n\n
+
+            Consider checking your recorder and DB status manually.
+
+            '
     - alias: Notify on purge success
       conditions:
       - condition: template
@@ -1706,10 +1717,10 @@ save_counts_and_notify_purge_status:
         action: notify.duncan
         data:
           title: ✅ DB Purge Succeeded — {{ block_id }}
-          message: 'The DB purge for block ''{{ block_id }}'' completed successfully.
+          message: 'The DB purge for block ''{{ block_id }}'' completed successfully.\n
 
-            • Start: {{ current_count }}   • Final: {{ states(''sensor.maria_db_rows'')
-            | int(0) }}   • Removed: {{ current_count - states(''sensor.maria_db_rows'')
-            | int(0) }} rows   • Finished in under {{ timeout_minutes }} minutes.
+            • Start: {{ current_count }}\n • Final: {{states(''sensor.maria_db_rows'')
+            | int(0) }}\n • Removed: {{current_count - states(''sensor.maria_db_rows'')
+            | int(0) }} rows\n • Finished in under {{ timeout_minutes }} minutes.
 
             '
