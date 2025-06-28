@@ -1349,11 +1349,10 @@ config:
         type: conditional
       - cards:
         - heading: Pollen
+          heading_style: title
           type: heading
         - card:
-            columns: 1
-            square: false
-            type: grid
+            type: vertical-stack
           card_param: cards
           filter:
             exclude: []
@@ -1381,13 +1380,25 @@ config:
                   \ {% set wlen = words | length %}\n  {% set penultimate_raw = words[-2]\
                   \ if wlen > 1 else '' %}\n  {% set penultimate = (penultimate_raw[:3]\
                   \ ~ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
-                  \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  Tomorrow:\
+                  \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  Morgen:\
                   \ {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{ ' ' if penultimate\
-                  \ }}{{ last }}\n{% else %}\n  Morgen: N/A\n{% endif %} "
+                  \ }}{{ last }}<br>\n{% else %}\n  Morgen: N/A\n{% endif %} {% set\
+                  \ desc = state_attr('this.entity_id', 'state_in_2_days_desc') %}\
+                  \  {% if desc %}\n  {% set words = desc.strip().split() %}\n  {%\
+                  \ set wlen = words | length %}\n  {% set penultimate_raw = words[-2]\
+                  \ if wlen > 1 else '' %}\n  {% set penultimate = (penultimate_raw[:3]\
+                  \ ~ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
+                  \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  \xDC\
+                  bermorgen: {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{ ' '\
+                  \ if penultimate }}{{ last }}\n{% else %}\n  <br>\xDCbermorgen:\
+                  \ N/A</span>\n{% endif %}"
                 tap_action:
                   action: more-info
                 type: custom:entity-progress-card-template
               state: '>0'
+          grid_options:
+            columns: 12
+            rows: 2
           show_empty: false
           sort:
             method: state
@@ -1617,6 +1628,9 @@ config:
       - cards:
         - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n\
             {% else %}\n  orange\n{% endif %}"
+          bar_effect:
+          - shimmer
+          - radius
           color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
             \  orange\n{% endif %}"
           entity: sun.sun
@@ -1644,6 +1658,9 @@ config:
           type: custom:entity-progress-card-template
         - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n\
             {% else %}\n  orange\n{% endif %}"
+          bar_effect:
+          - shimmer
+          - radius
           color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
             \  orange\n{% endif %}"
           entity: sun.sun
@@ -1670,47 +1687,50 @@ config:
             action: more-info
           type: custom:entity-progress-card-template
         type: custom:vertical-stack-in-card
-      - cards:
-        - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n\
-            {% else %}\n  orange\n{% endif %}\n"
-          color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
-            \  orange\n{% endif %}\n"
-          entity: sun.sun
-          name: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
-            \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {%\
-            \ if sunrise and sunset %}\n  {% if sunrise < sunset %}\n    Next Rise:\
-            \ {{ sunrise.timestamp() | timestamp_custom('%H:%M', true) }}\n  {% else\
-            \ %}\n    Next Setting: {{ sunset.timestamp() | timestamp_custom('%H:%M',\
-            \ true) }}\n  {% endif %}\n{% else %}\n  Suninformation not available\n\
-            {% endif %}\n"
-          percent: "{% set sunrise = as_datetime(states('sensor.sun_next_rising'))\
-            \ %} {% set sunset = as_datetime(states('sensor.sun_next_setting')) %}\
-            \ {% set now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise\
-            \ < sunset %}\n    {% set next_event = sunrise %}\n    {% set last_event\
-            \ = sunrise - timedelta(days=1) %}\n  {% else %}\n    {% set next_event\
-            \ = sunset %}\n    {% set last_event = sunset - timedelta(days=1) %}\n\
-            \  {% endif %}\n  {% set total = (next_event - last_event).total_seconds()\
-            \ %}\n  {% set elapsed = (now_time - last_event).total_seconds() %}\n\
-            \  {% if total > 0 %}\n    {{ ((elapsed / total) * 100) | round(2) }}\n\
-            \  {% else %}\n    0\n  {% endif %}\n{% else %}\n  0\n{% endif %}\n"
-          secondary: "{% set sunrise = as_datetime(states('sensor.sun_next_rising'))\
-            \ %} {% set sunset = as_datetime(states('sensor.sun_next_setting')) %}\
-            \ {% set now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise\
-            \ < sunset %}\n    {% set next_event = sunrise %}\n    {% set last_event\
-            \ = sunrise - timedelta(days=1) %}\n  {% else %}\n    {% set next_event\
-            \ = sunset %}\n    {% set last_event = sunset - timedelta(days=1) %}\n\
-            \  {% endif %}\n  {% set delta = next_event - now_time %}\n  {% set total_seconds\
-            \ = delta.total_seconds() %}\n  {% if total_seconds > 0 %}\n    {% set\
-            \ days = (total_seconds // 86400) | int %}\n    {% set hours = (total_seconds\
-            \ % 86400) // 3600 %}\n    {% set minutes = (total_seconds % 3600) //\
-            \ 60 %}\n    {% set seconds = (total_seconds % 60) %}\n    in\n    {%\
-            \ if days > 0 %}\n      {{ days }}d\n    {% endif %}\n    {{ '%02d:%02d:%02d'\
-            \ | format(hours | int, minutes | int, seconds | int) }}\n  {% else %}\n\
-            \    now\n  {% endif %}\n{% else %}\n  --:--:--\n{% endif %}\n"
-          tap_action:
-            action: more-info
-          type: custom:entity-progress-card-template
-        type: vertical-stack
+      - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{%\
+          \ else %}\n  orange\n{% endif %}\n"
+        bar_effect:
+        - shimmer
+        - radius
+        color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
+          \  orange\n{% endif %}\n"
+        entity: sun.sun
+        grid_options:
+          columns: 12
+          rows: 1
+        name: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %} {%\
+          \ set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% if sunrise\
+          \ and sunset %}\n  {% if sunrise < sunset %}\n    Next Rise: {{ sunrise.timestamp()\
+          \ | timestamp_custom('%H:%M', true) }}\n  {% else %}\n    Next Setting:\
+          \ {{ sunset.timestamp() | timestamp_custom('%H:%M', true) }}\n  {% endif\
+          \ %}\n{% else %}\n  Suninformation not available\n{% endif %}\n"
+        percent: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
+          \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% set\
+          \ now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise < sunset\
+          \ %}\n    {% set next_event = sunrise %}\n    {% set last_event = sunrise\
+          \ - timedelta(days=1) %}\n  {% else %}\n    {% set next_event = sunset %}\n\
+          \    {% set last_event = sunset - timedelta(days=1) %}\n  {% endif %}\n\
+          \  {% set total = (next_event - last_event).total_seconds() %}\n  {% set\
+          \ elapsed = (now_time - last_event).total_seconds() %}\n  {% if total >\
+          \ 0 %}\n    {{ ((elapsed / total) * 100) | round(2) }}\n  {% else %}\n \
+          \   0\n  {% endif %}\n{% else %}\n  0\n{% endif %}\n"
+        secondary: "{% set sunrise = as_datetime(states('sensor.sun_next_rising'))\
+          \ %} {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {%\
+          \ set now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise <\
+          \ sunset %}\n    {% set next_event = sunrise %}\n    {% set last_event =\
+          \ sunrise - timedelta(days=1) %}\n  {% else %}\n    {% set next_event =\
+          \ sunset %}\n    {% set last_event = sunset - timedelta(days=1) %}\n  {%\
+          \ endif %}\n  {% set delta = next_event - now_time %}\n  {% set total_seconds\
+          \ = delta.total_seconds() %}\n  {% if total_seconds > 1 %}\n    {% set days\
+          \ = (total_seconds // 86400) | int %}\n    {% set hours = (total_seconds\
+          \ % 86400) // 3600 %}\n    {% set minutes = (total_seconds % 3600) // 60\
+          \ %}\n    {% set seconds = (total_seconds % 60) %}\n    in\n    {% if days\
+          \ > 0 %}\n      {{ days }}d\n    {% endif %}\n    {{ '%02d:%02d:%02d' |\
+          \ format(hours | int, minutes | int, seconds | int) }}\n  {% else %}\n \
+          \   now\n  {% endif %}\n{% else %}\n  --:--:--\n{% endif %}\n"
+        tap_action:
+          action: more-info
+        type: custom:entity-progress-card-template
         visibility:
         - condition: user
           users:
