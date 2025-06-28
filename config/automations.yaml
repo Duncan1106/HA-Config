@@ -1561,7 +1561,7 @@
   mode: queued
   max: 15
 - id: '1711830948847'
-  alias: Restart O2 Router if Internet down for 5 minutes
+  alias: Restart O2 Router if Internet down for 2.5 minutes
   description: ''
   triggers:
   - entity_id:
@@ -1572,7 +1572,6 @@
       hours: 0
       minutes: 2
       seconds: 30
-    id: No Internet irregular
     trigger: state
   - entity_id:
     - schedule.restart_o2_router_schedule
@@ -1582,89 +1581,52 @@
       hours: 0
       minutes: 0
       seconds: 10
-    id: No Internet regular
     trigger: state
     enabled: true
   conditions: []
   actions:
-  - alias: Restart Router irregular
-    if:
-    - condition: trigger
-      id:
-      - No Internet irregular
+  - if:
+    - condition: state
+      entity_id: switch.o2_router
+      state: 'on'
     then:
-    - type: turn_off
-      device_id: db6576d379f8b04c0a70307678de8d18
-      entity_id: 92c1b1563f51d25b908ef48e8efc9026
-      domain: switch
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-    - type: turn_on
-      device_id: db6576d379f8b04c0a70307678de8d18
-      entity_id: 92c1b1563f51d25b908ef48e8efc9026
-      domain: switch
-    - wait_for_trigger:
-      - entity_id:
-        - binary_sensor.internet_connection
-        from: 'off'
-        to: 'on'
-        for:
+    - sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.o2_router
+      - delay:
           hours: 0
-          minutes: 1
-          seconds: 0
-        trigger: state
-      timeout:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        milliseconds: 0
-      continue_on_timeout: false
-    - data:
-        message: Succesfull Restart of Internet
-        title: Restarted Router based on Internet Outage
-      action: notify.duncan
-  - alias: Restart Router regular
-    if:
-    - condition: trigger
-      id:
-      - No Internet regular
-    then:
-    - type: turn_off
-      device_id: db6576d379f8b04c0a70307678de8d18
-      entity_id: 92c1b1563f51d25b908ef48e8efc9026
-      domain: switch
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-    - type: turn_on
-      device_id: db6576d379f8b04c0a70307678de8d18
-      entity_id: 92c1b1563f51d25b908ef48e8efc9026
-      domain: switch
-    - wait_for_trigger:
-      - entity_id:
-        - binary_sensor.internet_connection
-        from: 'off'
-        to: 'on'
-        for:
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.o2_router
+      - wait_for_trigger:
+        - entity_id:
+          - binary_sensor.internet_connection
+          from: 'off'
+          to: 'on'
+          for:
+            hours: 0
+            minutes: 1
+            seconds: 0
+          trigger: state
+        timeout:
           hours: 0
-          minutes: 1
+          minutes: 15
           seconds: 0
-        trigger: state
-      timeout:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        milliseconds: 0
-      continue_on_timeout: false
-    - data:
-        message: Succesfull Restart of Internet
-        title: Restarted Router based on Schedule
-      action: notify.duncan
+          milliseconds: 0
+        continue_on_timeout: false
+      - data:
+          message: Succesfull Restart of Internet
+          title: Router Restart
+        action: notify.duncan
+      alias: Restart Router
   mode: single
 - id: '1712568670640'
   alias: Update notifications
