@@ -1552,74 +1552,6 @@
       domain: switch
   mode: queued
   max: 15
-- id: '1711830948847'
-  alias: Restart O2 Router if Internet down for 2.5 minutes
-  description: ''
-  triggers:
-  - entity_id:
-    - binary_sensor.internet_connection
-    from: 'on'
-    to: 'off'
-    for:
-      hours: 0
-      minutes: 2
-      seconds: 30
-    trigger: state
-  - entity_id:
-    - schedule.restart_o2_router_schedule
-    from: 'off'
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 10
-    trigger: state
-    enabled: true
-  conditions: []
-  actions:
-  - if:
-    - condition: state
-      entity_id: switch.o2_router
-      state: 'on'
-    then:
-    - sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.o2_router
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
-          milliseconds: 0
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.o2_router
-      - wait_for_trigger:
-        - entity_id:
-          - binary_sensor.internet_connection
-          from: 'off'
-          to: 'on'
-          for:
-            hours: 0
-            minutes: 1
-            seconds: 0
-          trigger: state
-        timeout:
-          hours: 0
-          minutes: 15
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: false
-      - data:
-          message: Succesfull Restart of Internet
-          title: Router Restart
-        action: notify.duncan
-      alias: Restart Router
-  mode: single
 - id: '1712568670640'
   alias: Update notifications
   description: ''
@@ -5951,7 +5883,7 @@
   - action: button.press
     metadata: {}
     data: {}
-    enabled: false
+    enabled: true
     target:
       entity_id: button.go_echarger_252682_rst
   - action: goecharger_mqtt.set_config_key
@@ -7798,3 +7730,106 @@
         action: notify.duncan
       - data: {}
         action: hassio.host_reboot
+- id: '1751198541612'
+  alias: Router neustarten bei Internetausfall (mit Backoff-Wartezeit)
+  description: 'Startet den O2 Router bei Internetausfall neu, mit mehreren Versuchen
+    und exponentiellem Backoff-Timer.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.internet_connection
+    from: 'on'
+    to: 'off'
+    for: 00:02:30
+    id: internet_offline
+  - trigger: state
+    entity_id: schedule.restart_o2_router_schedule
+    from: 'off'
+    to: 'on'
+    for: 00:00:10
+    id: scheduled_restart
+  conditions:
+  - condition: state
+    entity_id: switch.o2_router
+    state: 'on'
+    alias: Router ist eingeschaltet
+  - condition: template
+    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}
+
+      '
+    alias: Router verbraucht >10W oder Sensor ist offline-safe
+  actions:
+  - repeat:
+      until:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.internet_connection
+          state: 'on'
+          alias: Internet wiederhergestellt
+        - condition: template
+          value_template: '{{ repeat.index >= max_retries }}'
+          alias: Maximale Anzahl Neustartversuche erreicht
+      sequence:
+      - variables:
+          restart_result: {}
+        alias: Lokale Variable für Rückgabewert des Scripts setzen
+      - action: script.restart_internet
+        data:
+          called_by_automation: true
+        response_variable: restart_result
+        alias: Starte Router-Neustart-Script mit Rückgabewert
+      - if:
+        - condition: template
+          value_template: '{{ restart_result is defined and (restart_result.wait.completed
+            | default(true)) == false }}
+
+            '
+        then:
+        - delay:
+            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %}  {{ [delay, 15]
+              | min }}
+
+              '
+          alias: Backoff-Delay vor nächstem Versuch
+        alias: Prüfe, ob Neustart fehlgeschlagen → dann warten
+    alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
+  - alias: Benachrichtigung bei endgültigem Fehler
+    sequence:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: binary_sensor.internet_connection
+        state: 'on'
+      alias: Benachrichtigung bei Fehlschlag aller Neustartversuche
+    - action: persistent_notification.create
+      metadata: {}
+      data:
+        notification_id: router_restart_failed
+        title: Router Neustart fehlgeschlagen
+        message: Nach {{ max_retries }} Versuchen konnte keine Internetverbindung   wiederhergestellt
+          werden. Bitte überprüfe den O2 Router manuell.
+    - alias: Spätere Push-Benachrichtigung bei Rückkehr des Internets
+      wait_for_trigger:
+      - entity_id: binary_sensor.internet_connection
+        to: 'on'
+        trigger: state
+      timeout: 01:00:00
+      continue_on_timeout: false
+    - action: persistent_notification.dismiss
+      metadata: {}
+      data:
+        notification_id: router_restart_failed
+    - alias: Push-Nachricht bei verspätetem Erfolg
+      data:
+        title: Internet zurück nach Fehler
+        message: 'Das Internet war über längere Zeit nicht verfügbar. Bitte prüfe
+          den Router oder die Verbindung, es waren {{ max_retries }} Neustartversuche
+          nötig.
+
+          '
+      action: notify.duncan
+  mode: restart
+  variables:
+    max_retries: 10
