@@ -7275,7 +7275,10 @@
         details such as entities in responses.
 
         Provide your answer in German and make it precise and efficient as a German
-        would like it. Bitte Duzen nicht Siezen'
+        would like it. Bitte Duzen nicht Siezen limit your answer to at most 300 tokens.
+        keep it simple and short. rember it is a notification so no ''notification:''
+        or something like that.  Simply the text of it and not more. limit yourself
+        to 300 Tokens! not one more!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
         are the today sensor values of these three pollen and any other  Gräser: {{
         states(''sensor.pollenflug_graeser'') }}   Roggen: {{ states(''sensor.pollenflug_roggen'')
@@ -7285,14 +7288,18 @@
         bis geringe Belastung 1\tgeringe Belastung 1.5\tgeringe bis mittlere Belastung
         2\tmittlere Belastung 2.5\tmittlere bis hohe Belastung 3\thohe Belastung\n
 
-        Based on these, how much anti allergic medication should i take i have 20mg
-        ones, my typical dose would be 2 tablets meaning 40mg, on bad days it could
-        be well around 100mg.  Dont panic my doctor says i can take as much as 200mg
-        a day. Give me a base count i should take and suggest how many more i could
-        take over the day. Keep it short, only tell the amount, and the amount i should
-        take with me, based on the pollen pollution. dont tell me why, dont tell me
-        what is happening in the air. like: 2 Tabletten, + 3 Tabletten. thats it not
-        anymore, no argumentation or anything like that.'
+        Based on these, how much anti allergic medication should i take, my typical
+        dose would be 2 tablets on bad days. My doctor says i can take as much as
+        10 per day. Give me a base count i should take and suggest how many more i
+        could take over the day. Keep it short, only tell the amount, and the amount
+        i should take with me, based on the pollen pollution. dont tell me why, dont
+        tell me what is happening in the air. like: 2 Tabletten, + 3 Tabletten. thats
+        it not anymore, no argumentation or anything like that. dont even tell me
+        what will bither me be it  grass or anything else keep the pollen stuff to
+        a minimum.  also keep the amount to the lower end and dont tend to overshoot
+        please. i dont want to build resistance against this anti allergy medication!!!
+        keep in mind the schema: ''base amount: additional amount'' nothing else about
+        pollen.'
       todo_prompt: 'Also heres a random task from my todo list:  {% set length = to_do_duncan[''todo.to_do_duncan''][''items'']
         | length %}  {{ to_do_duncan[''todo.to_do_duncan''][''items''][range(0,length)|random][''summary'']}}
         feel free to make suggestions on how to do this in today.  Also keep the task
@@ -7300,7 +7307,8 @@
         it in the language it is and dont translate it, the rest needs to be translated
         as requested later. Very important add the task as it is only the task and
         nothing more to the message youre generating.  Only add helpful instructions
-        or informations never replace, translate or manipulate the task in any way!'
+        or informations never replace, translate or manipulate the task in any way!
+        make good suggestions on how to do it '
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ pollen_prompt }}
@@ -7833,3 +7841,24 @@
   mode: restart
   variables:
     max_retries: 10
+- id: '1751225518081'
+  alias: 'Frigate Notifications (0.14.0.2w) Ding Dong '
+  description: ''
+  use_blueprint:
+    path: SgtBatten/Stable.yaml
+    input:
+      presence_filter:
+      - ''
+      camera:
+      - camera.ding_dong_tapo
+      notify_group: notify.duncan
+      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
+      zone_filter: false
+      notify_device: 905c163dcc62544838edb078413723b2
+      final_update: true
+      final_delay: 10
+      message: '{{ label }} detected - {{ camera_name }}'
+      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
+      icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
+        else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
+      update_sub_label: false
