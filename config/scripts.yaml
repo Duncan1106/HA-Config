@@ -1467,29 +1467,37 @@ notify_people_who_are_present:
 restart_internet:
   sequence:
   - sequence:
-    - action: automation.turn_off
-      metadata: {}
-      data:
-        stop_actions: true
-      target:
-        entity_id: automation.restart_o2_router_if_internet_down_for_5_minutes
+    - if:
+      - condition: template
+        value_template: '{{ not (called_by_automation | default(false)) }}'
+      then:
+      - action: automation.turn_off
+        metadata: {}
+        data:
+          stop_actions: true
+        target:
+          entity_id: automation.router_neustarten_bei_internetausfall_mit_backoff_wartezeit
+      alias: Wenn manuell gestartet → Automation deaktivieren
     - action: switch.turn_off
       metadata: {}
       data: {}
       target:
         entity_id:
         - switch.o2_router
+      alias: Router ausschalten
     - delay:
         hours: 0
         minutes: 0
         seconds: 20
         milliseconds: 0
+      alias: Wartezeit nach Abschalten (Abkühlen)
     - action: switch.turn_on
       metadata: {}
       data: {}
       target:
         entity_id:
         - switch.o2_router
+      alias: Router wieder einschalten
     - wait_for_trigger:
       - entity_id:
         - binary_sensor.internet_connection
@@ -1502,19 +1510,23 @@ restart_internet:
         trigger: state
       timeout:
         hours: 0
-        minutes: 15
+        minutes: 10
         seconds: 0
         milliseconds: 0
       continue_on_timeout: false
-    - action: notify.duncan
+      alias: Warte auf Wiederherstellung der Internetverbindung
+    - alias: Benachrichtigung bei erfolgreichem Internet-Restore
+      action: notify.duncan
       metadata: {}
       data:
         title: Internet
-        message: Connection restored
+        message: Verbindung wiederhergestellt
     - action: automation.turn_on
       metadata: {}
       target:
-        entity_id: automation.restart_o2_router_if_internet_down_for_5_minutes
+        entity_id: automation.router_neustarten_bei_internetausfall_mit_backoff_wartezeit
+      data: {}
+      alias: Automation am Ende wieder aktivieren
   alias: Restart Internet
   description: ''
 5_min_turn_off_ganglicht:
