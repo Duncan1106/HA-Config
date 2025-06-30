@@ -6,20 +6,20 @@ This is my Home Assistant installation.
 
 Description | value
 -- | --
-Number of entities | 2739
-Number of sensors | 1438
+Number of entities | 2791
+Number of sensors | 1469
 
 Automations: 
 
 Active | Inactive
 -- | --
-110 | 2
+107 | 6
 
 Database:
 Name | value
 -- | --
 Size | 7.2 GB
-Rows | 17.9 Mio Rows
+Rows | 17.6 Mio Rows
 
 
 ## My installed extensions:
@@ -51,6 +51,7 @@ Rows | 17.9 Mio Rows
   <li><a href="https://github.com/danieldotnl/ha-multiscrape">Multiscrape</a></li>
   <li><a href="https://github.com/thecem/octopus_germany">Octopus Energy Germany</a></li>
   <li><a href="https://github.com/nielsfaber/scheduler-component">Scheduler Component</a></li>
+  <li><a href="https://github.com/danishru/silam_pollen">Silam Pollen Allergy</a></li>
   <li><a href="https://github.com/davidrapan/ha-solarman">Solarman</a></li>
   <li><a href="https://github.com/BJReplay/ha-solcast-solar">Solcast Pv Forecast</a></li>
   <li><a href="https://github.com/frenck/spook">Spook 👻 Your Homie</a></li>
@@ -70,10 +71,10 @@ Rows | 17.9 Mio Rows
 
 <ul>
   <li><a href="https://github.com/RomRider/apexcharts-card">Apexcharts Card</a></li>
-  <li><a href="https://github.com/totaldebug/atomic-calendar-revive">Atomic Calendar Revive</a></li>
   <li><a href="https://github.com/thomasloven/lovelace-auto-entities">Auto Entities</a></li>
   <li><a href="https://github.com/Clooos/Bubble-Card">Bubble Card</a></li>
   <li><a href="https://github.com/custom-cards/button-card">Button Card</a></li>
+  <li><a href="https://github.com/alexpfau/calendar-card-pro">Calendar Card Pro</a></li>
   <li><a href="https://github.com/thomasloven/lovelace-card-mod">Card Mod</a></li>
   <li><a href="https://github.com/tmjo/charger-card">Charger Card</a></li>
   <li><a href="https://github.com/samuelgoodell/clock-weather-card-hui-icons">Clock Weather Card Hui Icons</a></li>
@@ -111,6 +112,55 @@ Rows | 17.9 Mio Rows
 </ul>
 
 </details>
+
+<details>
+<summary>Addons</summary>
+
+<ul>
+  Advanced SSH & Web Terminal (21.0.0) - 
+  ankerctl (v1.2.3) - 
+  Anylist (1.7.3) - 
+  Beszel Agent Branch (0.11.1) - 
+  Bookstack (3.0.1) - 
+  chrony (5.2.0) - 
+  DbStats (0.5.12) - 
+  EarnApp (lite-1.294.218) - 
+  EarnFM (latest) - 
+  EMQX (0.7.6) - 
+  ESPHome Device Builder (2025.6.2) - 
+  Everything Presence Zone Configurator (1.2.1) - 
+  File editor (5.8.0) - 
+  Folding@home (0.7.2) - 
+  Frigate (Full Access) (0.15.1) - 
+  go2rtc (1.9.9) - 
+  Home Assistant Git Exporter (1.17.1) - 
+  Home Assistant Google Drive Backup (0.112.1) - 
+  Honeygain (0.8.1) - 
+  Jellyfin NAS (10.10.7-2) - 
+  MariaDB (2.7.2) - 
+  MQTT Explorer (browser-1.0.1) - 
+  Network UPS Tools (0.14.1) - 
+  OneDrive Backup (2.3.8) - 
+  OpenSpeedTest (v2.0.6) - 
+  PacketStream (latest) - 
+  Pawns.app (0.33.2) - 
+  phpMyAdmin (0.12.0) - 
+  Repocket (1.1.46) - 
+  SAIC MQTT Gateway (Python) (0.9.8) - 
+  Samba NAS (12.5.0-nas) - 
+  Scrutiny (Full Access) (v0.8.1-9) - 
+  Speedtest (1.6.2) - 
+  Studio Code Server (5.19.3) - 
+  Tailscale (0.25.0) - 
+  Terminal & SSH (9.18.0) - 
+  Tor with bridges (5.0.3-2) - 
+  Traffmonetizer (1.0) - 
+  Vaultwarden (Bitwarden) (0.24.1) - 
+  Zigbee2MQTT (2.4.0-1) - 
+</ul>
+
+</details>
+
 
 ***
 
