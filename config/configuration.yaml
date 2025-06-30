@@ -227,6 +227,67 @@ binary_sensor:
     value_template: "{{ bool(value_json['data']['smart_results'][0]['Status']) }}"
     device_class: problem
 
+template:
+  - binary_sensor:
+      - name: "Rollo Summer Should Close"
+        unique_id: rollo_summer_should_close
+        state: >
+          {% set month = now().month %}
+          {% set summer = month in [5,6,7,8] %}
+
+          {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+          {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+          {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+          {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
+          {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
+          {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
+
+          {% set sun_hits_windows = elevation > 16 and (135 <= azimuth <= 225) %}
+          {% set sun_hits_windows = (azimuth > 150) and (elevation > 16) %}
+          {% set strong_uv_condition = (uv > 75000 or uv_index >= 5) and temp_outside > 22 %}
+          {% set temp_diff_condition = (temp_outside - temp_inside) > 5 and temp_outside > 22 and uv > 25000 %}
+          {% set heat_risk = strong_uv_condition or temp_diff_condition %}
+
+          {{ summer and sun_hits_windows and heat_risk }}
+        attributes:
+          temp_inside: "{{ states('sensor.gw1100a_indoor_temperature') }}"
+          temp_outside: "{{ states('sensor.gw1100a_outdoor_temperature') }}"
+          lux: "{{ states('sensor.gw1100a_solar_lux') }}"
+          uv_index: "{{ states('sensor.gw1100a_uv_index') }}"
+          elevation: "{{ states('sensor.sun_solar_elevation') }}"
+          azimuth: "{{ states('sensor.sun_solar_azimuth') }}"
+          sun_hitting_window: >
+            {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
+            {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
+            {% set sun_hits_windows = (azimuth > 150) and (elevation > 16) %}
+            {{ iif(sun_hits_windows,'Yes','No')}}
+          reason: >
+            {% set month = now().month %}
+            {% set summer = month in [5,6,7,8] %}
+
+            {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+            {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
+            {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
+            {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
+
+            {% set sun_hits_windows = (azimuth > 150) and (elevation > 16) %}
+            {% set strong_uv_condition = (uv > 75000 or uv_index >= 5) and temp_outside > 22 %}
+            {% set temp_diff_condition = (temp_outside - temp_inside) > 5 and temp_outside > 22 and uv > 25000 %}
+            {% set heat_risk = strong_uv_condition or temp_diff_condition %}
+
+            {% if not summer %}
+              Not summer months
+            {% elif not sun_hits_windows %}
+              Sun not hitting windows
+            {% elif not heat_risk %}
+              No heat/UV risk (Temp out: {{ temp_outside }}, In: {{ temp_inside }}, UV: {{ uv }}, Index: {{ uv_index }})
+            {% else %}
+              All conditions met
+            {% endif %}
+          
+
 mqtt:
   switch:
     - name: "Tasmota Rule 1"

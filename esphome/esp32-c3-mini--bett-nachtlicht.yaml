@@ -66,7 +66,7 @@ light:
   - platform: monochromatic
     name: Bettlicht
     output: light_one
-    id: motor_fan_speed
+    id: night_light
     on_turn_on: 
       then:
         - delay: !lambda 'return id(reentered_bed).state * 1000;'
@@ -74,7 +74,7 @@ light:
             condition:
               - binary_sensor.is_on: mb_o
             then:
-              - light.turn_off: motor_fan_speed
+              - light.turn_off: night_light
 
 script:
   - id: was_in_bed_script
@@ -132,9 +132,13 @@ binary_sensor:
       }
     on_press:
       then:
+        - light.turn_off: night_light
         - script.execute: was_in_bed_script
     on_release: 
       then:
+        - light.turn_on:
+            id: night_light
+            brightness: !lambda return id(night_brightness).state/ 100.0;
         - script.execute: left_bed_script
 
 number:
@@ -188,6 +192,19 @@ number:
     restore_value: True
     mode: BOX
     unit_of_measurement: s
+    entity_category: diagnostic
+
+  - platform: template
+    id: night_brightness
+    name: Night Light Brightness
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 20
+    restore_value: True
+    optimistic: True
+    mode: BOX
+    unit_of_measurement: '%'
     entity_category: diagnostic
 
 sensor:
