@@ -188,33 +188,59 @@ notify:
       - action: mobile_app_stephan_iphone
 
 template:
-  # The 'triggers' key belongs here, applying to all entities defined in this template block
   - triggers:
       - platform: time_pattern
         minutes: "*" # This will trigger every minute
 
-    # Now, define your binary_sensor
     binary_sensor:
       - name: "Rollo Summer Should Close"
         unique_id: rollo_summer_should_close
-        # The 'state' and 'attributes' templates remain the same as they correctly use the available data
         state: >
-          {% set current_time = now() %} 
+          {# Ensure current_time is also derived from timestamp_local for consistency #}
+          {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
           
           {# Get raw sensor states and convert to local timestamp, then to datetime object #}
-          {% set next_rising_local_ts = states('sensor.sun_next_rising') | as_timestamp | timestamp_local %}
-          {% set next_setting_local_ts = states('sensor.sun_next_setting') | as_timestamp | timestamp_local %}
+          {# Add default(none, true) in case sensor.sun_next_rising is unavailable/unknown #}
+          {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+          {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
 
-          {# Parse to datetime objects, defaulting to current_time if unavailable #}
-          {% set next_rising_dt = as_datetime(next_rising_local_ts) | default(current_time, true) %}
-          {% set next_setting_dt = as_datetime(next_setting_local_ts) | default(current_time, true) %}
+          {# --- Determine relevant_sunrise_dt for TODAY --- #}
+          {% set relevant_sunrise_dt = next_rising_raw_dt %}
+          {% if relevant_sunrise_dt is not none %}
+            {# If the next rising is tomorrow, subtract 24 hours to get today's sunrise #}
+            {% if relevant_sunrise_dt.day != current_time.day or relevant_sunrise_dt.month != current_time.month or relevant_sunrise_dt.year != current_time.year %}
+              {% set relevant_sunrise_dt = relevant_sunrise_dt - timedelta(days=1) %}
+            {% endif %}
+            {# Ensure it's not actually a future sunrise we've yet to pass today #}
+            {% if current_time < relevant_sunrise_dt and (next_rising_raw_dt.day == current_time.day and next_rising_raw_dt.month == current_time.month and next_rising_raw_dt.year == current_time.year) %}
+               {% set relevant_sunrise_dt = next_rising_raw_dt %}
+            {% endif %}
+          {% else %}
+            {% set relevant_sunrise_dt = none %} {# Ensure it remains none if initial conversion failed #}
+          {% endif %}
 
-          {# Open 15 minutes after next rising, close 15 minutes before next setting #}
-          {% set open_after = next_rising_dt + timedelta(minutes=15) %}
-          {% set close_before = next_setting_dt - timedelta(minutes=15) %}
+
+          {# --- Determine relevant_sunset_dt for TODAY --- #}
+          {% set relevant_sunset_dt = next_setting_raw_dt %}
+          {% if relevant_sunset_dt is not none %}
+            {# If the next setting is tomorrow, subtract 24 hours to get today's sunset #}
+            {% if relevant_sunset_dt.day != current_time.day or relevant_sunset_dt.month != current_time.month or relevant_sunset_dt.year != current_time.year %}
+              {% set relevant_sunset_dt = relevant_sunset_dt - timedelta(days=1) %}
+            {% endif %}
+            {# Check if we have passed today's sunset, but 'next_setting_raw_dt' was for today #}
+            {% if current_time > relevant_sunset_dt and (next_setting_raw_dt.day == current_time.day and next_setting_raw_dt.month == current_time.month and next_setting_raw_dt.dt_year == current_time.year) %} {# Corrected for year #}
+            {% elif current_time > relevant_sunset_dt %}
+            {% endif %}
+          {% else %}
+            {% set relevant_sunset_dt = none %} {# Ensure it remains none if initial conversion failed #}
+          {% endif %}
+
+
+          {% set open_after = relevant_sunrise_dt + timedelta(minutes=15) if relevant_sunrise_dt is not none else current_time %}
+          {% set close_before = relevant_sunset_dt - timedelta(minutes=15) if relevant_sunset_dt is not none else current_time %}
 
           {# Check if current time is within the active daylight window #}
-          {% set within_daylight_window = current_time > open_after and current_time < close_before %}
+          {% set within_daylight_window = (current_time > open_after and current_time < close_before) if relevant_sunrise_dt is not none and relevant_sunset_dt is not none else false %}
 
           {% if not within_daylight_window %}
             false
@@ -256,25 +282,68 @@ template:
           sunflower_wet: "{{ states('binary_sensor.rain_sun_flower_rain') }}"
           sunflower_mv: "{{ states('sensor.rain_sun_flower_rain_intensity') }}"
           weather_condition: "{{ states('weather.irauen33') }}"
+          current_time: "{{ now().strftime('%H:%M') }}"
           open_after: >
-            {% set next_rising_local_ts = states('sensor.sun_next_rising') | as_timestamp | timestamp_local %}
-            {% set next_rising_dt = as_datetime(next_rising_local_ts) | default(now(), true) %}
-            {{ (next_rising_dt + timedelta(minutes=15)).strftime('%H:%M') if next_rising_dt != now() else 'unavailable' }}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
+            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+
+            {% set relevant_sunrise_dt = next_rising_raw_dt %}
+            {% if relevant_sunrise_dt is not none %}
+              {% if relevant_sunrise_dt.day != current_time.day or relevant_sunrise_dt.month != current_time.month or relevant_sunrise_dt.year != current_time.year %}
+                {% set relevant_sunrise_dt = relevant_sunrise_dt - timedelta(days=1) %}
+              {% endif %}
+              {% if current_time < relevant_sunrise_dt and (next_rising_raw_dt.day == current_time.day and next_rising_raw_dt.month == current_time.month and next_rising_raw_dt.year == current_time.year) %}
+                 {% set relevant_sunrise_dt = next_rising_raw_dt %}
+              {% endif %}
+            {% endif %}
+
+            {{ (relevant_sunrise_dt + timedelta(minutes=15)).strftime('%H:%M') if relevant_sunrise_dt is not none else 'unavailable' }}
           close_before: >
-            {% set next_setting_local_ts = states('sensor.sun_next_setting') | as_timestamp | timestamp_local %}
-            {% set next_setting_dt = as_datetime(next_setting_local_ts) | default(now(), true) %}
-            {{ (next_setting_dt - timedelta(minutes=15)).strftime('%H:%M') if next_setting_dt != now() else 'unavailable' }}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
+            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+
+            {% set relevant_sunset_dt = next_setting_raw_dt %}
+            {% if relevant_sunset_dt is not none %}
+              {% if relevant_sunset_dt.day != current_time.day or relevant_sunset_dt.month != current_time.month or relevant_sunset_dt.year != current_time.year %}
+                {% set relevant_sunset_dt = relevant_sunset_dt - timedelta(days=1) %}
+              {% endif %}
+              {% if current_time > relevant_sunset_dt and (next_setting_raw_dt.day == current_time.day and next_setting_raw_dt.month == current_time.month and next_setting_raw_dt.year == current_time.year) %}
+              {% elif current_time > relevant_sunset_dt %}
+              {% endif %}
+            {% endif %}
+
+            {{ (relevant_sunset_dt - timedelta(minutes=15)).strftime('%H:%M') if relevant_sunset_dt is not none else 'unavailable' }}
           reason: >
-            {% set current_time = now() %}
-            {% set next_rising_local_ts = states('sensor.sun_next_rising') | as_timestamp | timestamp_local %}
-            {% set next_setting_local_ts = states('sensor.sun_next_setting') | as_timestamp | timestamp_local %}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
+            
+            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
 
-            {% set next_rising_dt = as_datetime(next_rising_local_ts) | default(current_time, true) %}
-            {% set next_setting_dt = as_datetime(next_setting_local_ts) | default(current_time, true) %}
+            {# --- Determine relevant_sunrise_dt for TODAY --- #}
+            {% set relevant_sunrise_dt = next_rising_raw_dt %}
+            {% if relevant_sunrise_dt is not none %}
+              {% if relevant_sunrise_dt.day != current_time.day or relevant_sunrise_dt.month != current_time.month or relevant_sunrise_dt.year != current_time.year %}
+                {% set relevant_sunrise_dt = relevant_sunrise_dt - timedelta(days=1) %}
+              {% endif %}
+              {% if current_time < relevant_sunrise_dt and (next_rising_raw_dt.day == current_time.day and next_rising_raw_dt.month == current_time.month and next_rising_raw_dt.year == current_time.year) %}
+                 {% set relevant_sunrise_dt = next_rising_raw_dt %}
+              {% endif %}
+            {% endif %}
 
-            {% set open_after = next_rising_dt + timedelta(minutes=15) %}
-            {% set close_before = next_setting_dt - timedelta(minutes=15) %}
-            {% set within_daylight_window = current_time > open_after and current_time < close_before %}
+            {# --- Determine relevant_sunset_dt for TODAY --- #}
+            {% set relevant_sunset_dt = next_setting_raw_dt %}
+            {% if relevant_sunset_dt is not none %}
+              {% if relevant_sunset_dt.day != current_time.day or relevant_sunset_dt.month != current_time.month or relevant_sunset_dt.year != current_time.year %}
+                {% set relevant_sunset_dt = relevant_sunset_dt - timedelta(days=1) %}
+              {% endif %}
+              {% if current_time > relevant_sunset_dt and (next_setting_raw_dt.day == current_time.day and next_setting_raw_dt.month == current_time.month and next_setting_raw_dt.year == current_time.year) %}
+              {% elif current_time > relevant_sunset_dt %}
+              {% endif %}
+            {% endif %}
+
+            {% set open_after = relevant_sunrise_dt + timedelta(minutes=15) if relevant_sunrise_dt is not none else current_time %}
+            {% set close_before = relevant_sunset_dt - timedelta(minutes=15) if relevant_sunset_dt is not none else current_time %}
+            {% set within_daylight_window = (current_time > open_after and current_time < close_before) if relevant_sunrise_dt is not none and relevant_sunset_dt is not none else false %}
 
             {% set ns = namespace(reasons=[]) %}
 
@@ -356,7 +425,7 @@ template:
             {% else %}
               {{ ns.reasons | join("; ") }}
             {% endif %}
-            
+
 cover:
   - platform: template
     covers:
