@@ -122,27 +122,6 @@ switch:
         - deep_sleep.allow: deep
 
 sensor:
-  # - platform: absolute_humidity
-  #   name: Right Absolute Humidity
-  #   id: right_absolute_humidity
-  #   temperature: right_temperature
-  #   humidity: right_humidity
-  #   internal: True
-
-  # - platform: absolute_humidity
-  #   name: Middle Absolute Humidity
-  #   id: middle_absolute_humidity
-  #   temperature: middle_temperature
-  #   humidity: middle_humidity
-  #   internal: True
-
-  # - platform: absolute_humidity
-  #   name: Left Absolute Humidity
-  #   id: left_absolute_humidity
-  #   temperature: left_temperature
-  #   humidity: left_humidity
-  #   internal: True
-    
   - platform: bh1750
     name: "BH1750 Illuminance"
     address: 0x23
@@ -286,53 +265,24 @@ sensor:
         - delta: 2%
         - throttle: 30s
             
-  # - platform: template
-  #   id: "terra_absolute_humidity_average"
-  #   name: "Terrarium Absolute Humidity Average"
-  #   unit_of_measurement: 'g/m³'
-  #   accuracy_decimals: 2
-  #   update_interval: 5s
-  #   lambda: |-
-
-  #     float sum = 0;
-  #     uint16_t cnt = 0;
-  #     if (!std::isnan (id(left_absolute_humidity).state)) {
-  #       sum += id(left_absolute_humidity).state;
-  #       cnt += 1;
-  #     }
-  #     if (!std::isnan (id(middle_absolute_humidity).state)) {
-  #       sum += id(middle_absolute_humidity).state;
-  #       cnt += 1;
-  #     }
-  #     if (!std::isnan (id(right_absolute_humidity).state)) {
-  #       sum += id(right_absolute_humidity).state;
-  #       cnt +=1;
-  #     }
-  #     if (cnt == 0) {
-  #       return NAN;
-  #     } else {
-  #       return (sum / cnt);
-  #     }
-  #   filters: 
-  #     - or:
-  #       - delta: 2%
-  #       - throttle: 30s
-            
-  - platform: uptime
-    name: Uptime
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
     update_interval: 5s
-    disabled_by_default: True
     filters: 
-      - or:
+      - or: 
         - delta: 5%
         - throttle: 120s
-    
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: "WiFi Signal dB"
-    id: wifi_signal_db
-    update_interval: 5s
-    entity_category: "diagnostic"
-    filters: 
+  
+  - platform: uptime
+    name: Uptime
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
       - or:
         - delta: 5%
         - throttle: 120s

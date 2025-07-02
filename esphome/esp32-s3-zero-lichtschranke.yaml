@@ -422,17 +422,24 @@ sensor:
           min_value: 0.1
           max_value: ${max_clamp}
 
-  - platform: uptime
-    name: Uptime
-    device_class: duration
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
     update_interval: 5s
     filters: 
       - or: 
-        - throttle: 60s
         - delta: 5%
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: "WiFi Signal dB"
-    id: wifi_signal_db
-    update_interval: 120s
-    entity_category: "diagnostic"
+        - throttle: 120s
+  
+  - platform: uptime
+    name: Uptime
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
+      - or:
+        - delta: 5%
+        - throttle: 120s

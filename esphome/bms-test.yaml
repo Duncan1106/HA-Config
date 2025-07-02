@@ -197,16 +197,27 @@ number:
     entity_category: diagnostic
 
 sensor:
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s
+  
   - platform: uptime
     name: Uptime
-    unit_of_measurement: s
-    update_interval: 30s
+    update_interval: 3s
     device_class: duration
+    accuracy_decimals: 1
     state_class: total
-    filters: 
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
       - or:
-        - throttle: 60s
         - delta: 5%
+        - throttle: 120s
             
 # Battery Module 1
   - platform: modbus_controller
@@ -1270,16 +1281,6 @@ sensor:
     unit_of_measurement: "°C"
     entity_category: diagnostic
     value_type: U_WORD
-
-  - platform: wifi_signal
-    name: "$friendly_name WiFi Signal"
-    update_interval: 60s
-    entity_category: "diagnostic"
-    filters:
-      - sliding_window_moving_average:
-          window_size: 15
-          send_every: 15
-          send_first_at: 1
 
   - platform: template
     accuracy_decimals: 1

@@ -123,20 +123,24 @@ binary_sensor:
               - button.press: status_led_btn
 
 sensor:  
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s
+  
   - platform: uptime
     name: Uptime
-    update_interval: 5s
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
     filters:
+      - lambda: !lambda 'return x / 60;' 
       - or:
-        - throttle: 60s
         - delta: 5%
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: "WiFi Signal dB"
-    id: wifi_signal_db
-    update_interval: 5s
-    entity_category: "diagnostic"
-    filters: 
-        - or: 
-          - throttle: 120s
-          - delta: 2%
+        - throttle: 120s
