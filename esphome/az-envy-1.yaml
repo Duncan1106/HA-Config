@@ -96,15 +96,27 @@ sensor:
     state_class: measurement
     device_class: voltage
 
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s
+  
   - platform: uptime
     name: Uptime
-    entity_category: diagnostic
-
-  # WiFi Signal sensor.
-  - platform: wifi_signal
-    name: ${name} ${room} WiFi Signal
-    update_interval: 60s
-    entity_category: diagnostic
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
+      - or:
+        - delta: 5%
+        - throttle: 120s
 
 text_sensor:
   - platform: wifi_info

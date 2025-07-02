@@ -78,7 +78,7 @@ output:
   - platform: ledc
     pin: GPIO3
     zero_means_zero: True
-    frequency: 100 Hz
+    frequency: 19531 Hz
     id: light_one
 
 light:
@@ -89,12 +89,24 @@ light:
     restore_mode: RESTORE_DEFAULT_OFF
 
 sensor:
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s
+  
   - platform: uptime
     name: Uptime
+    update_interval: 3s
     device_class: duration
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: WiFi Signal
-    id: wifi_signal_db
-    update_interval: 120s
-    entity_category: "diagnostic"
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
+      - or:
+        - delta: 5%
+        - throttle: 120s

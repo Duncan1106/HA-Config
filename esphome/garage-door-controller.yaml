@@ -67,6 +67,11 @@ button:
     id: restart_btn
     name: "Restart"
 
+light:
+  - platform: status_led
+    id: led_status
+    pin: GPIO2
+
 binary_sensor:
   - platform: homeassistant
     entity_id: binary_sensor.garagedoor_zigbee_contact
@@ -74,7 +79,7 @@ binary_sensor:
     entity_category: diagnostic
 
   - platform: status
-    name: "Status"
+    name: Status
 
 switch:
   - platform: template
@@ -135,16 +140,6 @@ cover:
             - switch.turn_on: cc
             - delay: 0.1s
             - switch.turn_off: cc
-    # stop_action: 
-    #   then:
-    #     - switch.turn_on: cc
-    #     - delay: 0.01s 
-    #     - switch.turn_on: oc
-    #     - delay: 0.2s
-    #     - switch.turn_off: cc
-    #     - delay: 0.01s
-    #     - switch.turn_off: oc
-    #optimistic: True
     assumed_state: true
     device_class: garage
 
@@ -154,18 +149,24 @@ text_sensor:
       name: IP Address
 
 sensor:
-  - platform: uptime
-    name: Uptime
-    device_class: duration
-    state_class: total
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
     update_interval: 5s
     filters: 
       - or: 
-        - throttle: 60s
         - delta: 5%
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: WiFi Signal
-    id: wifi_signal_db
-    update_interval: 120s
-    entity_category: "diagnostic"
+        - throttle: 120s
+  
+  - platform: uptime
+    name: Uptime
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
+      - or:
+        - delta: 5%
+        - throttle: 120s

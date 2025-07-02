@@ -67,6 +67,7 @@ light:
     name: Bettlicht
     output: light_one
     id: night_light
+    restore_mode: RESTORE_DEFAULT_OFF
     on_turn_on: 
       then:
         - delay: !lambda 'return id(reentered_bed).state * 1000;'
@@ -214,18 +215,27 @@ number:
     entity_category: diagnostic
 
 sensor:
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s
+  
   - platform: uptime
     name: Uptime
-
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
-    name: WiFi Signal
-    id: wifi_signal_db
-    update_interval: 5s
-    entity_category: "diagnostic"
-    filters: 
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
       - or:
         - delta: 5%
-        - throttle: 60s
+        - throttle: 120s
 
   - platform: adc
     internal: False
