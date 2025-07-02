@@ -424,9 +424,8 @@
       enabled: true
     - alias: Notify Duncan
       if:
-      - condition: zone
-        entity_id: person.duncan
-        zone: zone.home
+      - condition: template
+        value_template: 'true'
       then:
       - metadata: {}
         data: {}
@@ -829,6 +828,7 @@
   - id: 3h
     hours: /3
     trigger: time_pattern
+    enabled: false
   conditions: []
   actions:
   - alias: 5m
@@ -855,12 +855,17 @@
       id:
       - 2h
     then:
-    - metadata: {}
-      data: {}
-      target:
-        entity_id: button.ankermake_m5c_reload_ankerctl
-      action: button.press
-      enabled: true
+    - if:
+      - condition: state
+        entity_id: binary_sensor.ankerctl_lauft
+        state: 'on'
+      then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: button.ankermake_m5c_reload_ankerctl
+        action: button.press
+        enabled: true
   - alias: 3h
     if:
     - condition: trigger
@@ -886,6 +891,7 @@
       target:
         entity_id: switch.wvgzzze2zpe005371_force_data_refresh
       enabled: false
+    enabled: false
   mode: queued
   max: 10
 - id: '1709073413848'
@@ -1404,6 +1410,9 @@
       - condition: numeric_state
         entity_id: sensor.inverter_pv_power
         above: 2000
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_zero_epever_device_temperature
+        below: 44
     then:
     - metadata: {}
       data: {}
@@ -4389,6 +4398,12 @@
           - number.lenovo_tab_p11_bildschirmschoner_helligkeit
           - sensor.lenovo_tab_p11_freier_speicher
           - sensor.wintergarten_tur_illuminance
+          - sensor.account_balance
+          - sensor.active_device_count
+          - sensor.today_s_credits
+          - sensor.today_s_total_credits
+          - sensor.today_s_lucky_pot_credits
+          - sensor.today_s_shared_bandwidth
           keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4399,7 +4414,7 @@
     - parallel:
       - action: script.save_counts_and_notify_purge_status
         data:
-          threshold_offset: 75000
+          threshold_offset: 50000
           timeout_minutes: 30
           block_id: 2 Days
       - action: recorder.purge_entities
@@ -4552,12 +4567,6 @@
           - sensor.lsjwh4097rn105299_last_charge_state
           - sensor.lsjwh4097rn105299_last_vehicle_state
           - sensor.lsjwh4097rn105299_last_poll_error
-          - sensor.account_balance
-          - sensor.active_device_count
-          - sensor.today_s_credits
-          - sensor.today_s_total_credits
-          - sensor.today_s_lucky_pot_credits
-          - sensor.today_s_shared_bandwidth
           entity_globs: sensor.esp32_s3_zero_deye8k*
     enabled: true
   - alias: Keep 3 Day
@@ -4761,7 +4770,7 @@
     - parallel:
       - action: script.save_counts_and_notify_purge_status
         data:
-          threshold_offset: 75000
+          threshold_offset: 50000
           timeout_minutes: 30
           block_id: 7 Days
       - action: recorder.purge_entities
@@ -6026,7 +6035,7 @@
                 tag: waschmaschine_fertig
                 color: yellow
                 notification_icon: mdi:washing-machine
-              title: Waschmascchine fertig
+              title: Waschmaschine fertig
               message: Bitte ausräumen
           - delay:
               hours: 0
