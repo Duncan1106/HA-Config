@@ -4274,6 +4274,12 @@
         seconds: 0
         days: 0
       notification_color: red
+      repeat_notification: true
+      time_between_repeat_notification:
+        hours: 0
+        minutes: 30
+        seconds: 0
+        days: 0
 - id: '1734263785760'
   alias: DB Purge Entites under 14 days
   description: ''
@@ -5091,9 +5097,11 @@
     - condition: state
       entity_id: person.stephan
       state: not_home
-    - condition: state
-      entity_id: person.stephan
-      state: home
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: person.stephan
+        state: home
   actions:
   - choose:
     - conditions:
@@ -7837,3 +7845,117 @@
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       update_sub_label: false
+- id: '1751542900177'
+  alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
+  description: 'Steuert den Wintergarten-Rolladen automatisch basierend auf dem Sensor
+    inklusive Benachrichtigung mit Grund sowie Statusmeldungen zum manuellen Modus.
+
+    '
+  triggers:
+  - trigger: state
+    id: rollo_close
+    entity_id: binary_sensor.rollo_summer_should_close
+    to: 'on'
+    for: 00:05:00
+  - trigger: state
+    id: rollo_open
+    entity_id: binary_sensor.rollo_summer_should_close
+    to: 'off'
+    for: 00:05:00
+  - trigger: state
+    id: manual_on
+    entity_id: input_boolean.rollo_summer_override
+    to: 'on'
+  - trigger: state
+    id: manual_off
+    entity_id: input_boolean.rollo_summer_override
+    to: 'off'
+  conditions: []
+  actions:
+  - choose:
+    - alias: Rollo schließen
+      conditions:
+      - condition: trigger
+        id: rollo_close
+      - condition: state
+        entity_id: input_boolean.rollo_summer_override
+        state: 'off'
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: cover.wintergarten_rolladen_dachfenster
+          state: closed
+      sequence:
+      - action: cover.close_cover
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+        data: {}
+      - action: notify.duncan
+        data:
+          data:
+            tag: rollo_close
+          message: '☀️ wird geschlossen: {{ state_attr(''binary_sensor.rollo_summer_should_close'',
+            ''reason'') or ''Kein Grund angegeben.'' }}
+
+            '
+          title: Rollo
+    - alias: Rollo öffnen
+      conditions:
+      - condition: trigger
+        id: rollo_open
+      - condition: state
+        entity_id: input_boolean.rollo_summer_override
+        state: 'off'
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: cover.wintergarten_rolladen_dachfenster
+          state: open
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+        data: {}
+      - action: notify.duncan
+        data:
+          data:
+            tag: rollo_open
+          message: "\U0001F324️ wird geöffnet: {{ state_attr('binary_sensor.rollo_summer_should_close',
+            'reason') or 'Kein Grund angegeben.' }}\n"
+          title: Rollo
+    - alias: Manueller Modus aktiviert
+      conditions:
+      - condition: trigger
+        id: manual_on
+      sequence:
+      - action: notify.duncan
+        data:
+          data:
+            tag: rollo_manual
+          message: "\U0001F6D1 Rollo: Manueller Modus aktiviert"
+          title: Rollo Mode
+    - alias: Manueller Modus deaktiviert
+      conditions:
+      - condition: trigger
+        id: manual_off
+      sequence:
+      - action: notify.duncan
+        data:
+          data:
+            tag: rollo_automatic
+          message: '✅ Rollo: Automatikmodus wieder aktiv'
+          title: Rollo Mode
+  mode: single
+- id: '1751548094070'
+  alias: Poco F7 Request Location
+  description: ''
+  triggers:
+  - trigger: homeassistant
+    event: start
+  conditions: []
+  actions:
+  - alias: Request location update
+    action: notify.mobile_app_poco_f7
+    data:
+      message: request_location_update
+  mode: single
