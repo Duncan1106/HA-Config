@@ -343,9 +343,10 @@ template:
                 ] %}
             
                 {% set count_true = rain_conditions | select('equalto', true) | list | count %}
-            
+                {% set rain_risk_count = rain_conditions | list | count %}
+                {% set count_true_rain = rain_conditions | select('equalto', true) | list | count %}
                 {% if count_true >= 2 %}
-                  {% set ns.reasons = ns.reasons + ['Raining detected (2 or more rain conditions true)'] %}
+                  {% set ns.reasons = ns.reasons + ['Raining detected: ' ~ count_true_rain ~ ' of ' ~ rain_risk_count] %}
                 {% endif %}
             
                 {# Heat risks #}
@@ -372,29 +373,32 @@ template:
                 {% set count_true_heat = heat_risks | select('equalto', true) | list | count %}
             
                 {% set ns.reasons = ns.reasons + ['Heat risks met: ' ~ count_true_heat ~ ' of ' ~ heat_risk_count] %}
-                {% if strong_uv_index %}
-                  {% set ns.reasons = ns.reasons + [' - Strong UV condition met'] %}
+                {% if strong_uv_index or strong_uv_lux or high_temp_diff or extreme_temp %}
+                    {% if strong_uv_index %}
+                      {% set ns.reasons = ns.reasons + [' - Strong UV condition met'] %}
+                    {% else %}
+                      {% set ns.reasons = ns.reasons + [' - Strong UV NOT met'] %}
+                    {% endif %}
+                    {% if strong_uv_lux %}
+                      {% set ns.reasons = ns.reasons + [' - Strong Lux condition met'] %}
+                    {% else %}
+                      {% set ns.reasons = ns.reasons + [' - Strong Lux NOT met'] %}
+                    {% endif %}
+                    {% if high_temp_diff %}
+                      {% set ns.reasons = ns.reasons + [' - High temperature difference met'] %}
+                    {% else %}
+                      {% set ns.reasons = ns.reasons + [' - High temperature difference NOT met'] %}
+                    {% endif %}
+                    {% if extreme_temp %}
+                      {% set ns.reasons = ns.reasons + [' - Extreme temperature met'] %}
+                    {% else %}
+                      {% set ns.reasons = ns.reasons + [' - Extreme temperature NOT met'] %}
+                    {% endif %}
                 {% else %}
-                  {% set ns.reasons = ns.reasons + [' - Strong UV NOT met'] %}
-                {% endif %}
-                {% if strong_uv_lux %}
-                  {% set ns.reasons = ns.reasons + [' - Strong Lux condition met'] %}
-                {% else %}
-                  {% set ns.reasons = ns.reasons + [' - Strong Lux NOT met'] %}
-                {% endif %}
-                {% if high_temp_diff %}
-                  {% set ns.reasons = ns.reasons + [' - High temperature difference met'] %}
-                {% else %}
-                  {% set ns.reasons = ns.reasons + [' - High temperature difference NOT met'] %}
-                {% endif %}
-                {% if extreme_temp %}
-                  {% set ns.reasons = ns.reasons + [' - Extreme temperature met'] %}
-                {% else %}
-                  {% set ns.reasons = ns.reasons + [' - Extreme temperature NOT met'] %}
+                   {% set ns.reasons = ns.reasons + [' - Heat Conditions NOT met'] %}
                 {% endif %}
               {% endif %}
-            
-              {{ ns.reasons | join('\n') }}
+              {{ ns.reasons | join(',\n') }}
           Time: ''
           current_time: "{{ now().strftime('%H:%M') }}"
           open_after: >
