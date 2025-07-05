@@ -1680,11 +1680,16 @@ save_counts_and_notify_purge_status:
             '
     - alias: Notify on purge success
       conditions:
-      - condition: template
-        value_template: '{{ wait.completed and (states(''sensor.maria_db_rows'') |
-          int < current_count) }}
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ wait.completed and (states(''sensor.maria_db_rows'')
+            | int < current_count) }}
 
-          '
+            '
+        - condition: state
+          entity_id: input_boolean.notify_on_purge_success
+          state: 'on'
       sequence:
       - alias: Send success notification
         action: notify.duncan
