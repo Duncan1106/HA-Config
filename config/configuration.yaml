@@ -447,6 +447,11 @@ template:
               {% set val = states('sensor.gw1100a_rain_rate') | float(0) %}
               {% set threshold = 0.1 %}
               {{ val }} (> {{ threshold }})
+          rain_sunflower: >
+            {% set wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
+            {{ 'Wet' if wet else 'Dry' }} (= Wet)
+          weather: >
+            {{ states('weather.irauen33') | lower | default('') }} 
           uv_lux: >
             {% set val = states('sensor.gw1100a_solar_lux') | float(0) %}
             {% set threshold = 60000 %}
@@ -455,10 +460,19 @@ template:
             {% set val = states('sensor.gw1100a_uv_index') | float(0) %}
             {% set threshold = 4 %}
             {{ val | round(0) }} (> {{ threshold }})
+          elevation: >
+            {% set val = states('sensor.sun_solar_elevation') | float(0) %}
+            {% set threshold = 16 %}
+            {{ val | round(0) }} (> {{ threshold }})
+          azimuth: >
+            {% set val = states('sensor.sun_solar_azimuth') | float(0) %}
+            {% set threshold = 150 %}
+            {{ val | round(0) }} (> {{ threshold }})
+           
 
   - trigger:
       - platform: time_pattern
-        seconds: "/10"
+        seconds: "/5"
     sensor:
       - name: "Home Power"
         unique_id: home_power
