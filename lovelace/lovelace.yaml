@@ -944,7 +944,7 @@ config:
                   - condition: state
                     entity: sensor.waschkuche_fenster_battery
                     state: unavailable
-              heading: "Wascgk\xFCche"
+              heading: "Waschk\xFCche"
               heading_style: title
               icon: mdi:washing-machine
               type: heading
@@ -1363,6 +1363,9 @@ config:
                   \ %}\n{% if pollen_level <= 0.5 %}\n  green\n{% elif pollen_level\
                   \ <= 1.5 %}\n  lime\n{% elif pollen_level <= 2.5 %}\n  orange\n\
                   {% else %}\n  red\n{% endif %}"
+                bar_effect:
+                - shimmer
+                - radius
                 bar_size: medium
                 color: "{% set pollen_level = states('this.entity_id') | float(0)\
                   \ %}\n{% if pollen_level <= 0.5 %}\n  green\n{% elif pollen_level\
@@ -1375,30 +1378,22 @@ config:
                   %}
 
                   {{ (pollen_level / 3 * 100) | round(0) }}'
-                secondary: "{% set desc = state_attr('this.entity_id', 'state_tomorrow_desc')\
-                  \ %} {% if desc %}\n  {% set words = desc.strip().split() %}\n \
-                  \ {% set wlen = words | length %}\n  {% set penultimate_raw = words[-2]\
-                  \ if wlen > 1 else '' %}\n  {% set penultimate = (penultimate_raw[:3]\
-                  \ ~ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
-                  \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  Morgen:\
-                  \ {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{ ' ' if penultimate\
-                  \ }}{{ last }}<br>\n{% else %}\n  Morgen: N/A\n{% endif %} {% set\
-                  \ desc = state_attr('this.entity_id', 'state_in_2_days_desc') %}\
-                  \  {% if desc %}\n  {% set words = desc.strip().split() %}\n  {%\
-                  \ set wlen = words | length %}\n  {% set penultimate_raw = words[-2]\
-                  \ if wlen > 1 else '' %}\n  {% set penultimate = (penultimate_raw[:3]\
-                  \ ~ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
-                  \  {% set last = words[-1].replace('Belastung', 'Bel.') %}\n  \xDC\
-                  bermorgen: {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{ ' '\
-                  \ if penultimate }}{{ last }}\n{% else %}\n  <br>\xDCbermorgen:\
-                  \ N/A</span>\n{% endif %}"
+                secondary: "{% macro format_desc(desc, label) %}\n  {% if desc %}\n\
+                  \    {% set words = desc.strip().split() %}\n    {% set wlen = words\
+                  \ | length %}\n    {% set penultimate_raw = words[-2] if wlen >\
+                  \ 1 else '' %}\n    {% set penultimate = (penultimate_raw[:3] ~\
+                  \ '.') if penultimate_raw | length > 4 else penultimate_raw %}\n\
+                  \    {% set last = words[-1].replace('Belastung', 'Bel.') %}\n \
+                  \   {{ label }}: {{ '~' if wlen > 2 else '' }}{{ penultimate }}{{\
+                  \ ' ' if penultimate }}{{ last }}{{ '<br>' if label == 'Morgen'\
+                  \ else '' }}\n  {% else %}\n    {{ label }}: N/A{{ '<br>' if label\
+                  \ == 'Morgen' else '' }}\n  {% endif %}\n{% endmacro %} {{ format_desc(state_attr('this.entity_id',\
+                  \ 'state_tomorrow_desc'), 'Morgen') }} {{ format_desc(state_attr('this.entity_id',\
+                  \ 'state_in_2_days_desc'), '\xDCbermorgen') }}"
                 tap_action:
                   action: more-info
                 type: custom:entity-progress-card-template
               state: '>0'
-          grid_options:
-            columns: 12
-            rows: 2
           show_empty: false
           sort:
             method: state
@@ -1643,13 +1638,14 @@ config:
         w_decimals: 1
         watt_threshold: 1100
       - cards:
-        - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n\
-            {% else %}\n  orange\n{% endif %}"
+        - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+            ''orange'', ''gray'') }}'
           bar_effect:
           - shimmer
           - radius
-          color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
-            \  orange\n{% endif %}"
+          bar_size: medium
+          color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+            ''orange'', ''gray'') }}'
           entity: sun.sun
           name: "N\xE4chster Aufgang: {{ as_datetime(states('sensor.sun_next_rising')).timestamp()\
             \ | timestamp_custom('%H:%M', true) }}"
@@ -1673,13 +1669,14 @@ config:
           tap_action:
             action: more-info
           type: custom:entity-progress-card-template
-        - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n\
-            {% else %}\n  orange\n{% endif %}"
+        - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+            ''orange'', ''gray'') }}'
           bar_effect:
           - shimmer
           - radius
-          color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
-            \  orange\n{% endif %}"
+          bar_size: medium
+          color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+            ''orange'', ''gray'') }}'
           entity: sun.sun
           name: "N\xE4chster Untergang: {{ as_datetime(states('sensor.sun_next_setting')).timestamp()\
             \ | timestamp_custom('%H:%M', true) }}"
@@ -1704,33 +1701,39 @@ config:
             action: more-info
           type: custom:entity-progress-card-template
         type: custom:vertical-stack-in-card
-      - bar_color: "{% if states('sun.sun') == 'below_horizon' %}\n  lightgray\n{%\
-          \ else %}\n  orange\n{% endif %}\n"
+      - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+          ''orange'', ''gray'') }}
+
+          '
         bar_effect:
         - shimmer
         - radius
-        color: "{% if states('sun.sun') == 'below_horizon' %}\n  none\n{% else %}\n\
-          \  orange\n{% endif %}\n"
+        bar_size: medium
+        color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
+          ''orange'', ''gray'') }}
+
+          '
         entity: sun.sun
         grid_options:
           columns: 12
           rows: 1
         name: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %} {%\
-          \ set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% if sunrise\
-          \ and sunset %}\n  {% if sunrise < sunset %}\n    Next Rise: {{ sunrise.timestamp()\
-          \ | timestamp_custom('%H:%M', true) }}\n  {% else %}\n    Next Setting:\
-          \ {{ sunset.timestamp() | timestamp_custom('%H:%M', true) }}\n  {% endif\
-          \ %}\n{% else %}\n  Suninformation not available\n{% endif %}\n"
+          \ set sunset = as_datetime(states('sensor.sun_next_setting')) %}\n{% if\
+          \ sunrise and sunset %}\n  {% set is_rise_next = sunrise < sunset %}\n \
+          \ {% set next_event = sunrise if is_rise_next else sunset %}\n  {% set label\
+          \ = 'Next Rise' if is_rise_next else 'Next Setting' %}\n  {{ label }}: {{\
+          \ next_event.timestamp() | timestamp_custom('%H:%M', true) }}\n{% else %}\n\
+          \  No Sun-Information available\n{% endif %}\n"
         percent: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
           \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% set\
-          \ now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise < sunset\
-          \ %}\n    {% set next_event = sunrise %}\n    {% set last_event = sunrise\
-          \ - timedelta(days=1) %}\n  {% else %}\n    {% set next_event = sunset %}\n\
-          \    {% set last_event = sunset - timedelta(days=1) %}\n  {% endif %}\n\
-          \  {% set total = (next_event - last_event).total_seconds() %}\n  {% set\
-          \ elapsed = (now_time - last_event).total_seconds() %}\n  {% if total >\
-          \ 0 %}\n    {{ ((elapsed / total) * 100) | round(2) }}\n  {% else %}\n \
-          \   0\n  {% endif %}\n{% else %}\n  0\n{% endif %}\n"
+          \ now_time = now() %}\n{% if sunrise and sunset %}\n  {% if sunrise < sunset\
+          \ %}\n    {% set last_event = sunrise - timedelta(days=1) %}\n    {% set\
+          \ next_event = sunrise %}\n  {% else %}\n    {% set last_event = sunset\
+          \ - timedelta(days=1) %}\n    {% set next_event = sunset %}\n  {% endif\
+          \ %}\n  {% set total = (next_event - last_event).total_seconds() %}\n  {%\
+          \ set elapsed = (now_time - last_event).total_seconds() %}\n  {{ ((elapsed\
+          \ / total) * 100) | round(2) if total > 0 else 0 }}\n{% else %}\n  0\n{%\
+          \ endif %}\n"
         secondary: "{% set sunrise = as_datetime(states('sensor.sun_next_rising'))\
           \ %} {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {%\
           \ set now_time = now() %} {% if sunrise and sunset %}\n  {% if sunrise <\
@@ -1744,7 +1747,7 @@ config:
           \ %}\n    {% set seconds = (total_seconds % 60) %}\n    in\n    {% if days\
           \ > 0 %}\n      {{ days }}d\n    {% endif %}\n    {{ '%02d:%02d:%02d' |\
           \ format(hours | int, minutes | int, seconds | int) }}\n  {% else %}\n \
-          \   now\n  {% endif %}\n{% else %}\n  --:--:--\n{% endif %}\n"
+          \   now\n  {% endif %}\n{% else %}\n  --:--\n{% endif %}\n"
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
