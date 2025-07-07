@@ -1033,7 +1033,8 @@ folding_home:
             domain: binary_sensor
       then:
       - metadata: {}
-        data: {}
+        data:
+          brightness_pct: 75
         target:
           entity_id:
           - light.esp32_c3_mini_picture_light_licht
@@ -1424,46 +1425,6 @@ boiler_save_energy_script:
       milliseconds: 0
   alias: Boiler Save Energy Script
   description: ''
-notify_people_who_are_present:
-  alias: Notify people who are present
-  sequence:
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ is_state(''person.stephan'', ''home'') }}'
-      sequence:
-      - data:
-          title: '{{ title }}'
-          message: '{{ message }}'
-        action: notify.mobile_app_stephan_iphone
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ is_state(''person.katalin'', ''home'') }}'
-      sequence:
-      - data:
-          title: '{{ title }}'
-          message: '{{ message }}'
-        action: notify.mobile_app_fp4
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ is_state(''person.enya'', ''home'') }}'
-      sequence:
-      - data:
-          title: '{{ title }}'
-          message: '{{ message }}'
-        action: notify.mobile_app_iphone_von_enya
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ is_state(''person.duncan'', ''home'') }}'
-      sequence:
-      - data:
-          title: '{{ title }}'
-          message: '{{ message }}'
-        action: notify.mobile_app_24069pc21g
-  description: ''
 restart_internet:
   sequence:
   - sequence:
@@ -1719,11 +1680,16 @@ save_counts_and_notify_purge_status:
             '
     - alias: Notify on purge success
       conditions:
-      - condition: template
-        value_template: '{{ wait.completed and (states(''sensor.maria_db_rows'') |
-          int < current_count) }}
+      - condition: and
+        conditions:
+        - condition: template
+          value_template: '{{ wait.completed and (states(''sensor.maria_db_rows'')
+            | int < current_count) }}
 
-          '
+            '
+        - condition: state
+          entity_id: input_boolean.notify_on_purge_success
+          state: 'on'
       sequence:
       - alias: Send success notification
         action: notify.duncan

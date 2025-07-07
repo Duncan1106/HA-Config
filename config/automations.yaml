@@ -3420,7 +3420,34 @@
           entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
           state: 'on'
       alias: No Motion Detected
+      enabled: false
     then:
+    - repeat:
+        sequence:
+        - type: turn_off
+          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
+          entity_id: 564e927e962a99447ddb8d55d189ca32
+          domain: light
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: state
+          entity_id: light.ganglicht_zigbee_led
+          state: 'off'
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 5
+      target:
+        entity_id: light.ganglicht_zigbee_led
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 2
+        milliseconds: 0
     - repeat:
         sequence:
         - type: turn_off
@@ -5995,13 +6022,15 @@
               minutes: 0
               seconds: 0
               milliseconds: 500
-          - action: notify.send_message
+          - action: tts.speak
             metadata: {}
             data:
-              message: Waschmaschine ist fertig
+              cache: true
+              language: de-DE
+              media_player_entity_id: media_player.lenovo_tab_p11
+              message: Die Waschmaschine ist fertig
             target:
-              entity_id:
-              - notify.lenovo_tab_p11_text_zu_sprache
+              entity_id: tts.google_ai_tts
           - delay:
               hours: 0
               minutes: 10
@@ -6039,13 +6068,15 @@
               minutes: 0
               seconds: 0
               milliseconds: 500
-          - action: notify.send_message
+          - action: tts.speak
             metadata: {}
             data:
-              message: Trockner ist fertig
+              cache: true
+              language: de-DE
+              media_player_entity_id: media_player.lenovo_tab_p11
+              message: Der Trockner ist fertig
             target:
-              entity_id:
-              - notify.lenovo_tab_p11_text_zu_sprache
+              entity_id: tts.google_ai_tts
           - delay:
               hours: 0
               minutes: 10
@@ -7854,14 +7885,22 @@
   triggers:
   - trigger: state
     id: rollo_close
-    entity_id: binary_sensor.rollo_summer_should_close
+    entity_id:
+    - binary_sensor.rollo_summer_should_close
     to: 'on'
-    for: 00:05:00
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
   - trigger: state
     id: rollo_open
-    entity_id: binary_sensor.rollo_summer_should_close
+    entity_id:
+    - binary_sensor.rollo_summer_should_close
     to: 'off'
-    for: 00:05:00
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
   - trigger: state
     id: manual_on
     entity_id: input_boolean.rollo_summer_override
