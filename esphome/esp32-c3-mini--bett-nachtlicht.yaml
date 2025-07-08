@@ -67,7 +67,7 @@ light:
     name: Bettlicht
     output: light_one
     id: night_light
-    restore_mode: RESTORE_DEFAULT_OFF
+    restore_mode: RESTORE_INVERTED_DEFAULT_OFF
     on_turn_on: 
       then:
         - delay: !lambda 'return id(reentered_bed).state * 1000;'
@@ -143,9 +143,13 @@ binary_sensor:
         - script.execute: was_in_bed_script
     on_release: 
       then:
-        - light.turn_on:
-            id: night_light
-            brightness: !lambda return id(night_brightness).state/ 100.0;
+        - if:
+            condition:
+              - switch.is_on: was_in_bed
+            then:
+              - light.turn_on:
+                  id: night_light
+                  brightness: !lambda return id(night_brightness).state/ 100.0;
         - script.execute: left_bed_script
 
 number:
@@ -239,15 +243,14 @@ sensor:
 
   - platform: adc
     internal: False
-    pin: 
-      number: GPIO1
+    pin: GPIO1
     samples: 5
     sampling_mode: max
     attenuation: 12db
     name: Master Bed Sensor
     id: master_bed_sensor
     icon: mdi:bed
-    update_interval: 125ms
+    update_interval: 250ms
     state_class: measurement
     device_class: voltage
     unit_of_measurement: V
@@ -256,7 +259,7 @@ sensor:
         - sliding_window_moving_average:
             window_size: 10
             send_every: 4
-        - throttle: 180s
+        - throttle_average: 180s
       - clamp:
-          max_value: 2.0
+          max_value: 1.5
           min_value: 0.1
