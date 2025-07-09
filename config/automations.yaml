@@ -6180,7 +6180,6 @@
       - switch.kallax_plant_light_zigbee
       - switch.schreibtisch_rechts_power_strip_l5
       - switch.schreibtisch_links_power_strip_l1
-      - switch.schreibtisch_links_power_strip_l4
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Folding@Home
@@ -7745,34 +7744,70 @@
           title: Rollo Mode
   mode: single
 - id: '1751548094070'
-  alias: Poco F7 Request Location
-  description: ''
+  alias: Poco F7 Request Location with Retry and Final Notification
   triggers:
-  - trigger: homeassistant
-    event: start
-  - trigger: state
-    entity_id:
-    - person.duncan
-    to: not_home
-  - trigger: state
-    entity_id:
-    - person.duncan
-    to: unavailable
+  - event: start
+    trigger: homeassistant
+  - entity_id: person.duncan
+    to:
+    - not_home
+    - unavailable
+    trigger: state
   conditions:
   - condition: or
     conditions:
     - condition: state
       entity_id: person.duncan
-      state: unavailable
+      state: not_home
     - condition: state
       entity_id: person.duncan
-      state: not_home
+      state: unavailable
     - condition: state
       entity_id: person.duncan
       state: unknown
   actions:
-  - alias: Request location update
-    action: notify.mobile_app_poco_f7
-    data:
-      message: request_location_update
+  - repeat:
+      until:
+      - condition: or
+        conditions:
+        - condition: not
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: person.duncan
+              state: not_home
+            - condition: state
+              entity_id: person.duncan
+              state: unavailable
+            - condition: state
+              entity_id: person.duncan
+              state: unknown
+        - condition: template
+          value_template: '{{ repeat.index >= 10 }}'
+      sequence:
+      - action: notify.mobile_app_poco_f7
+        data:
+          message: request_location_update
+      - delay: 00:05:00
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: person.duncan
+        state: not_home
+      - condition: state
+        entity_id: person.duncan
+        state: unavailable
+      - condition: state
+        entity_id: person.duncan
+        state: unknown
+    then:
+    - action: notify.mobile_app_poco_f7
+      data:
+        title: Location update failed
+        message: 'Please open the Home Assistant app on your Poco F7 to update your
+          location manually.
+
+          '
   mode: single

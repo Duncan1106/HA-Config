@@ -190,6 +190,51 @@ notify:
       - action: mobile_app_stephan_iphone
 
 template:
+  - trigger:
+      # Trigger when the search input changes
+      - platform: state
+        entity_id: input_text.search_todo_list
+      - platform: time_pattern
+        seconds: "/1"
+    action:
+      # Call the service that provides your 'action_response' data structure.
+      # As you confirmed, this is todo.get_items
+      - action: todo.get_items
+        target:
+          entity_id: todo.kellervorrate
+        data:
+          status: needs_action
+        response_variable: todo_items
+    sensor:
+      - name: "Kellervorrate Filtered Items"
+        unique_id: kellervorrate_filtered_items_sensor # Ensure unique ID
+        state: >
+          {% set search_item = states('input_text.search_todo_list') | lower %}
+          {% set all_items = todo_items['todo.kellervorrate']['items'] | default([]) %}
+        
+          {% set matching_summaries = all_items
+            | selectattr('summary', 'defined')
+            | selectattr('summary', 'string')
+            | map(attribute='summary')
+            | map('lower')
+            | select('search', search_item if search_item else '')
+            | list %}
+         
+          {{ matching_summaries | count }}
+
+        attributes:
+          filtered_items: >
+                {% set search_item = states('input_text.search_todo_list') | lower %}
+                {% set all_items = todo_items['todo.kellervorrate']['items'] | default([]) %}
+            
+                [
+                  {% for item in all_items %}
+                    {% if item.summary is defined and search_item in item.summary | string | lower %}
+                      {{ item }},
+                    {% endif %}
+                  {% endfor %}
+                ]
+
   - triggers:
       - platform: time_pattern
         seconds: "/30"
