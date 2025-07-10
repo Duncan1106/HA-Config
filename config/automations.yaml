@@ -340,35 +340,6 @@
   conditions:
   - condition: and
     conditions:
-    - condition: or
-      conditions:
-      - alias: MG4 Home and Soc < 100
-        condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.lsjwh4097rn105299_vehicle_position
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.lsjwh4097rn105299_soc
-          below: 99.5
-      - condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.renault_zoe_standort
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.renault_zoe_batterie
-          below: 100
-        alias: Zoe Home and Soc < 100
-      - condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.wvgzzze2zpe005371_position
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.wvgzzze2zpe005371_battery_level
-          below: 100
-        alias: ID.4 Home and Soc < 100
     - condition: sun
       before: sunset
       after: sunrise
@@ -383,6 +354,9 @@
       - condition: state
         entity_id: select.go_echarger_270862_trx
         state: None
+    - condition: template
+      value_template: '{{ states(''sensor.evs_home_and_ready_to_charge'') != ''Alle
+        Fahrzeuge geladen oder nicht zu Hause'' }}'
   actions:
   - parallel:
     - alias: Notify Papa
@@ -3655,21 +3629,16 @@
   description: ''
   triggers:
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
     subtype: single_right
     trigger: device
-    id: single right
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
-    subtype: double_right
+    subtype: single_right_down
     trigger: device
-    id: Double right
   conditions:
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_left
-    state: decoupled
   - condition: state
     entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
@@ -3684,10 +3653,12 @@
       - Double right
       - single right
     then:
-    - type: toggle
-      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
-      entity_id: b9d22d683fc4bfcb5d9b9955ae1d4108
-      domain: switch
+    - action: switch.toggle
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.gerade
   mode: single
 - id: '1730367818444'
   alias: "VW \U0001F513"
@@ -4303,8 +4274,8 @@
       notification_color: red
       repeat_notification: true
       time_between_repeat_notification:
-        hours: 0
-        minutes: 30
+        hours: 1
+        minutes: 0
         seconds: 0
         days: 0
 - id: '1734263785760'
@@ -5397,24 +5368,19 @@
   description: ''
   triggers:
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
     subtype: single_left
     metadata: {}
     trigger: device
-    id: single left
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
-    subtype: double_left
+    subtype: single_left_down
     trigger: device
-    id: Double left
   conditions:
   - condition: state
     entity_id: select.duncan_lichtschalter_operation_mode_left
-    state: decoupled
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
   - condition: template
     value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',''last_triggered'')
@@ -5427,10 +5393,11 @@
       - Double left
       - single left
     then:
-    - type: toggle
-      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
-      entity_id: aa18e4cda3fe66d197e8584a34149f0f
-      domain: switch
+    - action: switch.toggle
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.duncan_lichtschalter_lock_relay_left
   mode: single
 - id: '1738338302199'
   alias: WallPanelBrightness
@@ -7810,4 +7777,24 @@
           location manually.
 
           '
+  mode: single
+- id: '1752180300729'
+  alias: 'Alert: HDD SMART Status Problem'
+  description: Notifies if the HDD SMART status reports a problem, indicating potential
+    drive failure.
+  triggers:
+  - entity_id: binary_sensor.hdd_smart_status
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - action: notify.duncan
+    data:
+      title: 'CRITICAL: HDD SMART Status Problem!'
+      message: The HDD SMART status is reporting a problem. Data loss may occur soon.
+        Consider backing up data and checking the drive immediately!
+      data:
+        tag: hdd_alert
+        priority: high
+        ttl: 0
   mode: single
