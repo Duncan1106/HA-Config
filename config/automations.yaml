@@ -340,35 +340,6 @@
   conditions:
   - condition: and
     conditions:
-    - condition: or
-      conditions:
-      - alias: MG4 Home and Soc < 100
-        condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.lsjwh4097rn105299_vehicle_position
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.lsjwh4097rn105299_soc
-          below: 99.5
-      - condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.renault_zoe_standort
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.renault_zoe_batterie
-          below: 100
-        alias: Zoe Home and Soc < 100
-      - condition: and
-        conditions:
-        - condition: zone
-          entity_id: device_tracker.wvgzzze2zpe005371_position
-          zone: zone.home
-        - condition: numeric_state
-          entity_id: sensor.wvgzzze2zpe005371_battery_level
-          below: 100
-        alias: ID.4 Home and Soc < 100
     - condition: sun
       before: sunset
       after: sunrise
@@ -383,6 +354,9 @@
       - condition: state
         entity_id: select.go_echarger_270862_trx
         state: None
+    - condition: template
+      value_template: '{{ states(''sensor.evs_home_and_ready_to_charge'') != ''Alle
+        Fahrzeuge geladen oder nicht zu Hause'' }}'
   actions:
   - parallel:
     - alias: Notify Papa
@@ -2110,7 +2084,7 @@
     - metadata: {}
       data:
         value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
-          | float(0) }}'
+          | float(0) | round(4) }}'
       target:
         entity_id: input_number.pool_temp_start
       action: input_number.set_value
@@ -2169,7 +2143,7 @@
     - metadata: {}
       data:
         value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
-          | float(0) }}'
+          | float(0) | round(4) }}'
       target:
         entity_id: input_number.pool_temp_start
       action: input_number.set_value
@@ -2235,7 +2209,7 @@
       - metadata: {}
         data:
           value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
-            | float(0) }}'
+            | float(0) | round(4) }}'
         target:
           entity_id: input_number.pool_temp_stop
         action: input_number.set_value
@@ -2298,7 +2272,7 @@
       - metadata: {}
         data:
           value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
-            | float(0) }}'
+            | float(0) | round(4) }}'
         target:
           entity_id: input_number.pool_temp_stop
         action: input_number.set_value
@@ -2341,7 +2315,7 @@
     - metadata: {}
       data:
         value: '{{ states(''sensor.esp32_c3_mini_pool_temperature_pool_temperature'')
-          | float(0) }}'
+          | float(0) | round(4) }}'
       target:
         entity_id: input_number.pool_temp_stop
       action: input_number.set_value
@@ -2417,8 +2391,8 @@
             title: Pool Temperature Change
             data:
               tag: pool_diff_minus
-            message: '- {{ (states(''input_number.pool_temp_sta'') | float(0) - states(''input_number.pool_temp_stop'')
-              | float(0)) | round(2) }}°C'
+            message: '- {{ (states(''input_number.pool_temp_start'') | float(0) -
+              states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C'
     - action: input_boolean.turn_off
       metadata: {}
       data: {}
@@ -3655,21 +3629,16 @@
   description: ''
   triggers:
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
     subtype: single_right
     trigger: device
-    id: single right
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
-    subtype: double_right
+    subtype: single_right_down
     trigger: device
-    id: Double right
   conditions:
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_left
-    state: decoupled
   - condition: state
     entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
@@ -3684,10 +3653,12 @@
       - Double right
       - single right
     then:
-    - type: toggle
-      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
-      entity_id: b9d22d683fc4bfcb5d9b9955ae1d4108
-      domain: switch
+    - action: switch.toggle
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.gerade
   mode: single
 - id: '1730367818444'
   alias: "VW \U0001F513"
@@ -4303,8 +4274,8 @@
       notification_color: red
       repeat_notification: true
       time_between_repeat_notification:
-        hours: 0
-        minutes: 30
+        hours: 1
+        minutes: 0
         seconds: 0
         days: 0
 - id: '1734263785760'
@@ -4358,7 +4329,6 @@
           - sensor.kg_temperatur
           - sensor.eg_temperatur
           - sensor.og_temperatur
-          - automation.dachfenster_rolladen_steuerung
           - automation.get_pulsetime
           - automation.save_pulsetime
           - automation.pool_pulsetime_auto_adjust
@@ -4382,6 +4352,7 @@
           - sensor.today_s_total_credits
           - sensor.today_s_lucky_pot_credits
           - sensor.today_s_shared_bandwidth
+          - sensor.esp32_c3_mini_bett_nachtlicht_master_bed_sensor
           keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4403,7 +4374,6 @@
           - sensor.time_in_bed_last_24h
           - sensor.average_illuminance
           - sensor.inverter_update_interval
-          - sensor.esp32_c3_mini_bett_nachtlicht_master_bed_sensor
           - sensor.inverter_battery_soh
           - sensor.inverter_load_frequency
           - sensor.inverter_grid_frequency
@@ -5398,24 +5368,19 @@
   description: ''
   triggers:
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
     subtype: single_left
     metadata: {}
     trigger: device
-    id: single left
   - domain: mqtt
-    device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
     type: action
-    subtype: double_left
+    subtype: single_left_down
     trigger: device
-    id: Double left
   conditions:
   - condition: state
     entity_id: select.duncan_lichtschalter_operation_mode_left
-    state: decoupled
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
   - condition: template
     value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',''last_triggered'')
@@ -5428,10 +5393,11 @@
       - Double left
       - single left
     then:
-    - type: toggle
-      device_id: d36dbe3cb012c0ce4d5b6566b90ed8ea
-      entity_id: aa18e4cda3fe66d197e8584a34149f0f
-      domain: switch
+    - action: switch.toggle
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.duncan_lichtschalter_lock_relay_left
   mode: single
 - id: '1738338302199'
   alias: WallPanelBrightness
@@ -6154,249 +6120,6 @@
       entity_id: 2421c34f010ad80ffb49d8e4ea205770
       domain: switch
   mode: single
-- id: '1740160222722'
-  alias: Dachfenster Rolladen Steuerung
-  description: ''
-  triggers:
-  - event: sunset
-    id: sunset
-    trigger: sun
-    offset: +00:15:00
-  - event: sunrise
-    offset: 00:30:00
-    id: sunrise_offset
-    trigger: sun
-  - entity_id: sensor.gw1100a_outdoor_temperature
-    id: temp_change
-    trigger: state
-  - entity_id:
-    - sensor.gw1100a_indoor_temperature
-    - sensor.gw1100a_solar_lux
-    id: temp_change
-    trigger: state
-  - trigger: numeric_state
-    entity_id:
-    - sensor.gw1100a_solar_lux
-    below: 10000
-    id: sunset
-  - trigger: numeric_state
-    entity_id:
-    - sensor.gw1100a_solar_lux
-    below: 9000
-    id: sunset
-  - trigger: numeric_state
-    entity_id:
-    - sensor.sun_solar_elevation
-    below: 16
-    id: sunset
-  actions:
-  - choose:
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - sunset
-        - condition: template
-          value_template: '{{ now().month in [11,12,1,2,3] }}'
-          alias: Is Winter
-        alias: Is Winter and Sunset
-      sequence:
-      - target:
-          entity_id: weather.irauen33
-        data:
-          type: daily
-        response_variable: weather_forecast
-        action: weather.get_forecasts
-      - alias: If Snow, only close Window, if not close window and Rollo
-        if:
-        - alias: Is Snow or below 0
-          condition: template
-          value_template: '{{ ''snow'' in weather_forecast[''weather.irauen33''].forecast[1].condition
-            or (weather_forecast[''weather.irauen33''].forecast[1].templow < 0 and
-            ''rain'' in weather_forecast[''weather.irauen33''].forecast[1].condition
-            ) }} '
-        then:
-        - if:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: binary_sensor.dachfenster_wintergarten_links_contact
-              state: 'on'
-            - condition: state
-              entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
-              state: 'on'
-          then:
-          - action: cover.close_cover
-            metadata: {}
-            data: {}
-            target:
-              entity_id: cover.wintergarten_dachfenster
-          alias: If Open then Close Window
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: Dachfenster Winter
-            message: Fenster zu, Templow {{ weather_forecast['weather.irauen33'].forecast[1].templow
-              }}, Condition {{weather_forecast['weather.irauen33'].forecast[1].condition}}
-        else:
-        - alias: If Open then Close Window
-          if:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: binary_sensor.dachfenster_wintergarten_links_contact
-              state: 'on'
-            - condition: state
-              entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
-              state: 'on'
-          then:
-          - action: cover.close_cover
-            metadata: {}
-            data: {}
-            target:
-              entity_id: cover.wintergarten_dachfenster
-          - delay:
-              hours: 0
-              minutes: 1
-              seconds: 0
-              milliseconds: 0
-            enabled: true
-        - target:
-            entity_id: cover.wintergarten_rolladen_dachfenster
-          action: cover.close_cover
-          data: {}
-          enabled: true
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: Dachfenster Winter
-            message: Fenster und Rollo zu, Templow {{ weather_forecast['weather.irauen33'].forecast[1].templow
-              }}, Condition  {{weather_forecast['weather.irauen33'].forecast[1].condition}}
-      alias: Is Winter and Sunset -> Rollo Close if no snow or not below 0 tomorrow
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: template
-          value_template: '{{ now().month in [11,12,1,2,3] }}'
-          alias: Is Winter
-        - condition: trigger
-          id:
-          - sunrise_offset
-        alias: Is Winter and Sunrise offset
-      sequence:
-      - action: cover.open_cover
-        target:
-          entity_id:
-          - cover.wintergarten_rolladen_dachfenster
-        data: {}
-        enabled: true
-      - action: notify.duncan
-        metadata: {}
-        data:
-          title: Dachfenster Winter
-          message: Rollo auf
-      alias: Is Winter and Sunrise -> Open Rollo
-    - conditions:
-      - alias: Is Summer and Temp Diff > 5
-        condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - temp_change
-        - alias: Is Summer
-          condition: template
-          value_template: '{{ now().month in [4,5,6,7,8,9,10] }}'
-        - alias: Is Temp Diff > 5
-          condition: template
-          value_template: '{% set temp_inside = states(''sensor.gw1100a_indoor_temperature'')
-            | float(0) %}
-
-            {% set temp_outside = states(''sensor.gw1100a_outdoor_temperature'') |
-            float(0) %}
-
-            {% set uv = states(''sensor.gw1100a_solar_lux'') | float(0) %}
-
-            {% set uv_index = states(''sensor.gw1100a_uv_index'') | float(0) %}
-
-            {{ ((temp_outside - temp_inside) > 5.0 and temp_outside > 22.0 and uv
-            > 25000.0) or ((uv > 75000.0 or uv_index >= 5) and temp_outside > 22.0)
-            }}'
-          enabled: false
-        - condition: numeric_state
-          entity_id: sensor.sun_solar_azimuth
-          above: 150
-        - condition: numeric_state
-          entity_id: sensor.sun_solar_elevation
-          above: 16
-        - condition: state
-          entity_id: binary_sensor.close_dachfenster_rolladen
-          state: 'on'
-      sequence:
-      - if:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: binary_sensor.dachfenster_wintergarten_links_contact
-            state: 'on'
-          - condition: state
-            entity_id: binary_sensor.dachfenster_wintergarten_rechts_contact
-            state: 'on'
-        then:
-        - action: cover.close_cover
-          metadata: {}
-          data: {}
-          target:
-            entity_id: cover.wintergarten_dachfenster
-        alias: If Open then Close Window
-      - if:
-        - condition: state
-          entity_id: cover.wintergarten_rolladen_dachfenster
-          state: open
-        then:
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: Dachfenster Sommer
-            message: Rollo zu Temp
-        alias: Notify on first close
-      - target:
-          entity_id: cover.wintergarten_rolladen_dachfenster
-        action: cover.close_cover
-        data: {}
-        enabled: true
-      alias: Is Summer, Temp Diff > 5 -> Close Rollo
-    - conditions:
-      - condition: and
-        conditions:
-        - alias: Is Summer
-          condition: template
-          value_template: '{{ now().month in [4,5,6,7,8,9,10] }}'
-        - condition: trigger
-          id:
-          - sunset
-        alias: Is Summer and sunset
-      sequence:
-      - if:
-        - condition: state
-          entity_id: cover.wintergarten_rolladen_dachfenster
-          state: closed
-        then:
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: Dachfenster Sommer
-            message: Rollo auf
-        alias: Notify on first open
-      - action: cover.open_cover
-        metadata: {}
-        data: {}
-        target:
-          entity_id: cover.wintergarten_rolladen_dachfenster
-        enabled: true
-      alias: Is Summer and Sunset -> Open Rollo
-  mode: queued
-  max: 10
 - id: '1740525979043'
   alias: Turn all off if going to bed
   description: ''
@@ -6424,7 +6147,6 @@
       - switch.kallax_plant_light_zigbee
       - switch.schreibtisch_rechts_power_strip_l5
       - switch.schreibtisch_links_power_strip_l1
-      - switch.schreibtisch_links_power_strip_l4
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Folding@Home
@@ -7405,7 +7127,7 @@
     metadata:
       secondary: false
     trigger: device
-    above: 10
+    above: 20
   conditions: []
   actions:
   - action: notify.duncan
@@ -7989,15 +7711,90 @@
           title: Rollo Mode
   mode: single
 - id: '1751548094070'
-  alias: Poco F7 Request Location
-  description: ''
+  alias: Poco F7 Request Location with Retry and Final Notification
   triggers:
-  - trigger: homeassistant
-    event: start
+  - event: start
+    trigger: homeassistant
+  - entity_id: person.duncan
+    to:
+    - not_home
+    - unavailable
+    trigger: state
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: person.duncan
+      state: not_home
+    - condition: state
+      entity_id: person.duncan
+      state: unavailable
+    - condition: state
+      entity_id: person.duncan
+      state: unknown
+  actions:
+  - repeat:
+      until:
+      - condition: or
+        conditions:
+        - condition: not
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: person.duncan
+              state: not_home
+            - condition: state
+              entity_id: person.duncan
+              state: unavailable
+            - condition: state
+              entity_id: person.duncan
+              state: unknown
+        - condition: template
+          value_template: '{{ repeat.index >= 10 }}'
+      sequence:
+      - action: notify.mobile_app_poco_f7
+        data:
+          message: request_location_update
+      - delay: 00:05:00
+  - if:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: person.duncan
+        state: not_home
+      - condition: state
+        entity_id: person.duncan
+        state: unavailable
+      - condition: state
+        entity_id: person.duncan
+        state: unknown
+    then:
+    - action: notify.mobile_app_poco_f7
+      data:
+        title: Location update failed
+        message: 'Please open the Home Assistant app on your Poco F7 to update your
+          location manually.
+
+          '
+  mode: single
+- id: '1752180300729'
+  alias: 'Alert: HDD SMART Status Problem'
+  description: Notifies if the HDD SMART status reports a problem, indicating potential
+    drive failure.
+  triggers:
+  - entity_id: binary_sensor.hdd_smart_status
+    to: 'on'
+    trigger: state
   conditions: []
   actions:
-  - alias: Request location update
-    action: notify.mobile_app_poco_f7
+  - action: notify.duncan
     data:
-      message: request_location_update
+      title: 'CRITICAL: HDD SMART Status Problem!'
+      message: The HDD SMART status is reporting a problem. Data loss may occur soon.
+        Consider backing up data and checking the drive immediately!
+      data:
+        tag: hdd_alert
+        priority: high
+        ttl: 0
   mode: single

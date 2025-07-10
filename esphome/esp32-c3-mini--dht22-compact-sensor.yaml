@@ -87,13 +87,37 @@ text_sensor:
       name: IP Address
 
 output:
-  - platform: gpio
+  - platform: ledc
+    frequency: 19531Hz
+    max_power: 1.0
+    min_power: 0
     pin: 
       number: GPIO8
       ignore_strapping_warning: True
       inverted: True
     id: led_blue
 
+number:
+  - platform: template
+    name: Status Led Brightness
+    min_value: 0
+    max_value: 100
+    initial_value: 50
+    restore_value: True
+    id: led_blue_level
+    mode: BOX
+    step: 1
+    optimistic: True
+    unit_of_measurement: '%'
+
+light:
+  - platform: monochromatic
+    output: led_blue
+    id: light_led_blue
+    name: Status Light
+    default_transition_length: 100ms
+    restore_mode: RESTORE_INVERTED_DEFAULT_OFF
+    
 switch:
   - platform: template
     assumed_state: False
@@ -109,12 +133,16 @@ switch:
         - deep_sleep.allow: deep
 
 button:
-  - platform: output
-    output: led_blue
+  - platform: template
     name: Status LED
     id: status_led_btn
-    duration: 
-      milliseconds: 125
+    on_press: 
+      then:
+        - light.turn_on: 
+            id: light_led_blue
+            brightness: !lambda return id(led_blue_level).state / 100.0;
+        - delay: 500ms
+        - light.turn_off: light_led_blue
 
   - platform: restart
     name: Restart
