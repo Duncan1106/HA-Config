@@ -48,15 +48,16 @@ class ItemListCard extends LitElement {
     }
 
     .btn {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       background: none;
       border: none;
-      font-size: 16px;
       cursor: pointer;
-      line-height: 1;
       padding: 0;
       color: var(--primary-text-color, #555);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .btn:hover {
@@ -105,10 +106,11 @@ class ItemListCard extends LitElement {
   }
 
   render() {
-    const entity = this.hass.states[this.config.entity];
-    if (!entity) {
+    if (!this.hass || !this.hass.states[this.config.entity]) {
       return html`<ha-card><div class="empty-state">Entity not found</div></ha-card>`;
     }
+
+    const entity = this.hass.states[this.config.entity];
 
     let items = [];
     try {
@@ -135,13 +137,19 @@ class ItemListCard extends LitElement {
               <div class="item-summary" title="${item.summary}">${item.summary}</div>
               <div class="item-controls">
                 ${this._isNumeric(item.description) ? html`
-                  <button class="btn" title="Decrease" @click=${() => this._updateItem(item.uid, item.description, -1, item.summary)}>➖</button>
+                  <button class="btn" title="Decrease" aria-label="Decrease" @click=${() => this._updateOrCompleteItem(item.uid, { description: parseInt(item.description, 10) - 1 })}>
+                    <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
+                  </button>
                   <div class="quantity">${item.description}</div>
-                  <button class="btn" title="Increase" @click=${() => this._updateItem(item.uid, item.description, 1, item.summary)}>➕</button>
+                  <button class="btn" title="Increase" aria-label="Increase" @click=${() => this._updateOrCompleteItem(item.uid, { description: parseInt(item.description, 10) + 1 })}>
+                    <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
+                  </button>
                 ` : html`
                   <div class="quantity">${item.description}</div>
                 `}
-                <button class="btn" title="Delete" @click=${() => this._deleteItem(item.uid)}>🗑️</button>
+                <button class="btn" title="Complete" aria-label="Complete" @click=${() => this._updateOrCompleteItem(item.uid, { status: 'completed' })}>
+                  <ha-icon icon="mdi:check"></ha-icon>
+                </button>
               </div>
             </div>
           `)}
@@ -154,37 +162,23 @@ class ItemListCard extends LitElement {
     return /^\d+$/.test(str);
   }
 
-  _updateItem(uid, currentDesc, change, summary) {
-    let newDesc = parseInt(currentDesc);
-    if (isNaN(newDesc)) newDesc = 0;
-    newDesc += change;
-    if (newDesc < 0) newDesc = 0;
-
+  _updateOrCompleteItem(uid, updates) {
     const data = {
       entity_id: this.config.target_entity,
       item: uid,
-      description: newDesc.toString(),
-      rename: "\u200B" + summary,
+      ...updates,
     };
+
+    if (updates.description !== undefined) {
+      let desc = parseInt(updates.description, 10);
+      if (isNaN(desc) || desc < 0) desc = 0;
+      data.description = desc.toString();
+    }
 
     console.log("Calling todo/update_item with:", data);
 
     this.hass.callService('todo', 'update_item', data)
       .catch(err => console.error("Error calling todo/update_item:", err));
-  }
-
-  _deleteItem(uid) {
-    if (!confirm("Are you sure you want to delete this item?")) return;
-
-    const data = {
-      entity_id: this.config.target_entity,
-      item: uid,
-    };
-
-    console.log("Calling todo/remove_item with:", data);
-
-    this.hass.callService('todo', 'remove_item', data)
-      .catch(err => console.error("Error calling todo/remove_item:", err));
   }
 }
 
