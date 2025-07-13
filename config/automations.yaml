@@ -676,75 +676,6 @@
         minutes: 0
         seconds: 0
         days: 0
-- id: '1706116334482'
-  alias: Nachtlicht
-  description: ''
-  triggers:
-  - type: occupied
-    device_id: 8d90a3db9282aaec047e6d784c3c33ea
-    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-    domain: binary_sensor
-    trigger: device
-    id: 'Off'
-    for:
-      hours: 0
-      minutes: 3
-      seconds: 0
-  - type: occupied
-    device_id: 8d90a3db9282aaec047e6d784c3c33ea
-    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-    domain: binary_sensor
-    trigger: device
-    id: Off fast
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-  - entity_id:
-    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-    from: 'on'
-    to: 'off'
-    id: 'On'
-    trigger: state
-  - type: turned_on
-    device_id: ffc86bfcc740ddde767208e2a0031ecd
-    entity_id: c029525ed2ebb07c129190168fe249a6
-    domain: binary_sensor
-    id: 'On'
-    trigger: device
-  - entity_id:
-    - light.esp32_c3_mini_bett_nachtlicht_bettlicht
-    from: 'off'
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 10
-      seconds: 0
-    id: 'Off'
-    trigger: state
-  - entity_id:
-    - light.esp32_c3_mini_bett_nachtlicht_bettlicht
-    from: 'off'
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    id: 'Off'
-    trigger: state
-  conditions:
-  - condition: state
-    entity_id: person.duncan
-    state: home
-    enabled: true
-  - condition: sun
-    before: sunrise
-    after: sunset
-  actions:
-  - metadata: {}
-    data: {}
-    action: script.1716068747270
-  mode: restart
 - id: '1706398043305'
   alias: 'Spülmaschine fertig '
   description: ''
@@ -2454,31 +2385,6 @@
       payload: ' '
     action: mqtt.publish
   mode: single
-- id: '1716929138745'
-  alias: Save Terrarium Pulsetimes
-  description: ''
-  triggers:
-  - id: frommqtt
-    topic: stat/tasmota_18F373/RESULT
-    trigger: mqtt
-  conditions:
-  - condition: template
-    value_template: '{{ ''PulseTime3'' in  trigger.payload }}'
-  actions:
-  - alias: Pulsetime3
-    if:
-    - condition: template
-      value_template: '{{ ''PulseTime3'' in  trigger.payload }}'
-    then:
-    - target:
-        entity_id: input_number.pulsetime3_terrarium
-      data:
-        value: "{% set pulseTime = trigger.payload_json.PulseTime3.Remaining | int(0)
-          %}\n{% if  pulseTime < 112 %}\n  {{ pulseTime / 10 | round(0) }}\n{% else
-          %}\n  {{ ( pulseTime | int - 100 ) }}\n{% endif %}\n"
-      action: input_number.set_value
-  mode: parallel
-  max: 10
 - id: '1716929359492'
   alias: Terra Pulsetime Control
   description: ''
@@ -3643,22 +3549,18 @@
     entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
   - condition: template
-    value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_right'',''last_triggered'')
-      | default(0)) | int > 10)}}'
+    value_template: '
+
+
+      {{ now() - state_attr(''automation.aqara_h1_eu_decoupled_switch_right'', ''last_triggered'')
+      | default( as_datetime(''0''), true) > timedelta(seconds=10) }}'
   actions:
-  - alias: 'Toggle Right '
-    if:
-    - condition: trigger
-      id:
-      - Double right
-      - single right
-    then:
-    - action: switch.toggle
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.gerade
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - switch.gerade
   mode: single
 - id: '1730367818444'
   alias: "VW \U0001F513"
@@ -5385,21 +5287,16 @@
     entity_id: select.duncan_lichtschalter_operation_mode_left
     state: decoupled
   - condition: template
-    value_template: '{{ (as_timestamp(now()) - as_timestamp(state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',''last_triggered'')
-      | default(0)) | int > 10)}}'
+    value_template: '{{ now() - state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',
+      ''last_triggered'') | default( as_datetime(''0''), true) > timedelta(seconds=10)
+      }}'
   actions:
-  - alias: Toggle Left
-    if:
-    - condition: trigger
-      id:
-      - Double left
-      - single left
-    then:
-    - action: switch.toggle
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.duncan_lichtschalter_lock_relay_left
+  - action: switch.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - switch.schrag
   mode: single
 - id: '1738338302199'
   alias: WallPanelBrightness
@@ -6149,6 +6046,7 @@
       - switch.kallax_plant_light_zigbee
       - switch.schreibtisch_rechts_power_strip_l5
       - switch.schreibtisch_links_power_strip_l1
+      - switch.schreibtisch_links_power_strip_l4
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Folding@Home
