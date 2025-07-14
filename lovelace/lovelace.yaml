@@ -5929,61 +5929,24 @@ config:
             entity: switch.terrarium_tasmota2
             state: 'on'
           type: conditional
-        - entity: sensor.daily_luftbefeuchter
-          fill_container: true
-          hold_action:
-            action: more-info
-          icon: ''
-          layout: vertical
-          primary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising'))\
-            \ | as_local + timedelta(hours=2) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
-            \ 'next_setting')) | as_local - timedelta(hours=1) %}\n{% set api_request_limit\
-            \ = 15 %}\n{% if nr > ns %}\n  {% set nr = nr - timedelta(hours=24) %}\n\
-            {% endif %}\n{% set hours_difference = (ns - nr).total_seconds() / 3600\
-            \ %}\n{% set interval_hours = hours_difference / api_request_limit %}\n\
-            {% set nsp = namespace(start_times=[]) %}\n{% for i in range(api_request_limit)\
-            \ %}\n  {% set start_time = nr + timedelta(hours=i * interval_hours) %}\n\
-            \  {% set nsp.start_times = nsp.start_times + [start_time] %}\n{% endfor\
-            \ %}\n{% set now_time = now() %}\n{% for start_time in nsp.start_times\
-            \ %}\n  {% set difference = start_time.timestamp() - now_time.timestamp()\
-            \ %}\n  {% if difference > 0 %}\nNext Humidity Cycle: {{ start_time.strftime('%H:%M:%S')\
-            \ }}\n     {% break %}\n  {% endif %}\n{% endfor %}"
-          secondary: ''
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
-        - entities:
-          - sensor.daily_luftbefeuchter
-          type: entities
-        - entity: sensor.terrarium_signal
-          fill_container: true
-          hold_action:
-            action: more-info
-          icon: ''
-          layout: vertical
-          multiline_secondary: true
-          primary: ''
-          secondary: "{% set nr = as_datetime(state_attr('sun.sun', 'next_rising'))\
-            \ | as_local + timedelta(hours=1.23) %}\n{% set ns = as_datetime(state_attr('sun.sun',\
-            \ 'next_setting')) | as_local - timedelta(hours=0.77) %}\n{% if nr > ns\
-            \ %}\n  {% set nr = nr - timedelta(hours=24) %}\n{% endif %}\n{% set hours_difference\
-            \ = (ns - nr).total_seconds() %}\n{% set now_time = now() %}\n{% set dif_nr\
-            \ = time_until(nr, 2) %}\n{% set ref_nr = (nr|as_timestamp()) - (now_time|as_timestamp())\
-            \ %}\n{% set dif_ns = time_until(ns, 2) %}\n{% set ref_ns = (ns|as_timestamp())\
-            \ - (now_time|as_timestamp()) %}\n{% set nr_h = nr - timedelta(hours=0.25)\
-            \ %}\n{% set ns_h = ns + timedelta(hours=0.25) %}\n{% set dif_nr_h = time_until(nr_h,\
-            \ 2) %}\n{% set ref_nr_h = (nr_h|as_timestamp()) - (now_time|as_timestamp())\
-            \ %}\n{% set dif_ns_h = time_until(ns_h,2 ) %}\n{% set ref_ns_h = (ns_h|as_timestamp())\
-            \ - (now_time|as_timestamp()) %}\n{% set runtime = now_time + timedelta(seconds=hours_difference)%}\n\
-            {% set runtime_end = nr + timedelta(seconds=hours_difference)%}\nRuntime:\
-            \ {{ time_until(runtime, 2) }} @ {{ runtime_end.strftime('%H:%M:%S')}}\n\
-            Helligkeit: {{ 'ON in ' + dif_nr_h + ' @ ' + nr_h.strftime('%H:%M:%S')\
-            \ if ref_nr_h > 0 else 'OFF in ' + dif_ns_h + ' @ ' + ns_h.strftime('%H:%M:%S')}}\n\
-            W\xE4rnelampe: {{ 'ON in ' + dif_nr + ' @ ' + nr.strftime('%H:%M:%S')\
-            \ if ref_nr > 0 else 'OFF in ' + dif_ns + ' @ ' + ns.strftime('%H:%M:%S')}}"
-          tap_action:
-            action: more-info
-          type: custom:mushroom-template-card
+        - content: "**\u23F0 Aktuelle Zeit:** `{{ now().strftime('%H:%M:%S') }}`\n\
+            **\U0001F305 Offset-Zeiten**\n- Start: `{% set start = state_attr('binary_sensor.luftbefeuchter_on_windows',\
+            \ 'next_sunrise_offset_start') %}{% if start %}{{ strptime(start, '%Y-%m-%d\
+            \ %H:%M:%S').strftime('%H:%M:%S') }}{% else %} N/A {% endif %}`\n- Ende:\
+            \ `{% set end = state_attr('binary_sensor.luftbefeuchter_on_windows',\
+            \ 'next_sunset_offset_end') %} {% if end %} {{ strptime(end, '%Y-%m-%d\
+            \ %H:%M:%S').strftime('%H:%M:%S') }} {% else %} N/A {% endif %}`\n\n**\U0001F552\
+            \ Zeitfenster & Intervall**\n- Zeitfenster: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
+            \ 'window_duration') }}`\n- Intervall: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
+            \ 'trigger_interval') }}`\n\n**\U0001F4CA Status** - Verbleibend: `{{\
+            \ state_attr('binary_sensor.luftbefeuchter_on_windows', 'remaining_activations')\
+            \ }}/{{ state_attr('binary_sensor.luftbefeuchter_on_windows', 'max_activations_per_day')\
+            \ }}`\n**\U0001F501 Trigger-Zeiten:**  {% if state_attr('binary_sensor.luftbefeuchter_on_windows',\
+            \ 'remaining_activations') | int == 0 %}\n  - \U0001F6AB Tageslimit wurde\
+            \ erreicht. Keine Trigger mehr f\xFCr heute.\n{% else %}\n  {% for t in\
+            \ state_attr('binary_sensor.luftbefeuchter_on_windows', 'trigger_times')\
+            \ %} - `{{ t }}`{{ '\\n' }} {% endfor %}\n{% endif %}\n"
+          type: markdown
         - cards:
           - display_mode: buttons
             entity: input_number.terrarium_humidity_control_threshold
@@ -6028,7 +5991,15 @@ config:
         type: button
       - entities:
         - entity: automation.luftbefeuchter_leer
+        - entity: automation.terra_pulsetime_control
         type: entities
+      - entity: binary_sensor.luftbefeuchter_on_over_day
+        features_position: bottom
+        grid_options:
+          columns: 12
+          rows: 1
+        type: tile
+        vertical: false
       type: grid
     - cards:
       - badges:

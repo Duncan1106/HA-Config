@@ -191,6 +191,133 @@ notify:
       - action: mobile_app_stephan_iphone
 
 template:
+  - binary_sensor:
+      - name: "Luftbefeuchter On-Windows"
+        unique_id: humidifier_trigger_window
+        state: >
+          {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+          {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+          {% if nr > ns %}
+            {% set nr = nr - timedelta(hours=24) %}
+          {% endif %}
+          {% set current_time = now() %}
+          {% set actual_triggers_today = states('sensor.daily_luftbefeuchter') | int(0) %}
+          {% set max_activations_per_day = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+          {% set remaining_activations = [0, max_activations_per_day - actual_triggers_today] | max %}
+          {% set match_window_seconds = 120 %}
+          {% set ns_test_output = namespace(trigger_times = [], current_match = false) %}
+    
+          {% if actual_triggers_today == 0 %}
+            {% set distribution_anchor_time = nr %}
+          {% else %}
+            {% set last_changed_utility_meter = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+            {% set distribution_anchor_time = [last_changed_utility_meter, nr] | max %}
+          {% endif %}
+    
+          {% if remaining_activations > 0 and current_time < ns %}
+            {% set duration_for_all_remaining_slots = (ns - distribution_anchor_time) %}
+            {% if duration_for_all_remaining_slots.total_seconds() > 0 %}
+              {% set interval_duration = duration_for_all_remaining_slots / (remaining_activations + 1) %}
+              {% for i in range(remaining_activations) %}
+                {% set potential_trigger_time = distribution_anchor_time + ((i + 1) * interval_duration) %}
+                {% if potential_trigger_time > current_time and potential_trigger_time <= ns %}
+                  {% if ((potential_trigger_time - timedelta(seconds=match_window_seconds)) <= current_time)
+                     and (current_time <= (potential_trigger_time + timedelta(seconds=match_window_seconds))) %}
+                    {% set ns_test_output.current_match = true %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+          {{ ns_test_output.current_match }}
+        attributes:
+          next_sunrise_offset_start: >
+             {% set nr = (as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2)) %}
+             {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+             {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+             {% endif %}
+             {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
+          next_sunset_offset_end: "{{ (as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25)).strftime('%Y-%m-%d %H:%M:%S') }}"
+          current_time: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          actual_triggers_today: "{{ states('sensor.daily_luftbefeuchter') | int(0) }}"
+          max_activations_per_day: "{{ states('input_number.max_humidifier_activations_per_day') | int(15) }}"
+          remaining_activations: >
+            {% set max = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+            {% set current = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {{ [0, max - current] | max }}
+          distribution_anchor_time: >
+            {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+            {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+            {% if nr > ns %}{% set nr = nr - timedelta(hours=24) %}{% endif %}
+            {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {% if actual == 0 %}
+              {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
+            {% else %}
+              {% set last_changed = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+              {{ ([last_changed, nr] | max).strftime('%Y-%m-%d %H:%M:%S') }}
+            {% endif %}
+          window_duration: >
+              {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+              {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+              {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+              {% endif %}
+              {% set diff = ns - nr %}
+              {% set hours = (diff.total_seconds() // 3600) | int %}
+              {% set minutes = ((diff.total_seconds() % 3600) // 60) | int %}
+              {{ '{}h {}m'.format(hours, minutes) }}
+          trigger_interval: >
+              {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+              {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+              {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+              {% endif %}
+              {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+              {% set max = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+              {% set remaining = [0, max - actual] | max %}
+              {% set anchor = nr if actual == 0 else [as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local, nr] | max %}
+              {% set span = ns - anchor %}
+              {% if remaining > 0 and span.total_seconds() > 0 %}
+                {% set interval = span.total_seconds() / (remaining + 1) %}
+                {% set hours = (interval // 3600) | int %}
+                {% set minutes = ((interval % 3600) // 60) | int %}
+                {% set seconds = (interval % 60) | round(0) | int %}
+                {{ '{}h {}m {}s'.format(hours, minutes, seconds) }}
+              {% else %}
+                'N/A'
+              {% endif %}
+          trigger_times: >
+            {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+            {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+            {% if nr > ns %}{% set nr = nr - timedelta(hours=24) %}{% endif %}
+            {% set current_time = now() %}
+            {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {% set max = 15 %}
+            {% set remaining = [0, max - actual] | max %}
+            {% set out = namespace(times=[]) %}
+            {% if actual == 0 %}
+              {% set anchor = nr %}
+            {% else %}
+              {% set changed = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+              {% set anchor = [changed, nr] | max %}
+            {% endif %}
+            {% if remaining > 0 and current_time < ns %}
+              {% set span = ns - anchor %}
+              {% if span.total_seconds() > 0 %}
+                {% set interval = span / (remaining + 1) %}
+                {% for i in range(remaining) %}
+                  {% set t = anchor + ((i + 1) * interval) %}
+                  {% if t > current_time and t <= ns %}
+                    {% set out.times = out.times + [t.strftime('%H:%M:%S')] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% else %}
+              {% set out.times = ["No valid trigger times"] %}
+            {% endif %}
+            {{ out.times }}
+
   - trigger:
       # Trigger when the search input changes
       - platform: state
@@ -515,7 +642,6 @@ template:
             {% set threshold = 150 %}
             {{ val | round(0) }} (> {{ threshold }})
            
-
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -600,9 +726,6 @@ mqtt:
           - ["mac", "C8C9A3157F88"]
         identifiers:
           - "C8C9A3157F88"
-        manufacturer: "NOUS"
-        name: "Kaffeemaschine Solis"
-        model: "A1T"
 
     - name: "Tasmota Rule 2"
       unique_id: tasmota_157F88_rule2_switch
@@ -623,9 +746,6 @@ mqtt:
           - ["mac", "C8C9A3157F88"]
         identifiers:
           - "C8C9A3157F88"
-        manufacturer: "NOUS"
-        name: "Kaffeemaschine Solis"
-        model: "A1T"
 
     - name: "Tasmota Rule 3"
       unique_id: tasmota_157F88_rule3_switch
@@ -646,9 +766,26 @@ mqtt:
           - ["mac", "C8C9A3157F88"]
         identifiers:
           - "C8C9A3157F88"
-        manufacturer: "NOUS"
-        name: "Kaffeemaschine Solis"
-        model: "A1T"
+    
+    - name: "Tasmota Rule 1"
+      unique_id: tasmota_18F373_rule1_switch
+      command_topic: "cmnd/tasmota_18F373/Rule1"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_topic: "stat/tasmota_18F373/RESULT"
+      value_template: >
+        {% if value_json.Rule1 is defined and value_json.Rule1.State in ['ON', 'OFF'] %}
+          {{ value_json.Rule1.State }}
+        {% else %}
+          ON
+        {% endif %}
+      optimistic: false
+      icon: mdi:script
+      device:
+        connections:
+          - ["mac", "4CEBD618F373"]
+        identifiers:
+          - "4CEBD618F373"
 
   sensor:
     - state_topic: fully-single-app/deviceInfo/a9641507-a9641507

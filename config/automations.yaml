@@ -2358,33 +2358,6 @@
   variables:
     text_var: ' hat Feuchtigkeit erkannt!'
   mode: single
-- id: '1716928849223'
-  alias: 'Get Pulsetime Terrarium '
-  description: ''
-  triggers:
-  - seconds: /30
-    trigger: time_pattern
-  - trigger: homeassistant
-    event: start
-  conditions:
-  - condition: sun
-    before: sunset
-    after: sunrise
-    before_offset: +01:00:00
-    after_offset: -01:00:00
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: switch.terrarium
-      state: unavailable
-  actions:
-  - alias: Luftbefeuchter
-    metadata: {}
-    data:
-      topic: cmnd/tasmota_18F373/pulsetime3
-      payload: ' '
-    action: mqtt.publish
-  mode: single
 - id: '1716929359492'
   alias: Terra Pulsetime Control
   description: ''
@@ -2392,70 +2365,51 @@
   - minutes: /1
     id: '1'
     trigger: time_pattern
+  - trigger: state
+    entity_id:
+    - binary_sensor.luftbefeuchter_on_windows
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: Luftbefeuchter
   conditions:
   - condition: sun
     before: sunset
     after: sunrise
   actions:
-  - alias: On Sunrise
-    if:
-    - condition: trigger
-      id:
-      - 'On'
-    - condition: sun
-      before: sunset
-      after: sunrise
-      after_offset: +00:30:00
-    then:
-    - metadata: {}
-      data: {}
-      action: script.terra_sunrise
-    enabled: false
-  - alias: Off Sunset
-    if:
-    - condition: trigger
-      id:
-      - 'Off'
-    - condition: sun
-      before: sunset
-      before_offset: -01:00:00
-      after: sunset
-      after_offset: +01:00:00
-    then:
-    - data: {}
-      action: script.terra_sunset
-    enabled: false
-  - alias: Daytime
-    if:
-    - condition: and
-      conditions:
-      - condition: sun
-        after: sunrise
-        before: sunset
-        before_offset: -01:00:00
-        after_offset: +01:00:00
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: sun
+          after: sunrise
+          before: sunset
+          before_offset: -01:00:00
+          after_offset: +01:00:00
+        - condition: state
+          entity_id: input_boolean.terrarium_on
+          state: 'on'
+        - condition: trigger
+          id:
+          - '1'
+        enabled: true
+      sequence:
+      - data: {}
+        action: script.warmelampe
+      alias: Wärmelampe
+    - conditions:
+      - condition: trigger
+        id:
+        - Luftbefeuchter
       - condition: state
         entity_id: input_boolean.terrarium_on
         state: 'on'
-      - condition: trigger
-        id:
-        - '1'
-      enabled: true
-    then:
-    - if:
-      - condition: state
-        entity_id: binary_sensor.luftbefeuchter_on_over_day
-        state: 'on'
-        for:
-          hours: 0
-          minutes: 1
-          seconds: 0
-      then:
+      sequence:
       - data: {}
         action: script.luftbefeuchter
       alias: Luftbefeuchter
-    - data: {}
-      action: script.warmelampe
   mode: parallel
   max: 10
 - id: '1716929964357'
