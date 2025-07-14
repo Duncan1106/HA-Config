@@ -741,17 +741,11 @@ luftbefeuchter:
 
         {{ hum >= compare or hum2 >= compare }}'
     then:
-    - type: turn_off
-      device_id: cb754e11257e7b140e732b51b3457d49
-      entity_id: 0da0445bb1137737a147e4ab96e26655
-      domain: switch
-    - alias: '0 Minuten '
+    - action: switch.turn_off
       metadata: {}
-      data:
-        topic: cmnd/tasmota_18F373/pulsetime3
-        payload: '0'
-      action: mqtt.publish
-      enabled: false
+      data: {}
+      target:
+        entity_id: switch.terrarium_tasmota3
   - alias: If air dry -> humidifier on
     if:
     - condition: and
@@ -780,26 +774,6 @@ luftbefeuchter:
           below: input_number.terrarium_humidity_control_threshold
           enabled: true
     then:
-    - alias: Reset
-      metadata: {}
-      data:
-        topic: cmnd/tasmota_18F373/pulsetime3
-        payload: '0'
-      action: mqtt.publish
-      enabled: false
-    - alias: Reset
-      metadata: {}
-      data:
-        topic: cmnd/tasmota_18F373/power3
-      action: mqtt.publish
-      enabled: false
-    - alias: '10 Minuten '
-      metadata: {}
-      data:
-        topic: cmnd/tasmota_18F373/pulsetime3
-        payload: '700'
-      action: mqtt.publish
-      enabled: false
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -810,83 +784,6 @@ luftbefeuchter:
       target:
         entity_id: counter.luftbefeuchter
       action: counter.increment
-  - choose:
-    - conditions:
-      - condition: and
-        conditions:
-        - condition: sun
-          after: sunrise
-          before: sunset
-          before_offset: -01:00:00
-          after_offset: +01:00:00
-        - condition: state
-          entity_id: input_boolean.terrarium_on
-          state: 'on'
-        - condition: device
-          type: is_off
-          device_id: cb754e11257e7b140e732b51b3457d49
-          entity_id: 0da0445bb1137737a147e4ab96e26655
-          domain: switch
-        - condition: or
-          conditions:
-          - condition: numeric_state
-            entity_id: sensor.esp32_c3_mini_terra_terrarium_humidity_average
-            below: input_number.terrarium_humidity_control_threshold
-            enabled: true
-          - condition: numeric_state
-            entity_id: sensor.t_h_terrarium_humidity
-            below: input_number.terrarium_humidity_control_threshold
-            enabled: true
-      sequence:
-      - alias: Reset
-        metadata: {}
-        data:
-          topic: cmnd/tasmota_18F373/pulsetime3
-          payload: '0'
-        action: mqtt.publish
-      - alias: '10 Minuten '
-        metadata: {}
-        data:
-          topic: cmnd/tasmota_18F373/pulsetime3
-          payload: '700'
-        action: mqtt.publish
-      - type: turn_on
-        device_id: cb754e11257e7b140e732b51b3457d49
-        entity_id: 0da0445bb1137737a147e4ab96e26655
-        domain: switch
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.luftbefeuchter
-        action: counter.increment
-    - conditions:
-      - condition: template
-        value_template: '{% set hum = states(''sensor.esp32_c3_mini_terra_terrarium_humidity_average'')
-          | float(0) %}
-
-          {% set hum2 = states(''sensor.t_h_terrarium_humidity'') | float(0) %}
-
-          {% set offset = states(''input_number.terrarium_humidity_control_threshold_offset'')
-          | float(0) %}
-
-          {% set threshold = (states(''input_number.terrarium_humidity_control_threshold'')
-          | float(0) ) %}
-
-          {% set compare = threshold + offset %}
-
-          {{ hum >= compare or hum2 >= compare }}'
-      sequence:
-      - type: turn_off
-        device_id: cb754e11257e7b140e732b51b3457d49
-        entity_id: 0da0445bb1137737a147e4ab96e26655
-        domain: switch
-      - alias: '0 Minuten '
-        metadata: {}
-        data:
-          topic: cmnd/tasmota_18F373/pulsetime3
-          payload: '0'
-        action: mqtt.publish
-    enabled: false
   mode: single
 terra_sunset:
   alias: Terra sunset
