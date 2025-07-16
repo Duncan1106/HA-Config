@@ -5,6 +5,13 @@ substitutions:
 esphome:
   name: $name
   friendly_name: $friendly_name
+  devices: 
+    - id: bms_bat1
+      name: Battery 1
+    - id: bms_bat2
+      name: Battery 2
+    - id: bat_pack
+      name: Batterypack
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -19,7 +26,6 @@ api:
 ota:
   - platform: esphome
     password: !secret ota_password
-
 
 wifi:
   networks: 
@@ -55,18 +61,22 @@ select:
   - platform: logger
     id: logger_select
     name: Logger Level
+    device_id: bat_pack
 
 button: 
   - platform: restart
     name: Restart
+    device_id: bat_pack
 
 binary_sensor:
   - platform: status
     name: Status
+    device_id: bat_pack
 
 text_sensor:
   - platform: wifi_info
     ip_address: 
+      device_id: bat_pack
       name: IP
 
   - platform: modbus_controller
@@ -75,6 +85,7 @@ text_sensor:
     register_type: holding
     address: 0x1302
     raw_encode: HEXBYTES
+    device_id: bms_bat1
     filters:
       - lambda: |-
           uint16_t status = std::stoul(x, nullptr, 16);  // Wandelt den Hex-String in eine Ganzzahl um
@@ -91,6 +102,7 @@ text_sensor:
     register_type: holding
     address: 0x1304  # Ersetze dies mit der tatsächlichen Adresse des Fault Status
     raw_encode: HEXBYTES
+    device_id: bms_bat1
     filters:
       - lambda: |-
           uint16_t status = std::stoul(x, nullptr, 16);  // Wandelt den Hex-String in eine Ganzzahl um
@@ -112,6 +124,7 @@ text_sensor:
     address: 0x1302
     raw_encode: HEXBYTES
     entity_category: diagnostic
+    device_id: bms_bat2
     filters:
       - lambda: |-
           uint16_t status = std::stoul(x, nullptr, 16);  // Wandelt den Hex-String in eine Ganzzahl um
@@ -129,6 +142,7 @@ text_sensor:
     address: 0x1304  # Ersetze dies mit der tatsächlichen Adresse des Fault Status
     raw_encode: HEXBYTES
     entity_category: diagnostic
+    device_id: bms_bat2
     filters:
       - lambda: |-
           uint16_t status = std::stoul(x, nullptr, 16);  // Wandelt den Hex-String in eine Ganzzahl um
@@ -184,6 +198,8 @@ number:
     mode: BOX
     restore_value: True
     optimistic: True
+    device_id: bms_bat1
+    entity_category: diagnostic
 
   - platform: template
     max_value: 250
@@ -196,6 +212,7 @@ number:
     mode: BOX
     optimistic: True
     restore_value: True
+    device_id: bms_bat2
     entity_category: diagnostic
 
 sensor:
@@ -203,6 +220,7 @@ sensor:
     accuracy_decimals: 1
     name: Wifi Signal
     update_interval: 5s
+    device_id: bat_pack
     filters: 
       - or: 
         - delta: 5%
@@ -214,6 +232,7 @@ sensor:
     device_class: duration
     accuracy_decimals: 1
     state_class: total
+    device_id: bat_pack
     unit_of_measurement: min
     filters:
       - lambda: !lambda 'return x / 60;' 
@@ -229,6 +248,7 @@ sensor:
     skip_updates: 100
     address: 0xF80B
     value_type: U_WORD
+    device_id: bms_bat1
 
   - platform: modbus_controller
     modbus_controller_id: m1
@@ -241,6 +261,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 2
     value_type: U_WORD
+    device_id: bms_bat1
     filters:
       - multiply: 0.01
 
@@ -255,6 +276,7 @@ sensor:
     device_class: current
     accuracy_decimals: 2
     value_type: S_WORD
+    device_id: bms_bat1
     filters:
       - multiply: 0.1
 
@@ -267,6 +289,7 @@ sensor:
     unit_of_measurement: "°C"
     accuracy_decimals: 2
     value_type: U_WORD
+    device_id: bms_bat1
 
   - platform: modbus_controller
     modbus_controller_id: m1
@@ -278,6 +301,7 @@ sensor:
     address: 0x130B  # 0x1302 + 18/2
     unit_of_measurement: "%"
     value_type: U_WORD
+    device_id: bms_bat1
 
   - platform: template
     accuracy_decimals: 2
@@ -291,15 +315,18 @@ sensor:
     update_interval: 5s
     state_class: measurement
     device_class: energy
+    device_id: bms_bat1
 
   - platform: template
     accuracy_decimals: 2
     state_class: measurement
     device_class: power
     unit_of_measurement: W
+    id: bat1_power
     name: "Bat1 Power"
     lambda: !lambda return id(bat1_curr).state * id(bat1_volt).state;
     update_interval: 5s
+    device_id: bms_bat1
     filters: 
       - round: 2
       - or:
@@ -313,8 +340,8 @@ sensor:
     register_type: holding
     skip_updates: 100
     address: 0xF80B
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
 
   - platform: modbus_controller
     modbus_controller_id: m2
@@ -326,8 +353,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 2
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters:
       - multiply: 0.01
 
@@ -341,8 +368,8 @@ sensor:
     unit_of_measurement: "A"
     device_class: current
     accuracy_decimals: 2
-    entity_category: diagnostic
     value_type: S_WORD
+    device_id: bms_bat2
     filters:
       - multiply: 0.1
       - round: 3
@@ -354,9 +381,9 @@ sensor:
     register_type: holding
     address: 0x130A  # Beispieladresse für die BMS-Temperatur
     unit_of_measurement: "°C"
-    entity_category: diagnostic
     accuracy_decimals: 2
     value_type: U_WORD
+    device_id: bms_bat2
 
   - platform: modbus_controller
     modbus_controller_id: m2
@@ -366,9 +393,9 @@ sensor:
     skip_updates: 2
     address: 0x130B  # 0x1302 + 18/2
     unit_of_measurement: "%"
-    entity_category: diagnostic
     value_type: U_WORD
     device_class: battery
+    device_id: bms_bat2
 
   - platform: template
     accuracy_decimals: 2
@@ -380,18 +407,19 @@ sensor:
       float soc = id(bat2_soc).state;
       return (cap > 0 && !isnan(soc)) ? soc/100.0 * cap : NAN;
     update_interval: 5s
-    entity_category: diagnostic
     state_class: measurement
     device_class: energy
+    device_id: bms_bat2
 
   - platform: template
     accuracy_decimals: 2
     state_class: measurement
     device_class: power
     unit_of_measurement: W
+    id: bat2_power
     name: "Bat2 Power"
-    entity_category: diagnostic
     lambda: !lambda return id(bat2_curr).state * id(bat2_volt).state;
+    device_id: bms_bat2
     update_interval: 5s
     filters: 
       - round: 2
@@ -410,6 +438,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -428,6 +457,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -446,6 +476,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -463,6 +494,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -480,6 +512,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -497,6 +530,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -514,6 +548,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -531,6 +566,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -549,6 +585,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -567,6 +604,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -585,6 +623,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -603,6 +642,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -621,6 +661,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -639,6 +680,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -657,6 +699,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -675,6 +718,7 @@ sensor:
     device_class: voltage
     accuracy_decimals: 3
     value_type: U_WORD
+    device_id: bms_bat1
     filters: 
       - multiply: 0.001
       - clamp:
@@ -689,6 +733,8 @@ sensor:
     update_interval: 5s
     device_class: voltage
     accuracy_decimals: 3
+    entity_category: diagnostic
+    device_id: bms_bat1
     lambda: |-
       float total = 0.0;
       int valid_cells = 0;
@@ -720,6 +766,8 @@ sensor:
     device_class: voltage
     update_interval: 5s
     accuracy_decimals: 3
+    entity_category: diagnostic
+    device_id: bms_bat1
     lambda: |-
       float min_v = 999.0;
       float max_v = -1.0;
@@ -747,51 +795,6 @@ sensor:
         return NAN;
       }
 
-# # Cell Voltages of first Battery
-#   - platform: modbus_controller
-#     modbus_controller_id: m1
-#     name: "Bat1 MinCell"
-#     id: bat1_min_cell
-#     register_type: holding
-#     register_count: 16
-#     response_size: 32
-#     address: 0x132A
-#     unit_of_measurement: "V"
-#     device_class: voltage
-#     accuracy_decimals: 3
-#     value_type: U_WORD
-#     lambda: |-
-#       uint16_t raw,rawMin=0xffff;
-#       for (int i=0; i<32; i+=2) {
-#         raw = data[item->offset+i] << 8 | data[item->offset+i+1];
-#         if (raw < rawMin) {
-#           rawMin = raw;
-#         }
-#       }
-#       return rawMin * 0.001;
-
-#   - platform: modbus_controller
-#     modbus_controller_id: m1
-#     name: "Bat1 MaxCell"
-#     id: bat1_max_cell
-#     register_type: holding
-#     register_count: 16
-#     response_size: 32
-#     address: 0x132A
-#     unit_of_measurement: "V"
-#     device_class: voltage
-#     accuracy_decimals: 3
-#     value_type: U_WORD
-#     lambda: |-
-#       uint16_t raw,rawMax=0;
-#       for (int i=0; i<32; i+=2) {
-#         raw = data[item->offset+i] << 8 | data[item->offset+i+1];
-#         if (raw > rawMax) {
-#           rawMax = raw;
-#         }
-#       }
-#       return rawMax * 0.001;
-
   # Temp Sensor 1 für Bat1 (Adresse 0x133A)
   - platform: modbus_controller
     modbus_controller_id: m1
@@ -800,6 +803,7 @@ sensor:
     address: 0x133A  # Berechnete Adresse für Temp 1
     unit_of_measurement: "°C"
     value_type: U_WORD
+    device_id: bms_bat1
 
   # Temp Sensor 2 für Bat1 (Adresse 0x133C)
   - platform: modbus_controller
@@ -809,6 +813,7 @@ sensor:
     address: 0x133B  # Berechnete Adresse für Temp 2
     unit_of_measurement: "°C"
     value_type: U_WORD
+    device_id: bms_bat1
 
   # Temp Sensor 3 für Bat1 (Adresse 0x133D)
   - platform: modbus_controller
@@ -818,6 +823,7 @@ sensor:
     address: 0x133C  # Berechnete Adresse für Temp 3
     unit_of_measurement: "°C"
     value_type: U_WORD
+    device_id: bms_bat1
 
   # Temp Sensor 4 für Bat1 (Adresse 0x133D)
   - platform: modbus_controller
@@ -827,67 +833,7 @@ sensor:
     address: 0x133D  # Berechnete Adresse für Temp 4
     unit_of_measurement: "°C"
     value_type: U_WORD
-
-  # - platform: template
-  #   unit_of_measurement: mV
-  #   name: "Bat1 CellDiff"
-  #   accuracy_decimals: 2
-  #   lambda: !lambda return (id(bat1_max_cell).state - id(bat1_min_cell).state) * 1000;
-  #   update_interval: 10s
-
-  # - platform: modbus_controller
-  #   modbus_controller_id: m2
-  #   name: "Bat2 MinCell"
-  #   id: bat2_min_cell
-  #   register_type: holding
-  #   register_count: 16
-  #   response_size: 32
-  #   address: 0x132A
-  #   unit_of_measurement: "V"
-  #   device_class: voltage
-  #   accuracy_decimals: 3
-  #   entity_category: diagnostic
-  #   value_type: U_WORD
-  #   lambda: |-
-  #     uint16_t raw,rawMin=0xffff;
-  #     for (int i=0; i<32; i+=2) {
-  #       raw = data[item->offset+i] << 8 | data[item->offset+i+1];
-  #       if (raw < rawMin) {
-  #         rawMin = raw;
-  #       }
-  #     }
-  #     return rawMin * 0.001;
-
-  # - platform: modbus_controller
-  #   modbus_controller_id: m2
-  #   name: "Bat2 MaxCell"
-  #   id: bat2_max_cell
-  #   register_type: holding
-  #   register_count: 16
-  #   response_size: 32
-  #   address: 0x132A
-  #   unit_of_measurement: "V"
-  #   device_class: voltage
-  #   accuracy_decimals: 3
-  #   entity_category: diagnostic
-  #   value_type: U_WORD
-  #   lambda: |-
-  #     uint16_t raw,rawMax=0;
-  #     for (int i=0; i<32; i+=2) {
-  #       raw = data[item->offset+i] << 8 | data[item->offset+i+1];
-  #       if (raw > rawMax) {
-  #         rawMax = raw;
-  #       }
-  #     }
-  #     return rawMax * 0.001;
-
-  # - platform: template
-  #   unit_of_measurement: mV
-  #   name: "Bat2 CellDiff"
-  #   accuracy_decimals: 2
-  #   lambda: !lambda return (id(bat2_max_cell).state - id(bat2_min_cell).state) * 1000;
-  #   entity_category: diagnostic
-  #   update_interval: 10s
+    device_id: bms_bat1
 
   # Cell Voltages of second Battery
   - platform: modbus_controller
@@ -899,8 +845,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -917,8 +863,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -935,8 +881,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -953,8 +899,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -971,8 +917,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -989,8 +935,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1007,8 +953,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1025,8 +971,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1043,8 +989,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1061,8 +1007,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1079,8 +1025,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1097,8 +1043,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1115,8 +1061,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1133,8 +1079,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1151,8 +1097,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1169,8 +1115,8 @@ sensor:
     unit_of_measurement: "V"
     device_class: voltage
     accuracy_decimals: 3
-    entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
     filters: 
       - multiply: 0.001
       - clamp:
@@ -1184,8 +1130,9 @@ sensor:
     unit_of_measurement: "V"
     update_interval: 5s
     device_class: voltage
-    entity_category: diagnostic
     accuracy_decimals: 3
+    entity_category: diagnostic
+    device_id: bms_bat2
     lambda: |-
       float total = 0.0;
       int valid_cells = 0;
@@ -1218,6 +1165,7 @@ sensor:
     update_interval: 5s
     accuracy_decimals: 3
     entity_category: diagnostic
+    device_id: bms_bat2
     lambda: |-
       float min_v = 999.0;
       float max_v = -1.0;
@@ -1255,6 +1203,7 @@ sensor:
     unit_of_measurement: "°C"
     entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
 
   # Temp Sensor 2 für Bat2 (Adresse 0x133C)
   - platform: modbus_controller
@@ -1266,6 +1215,7 @@ sensor:
     unit_of_measurement: "°C"
     entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
 
   # Temp Sensor 3 für Bat2 (Adresse 0x133E)
   - platform: modbus_controller
@@ -1276,6 +1226,7 @@ sensor:
     unit_of_measurement: "°C"
     entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
 
   # Temp Sensor 4 für Bat2 (Adresse 0x133E)
   - platform: modbus_controller
@@ -1286,19 +1237,79 @@ sensor:
     unit_of_measurement: "°C"
     entity_category: diagnostic
     value_type: U_WORD
+    device_id: bms_bat2
 
-  - platform: template
-    accuracy_decimals: 1
+  - platform: combination
+    id: bat_soc_avg
+    device_id: bat_pack
     name: SOC Avg
-    update_interval: 5s
-    unit_of_measurement: '%'
+    type: median
+    accuracy_decimals: 2
     state_class: measurement
-    device_class: battery
-    lambda: !lambda return ((id(bat1_soc).state)+(id(bat2_soc).state))/2;
+    sources: 
+      - source: bat1_soc
+      - source: bat2_soc
     filters:
       - clamp: 
           min_value: 0
           max_value: 100
+          ignore_out_of_range: true
+      - or:
+        - throttle: 30s
+        - delta: 0.5
+
+  - platform: combination
+    id: bat_volt_avg
+    device_id: bat_pack
+    name: Voltage Avg
+    type: median
+    accuracy_decimals: 2
+    state_class: measurement
+    sources: 
+      - source: bat1_volt
+      - source: bat2_volt
+    filters:
+      - clamp: 
+          min_value: 40
+          max_value: 60
+          ignore_out_of_range: true
+      - or:
+        - throttle: 30s
+        - delta: 0.5
+
+  - platform: combination
+    id: bat_curr_avg
+    device_id: bat_pack
+    name: Current Avg
+    type: median
+    accuracy_decimals: 2
+    state_class: measurement
+    sources: 
+      - source: bat1_curr
+      - source: bat2_curr
+    filters:
+      - clamp: 
+          min_value: -200
+          max_value: 200
+          ignore_out_of_range: true
+      - or:
+        - throttle: 30s
+        - delta: 0.5
+
+  - platform: combination
+    id: bat_power_avg
+    device_id: bat_pack
+    name: Power Avg
+    type: median
+    accuracy_decimals: 2
+    state_class: measurement
+    sources: 
+      - source: bat1_power
+      - source: bat2_power
+    filters:
+      - clamp: 
+          min_value: -10000
+          max_value: 10000
           ignore_out_of_range: true
       - or:
         - throttle: 30s
