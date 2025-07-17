@@ -1811,33 +1811,32 @@
   alias: message on per phase overload
   description: ''
   triggers:
-  - entity_id:
-    - sensor.current_l1
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
+    attribute: current_L1
     above: input_number.fuselimit
     id: overcurrent_l1
-    trigger: numeric_state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - entity_id:
-    - sensor.current_l2
+    attribute: current_L2
     above: input_number.fuselimit
     id: overcurrent_l2
-    trigger: numeric_state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - entity_id:
-    - sensor.current_l3
+    attribute: current_L3
     above: input_number.fuselimit
     id: overcurrent_l3
-    trigger: numeric_state
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
   conditions: []
   actions:
   - alias: Message on Overcurrent
@@ -1851,8 +1850,10 @@
     - metadata: {}
       data:
         title: '!!! OVERCURRENT !!!'
-        message: '{{ states(trigger.entity_id) }}A, Phase: {{ trigger.from_state.attributes.friendly_name.replace(''Current'','''')
-          }}'
+        message: "⚡ Phase: {{ trigger.id.replace('overcurrent_l', 'L') }}   Aktueller
+          Strom: {{\n  (trigger.to_state.attributes['current_' ~ trigger.id.replace('overcurrent_',
+          '').upper()] | float(0) / 1000) | round(2)\n}} A (Grenzwert: {{ ((states('input_number.fuselimit')
+          | float(0)) / 1000.0) | round(2) }} A)"
       action: notify.duncan
     - metadata: {}
       data:
@@ -1862,6 +1863,7 @@
         - select.go_echarger_252682_frc
         - select.go_echarger_270862_frc
       action: select.select_option
+      enabled: true
   mode: parallel
   max: 10
 - id: '1715935226503'
@@ -4536,9 +4538,6 @@
           - sensor.dunstabzugshaube_energy_today
           - sensor.bkw_outlet_1_energy_yesterday
           - sensor.inverter_grid_frequency
-          - sensor.current_l1
-          - sensor.current_l2
-          - sensor.current_l3
           - sensor.daily_netzeinspeisung
           - sensor.monthly_netzeinspeisung
           - sensor.yearly_netzeinspeisung
