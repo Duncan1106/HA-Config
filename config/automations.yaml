@@ -1811,33 +1811,32 @@
   alias: message on per phase overload
   description: ''
   triggers:
-  - entity_id:
-    - sensor.current_l1
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
+    attribute: current_L1
     above: input_number.fuselimit
     id: overcurrent_l1
-    trigger: numeric_state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - entity_id:
-    - sensor.current_l2
+    attribute: current_L2
     above: input_number.fuselimit
     id: overcurrent_l2
-    trigger: numeric_state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - entity_id:
-    - sensor.current_l3
+    attribute: current_L3
     above: input_number.fuselimit
     id: overcurrent_l3
-    trigger: numeric_state
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
   conditions: []
   actions:
   - alias: Message on Overcurrent
@@ -1851,8 +1850,10 @@
     - metadata: {}
       data:
         title: '!!! OVERCURRENT !!!'
-        message: '{{ states(trigger.entity_id) }}A, Phase: {{ trigger.from_state.attributes.friendly_name.replace(''Current'','''')
-          }}'
+        message: "⚡ Phase: {{ trigger.id.replace('overcurrent_l', 'L') }}   Aktueller
+          Strom: {{\n  (trigger.to_state.attributes['current_' ~ trigger.id.replace('overcurrent_',
+          '').upper()] | float(0) / 1000) | round(2)\n}} A (Grenzwert: {{ ((states('input_number.fuselimit')
+          | float(0)) / 1000.0) | round(2) }} A)"
       action: notify.duncan
     - metadata: {}
       data:
@@ -1862,6 +1863,7 @@
         - select.go_echarger_252682_frc
         - select.go_echarger_270862_frc
       action: select.select_option
+      enabled: true
   mode: parallel
   max: 10
 - id: '1715935226503'
@@ -3493,11 +3495,6 @@
     type: action
     subtype: single_right
     trigger: device
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_right_down
-    trigger: device
   conditions:
   - condition: state
     entity_id: select.duncan_lichtschalter_operation_mode_right
@@ -3966,6 +3963,18 @@
     subtype: hold
     trigger: device
     id: hold
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_left_down
+    trigger: device
+    id: single
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_right_down
+    trigger: device
+    id: double
   conditions: []
   actions:
   - alias: SINGLE
@@ -4392,6 +4401,50 @@
         data:
           keep_days: 3
           entity_id:
+          - sensor.battery_1_bat1_average_cell_voltage
+          - sensor.battery_1_bat1_cell_voltage_difference
+          - sensor.battery_1_bat1_bms_temperature
+          - sensor.battery_1_bat1_power
+          - sensor.battery_1_bat1_current
+          - sensor.battery_1_bat1_voltage
+          - sensor.battery_1_bat1_cell_01
+          - sensor.battery_1_bat1_cell_02
+          - sensor.battery_1_bat1_cell_03
+          - sensor.battery_1_bat1_cell_04
+          - sensor.battery_1_bat1_cell_05
+          - sensor.battery_1_bat1_cell_06
+          - sensor.battery_1_bat1_cell_07
+          - sensor.battery_1_bat1_cell_08
+          - sensor.battery_1_bat1_cell_09
+          - sensor.battery_1_bat1_cell_10
+          - sensor.battery_1_bat1_cell_11
+          - sensor.battery_1_bat1_cell_12
+          - sensor.battery_1_bat1_cell_13
+          - sensor.battery_1_bat1_cell_14
+          - sensor.battery_1_bat1_cell_15
+          - sensor.battery_1_bat1_cell_16
+          - sensor.battery_2_bat2_average_cell_voltage
+          - sensor.battery_2_bat2_cell_voltage_difference
+          - sensor.battery_2_bat2_bms_temperature
+          - sensor.battery_2_bat2_power
+          - sensor.battery_2_bat2_current
+          - sensor.battery_2_bat2_voltage
+          - sensor.battery_2_bat2_cell_01
+          - sensor.battery_2_bat2_cell_02
+          - sensor.battery_2_bat2_cell_03
+          - sensor.battery_2_bat2_cell_04
+          - sensor.battery_2_bat2_cell_05
+          - sensor.battery_2_bat2_cell_06
+          - sensor.battery_2_bat2_cell_07
+          - sensor.battery_2_bat2_cell_08
+          - sensor.battery_2_bat2_cell_09
+          - sensor.battery_2_bat2_cell_10
+          - sensor.battery_2_bat2_cell_11
+          - sensor.battery_2_bat2_cell_12
+          - sensor.battery_2_bat2_cell_13
+          - sensor.battery_2_bat2_cell_14
+          - sensor.battery_2_bat2_cell_15
+          - sensor.battery_2_bat2_cell_16
           - sensor.inverter_battery_state
           - sensor.inverter_output_l1_current
           - sensor.inverter_output_l1_power
@@ -4487,9 +4540,6 @@
           - sensor.dunstabzugshaube_energy_today
           - sensor.bkw_outlet_1_energy_yesterday
           - sensor.inverter_grid_frequency
-          - sensor.current_l1
-          - sensor.current_l2
-          - sensor.current_l3
           - sensor.daily_netzeinspeisung
           - sensor.monthly_netzeinspeisung
           - sensor.yearly_netzeinspeisung
@@ -5230,11 +5280,6 @@
     type: action
     subtype: single_left
     metadata: {}
-    trigger: device
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_left_down
     trigger: device
   conditions:
   - condition: state
@@ -6024,6 +6069,11 @@
         entity_id:
         - button.192_168_2_205_pause
         - button.192_168_2_205_00_pause
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.ugreen_nas_wol
   mode: single
 - id: '1740741927183'
   alias: Turn off Trockner or Waschmaschine fertig using Button
@@ -6685,7 +6735,7 @@
   conditions:
   - condition: template
     value_template: "{{ trigger.from_state.state | float(default=0) < 0.5 and\n   trigger.to_state.state
-      | float(default=0) > 5 }}\n"
+      | float(default=0) > 0.5 }}\n"
   actions:
   - target:
       entity_id:
@@ -7428,12 +7478,13 @@
       zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: true
-      final_delay: 10
+      final_delay: 15
       message: '{{ label }} detected - {{ camera_name }}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       update_sub_label: false
+      video: ''
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
   description: ''
@@ -7445,10 +7496,10 @@
       camera:
       - camera.keller_tapo
       notify_group: notify.duncan
-      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
+      attachment_2: ''
       zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
-      final_update: true
+      final_update: false
       final_delay: 10
       message: '{{ label }} detected - {{ camera_name }}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
@@ -7654,4 +7705,19 @@
         tag: hdd_alert
         priority: high
         ttl: 0
+  mode: single
+- id: '1752582553834'
+  alias: Restore Spülmaschine
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.spulmaschine_tasmota
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.spulmaschine_tasmota
   mode: single

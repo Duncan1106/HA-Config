@@ -1,3 +1,6 @@
+// ✨ Anpassung: Nutzung von `todo.add_item` anstelle von `shopping_list.add_item`
+// und Konfigurierbarkeit über `shopping_list_entity` (z. B. todo.einkaufsliste)
+
 import { LitElement, html, css } from 'https://unpkg.com/lit@2.8.0/index.js?module';
 
 class ItemListCard extends LitElement {
@@ -80,8 +83,8 @@ class ItemListCard extends LitElement {
   `;
 
   setConfig(config) {
-    if (!config?.entity || !config?.target_entity) {
-      throw new Error("You must define both 'entity' and 'target_entity' in the card config");
+    if (!config?.entity || !config?.target_entity || !config?.shopping_list_entity) {
+      throw new Error("You must define 'entity', 'target_entity' AND 'shopping_list_entity' in the card config");
     }
     this.config = config;
   }
@@ -147,7 +150,10 @@ class ItemListCard extends LitElement {
                 ` : html`
                   <div class="quantity">${item.description}</div>
                 `}
-                <button class="btn" title="Complete" aria-label="Complete" @click=${() => this._updateOrCompleteItem(item.uid, { status: 'completed' })}>
+                <button class="btn" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
+                  <ha-icon icon="mdi:cart-outline"></ha-icon>
+                </button>
+                <button class="btn" title="Complete" aria-label="Complete" @click=${() => this._confirmAndComplete(item)}>
                   <ha-icon icon="mdi:check"></ha-icon>
                 </button>
               </div>
@@ -160,6 +166,28 @@ class ItemListCard extends LitElement {
 
   _isNumeric(str) {
     return /^\d+$/.test(str);
+  }
+
+  _confirmAndComplete(item) {
+    if (confirm(`Möchtest du "${item.summary}" wirklich als erledigt markieren?`)) {
+      this._updateOrCompleteItem(item.uid, { status: 'completed' });
+
+      const isZero = this._isNumeric(item.description) && parseInt(item.description, 10) === 0;
+      if (isZero) this._addToShoppingList(item);
+    }
+  }
+
+  _addToShoppingList(item) {
+    if (confirm(`Möchtest du "${item.summary}" zur Einkaufsliste hinzufügen?`)) {
+      const target = this.config.shopping_list_entity;
+      this.hass.callService('todo', 'add_item', {
+        entity_id: target,
+        item: item.summary,
+        description: item.description?.toString() ?? '',
+      })
+      .then(() => console.log(`Added "${item.summary}" to shopping list via todo.add_item`))
+      .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
+    }
   }
 
   _updateOrCompleteItem(uid, updates) {
