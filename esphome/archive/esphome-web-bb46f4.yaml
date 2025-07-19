@@ -34,8 +34,8 @@ wifi:
 esphome:
   name: "esp32-c3-mini--goe22-controll"
   friendly_name: "esp32 c3 mini - goe22-controll"
-  platformio_options:
-    board_build.flash_mode: dio
+  min_version: 2025.5.0
+  name_add_mac_suffix: false
   on_boot: 
     then:
       - script.execute: 
@@ -44,9 +44,8 @@ esphome:
 
 esp32:
   board: esp32-c3-devkitm-1
-  variant: ESP32C3
   framework:
-    type: arduino
+    type: esp-idf
 
 ota:
   - platform: esphome
@@ -54,7 +53,7 @@ ota:
 
 # Enable logging
 logger:
-  level: VERY_VERBOSE
+  level: VERBOSE
   initial_level: INFO
 
 select:
@@ -70,23 +69,6 @@ mqtt:
   password: !secret mqtt_pwd
   discovery: True
   id: broker
-  # on_json_message: 
-  #   topic: smartmeter-em420/
-  #   then: 
-  #     - lambda: |-
-  #         String jsonString;
-  #         serializeJson(x, jsonString);
-  #         ESP_LOGD("on_json_message", "Received JSON: %s", jsonString.c_str());
-  #         StaticJsonDocument<2048> doc;
-  #         deserializeJson(doc, jsonString);
-  #         JsonObject obj = doc.as<JsonObject>();
-  #         float export_power = obj["smart-meter"]["active_power_-"].as<int>() / 1000;
-  #         float import_power = obj["smart-meter"]["active_power_+"].as<int>() / 1000;
-  #         ESP_LOGD("on_json_message", "Received export_power: %d", export_power);
-  #         ESP_LOGD("on_json_message", "Received import_power: %d", import_power);
-  #         id(smart_meter_power).publish_state(import_power - export_power);
-
-# json:
 
 time:
   - platform: sntp
@@ -98,29 +80,41 @@ sun:
   on_sunset: 
     then: 
       - switch.turn_off: enable_pv_charging
-  
-output:
-  - platform: gpio
-    pin: 
-      number: GPIO8
-      inverted: true
-      ignore_strapping_warning: true
-    id: led_status
 
 light:
-  - platform: binary
-    output: led_status
+  - platform: esp32_rmt_led_strip
+    num_leds: 1
+    chipset: WS2812
     name: Status LED ${variant}
+    id: led_status
+    pin: GPIO10
+    rgb_order: RBG
+
+# output:
+#   - platform: gpio
+#     pin: 
+#       number: GPIO8
+#       inverted: true
+#       ignore_strapping_warning: true
+#     id: led_status
+
+# light:
+#   - platform: binary
+#     output: led_status
+#     name: Status LED ${variant}
 
 binary_sensor:
   - platform: status
     name: Status ${variant}
 
 button:
-  - platform: output
+  - platform: template
+    on_press: 
+      then:
+        - light.turn_on: led_status
+        - delay: 250ms
+        - light.turn_off: led_status
     internal: True
-    duration: 250ms
-    output: led_status
     name: Flash LED ${variant}
     id: led_flash
 

@@ -14,7 +14,7 @@ blueprint:
     high_notification:
       name: Remove Low Notification
       description: Remove the persistent notification when the battery is no longer
-        low. Use any event data via trigger.event.data.xxx
+        low.
       default: true
       selector:
         boolean: {}
@@ -27,6 +27,16 @@ blueprint:
           multiple: true
           entity:
           - integration: battery_notes
+    additional_conditions:
+      name: Additional conditions
+      description: 'Extra conditions you may want to add to this automation
+
+        (Example: Home occupied)
+
+        '
+      default: []
+      selector:
+        condition: {}
     on_low_actions:
       name: On Low Actions
       description: User actions to run on battery low. Use any event data via trigger.event.data.xxx
@@ -44,23 +54,25 @@ variables:
   low_notification: !input low_notification
   high_notification: !input high_notification
   excluded_devices: !input excluded_devices
-trigger:
-- platform: event
+triggers:
+- trigger: event
   event_type: battery_notes_battery_threshold
   event_data:
     battery_low: true
   id: low
   alias: Battery went low
-- platform: event
+- trigger: event
   event_type: battery_notes_battery_threshold
   event_data:
     battery_low: false
   id: high
   alias: Battery went high
-condition:
+conditions:
 - condition: template
   value_template: '{{ trigger.event.data.device_id not in excluded_devices}}'
-action:
+- alias: User pick
+  condition: !input additional_conditions
+actions:
 - choose:
   - conditions:
     - condition: trigger
@@ -71,7 +83,7 @@ action:
       - condition: template
         value_template: '{{ low_notification }}'
       then:
-      - service: persistent_notification.create
+      - action: persistent_notification.create
         data:
           title: '{{ trigger.event.data.device_name }} Battery Low
 
@@ -95,7 +107,7 @@ action:
       - condition: template
         value_template: '{{ low_notification }}'
       then:
-      - service: persistent_notification.dismiss
+      - action: persistent_notification.dismiss
         data:
           notification_id: battery_notes_threshold {{ trigger.event.data.device_id
             }}-{{ trigger.event.data.source_entity_id }}

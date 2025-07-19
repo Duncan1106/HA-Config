@@ -1547,13 +1547,12 @@
       - update.earnfm_update
       - update.saic_mqtt_gateway_python_update
       - update.octopus_energy_germany_update
-      - update.openspeedtest_update
       mobile_app_device: 905c163dcc62544838edb078413723b2
       run_config_check: false
       only_after: '11:59:00'
       only_before: '12:04:00'
       mobile_app_device_2: 71c7eee3ffe028806cd019f588f47ba1
-      reminder_hours: '3'
+      reminder_hours: None
       changelog_urls: none
       take_backup: false
 - id: '1712612224089'
@@ -3178,16 +3177,16 @@
             entity_id: a12b3636dd4c15b23c0edd5277ea7404
             domain: light
         else:
-        - type: turn_on
-          device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
-          entity_id: 564e927e962a99447ddb8d55d189ca32
-          domain: light
-          brightness_pct: 100
+        - action: light.turn_on
+          metadata: {}
+          data:
+            brightness_pct: 100
+          target:
+            entity_id: light.ganglicht_zigbee_led
         - if:
-          - condition: template
-            enabled: true
-            value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
-              int(1) < 28 }}'
+          - condition: numeric_state
+            entity_id: sensor.light_brighness
+            below: 0.1
           then:
           - type: turn_off
             device_id: 9bc7cc38eac20f9f965ee9552f02cc39
@@ -3256,7 +3255,7 @@
           entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
           state: 'on'
       alias: No Motion Detected
-      enabled: false
+      enabled: true
     then:
     - repeat:
         sequence:
