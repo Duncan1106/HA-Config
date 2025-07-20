@@ -2496,10 +2496,26 @@
           entity_id: sensor.gw1100a_solar_radiation
           above: 300
     then:
-    - type: turn_on
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
+    - wait_for_trigger:
+      - trigger: state
+        entity_id:
+        - switch.smart_valve_controller_schalter_1
+        from: unavailable
+      timeout:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
   - alias: Solar Heating OFF
     if:
     - condition: and
@@ -2524,10 +2540,21 @@
             entity_id: sensor.gw1100a_solar_radiation
             below: 250
     then:
-    - type: turn_off
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
   - alias: Disable Solar Heating if to hot
     if:
     - condition: and
@@ -2539,10 +2566,29 @@
         id:
         - Off if to hot
     then:
-    - type: turn_off
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.pool_ventil_solar
+    - action: notify.duncan
+      data:
+        title: Poolheizung nicht aktiviert
+        message: 'Pool bereits zu warm beim Pumpenstart ({{ states(''input_number.pool_temp_start'')
+          }} °C). Heizung wird nicht eingeschaltet.
+
+          '
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Fast.com
@@ -3179,11 +3225,9 @@
         entity_id: sensor.light_brighness
         below: 0.1
     then:
-    - action: script.turn_off
+    - action: script.5_min_turn_off_ganglicht
       metadata: {}
       data: {}
-      target:
-        entity_id: script.5_min_turn_off_ganglicht
   - alias: On Light Sync
     if:
     - condition: trigger
@@ -3272,7 +3316,8 @@
         - condition: state
           entity_id: light.ganglicht_zigbee_led
           state: 'off'
-  mode: single
+  mode: parallel
+  max: 6
 - id: '1727504565238'
   alias: Open Lucky Pot
   description: Check when we are able to open the Honeygain Lucky Pot, and open it
@@ -7635,20 +7680,26 @@
           '
   mode: single
 - id: '1752180300729'
-  alias: 'Alert: HDD SMART Status Problem'
+  alias: 'Alert: SMART Status Problem'
   description: Notifies if the HDD SMART status reports a problem, indicating potential
     drive failure.
   triggers:
-  - entity_id: binary_sensor.hdd_smart_status
+  - entity_id:
+    - binary_sensor.sata_ssd_status
+    to: 'on'
+    trigger: state
+  - entity_id:
+    - binary_sensor.nvme_ssd_status
     to: 'on'
     trigger: state
   conditions: []
   actions:
   - action: notify.duncan
     data:
-      title: 'CRITICAL: HDD SMART Status Problem!'
-      message: The HDD SMART status is reporting a problem. Data loss may occur soon.
-        Consider backing up data and checking the drive immediately!
+      title: 'CRITICAL: SMART Status Problem!'
+      message: The SMART status of {{ state_attr(trigger.entity_id, 'friendly_name')
+        }} is reporting a problem. Data loss may occur soon. Consider backing up data
+        and checking the drive immediately!
       data:
         tag: hdd_alert
         priority: high

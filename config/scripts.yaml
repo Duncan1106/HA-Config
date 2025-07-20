@@ -1426,11 +1426,6 @@ restart_internet:
           seconds: 50
           milliseconds: 0
       - if:
-        - condition: template
-          enabled: true
-          value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
-            int(1) < 28 }}'
-          alias: Not in Time Based Mode
         - condition: not
           conditions:
           - condition: or
@@ -1445,6 +1440,10 @@ restart_internet:
               entity_id: binary_sensor.treppenhaus_occupancy
               state: 'on'
           alias: No Motion
+        - condition: numeric_state
+          entity_id: sensor.light_brighness
+          below: 0.1
+          alias: Not in Time Based Mode
         then:
         - action: light.turn_off
           metadata: {}
@@ -1453,15 +1452,16 @@ restart_internet:
             entity_id: light.esp32_c3_mini_treppenhaus_licht
         - repeat:
             sequence:
-            - type: turn_off
-              device_id: 65dc6f7c36b0f6afa7943d9f2f12368e
-              entity_id: 564e927e962a99447ddb8d55d189ca32
-              domain: light
+            - action: light.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: light.ganglicht_zigbee_led
             - delay:
                 hours: 0
                 minutes: 0
-                seconds: 5
-                milliseconds: 0
+                seconds: 0
+                milliseconds: 500
             until:
             - condition: state
               entity_id: light.ganglicht_zigbee_led
