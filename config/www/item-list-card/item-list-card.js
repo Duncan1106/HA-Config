@@ -135,30 +135,68 @@ class ItemListCard extends LitElement {
       <ha-card>
         <h3>${this.config.title || 'Todo List'}</h3>
         <div>
-          ${items.map(item => html`
-            <div class="item-row">
-              <div class="item-summary" title="${item.summary}">${item.summary}</div>
-              <div class="item-controls">
-                ${this._isNumeric(item.description) ? html`
-                  <button class="btn" title="Decrease" aria-label="Decrease" @click=${() => this._updateOrCompleteItem(item.uid, { description: parseInt(item.description, 10) - 1 })}>
-                    <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
+          ${items.map(
+            (item) => html`
+              <div class="item-row">
+                <div class="item-summary" title="${item.summary}">
+                  ${item.summary}
+                </div>
+                <div class="item-controls">
+                  ${this._isNumeric(item.description)
+                    ? html`
+                        ${parseInt(item.description, 10) > 1
+                          ? html`
+                              <button
+                                class="btn"
+                                title="Decrease"
+                                aria-label="Decrease"
+                                @click=${() =>
+                                  this._updateOrCompleteItem(item.uid, {
+                                    description:
+                                      parseInt(item.description, 10) - 1,
+                                  })}
+                              >
+                                <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
+                              </button>
+                            `
+                          : ''}
+                        <div class="quantity">${item.description}</div>
+                        <button
+                          class="btn"
+                          title="Increase"
+                          aria-label="Increase"
+                          @click=${() =>
+                            this._updateOrCompleteItem(item.uid, {
+                              description:
+                                parseInt(item.description, 10) + 1,
+                            })}
+                        >
+                          <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
+                        </button>
+                      `
+                    : html`
+                        <div class="quantity">${item.description}</div>
+                      `}
+                  <button
+                    class="btn"
+                    title="Zur Einkaufsliste"
+                    aria-label="Zur Einkaufsliste"
+                    @click=${() => this._addToShoppingList(item)}
+                  >
+                    <ha-icon icon="mdi:cart-outline"></ha-icon>
                   </button>
-                  <div class="quantity">${item.description}</div>
-                  <button class="btn" title="Increase" aria-label="Increase" @click=${() => this._updateOrCompleteItem(item.uid, { description: parseInt(item.description, 10) + 1 })}>
-                    <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
+                  <button
+                    class="btn"
+                    title="Complete"
+                    aria-label="Complete"
+                    @click=${() => this._confirmAndComplete(item)}
+                  >
+                    <ha-icon icon="mdi:check"></ha-icon>
                   </button>
-                ` : html`
-                  <div class="quantity">${item.description}</div>
-                `}
-                <button class="btn" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
-                  <ha-icon icon="mdi:cart-outline"></ha-icon>
-                </button>
-                <button class="btn" title="Complete" aria-label="Complete" @click=${() => this._confirmAndComplete(item)}>
-                  <ha-icon icon="mdi:check"></ha-icon>
-                </button>
+                </div>
               </div>
-            </div>
-          `)}
+            `,
+          )}
         </div>
       </ha-card>
     `;

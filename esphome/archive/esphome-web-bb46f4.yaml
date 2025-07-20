@@ -34,8 +34,8 @@ wifi:
 esphome:
   name: "esp32-c3-mini--goe22-controll"
   friendly_name: "esp32 c3 mini - goe22-controll"
-  platformio_options:
-    board_build.flash_mode: dio
+  min_version: 2025.5.0
+  name_add_mac_suffix: false
   on_boot: 
     then:
       - script.execute: 
@@ -44,9 +44,8 @@ esphome:
 
 esp32:
   board: esp32-c3-devkitm-1
-  variant: ESP32C3
   framework:
-    type: arduino
+    type: esp-idf
 
 ota:
   - platform: esphome
@@ -54,7 +53,7 @@ ota:
 
 # Enable logging
 logger:
-  level: VERY_VERBOSE
+  level: VERBOSE
   initial_level: INFO
 
 select:
@@ -70,23 +69,6 @@ mqtt:
   password: !secret mqtt_pwd
   discovery: True
   id: broker
-  # on_json_message: 
-  #   topic: smartmeter-em420/
-  #   then: 
-  #     - lambda: |-
-  #         String jsonString;
-  #         serializeJson(x, jsonString);
-  #         ESP_LOGD("on_json_message", "Received JSON: %s", jsonString.c_str());
-  #         StaticJsonDocument<2048> doc;
-  #         deserializeJson(doc, jsonString);
-  #         JsonObject obj = doc.as<JsonObject>();
-  #         float export_power = obj["smart-meter"]["active_power_-"].as<int>() / 1000;
-  #         float import_power = obj["smart-meter"]["active_power_+"].as<int>() / 1000;
-  #         ESP_LOGD("on_json_message", "Received export_power: %d", export_power);
-  #         ESP_LOGD("on_json_message", "Received import_power: %d", import_power);
-  #         id(smart_meter_power).publish_state(import_power - export_power);
-
-# json:
 
 time:
   - platform: sntp
@@ -98,29 +80,41 @@ sun:
   on_sunset: 
     then: 
       - switch.turn_off: enable_pv_charging
-  
-output:
-  - platform: gpio
-    pin: 
-      number: GPIO8
-      inverted: true
-      ignore_strapping_warning: true
-    id: led_status
 
 light:
-  - platform: binary
-    output: led_status
+  - platform: esp32_rmt_led_strip
+    num_leds: 1
+    chipset: WS2812
     name: Status LED ${variant}
+    id: led_status
+    pin: GPIO10
+    rgb_order: RBG
+
+# output:
+#   - platform: gpio
+#     pin: 
+#       number: GPIO8
+#       inverted: true
+#       ignore_strapping_warning: true
+#     id: led_status
+
+# light:
+#   - platform: binary
+#     output: led_status
+#     name: Status LED ${variant}
 
 binary_sensor:
   - platform: status
     name: Status ${variant}
 
 button:
-  - platform: output
+  - platform: template
+    on_press: 
+      then:
+        - light.turn_on: led_status
+        - delay: 250ms
+        - light.turn_off: led_status
     internal: True
-    duration: 250ms
-    output: led_status
     name: Flash LED ${variant}
     id: led_flash
 
@@ -148,15 +142,9 @@ switch:
         - script.execute: 
             id: log_txt_queued
             log_text: "PV Surplus Charging ON"
-        # - text_sensor.template.publish:
-        #     id: log_txt
-        #     state: "PV Surplus Charging ON"
     on_turn_off:
       then:
         - script.execute: stop_charging
-        # - mqtt.publish: # Stop charging
-        #     topic: ${main_topic}frc/set
-        #     payload: 1
         - number.set: # Set Amps to Min
             id: amps
             value: ${min_amps}
@@ -248,12 +236,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              # - text_sensor.template.publish:
-              #     id: log_txt
-              #     state: !lambda |-
-              #       char text_amps[200];
-              #       sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-              #       return ((std::string) text_amps).c_str();
               - script.execute: 
                   id: log_txt_queued
                   log_text: !lambda |-
@@ -290,11 +272,11 @@ text_sensor:
   - platform: mqtt_subscribe
     topic: ${main_topic}fsp
     name: Go-e Phase ${variant}
-    internal: True
+    internal: False
     id: goe_fsp
     filters: 
       - map: 
-        - true -> 1 Phase
+        - true  -> 1 Phase
         - false -> 3 Phase
     on_value: 
       then:
@@ -302,7 +284,7 @@ text_sensor:
             condition:
               - text_sensor.state: 
                   id: goe_fsp
-                  state: "1 Phase"
+                  state: 1 Phase
             then:
               - sensor.template.publish:
                   id: goe_amp_divider
@@ -399,25 +381,6 @@ sensor:
     id: feedback_amps
     name: Goe Feedback Amperage ${variant}
     internal: True
-
-  # - platform: mqtt_subscribe
-  #   topic: smart_meter/total_combined
-  #   accuracy_decimals: 2
-  #   state_class: measurement
-  #   device_class: power
-  #   unit_of_measurement: W
-  #   id: grid_gen
-  #   name: Smart Meter HA Power ${variant}
-  #   internal: False
-  #   filters: 
-  #     # - multiply: -1
-  #     - lambda: !lambda return x + id(battery_power_offset).state;
-
-  # - platform: template
-  #   name: Smart Meter MQTT Power $variant
-  #   id: smart_meter_power
-  #   unit_of_measurement: W
-  #   device_class: power
 
   - platform: mqtt_subscribe
     topic: grid/power
@@ -518,6 +481,25 @@ sensor:
     filters: 
       - lambda: |-
           return id(solar_power).state / id(goe_voltage).state;
+    on_value_range: 
+      - below: 1400
+        then:
+          - if: 
+              condition: 
+                - text_sensor.state:
+                    id: goe_fsp
+                    state: "1 Phase" 
+              then: 
+                - script.execute: stop_charging           
+      - below: 4000
+        then:
+          - if: 
+              condition: 
+                - text_sensor.state:
+                    id: goe_fsp
+                    state: "3 Phase" 
+              then: 
+                - script.execute: stop_charging        
 
   - platform: copy
     source_id: battery_discharge_power
@@ -552,7 +534,7 @@ sensor:
     id: goe_amp_divider
     name: Goe Amps Divider
     accuracy_decimals: 0
-    internal: True
+    internal: False
 
   - platform: template
     accuracy_decimals: 1
@@ -589,19 +571,6 @@ sensor:
           min_value: 0
           max_value: ${max_amps}
 
-
-    #on_value:
-    #  then:
-    #    - if:
-    #        condition:
-    #          - switch.is_on: enable_pv_charging
-    #        then:
-    #          - script.execute: charge_ev
-    #        else:
-    #          - text_sensor.template.publish:
-    #              id: log_txt
-    #              state: "PV Surplus Charging OFF"
-
 interval:
   interval: 
     seconds: 10
@@ -618,9 +587,6 @@ interval:
            - script.execute: 
                 id: log_txt_queued
                 log_text: "PV Surplus Charging OFF"
-          # - text_sensor.template.publish:
-          #     id: log_txt
-          #     state: "PV Surplus Charging OFF"
 
 script:
   - id: log_txt_queued
@@ -632,7 +598,6 @@ script:
           id: log_txt
           state: !lambda return log_text;
       - delay: 500ms
-
   - id: blink_led
     parameters:
       repeat_count: int
@@ -650,7 +615,7 @@ script:
   - id: stop_charging
     mode: single
     then:
-      - if: # if not Don't Charge then set to Don't Charge and log that
+      - while: # if not Don't Charge then set to Don't Charge and log that
           condition: 
             - not:
               - text_sensor.state:
@@ -661,21 +626,13 @@ script:
                 id: broker
                 payload: 1
                 topic: ${main_topic}frc/set
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Disallow Charging"
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Disallow Charging"
-            # - delay: 500ms
-          # else:
-          #   - text_sensor.template.publish:
-          #       id: log_txt
-          #       state: "Charging already disallowed"
   - id: start_charging
     mode: single
     then:
-      - if:
+      - while:
           condition: 
             - not:
               - text_sensor.state: 
@@ -689,17 +646,8 @@ script:
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Allow Charging"
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Allow Charging"
             - number.to_min: 
                 id: restart_charging_counter
-            # - delay: 2s
-          # else: 
-          #   - text_sensor.template.publish:
-          #       id: log_txt
-          #       state: "Charging already allowed"
-          #   - delay: 500ms
   - id: restart_charging
     mode: single
     then:
@@ -743,13 +691,6 @@ script:
             char text_amps[200];
             sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
             return ((std::string) text_amps).c_str();
-      # - text_sensor.template.publish:
-      #     id: log_txt
-      #     state: !lambda |-
-      #       char text_amps[200];
-      #       sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
-      #       return ((std::string) text_amps).c_str();
-      # - delay: 1s
       - script.stop: charge_ev
   - id: below_amp_threshold
     mode: single
@@ -766,7 +707,6 @@ script:
     mode: single
     then: 
       - switch.turn_off: low_amp_flag
-      # - script.execute: start_charging
       - if: # Set amps to the calculated ones if not already done so, also skip if not enough solar or battery power is available to provide the requested amps
           condition: 
             - lambda: !lambda return id(amps_goe_calculated_rounded).state != id(feedback_amps).state;
@@ -785,12 +725,6 @@ script:
                         char text_amps[200];
                         sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
                         return ((std::string) text_amps).c_str();
-                  # - text_sensor.template.publish:
-                  #     id: log_txt
-                  #     state: !lambda |-
-                  #       char text_amps[200];
-                  #       sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
-                  #       return ((std::string) text_amps).c_str();
                   - number.increment: 
                       cycle: false
                       id: skip_counter
@@ -854,7 +788,7 @@ script:
                   - lambda: !lambda return id(battery_soc).state < id(battery_soc_threshold).state;
                   - number.in_range:
                       id: battery_power_offset
-                      above: 500.0
+                      above: 1200.0
             then:
               - script.execute: stop_charging_battery
         - if: # If Amps are below the min threshold then stop charging    
