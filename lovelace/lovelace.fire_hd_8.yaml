@@ -745,24 +745,24 @@ config:
             show_background: false
             show_state: true
             tap_action:
-              action: none
+              action: more-info
           - entity: sensor.boiler_temperature
             show_background: false
             show_state: true
             tap_action:
-              action: none
+              action: more-info
           - entity: sensor.watermeter_wasserverbrauch
             icon: mdi:water-circle
             show_background: false
             show_state: true
             tap_action:
-              action: none
+              action: more-info
           - entity: sensor.daily_waterusage
             icon: mdi:sun-clock-outline
             show_background: false
             show_state: true
             tap_action:
-              action: none
+              action: more-info
           tap_action:
             action: none
           type: custom:bubble-card
@@ -778,31 +778,33 @@ config:
           type: custom:mushroom-template-card
         - bar_orientation: ltr
           bar_size: large
-          custom_info: "<p style=\"color: lightblue;\">{{ states('sensor.boiler_temperature')\
-            \ | float(0) }} \xB0C - </p>"
-          decimal: 1
+          custom_info: "{% set temp = states('sensor.boiler_temperature') | float(0)\
+            \ %} {% if temp > 50 %}\n  <span style=\"color: orangered;\">{{ temp }}\
+            \ \xB0C - </span>\n{% elif temp > 40 %}\n  <span style=\"color: yellow;\"\
+            >{{ temp }} \xB0C - </span>\n{% else %}\n  <span style=\"color: lightblue;\"\
+            >{{ temp }} \xB0C - </span>\n{% endif %}"
           disable_unit: true
           double_tap_action:
             action: perform-action
-            perform_action: script.auto_boiler_off_300s
-            target: {}
+            perform_action: timer.start
+            target:
+              entity_id: timer.boiler_on_demand
           entity: timer.boiler_on_demand
           force_circular_background: true
           hold_action:
             action: none
           icon_double_tap_action:
-            action: more-info
+            action: none
           icon_hold_action:
             action: none
           icon_tap_action:
-            action: none
+            action: more-info
           name: Boiler Remaining Time
           reverse: true
           tap_action:
             action: none
           theme: optimal_when_high
           type: custom:entity-progress-card
-          unit: flextimer
         - cards:
           - entities:
             - entity: sensor.boiler_temperature
@@ -813,6 +815,7 @@ config:
             type: custom:mini-graph-card
           type: horizontal-stack
         - entity: binary_sensor.heizraum_wasser_sensor_zigbee_occupancy
+          features_position: bottom
           hide_state: false
           name: Heizraum nass?
           state_content: state
@@ -835,7 +838,6 @@ config:
             icon: mdi:water
             name: Jahr
             type: custom:mushroom-entity-card
-          title: Wasserverbrauch
           type: horizontal-stack
         type: vertical-stack
       - cards:

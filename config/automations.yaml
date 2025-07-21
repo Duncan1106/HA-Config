@@ -730,7 +730,7 @@
   - id: 3h
     hours: /3
     trigger: time_pattern
-    enabled: false
+    enabled: true
   conditions: []
   actions:
   - alias: 5m
@@ -739,12 +739,6 @@
       id:
       - 5m
     then:
-    - data: {}
-      target:
-        entity_id:
-        - sensor.folding_home_arbeitsspeicher_in_prozent
-        - sensor.folding_home_cpu_prozent
-      action: homeassistant.reload_config_entry
     - action: homeassistant.turn_on
       metadata: {}
       data: {}
@@ -781,19 +775,7 @@
         - 9914e6e4fe991b11910d0b307255e881
       action: homeassistant.reload_config_entry
       enabled: false
-    - action: homeassistant.update_entity
-      metadata: {}
-      data:
-        entity_id:
-        - sensor.top_15_entites
-      enabled: false
-    - action: homeassistant.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.wvgzzze2zpe005371_force_data_refresh
-      enabled: false
-    enabled: false
+    enabled: true
   mode: queued
   max: 10
 - id: '1709073413848'
@@ -868,34 +850,6 @@
     alias: Re Execute if Still in Time Frame
   mode: queued
   max: 10
-- id: '1709109726781'
-  alias: Update Credits when new Task is started
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 1
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 25
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 50
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 75
-  condition: []
-  action:
-  - service: button.press
-    data: {}
-    target:
-      entity_id:
-      - button.update_foldingathome
-  mode: single
 - id: '1710427927351'
   alias: 'Daily Energy Summary '
   description: ''
@@ -1494,8 +1448,6 @@
       - update.everything_presence_lite_f1c0d0_everything_presence_lite_firmware
       - update.everything_presence_zone_configurator_update
       - update.file_editor_update
-      - update.folding_home_update
-      - update.folding_homecontrol_update
       - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
       - update.go2rtc_update
       - update.hacs_update
@@ -3060,24 +3012,32 @@
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 200
-    id: Light
+    id: Light Above 200
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 150
-    id: Light
+    id: Light Above 150
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 100
-    id: Light
+    id: Light Above 100
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 79
-    id: Light
+    id: Light Above 79
   conditions: []
   actions:
+  - variables:
+      lux_threshold: 80
+      ganglicht_brightness: 100
+      treppenlicht_brightness: 10
+      ganglicht_brightness_oben: 75
+      light_ganglicht: light.ganglicht_zigbee_led
+      light_treppenlicht: light.esp32_c3_mini_treppenhaus_licht
+      light_delay: '00:00:00.500'
   - alias: On motion
     if:
     - condition: and
@@ -3096,14 +3056,14 @@
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 100
+        brightness_pct: '{{ ganglicht_brightness }}'
       target:
-        entity_id: light.ganglicht_zigbee_led
+        entity_id: '{{ light_ganglicht }}'
     - action: light.turn_off
       metadata: {}
       data: {}
       target:
-        entity_id: light.esp32_c3_mini_treppenhaus_licht
+        entity_id: '{{ light_treppenlicht }}'
   - alias: On motion oben
     if:
     - condition: and
@@ -3122,20 +3082,16 @@
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 10
+        brightness_pct: '{{ treppenlicht_brightness }}'
       target:
-        entity_id: light.esp32_c3_mini_treppenhaus_licht
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 0
-        milliseconds: 10
+        entity_id: '{{ light_treppenlicht }}'
+    - delay: '{{ light_delay }}'
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 75
+        brightness_pct: '{{ ganglicht_brightness_oben }}'
       target:
-        entity_id: light.ganglicht_zigbee_led
+        entity_id: '{{ light_ganglicht }}'
     - sequence:
       - wait_for_trigger:
         - trigger: state
@@ -3149,7 +3105,7 @@
           seconds: 0
           milliseconds: 0
         continue_on_timeout: true
-      - alias: wait for motion, ifmotion is detected downtairs, turn on ganglicht,
+      - alias: wait for motion, if motion is detected downtairs, turn on ganglicht,
           and turn off treppenhasu licht if it should be off
         if:
         - condition: and
@@ -3183,24 +3139,7 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - if:
-          - condition: numeric_state
-            entity_id: sensor.light_brighness
-            below: 0.1
-          then:
-          - type: turn_off
-            device_id: 9bc7cc38eac20f9f965ee9552f02cc39
-            entity_id: a12b3636dd4c15b23c0edd5277ea7404
-            domain: light
-          alias: if treppenhauslicht should be off, then turn off else do nothing
-        else:
-        - action: light.turn_on
-          metadata: {}
-          data:
-            brightness_pct: 100
-          target:
-            entity_id: light.ganglicht_zigbee_led
+            entity_id: '{{ light_ganglicht }}'
         - alias: if treppenhauslicht should be off, then turn off else do nothing
           if:
           - condition: numeric_state
@@ -3211,7 +3150,25 @@
             metadata: {}
             data: {}
             target:
-              entity_id: light.esp32_c3_mini_treppenhaus_licht
+              entity_id: '{{ light_treppenlicht }}'
+        else:
+        - action: light.turn_on
+          metadata: {}
+          data:
+            brightness_pct: '{{ ganglicht_brightness }}'
+          target:
+            entity_id: '{{ light_ganglicht }}'
+        - alias: if treppenhauslicht should be off, then turn off else do nothing
+          if:
+          - condition: numeric_state
+            entity_id: sensor.light_brighness
+            below: 0.1
+          then:
+          - action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: '{{ light_treppenlicht }}'
       enabled: true
   - alias: Turn off after 5min
     if:
@@ -3242,14 +3199,10 @@
         - action: light.turn_on
           metadata: {}
           data:
-            brightness_pct: 100
+            brightness_pct: '{{ ganglicht_brightness }}'
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
@@ -3281,12 +3234,8 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
@@ -3295,7 +3244,10 @@
     if:
     - condition: trigger
       id:
-      - Light
+      - Light Above 79
+      - Light Above 100
+      - Light Above 150
+      - Light Above 200
     - condition: numeric_state
       entity_id: sensor.aqara_p1_illuminance
       above: 79
@@ -3306,12 +3258,8 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
@@ -6055,13 +6003,6 @@
       state: Online
   actions:
   - sequence:
-    - action: button.press
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - button.192_168_2_205_pause
-        - button.192_168_2_205_00_pause
     - action: switch.turn_off
       metadata: {}
       data: {}
