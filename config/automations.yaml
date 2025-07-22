@@ -1449,7 +1449,6 @@
       - update.everything_presence_zone_configurator_update
       - update.file_editor_update
       - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
-      - update.go2rtc_update
       - update.hacs_update
       - update.home_assistant_core_update
       - update.home_assistant_google_drive_backup_update
@@ -6917,6 +6916,10 @@
     below: 1
   conditions: []
   actions:
+  - action: hassio.addon_start
+    metadata: {}
+    data:
+      addon: b3f9bc48_honeygain
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -7660,4 +7663,36 @@
     data: {}
     target:
       entity_id: switch.spulmaschine_tasmota
+  mode: single
+- id: '1753221152708'
+  alias: Restart Frigate at 0 o'clock
+  description: ''
+  triggers:
+  - trigger: time
+    at: 00:00:00
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.frigate_full_access_aktiv
+          state: ''
+      sequence:
+      - action: hassio.addon_start
+        metadata: {}
+        data:
+          addon: ccab4aaf_frigate-fa
+      alias: Start Frigate if not running
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.frigate_full_access_aktiv
+        state: 'on'
+      sequence:
+      - action: hassio.addon_restart
+        metadata: {}
+        data:
+          addon: ccab4aaf_frigate-fa
+      alias: Restart Frigate if running
   mode: single
