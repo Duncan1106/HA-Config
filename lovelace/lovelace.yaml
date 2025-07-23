@@ -1677,70 +1677,6 @@ config:
         use_new_flow_rate_model: true
         w_decimals: 1
         watt_threshold: 1100
-      - cards:
-        - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
-            ''orange'', ''gray'') }}'
-          bar_effect:
-          - shimmer
-          - radius
-          bar_size: medium
-          color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
-            ''orange'', ''gray'') }}'
-          entity: sun.sun
-          name: "N\xE4chster Aufgang: {{ as_datetime(states('sensor.sun_next_rising')).timestamp()\
-            \ | timestamp_custom('%H:%M', true) }}"
-          percent: "{% set max_time_difference = 25 * 3600 %}\n{% set next_sunrise_time\
-            \ = as_datetime(states('sensor.sun_next_rising')) %}\n{% set time_until_next_rise\
-            \ = (next_sunrise_time - now()).total_seconds() %}\n{% if time_until_next_rise\
-            \ <= 0 %}\n  100\n{% elif time_until_next_rise >= max_time_difference\
-            \ %}\n  0\n{% else %}\n  {{ ((max_time_difference - time_until_next_rise)\
-            \ / max_time_difference * 100) | round(2) }}\n{% endif %}"
-          secondary: "{% set next_rising = as_datetime(states('sensor.sun_next_rising'))\
-            \ %} {% if next_rising %}\n  {% set delta = next_rising - now() %}\n \
-            \ {% set total_seconds = delta.total_seconds() %}\n  {% if total_seconds\
-            \ > 0 %}\n    {% set days = (total_seconds // 86400) | int %}\n    {%\
-            \ set hours = (total_seconds % 86400) // 3600 %}\n    {% set minutes =\
-            \ (total_seconds % 3600) // 60 %}\n    {% set seconds = total_seconds\
-            \ % 60 %}\n    {% if days > 0 %}\n      in {{ days }}d {{ '%02d:%02d:%02d'\
-            \ | format(hours | int, minutes | int, seconds | int) }}\n    {% else\
-            \ %}\n      in {{ '%02d:%02d:%02d' | format(hours | int, minutes | int,\
-            \ seconds | int) }}\n    {% endif %}\n  {% else %}\n    00:00:00\n  {%\
-            \ endif %}\n{% else %}\n  --:--:--\n{% endif %}"
-          tap_action:
-            action: more-info
-          type: custom:entity-progress-card-template
-        - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
-            ''orange'', ''gray'') }}'
-          bar_effect:
-          - shimmer
-          - radius
-          bar_size: medium
-          color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
-            ''orange'', ''gray'') }}'
-          entity: sun.sun
-          name: "N\xE4chster Untergang: {{ as_datetime(states('sensor.sun_next_setting')).timestamp()\
-            \ | timestamp_custom('%H:%M', true) }}"
-          percent: "{% set max_time_difference = 25 * 3600 %}\n{% set next_sunrise_time\
-            \ = as_datetime(states('sensor.sun_next_setting')) %}\n{% set time_until_next_rise\
-            \ = (next_sunrise_time - now()).total_seconds() %}\n{% if time_until_next_rise\
-            \ <= 0 %}\n  100\n{% elif time_until_next_rise >= max_time_difference\
-            \ %}\n  0\n{% else %}\n  {{ ((max_time_difference - time_until_next_rise)\
-            \ / max_time_difference * 100) | round(2) }}\n{% endif %}"
-          secondary: "{% set next_rising = as_datetime(states('sensor.sun_next_setting'))\
-            \ %} {% if next_rising %}\n  {% set delta = next_rising - now() %}\n \
-            \ {% set total_seconds = delta.total_seconds() %}\n  {% if total_seconds\
-            \ > 0 %}\n    {% set days = (total_seconds // 86400) | int %}\n    {%\
-            \ set hours = (total_seconds % 86400) // 3600 %}\n    {% set minutes =\
-            \ (total_seconds % 3600) // 60 %}\n    {% set seconds = total_seconds\
-            \ % 60 %}\n    {% if days > 0 %}\n      in {{ days }}d {{ '%02d:%02d:%02d'\
-            \ | format(hours | int, minutes | int, seconds | int) }}\n    {% else\
-            \ %}\n      in {{ '%02d:%02d:%02d' | format(hours | int, minutes | int,\
-            \ seconds | int) }}\n    {% endif %}\n  {% else %}\n    00:00:00\n  {%\
-            \ endif %}\n{% else %}\n  --:--:--\n{% endif %}"
-          tap_action:
-            action: more-info
-          type: custom:entity-progress-card-template
-        type: custom:vertical-stack-in-card
       - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
           ''orange'', ''gray'') }}
 
@@ -1761,9 +1697,9 @@ config:
           \ set sunset = as_datetime(states('sensor.sun_next_setting')) %}\n{% if\
           \ sunrise and sunset %}\n  {% set is_rise_next = sunrise < sunset %}\n \
           \ {% set next_event = sunrise if is_rise_next else sunset %}\n  {% set label\
-          \ = 'Next Rise' if is_rise_next else 'Next Setting' %}\n  {{ label }}: {{\
-          \ next_event.timestamp() | timestamp_custom('%H:%M', true) }}\n{% else %}\n\
-          \  No Sun-Information available\n{% endif %}\n"
+          \ = 'N\xE4chster Aufgang' if is_rise_next else 'N\xE4chster Untergang' %}\n\
+          \  {{ label }}: {{ next_event.timestamp() | timestamp_custom('%H:%M', true)\
+          \ }}\n{% else %}\n  Keine Sonnen-Information verf\xFCgbar\n{% endif %}\n"
         percent: "{% set sunrise = as_datetime(states('sensor.sun_next_rising')) %}\
           \ {% set sunset = as_datetime(states('sensor.sun_next_setting')) %} {% set\
           \ now_time = now() %}\n{% if sunrise and sunset %}\n  {% if sunrise < sunset\
@@ -1791,10 +1727,6 @@ config:
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
       type: grid
     - cards:
       - heading: Jetzt
@@ -5506,6 +5438,7 @@ config:
       - entity: sensor.server_plug_power
       - entity: sensor.o2_router_power
       - entity: sensor.ugreen_nas_power
+      - entity: sensor.cudy_switch_power
       - entity: sensor.smart_plug_energy_power
       type: entities
     path: smart

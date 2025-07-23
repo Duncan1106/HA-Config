@@ -3544,8 +3544,7 @@
       target:
         entity_id:
         - switch.schedule_paludarien
-        - switch.schedule_start_folding_home
-        - switch.schedule_regal_big_paludarien
+        - switch.ugreen_nas_wol
     - action: homeassistant.turn_off
       metadata: {}
       data: {}
@@ -3570,8 +3569,6 @@
       target:
         entity_id:
         - switch.schedule_paludarien
-        - switch.schedule_start_folding_home
-        - switch.schedule_regal_big_paludarien
       data: {}
     - action: notify.duncan
       metadata: {}
@@ -4016,8 +4013,7 @@
           entity_id:
           - switch.schreibtisch_rechts_power_strip_l2
           - switch.schreibtisch_rechts_power_strip_l3
-  mode: parallel
-  max: 10
+  mode: restart
 - id: '1733064187070'
   alias: Kinderbad Fenster Open
   description: ''
@@ -4222,6 +4218,12 @@
           - sensor.inverter_total_battery_charge_monthly_energy_cost
           - sensor.inverter_total_battery_charge_yearly_energy_cost
           - sensor.inverter_total_battery_charge_manual_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_hourly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_daily_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_weekly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_monthly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_yearly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_manual_energy_cost
           - sensor.solcast_pv_forecast_prognose_heute
           - sensor.solcast_pv_forecast_prognose_morgen
           - sensor.solcast_pv_forecast_prognose_tag_3
@@ -4441,18 +4443,24 @@
           - sensor.scb_dc3_current
           - sensor.scb_dc3_power
           - sensor.scb_dc3_voltage
+          - sensor.scb_dc_current
+          - sensor.scb_dc_voltage
           - sensor.inverter_pv1_current
           - sensor.inverter_pv1_voltage
           - sensor.inverter_pv1_power
           - sensor.inverter_pv2_current
           - sensor.inverter_pv2_voltage
           - sensor.inverter_pv2_power
+          - sensor.inverter_pv_voltage
+          - sensor.inverter_pv_current
           - sensor.inverter_load_l1_power
           - sensor.inverter_load_l1_voltage
           - sensor.inverter_load_l2_power
           - sensor.inverter_load_l2_voltage
           - sensor.inverter_load_l3_power
           - sensor.inverter_load_l3_voltage
+          - sensor.inverter_battery_voltage
+          - sensor.inverter_battery_current
           - sensor.herd_energy_today
           - sensor.sauger_energy_today
           - sensor.heizung_energy_today
@@ -4546,8 +4554,6 @@
           - sensor.autarky
           - sensor.monthly_autarky
           - sensor.yearly_autarky
-          - sensor.folding_at_home_credits_scrape
-          - sensor.folding_at_home_rank_scrape
           - sensor.germany_lng_inventory
           - sensor.germany_speicher
           - sensor.eu_lng_inventory
@@ -4574,14 +4580,9 @@
         data:
           keep_days: 7
           entity_id:
-          - sensor.inverter_pv_voltage
-          - sensor.inverter_pv_current
           - sensor.inverter_pv_power
           - sensor.inverter_load_power
-          - sensor.scb_dc_current
-          - sensor.scb_dc_voltage
-          - sensor.inverter_battery_voltage
-          - sensor.inverter_battery_current
+          - sensor.inverter_battery_power
           - sensor.battery_discharge
           - sensor.battery_charge
           - sensor.maria_db_rows_events
@@ -6835,11 +6836,11 @@
         or something like that.  Simply the text of it and not more. limit yourself
         to 300 Tokens! not one more!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
-        are the today sensor values of these three pollen and any other  Gräser: {{
-        states(''sensor.pollenflug_graeser'') }}   Roggen: {{ states(''sensor.pollenflug_roggen'')
-        }}  Ambrosia: {{ states(''sensor.pollenflug_ambrosia'') }}  Beifuss {{ states(''sensor.pollenflug_beifuss'')
-        }}  Hasel: {{ states(''sensor.pollenflug_hasel'') }}  Esche: {{ states(''sensor.pollenflug_esche'')
-        }}  Legende: \nIndex\tDescription (in German) 0\tkeine Belastung 0.5\tkeine
+        are the today sensor values of these pollen and any other Gräser: {{ states(''sensor.pollenflug_graeser_111'')
+        }}   Roggen: {{ states(''sensor.pollenflug_roggen_111'') }}  Ambrosia: {{
+        states(''sensor.pollenflug_ambrosia_111'') }}  Beifuss {{ states(''sensor.pollenflug_beifuss_111'')
+        }}  Hasel: {{ states(''sensor.pollenflug_hasel_111'') }}  Esche: {{ states(''sensor.pollenflug_esche_111'')
+        }}  Legend: \nIndex\tDescription (in German) 0\tkeine Belastung 0.5\tkeine
         bis geringe Belastung 1\tgeringe Belastung 1.5\tgeringe bis mittlere Belastung
         2\tmittlere Belastung 2.5\tmittlere bis hohe Belastung 3\thohe Belastung\n
 
@@ -7421,7 +7422,7 @@
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       update_sub_label: false
-      video: ''
+      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
   description: ''
@@ -7564,6 +7565,7 @@
     to:
     - not_home
     - unavailable
+    - unknown
     trigger: state
   conditions:
   - condition: or
@@ -7695,4 +7697,62 @@
         data:
           addon: ccab4aaf_frigate-fa
       alias: Restart Frigate if running
+  mode: single
+- id: '1753267693777'
+  alias: Notify wenn Mama losfährt von der Arbeit
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.renault_zoe_batterieautonomie
+  conditions:
+  - condition: state
+    entity_id: device_tracker.renault_zoe_standort
+    state: Arbeit
+  - condition: template
+    value_template: '
+
+
+      {{ (trigger.from_state.state | float(0)) - (trigger.to_state.state | float(0))
+      > 2 }}'
+  actions:
+  - action: notify.duncan
+    data:
+      title: Mama kommt heim
+      message: Mama ist wahrscheinlich losgefahren – Batterieautonomie ist von {{
+        trigger.from_state.state }} km auf {{ trigger.to_state.state }} km gesunken.
+  mode: single
+- id: '1753297720473'
+  alias: Paludarium Pumpe - 15/45 Minuten Intervall
+  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 45 Min. aus
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_turm_links_l3
+  conditions:
+  - condition: state
+    entity_id: switch.schreibtisch_links_power_strip_l1
+    state: 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_links_l3
+        state: 'on'
+      sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.desk_paludarium_turm_links_countdown_l3
+        data:
+          value: 900
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_links_l3
+        state: 'off'
+      sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.desk_paludarium_turm_links_countdown_l3
+        data:
+          value: 2700
   mode: single
