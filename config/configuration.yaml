@@ -1054,27 +1054,37 @@ sensor:
       Content-Type: application/json
       User-Agent: Home Assistant REST sensor
 
-  # Tibber Pulse Metrics
-  - platform: rest
-    name: Tibber Pulse Metrics
-    unique_id: tibber_pulse_metrics
-    resource: !secret tibber_bridge_url
+multiscrape:
+  - name: TIbber Pulse Metrics
+    resource:  !secret tibber_bridge_url
     method: GET
-    json_attributes_path: "node_status"
-    json_attributes:
-      - node_temperature
-      - node_avg_rssi
-      - node_uptime_ms
-    value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
-    scan_interval: 300
-    state_class: measurement
-    device_class: voltage
+    scan_interval: 150
     headers:
       Content-Type: application/json
       User-Agent: REST
-    unit_of_measurement: V
+    button:
+      - name: 'Refresh Tibber Node'
+        unique_id: refesh_tibber_node 
+    sensor:
+       - unique_id: tibber_pulse metrics
+         name: Tibber Pulse Metrics
+         state_class: measurement
+         device_class: voltage
+         unit_of_measurement: V
+         value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
+         attributes:
+           - name: Uptime ms
+             value_template: "{{ value_json.node_status.node_uptime_ms | float(0) }}"
+           - name: RSSI
+             value_template: "{{ value_json.node_status.node_avg_rssi | float(0) }}"
+           - name: Temperature
+             value_template: "{{ value_json.node_status.node_temperature | float(0) }}"
+           - name: Uptime
+             value_template: >
+                {% set uptime = value_json.node_status.node_uptime_ms | float(0) / 1000 %}
+                {% set boot_time = now() - timedelta(seconds=uptime) %}
+                {{ boot_time | time_since(2) }}
 
-multiscrape:
   - name: NVME SSD
     resource: "http://192.168.2.205:8080/api/device/fxs500pro234920229/details"
     scan_interval: 60
