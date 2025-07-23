@@ -730,7 +730,7 @@
   - id: 3h
     hours: /3
     trigger: time_pattern
-    enabled: false
+    enabled: true
   conditions: []
   actions:
   - alias: 5m
@@ -739,12 +739,6 @@
       id:
       - 5m
     then:
-    - data: {}
-      target:
-        entity_id:
-        - sensor.folding_home_arbeitsspeicher_in_prozent
-        - sensor.folding_home_cpu_prozent
-      action: homeassistant.reload_config_entry
     - action: homeassistant.turn_on
       metadata: {}
       data: {}
@@ -781,19 +775,7 @@
         - 9914e6e4fe991b11910d0b307255e881
       action: homeassistant.reload_config_entry
       enabled: false
-    - action: homeassistant.update_entity
-      metadata: {}
-      data:
-        entity_id:
-        - sensor.top_15_entites
-      enabled: false
-    - action: homeassistant.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.wvgzzze2zpe005371_force_data_refresh
-      enabled: false
-    enabled: false
+    enabled: true
   mode: queued
   max: 10
 - id: '1709073413848'
@@ -868,34 +850,6 @@
     alias: Re Execute if Still in Time Frame
   mode: queued
   max: 10
-- id: '1709109726781'
-  alias: Update Credits when new Task is started
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 1
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 25
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 50
-  - platform: numeric_state
-    entity_id:
-    - sensor.192_168_2_205_00_percentdone
-    above: 75
-  condition: []
-  action:
-  - service: button.press
-    data: {}
-    target:
-      entity_id:
-      - button.update_foldingathome
-  mode: single
 - id: '1710427927351'
   alias: 'Daily Energy Summary '
   description: ''
@@ -1494,10 +1448,7 @@
       - update.everything_presence_lite_f1c0d0_everything_presence_lite_firmware
       - update.everything_presence_zone_configurator_update
       - update.file_editor_update
-      - update.folding_home_update
-      - update.folding_homecontrol_update
       - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
-      - update.go2rtc_update
       - update.hacs_update
       - update.home_assistant_core_update
       - update.home_assistant_google_drive_backup_update
@@ -2496,10 +2447,26 @@
           entity_id: sensor.gw1100a_solar_radiation
           above: 300
     then:
-    - type: turn_on
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
+    - wait_for_trigger:
+      - trigger: state
+        entity_id:
+        - switch.smart_valve_controller_schalter_1
+        from: unavailable
+      timeout:
+        hours: 0
+        minutes: 1
+        seconds: 0
+        milliseconds: 0
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
   - alias: Solar Heating OFF
     if:
     - condition: and
@@ -2524,10 +2491,21 @@
             entity_id: sensor.gw1100a_solar_radiation
             below: 250
     then:
-    - type: turn_off
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
   - alias: Disable Solar Heating if to hot
     if:
     - condition: and
@@ -2539,10 +2517,29 @@
         id:
         - Off if to hot
     then:
-    - type: turn_off
-      device_id: 37bc3fcccfcf697586f141bbd2b0ecb5
-      entity_id: 3f9252e0608a9d78e39a39df5a9782a9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.smart_valve_controller_schalter_1
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.pool_ventil_solar
+    - action: notify.duncan
+      data:
+        title: Poolheizung nicht aktiviert
+        message: 'Pool bereits zu warm beim Pumpenstart ({{ states(''input_number.pool_temp_start'')
+          }} °C). Heizung wird nicht eingeschaltet.
+
+          '
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Fast.com
@@ -3014,24 +3011,32 @@
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 200
-    id: Light
+    id: Light Above 200
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 150
-    id: Light
+    id: Light Above 150
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 100
-    id: Light
+    id: Light Above 100
   - trigger: numeric_state
     entity_id:
     - sensor.aqara_p1_illuminance
     above: 79
-    id: Light
+    id: Light Above 79
   conditions: []
   actions:
+  - variables:
+      lux_threshold: 80
+      ganglicht_brightness: 100
+      treppenlicht_brightness: 10
+      ganglicht_brightness_oben: 75
+      light_ganglicht: light.ganglicht_zigbee_led
+      light_treppenlicht: light.esp32_c3_mini_treppenhaus_licht
+      light_delay: '00:00:00.500'
   - alias: On motion
     if:
     - condition: and
@@ -3050,14 +3055,14 @@
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 100
+        brightness_pct: '{{ ganglicht_brightness }}'
       target:
-        entity_id: light.ganglicht_zigbee_led
+        entity_id: '{{ light_ganglicht }}'
     - action: light.turn_off
       metadata: {}
       data: {}
       target:
-        entity_id: light.esp32_c3_mini_treppenhaus_licht
+        entity_id: '{{ light_treppenlicht }}'
   - alias: On motion oben
     if:
     - condition: and
@@ -3076,20 +3081,16 @@
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 10
+        brightness_pct: '{{ treppenlicht_brightness }}'
       target:
-        entity_id: light.esp32_c3_mini_treppenhaus_licht
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 0
-        milliseconds: 10
+        entity_id: '{{ light_treppenlicht }}'
+    - delay: '{{ light_delay }}'
     - action: light.turn_on
       metadata: {}
       data:
-        brightness_pct: 75
+        brightness_pct: '{{ ganglicht_brightness_oben }}'
       target:
-        entity_id: light.ganglicht_zigbee_led
+        entity_id: '{{ light_ganglicht }}'
     - sequence:
       - wait_for_trigger:
         - trigger: state
@@ -3103,7 +3104,7 @@
           seconds: 0
           milliseconds: 0
         continue_on_timeout: true
-      - alias: wait for motion, ifmotion is detected downtairs, turn on ganglicht,
+      - alias: wait for motion, if motion is detected downtairs, turn on ganglicht,
           and turn off treppenhasu licht if it should be off
         if:
         - condition: and
@@ -3137,24 +3138,7 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - if:
-          - condition: numeric_state
-            entity_id: sensor.light_brighness
-            below: 0.1
-          then:
-          - type: turn_off
-            device_id: 9bc7cc38eac20f9f965ee9552f02cc39
-            entity_id: a12b3636dd4c15b23c0edd5277ea7404
-            domain: light
-          alias: if treppenhauslicht should be off, then turn off else do nothing
-        else:
-        - action: light.turn_on
-          metadata: {}
-          data:
-            brightness_pct: 100
-          target:
-            entity_id: light.ganglicht_zigbee_led
+            entity_id: '{{ light_ganglicht }}'
         - alias: if treppenhauslicht should be off, then turn off else do nothing
           if:
           - condition: numeric_state
@@ -3165,7 +3149,25 @@
             metadata: {}
             data: {}
             target:
-              entity_id: light.esp32_c3_mini_treppenhaus_licht
+              entity_id: '{{ light_treppenlicht }}'
+        else:
+        - action: light.turn_on
+          metadata: {}
+          data:
+            brightness_pct: '{{ ganglicht_brightness }}'
+          target:
+            entity_id: '{{ light_ganglicht }}'
+        - alias: if treppenhauslicht should be off, then turn off else do nothing
+          if:
+          - condition: numeric_state
+            entity_id: sensor.light_brighness
+            below: 0.1
+          then:
+          - action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: '{{ light_treppenlicht }}'
       enabled: true
   - alias: Turn off after 5min
     if:
@@ -3179,11 +3181,9 @@
         entity_id: sensor.light_brighness
         below: 0.1
     then:
-    - action: script.turn_off
+    - action: script.5_min_turn_off_ganglicht
       metadata: {}
       data: {}
-      target:
-        entity_id: script.5_min_turn_off_ganglicht
   - alias: On Light Sync
     if:
     - condition: trigger
@@ -3198,14 +3198,10 @@
         - action: light.turn_on
           metadata: {}
           data:
-            brightness_pct: 100
+            brightness_pct: '{{ ganglicht_brightness }}'
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
@@ -3237,12 +3233,8 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
@@ -3251,7 +3243,10 @@
     if:
     - condition: trigger
       id:
-      - Light
+      - Light Above 79
+      - Light Above 100
+      - Light Above 150
+      - Light Above 200
     - condition: numeric_state
       entity_id: sensor.aqara_p1_illuminance
       above: 79
@@ -3262,17 +3257,14 @@
           metadata: {}
           data: {}
           target:
-            entity_id: light.ganglicht_zigbee_led
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            entity_id: '{{ light_ganglicht }}'
+        - delay: '{{ light_delay }}'
         until:
         - condition: state
           entity_id: light.ganglicht_zigbee_led
           state: 'off'
-  mode: single
+  mode: parallel
+  max: 6
 - id: '1727504565238'
   alias: Open Lucky Pot
   description: Check when we are able to open the Honeygain Lucky Pot, and open it
@@ -3552,8 +3544,7 @@
       target:
         entity_id:
         - switch.schedule_paludarien
-        - switch.schedule_start_folding_home
-        - switch.schedule_regal_big_paludarien
+        - switch.ugreen_nas_wol
     - action: homeassistant.turn_off
       metadata: {}
       data: {}
@@ -3578,8 +3569,6 @@
       target:
         entity_id:
         - switch.schedule_paludarien
-        - switch.schedule_start_folding_home
-        - switch.schedule_regal_big_paludarien
       data: {}
     - action: notify.duncan
       metadata: {}
@@ -4024,8 +4013,7 @@
           entity_id:
           - switch.schreibtisch_rechts_power_strip_l2
           - switch.schreibtisch_rechts_power_strip_l3
-  mode: parallel
-  max: 10
+  mode: restart
 - id: '1733064187070'
   alias: Kinderbad Fenster Open
   description: ''
@@ -4230,6 +4218,12 @@
           - sensor.inverter_total_battery_charge_monthly_energy_cost
           - sensor.inverter_total_battery_charge_yearly_energy_cost
           - sensor.inverter_total_battery_charge_manual_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_hourly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_daily_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_weekly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_monthly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_yearly_energy_cost
+          - sensor.tibber_bridge_0100010800ff_in_k_manual_energy_cost
           - sensor.solcast_pv_forecast_prognose_heute
           - sensor.solcast_pv_forecast_prognose_morgen
           - sensor.solcast_pv_forecast_prognose_tag_3
@@ -4449,18 +4443,24 @@
           - sensor.scb_dc3_current
           - sensor.scb_dc3_power
           - sensor.scb_dc3_voltage
+          - sensor.scb_dc_current
+          - sensor.scb_dc_voltage
           - sensor.inverter_pv1_current
           - sensor.inverter_pv1_voltage
           - sensor.inverter_pv1_power
           - sensor.inverter_pv2_current
           - sensor.inverter_pv2_voltage
           - sensor.inverter_pv2_power
+          - sensor.inverter_pv_voltage
+          - sensor.inverter_pv_current
           - sensor.inverter_load_l1_power
           - sensor.inverter_load_l1_voltage
           - sensor.inverter_load_l2_power
           - sensor.inverter_load_l2_voltage
           - sensor.inverter_load_l3_power
           - sensor.inverter_load_l3_voltage
+          - sensor.inverter_battery_voltage
+          - sensor.inverter_battery_current
           - sensor.herd_energy_today
           - sensor.sauger_energy_today
           - sensor.heizung_energy_today
@@ -4554,8 +4554,6 @@
           - sensor.autarky
           - sensor.monthly_autarky
           - sensor.yearly_autarky
-          - sensor.folding_at_home_credits_scrape
-          - sensor.folding_at_home_rank_scrape
           - sensor.germany_lng_inventory
           - sensor.germany_speicher
           - sensor.eu_lng_inventory
@@ -4582,14 +4580,9 @@
         data:
           keep_days: 7
           entity_id:
-          - sensor.inverter_pv_voltage
-          - sensor.inverter_pv_current
           - sensor.inverter_pv_power
           - sensor.inverter_load_power
-          - sensor.scb_dc_current
-          - sensor.scb_dc_voltage
-          - sensor.inverter_battery_voltage
-          - sensor.inverter_battery_current
+          - sensor.inverter_battery_power
           - sensor.battery_discharge
           - sensor.battery_charge
           - sensor.maria_db_rows_events
@@ -6010,13 +6003,6 @@
       state: Online
   actions:
   - sequence:
-    - action: button.press
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - button.192_168_2_205_pause
-        - button.192_168_2_205_00_pause
     - action: switch.turn_off
       metadata: {}
       data: {}
@@ -6850,11 +6836,11 @@
         or something like that.  Simply the text of it and not more. limit yourself
         to 300 Tokens! not one more!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
-        are the today sensor values of these three pollen and any other  Gräser: {{
-        states(''sensor.pollenflug_graeser'') }}   Roggen: {{ states(''sensor.pollenflug_roggen'')
-        }}  Ambrosia: {{ states(''sensor.pollenflug_ambrosia'') }}  Beifuss {{ states(''sensor.pollenflug_beifuss'')
-        }}  Hasel: {{ states(''sensor.pollenflug_hasel'') }}  Esche: {{ states(''sensor.pollenflug_esche'')
-        }}  Legende: \nIndex\tDescription (in German) 0\tkeine Belastung 0.5\tkeine
+        are the today sensor values of these pollen and any other Gräser: {{ states(''sensor.pollenflug_graeser_111'')
+        }}   Roggen: {{ states(''sensor.pollenflug_roggen_111'') }}  Ambrosia: {{
+        states(''sensor.pollenflug_ambrosia_111'') }}  Beifuss {{ states(''sensor.pollenflug_beifuss_111'')
+        }}  Hasel: {{ states(''sensor.pollenflug_hasel_111'') }}  Esche: {{ states(''sensor.pollenflug_esche_111'')
+        }}  Legend: \nIndex\tDescription (in German) 0\tkeine Belastung 0.5\tkeine
         bis geringe Belastung 1\tgeringe Belastung 1.5\tgeringe bis mittlere Belastung
         2\tmittlere Belastung 2.5\tmittlere bis hohe Belastung 3\thohe Belastung\n
 
@@ -6931,6 +6917,10 @@
     below: 1
   conditions: []
   actions:
+  - action: hassio.addon_start
+    metadata: {}
+    data:
+      addon: b3f9bc48_honeygain
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -7432,7 +7422,7 @@
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       update_sub_label: false
-      video: ''
+      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
   description: ''
@@ -7575,6 +7565,7 @@
     to:
     - not_home
     - unavailable
+    - unknown
     trigger: state
   conditions:
   - condition: or
@@ -7635,20 +7626,26 @@
           '
   mode: single
 - id: '1752180300729'
-  alias: 'Alert: HDD SMART Status Problem'
+  alias: 'Alert: SMART Status Problem'
   description: Notifies if the HDD SMART status reports a problem, indicating potential
     drive failure.
   triggers:
-  - entity_id: binary_sensor.hdd_smart_status
+  - entity_id:
+    - binary_sensor.sata_ssd_status
+    to: 'on'
+    trigger: state
+  - entity_id:
+    - binary_sensor.nvme_ssd_status
     to: 'on'
     trigger: state
   conditions: []
   actions:
   - action: notify.duncan
     data:
-      title: 'CRITICAL: HDD SMART Status Problem!'
-      message: The HDD SMART status is reporting a problem. Data loss may occur soon.
-        Consider backing up data and checking the drive immediately!
+      title: 'CRITICAL: SMART Status Problem!'
+      message: The SMART status of {{ state_attr(trigger.entity_id, 'friendly_name')
+        }} is reporting a problem. Data loss may occur soon. Consider backing up data
+        and checking the drive immediately!
       data:
         tag: hdd_alert
         priority: high
@@ -7668,4 +7665,94 @@
     data: {}
     target:
       entity_id: switch.spulmaschine_tasmota
+  mode: single
+- id: '1753221152708'
+  alias: Restart Frigate at 0 o'clock
+  description: ''
+  triggers:
+  - trigger: time
+    at: 00:00:00
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.frigate_full_access_aktiv
+          state: ''
+      sequence:
+      - action: hassio.addon_start
+        metadata: {}
+        data:
+          addon: ccab4aaf_frigate-fa
+      alias: Start Frigate if not running
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.frigate_full_access_aktiv
+        state: 'on'
+      sequence:
+      - action: hassio.addon_restart
+        metadata: {}
+        data:
+          addon: ccab4aaf_frigate-fa
+      alias: Restart Frigate if running
+  mode: single
+- id: '1753267693777'
+  alias: Notify wenn Mama losfährt von der Arbeit
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.renault_zoe_batterieautonomie
+  conditions:
+  - condition: state
+    entity_id: device_tracker.renault_zoe_standort
+    state: Arbeit
+  - condition: template
+    value_template: '
+
+
+      {{ (trigger.from_state.state | float(0)) - (trigger.to_state.state | float(0))
+      > 2 }}'
+  actions:
+  - action: notify.duncan
+    data:
+      title: Mama kommt heim
+      message: Mama ist wahrscheinlich losgefahren – Batterieautonomie ist von {{
+        trigger.from_state.state }} km auf {{ trigger.to_state.state }} km gesunken.
+  mode: single
+- id: '1753297720473'
+  alias: Paludarium Pumpe - 15/45 Minuten Intervall
+  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 45 Min. aus
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_turm_links_l3
+  conditions:
+  - condition: state
+    entity_id: switch.schreibtisch_links_power_strip_l1
+    state: 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_links_l3
+        state: 'on'
+      sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.desk_paludarium_turm_links_countdown_l3
+        data:
+          value: 900
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_links_l3
+        state: 'off'
+      sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.desk_paludarium_turm_links_countdown_l3
+        data:
+          value: 2700
   mode: single

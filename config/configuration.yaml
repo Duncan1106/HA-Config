@@ -46,6 +46,7 @@ recorder:
       - sensor.grid_export
       - sensor.smart_meter_mqtt_data
       - sensor.smart_meter_mqtt_power
+      - sensor.smart_meter_mqtt_grid_power
       - sensor.tibber_pulse_uptime
       - sensor.tibber_monthly_consumption
       - sensor.tibber_monthly_cost
@@ -371,7 +372,7 @@ template:
                     {% endif %}
                   {% endfor %}
                 ]
-                
+
   - trigger:
       # Trigger when the search input changes
       - platform: state
@@ -464,7 +465,7 @@ template:
 
   - triggers:
       - platform: time_pattern
-        seconds: "/30"
+        seconds: "/15"
       - platform: state
         entity_id: input_boolean.rollo_summer_override
       - platform: state
@@ -721,7 +722,7 @@ template:
               {{ val }} (> {{ threshold }})
           rain_sunflower: >
             {% set wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
-            {{ 'Wet' if wet else 'Dry' }} (= Wet)
+            {{ 'Wet' if wet else 'Dry' }} (== Wet)
           weather: >
             {{ states('weather.irauen33') | lower | default('') }} 
           uv_lux: >
@@ -740,7 +741,7 @@ template:
             {% set val = states('sensor.sun_solar_azimuth') | float(0) %}
             {% set threshold = 150 %}
             {{ val | round(0) }} (> {{ threshold }})
-            
+
   - trigger:
       - platform: time_pattern
         minutes: "/1"
@@ -757,6 +758,7 @@ template:
           {% set bkw = states('sensor.bkw_outlet_1_total_daily_energy_cost') | float(0) %}
           {% set gesamt = states('input_number.gesamte_pv_kosten') | float(0) %}
           {{ (gesamt - solar_home - solar_bat - bat_home - solar_grid - bkw) | round(2) }}
+
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -779,7 +781,6 @@ template:
           {% set known_power = states('sensor.known_power') | float(0) %}
           {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
           {{ home if home > known_power else known_power }}
-          
 
 cover:
   - platform: template
@@ -808,17 +809,6 @@ cover:
           action: script.wintergarten_dachfenster_rolladen_close
         stop_cover:
           action: script.wintergarten_dachfenster_rolladen_stop
-
-binary_sensor:
-  - platform: rest
-    verify_ssl: false
-    scan_interval: 60
-    method: POST
-    resource: "http://192.168.2.205:8080/api/device/fxs500pro234920229/details"
-    name: "HDD - SMART Status"
-    unique_id: hdd_smart_status
-    value_template: "{{ bool(value_json['data']['smart_results'][0]['Status']) }}"
-    device_class: problem
 
 mqtt:
   switch:
@@ -1042,6 +1032,7 @@ sensor:
     duration:
       hours: 24
 
+  # Tasmota newest Version
   - platform: rest
     scan_interval: 43200
     name: Tasmota - newest version
@@ -1052,6 +1043,7 @@ sensor:
       Content-Type: application/json
       User-Agent: Home Assistant REST sensor
 
+  # OpenBeken newest Version
   - platform: rest
     scan_interval: 43200
     name: OpenBK7231T App - newest version
@@ -1062,26 +1054,93 @@ sensor:
       Content-Type: application/json
       User-Agent: Home Assistant REST sensor
 
-  - platform: rest
-    name: Tibber Pulse Metrics
-    unique_id: tibber_pulse_metrics
-    resource: !secret tibber_bridge_url
+multiscrape:
+  - name: TIbber Pulse Metrics
+    resource:  !secret tibber_bridge_url
     method: GET
-    json_attributes_path: "node_status"
-    json_attributes:
-      - node_temperature
-      - node_avg_rssi
-      - node_uptime_ms
-    value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
-    scan_interval: 300
-    state_class: measurement
-    device_class: voltage
+    scan_interval: 150
     headers:
       Content-Type: application/json
       User-Agent: REST
-    unit_of_measurement: V
+    button:
+      - name: 'Refresh Tibber Node'
+        unique_id: refesh_tibber_node 
+    sensor:
+       - unique_id: tibber_pulse metrics
+         name: Tibber Pulse Metrics
+         state_class: measurement
+         device_class: voltage
+         unit_of_measurement: V
+         value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
+         attributes:
+           - name: Uptime ms
+             value_template: "{{ value_json.node_status.node_uptime_ms | float(0) }}"
+           - name: RSSI
+             value_template: "{{ value_json.node_status.node_avg_rssi | float(0) }}"
+           - name: Temperature
+             value_template: "{{ value_json.node_status.node_temperature | float(0) }}"
+           - name: Uptime
+             value_template: >
+                {% set uptime = value_json.node_status.node_uptime_ms | float(0) / 1000 %}
+                {% set boot_time = now() - timedelta(seconds=uptime) %}
+                {{ boot_time | time_since(2) }}
 
-multiscrape:
+  - name: NVME SSD
+    resource: "http://192.168.2.205:8080/api/device/fxs500pro234920229/details"
+    scan_interval: 60
+    headers:
+      Content-Type: application/json
+      User-Agent: REST
+    method: GET
+    binary_sensor:
+      - unique_id: nvme_ssd_status
+        name: NVME SSD Status
+        device_class: problem
+        value_template: "{{ bool(value_json.data.device.device_status) }}"
+        attributes:
+          - name: "Model Name"
+            value_template: "{{ value_json.data.device.model_name }}"
+          - name: "Device Name"
+            value_template: "{{ value_json.data.device.device_name }}"
+          - name: "Device Protocol"
+            value_template: "{{ value_json.data.device.device_protocol }}"
+          - name: "Serial Number"
+            value_template: "{{ value_json.data.device.serial_number }}"
+          - name: "Updated At"
+            value_template: "{{ value_json.data.device.UpdatedAt }}"
+          - name: "Device Status"
+            value_template: "{{ value_json.data.device.device_status }}"
+          - name: "Capacity"
+            value_template: "{{ value_json.data.device.capacity | filesizeformat  }}"
+
+  - name: SATA SSD
+    resource: "http://192.168.2.205:8080/api/device/0x5000000000002b6f/details"
+    scan_interval: 60
+    headers:
+      Content-Type: application/json
+      User-Agent: REST
+    method: GET
+    binary_sensor:
+      - unique_id: sata_ssd_status
+        name: SATA SSD Status
+        device_class: problem
+        value_template: "{{  bool(value_json.data.device.device_status) }}"
+        attributes:
+          - name: "Model Name"
+            value_template: "{{ value_json.data.device.model_name }}"
+          - name: "Device Name"
+            value_template: "{{ value_json.data.device.device_name }}"
+          - name: "Device Protocol"
+            value_template: "{{ value_json.data.device.device_protocol }}"
+          - name: "Serial Number"
+            value_template: "{{ value_json.data.device.serial_number }}"
+          - name: "Updated At"
+            value_template: "{{ value_json.data.device.UpdatedAt }}"
+          - name: "Device Status"
+            value_template: "{{ value_json.data.device.device_status }}"
+          - name: "Capacity"
+            value_template: "{{ value_json.data.device.capacity | filesizeformat }}"
+
   - name: LNGInventory
     resource: "https://alsi.gie.eu/api?date=today"
     log_response: false
@@ -1103,7 +1162,7 @@ multiscrape:
         name: EU LNG Inventory
         value_template: "{{ value_json.data[0].inventory.lng | float(0) * 1000 }}"
         unit_of_measurement: m³
-        state_class: measurement
+        state_class: total
         device_class: volume
         attributes:
           - name: name
@@ -1141,7 +1200,8 @@ multiscrape:
           {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
           {{ germany.inventory.lng | float(0) * 1000 }}
         unit_of_measurement: m³
-        state_class: measurement
+        state_class: total
+        device_class: volume
         attributes:
           - name: name
             value_template: >
@@ -1294,25 +1354,6 @@ multiscrape:
             value_template: >
               {% set germany = value_json.data[0].children | selectattr('name', 'equalto', 'Germany') | list | first %}
               {{ germany.trend }}
-
-  - name: FoldingAtHome Credits
-    resource: https://api.foldingathome.org/user/nighthawk1106
-    scan_interval: 21600
-    button:
-      name: Update Folding@Home
-      unique_id: update_foldingathome
-    sensor:
-      - unique_id: folding_at_home_credits_scrape
-        value_template: "{{ value_json.score | int(0) }}"
-        state_class: measurement
-        unit_of_measurement: 'credits'
-      - unique_id: folding_at_home_rank_scrape
-        value_template: "{{ value_json.rank | int(0) }}"
-        state_class: measurement
-        unit_of_measurement: 'rank'
-        attributes:
-          name: "Rest"
-          value_template: "{{ value_json }}"
 
 automation: !include automations.yaml
 script: !include scripts.yaml

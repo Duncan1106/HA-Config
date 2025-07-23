@@ -139,7 +139,7 @@ config:
             decimal: 0
             entity: sensor.system_monitor_speicherauslastung
             layout: horizontal
-            max_value: 23819
+            max_value: 16384
             name: RAM
             show_more_info: true
             theme: memory
@@ -269,169 +269,6 @@ config:
           type: vertical-stack
         conditions:
         - entity: input_boolean.show_mariadb_graphs
-          state: 'on'
-        type: conditional
-      type: vertical-stack
-    - cards:
-      - entity: input_boolean.show_folding_at_home
-        fill_container: true
-        icon: ''
-        layout: vertical
-        multiline_secondary: true
-        primary: Folding@Home
-        secondary: '{% set status = time_until(as_datetime(states(''sensor.192_168_2_205_00_estimated_time_finished'')),2)
-          %}
-
-          {% set running = is_state(''sensor.192_168_2_205_00_status'',''RUNNING'')
-          %}
-
-          {{ "Finished in: " + status if running else "Paused: " + status }}
-
-          {{ states(''sensor.192_168_2_205_00_percentdone'') | float(0) | round(2)
-          }} /{{ states(''sensor.192_168_2_205_00_total_frames'') }}'
-        tap_action:
-          action: toggle
-        type: custom:mushroom-template-card
-      - card:
-          cards:
-          - cards:
-            - cards:
-              - entity: sensor.192_168_2_205_00_status
-                fill_container: true
-                layout: vertical
-                name: Status
-                tap_action:
-                  action: call-service
-                  service: script.folding_home
-                  target: {}
-                type: custom:mushroom-entity-card
-              - entity: select.192_168_2_205_select_power_level
-                fill_container: true
-                layout: vertical
-                name: Power Level
-                type: custom:mushroom-select-card
-              type: horizontal-stack
-            - bar_size: large
-              decimal: 2
-              entity: sensor.192_168_2_205_00_percentdone
-              hide:
-              - icon
-              layout: horizontal
-              name: Folding @ Home
-              show_more_info: true
-              theme: battery
-              type: custom:entity-progress-card
-            - cards:
-              - cards:
-                - entity: sensor.192_168_2_205_00_assigned
-                  fill_container: true
-                  icon: mdi:eye
-                  icon_color: blue
-                  layout: vertical
-                  primary: Assigned since
-                  secondary: '{{ time_since( as_datetime(states(''sensor.192_168_2_205_00_assigned'')),
-                    2)}}'
-                  tap_action:
-                    action: more-info
-                  type: custom:mushroom-template-card
-                - entity: sensor.192_168_2_205_00_estimated_time_finished
-                  fill_container: true
-                  icon: mdi:eye
-                  icon_color: blue
-                  layout: vertical
-                  primary: Finnished in
-                  secondary: '{% set running = is_state(''sensor.192_168_2_205_00_status'',''RUNNING'')
-                    %} {% set finishing = is_state(''sensor.192_168_2_205_00_status'',''FINISHING'')
-                    %} {% set finish_time = time_until(as_datetime(states(''sensor.192_168_2_205_00_estimated_time_finished'')),
-                    2) %} {{ "Paused" if not running and not finishing else finish_time
-                    }}'
-                  tap_action:
-                    action: more-info
-                  type: custom:mushroom-template-card
-                - entity: sensor.192_168_2_205_00_deadline
-                  fill_container: true
-                  icon: mdi:eye
-                  icon_color: blue
-                  layout: vertical
-                  primary: Deadline in
-                  secondary: '{{ time_until( as_datetime(states(''sensor.192_168_2_205_00_deadline'')),
-                    2)}}'
-                  tap_action:
-                    action: more-info
-                  type: custom:mushroom-template-card
-                type: horizontal-stack
-              - cards:
-                - entity: sensor.192_168_2_205_00_time_per_frame
-                  fill_container: true
-                  icon: mdi:clock
-                  icon_color: blue
-                  layout: vertical
-                  primary: time / frame
-                  secondary: '{% set uptime = states(''sensor.192_168_2_205_00_time_per_frame'')
-                    | int(0) %} {% set finish = now() + timedelta(seconds=uptime)
-                    %} {{ time_until(finish, 2)}}'
-                  tap_action:
-                    action: more-info
-                  type: custom:mushroom-template-card
-                - double_tap_action:
-                    action: call-service
-                    service: button.press
-                    target:
-                      entity_id:
-                      - button.update_foldingathome
-                  entity: sensor.folding_at_home_credits_scrape
-                  fill_container: true
-                  layout: vertical
-                  name: Credits
-                  type: custom:mushroom-entity-card
-                - entity: sensor.192_168_2_205_00_creditestimate
-                  fill_container: true
-                  layout: vertical
-                  name: Estimated credits
-                  type: custom:mushroom-entity-card
-                type: horizontal-stack
-              - double_tap_action:
-                  action: call-service
-                  service: button.press
-                  target:
-                    entity_id:
-                    - button.update_foldingathome
-                entity: sensor.folding_at_home_rank_scrape
-                fill_container: true
-                layout: vertical
-                type: custom:mushroom-entity-card
-              type: vertical-stack
-            - cards:
-              - align_header: center
-                align_state: center
-                entities:
-                - entity: sensor.folding_home_cpu_prozent
-                  name: Folding@Home Cpu Usage
-                font_size: 65
-                hours_to_show: 48
-                line_width: 2
-                points_per_hour: 4
-                show:
-                  fill: fade
-                  icon: false
-                  lables: true
-                  points: hover
-                type: custom:mini-graph-card
-              - align_header: center
-                align_state: center
-                entities:
-                - entity: sensor.folding_home_arbeitsspeicher_in_prozent
-                  name: Folding@Home RAM Usage
-                font_size: 65
-                hours_to_show: 48
-                line_width: 2
-                points_per_hour: 4
-                type: custom:mini-graph-card
-              type: horizontal-stack
-            type: vertical-stack
-          type: vertical-stack
-        conditions:
-        - entity: input_boolean.show_folding_at_home
           state: 'on'
         type: conditional
       type: vertical-stack
@@ -632,14 +469,17 @@ config:
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
-    - entity: sensor.tibber_pulse_uptime
-      fill_container: true
+    - entity: sensor.tibber_pulse_metrics
+      fill_container: false
       icon: mdi:pulse
       icon_color: blue
       layout: vertical
+      multiline_secondary: false
+      primary: Tibber Pulse Uptime
+      secondary: '{{ state_attr(''sensor.tibber_pulse_metrics_2'',''uptime'')}}'
       tap_action:
         action: more-info
-      type: custom:mushroom-entity-card
+      type: custom:mushroom-template-card
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
