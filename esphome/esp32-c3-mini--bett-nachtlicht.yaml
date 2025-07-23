@@ -73,6 +73,7 @@ light:
         - if:
             condition:
               - binary_sensor.is_on: mb_o
+              - switch.is_on: was_in_bed
             then:
               - light.turn_off: night_light
 
@@ -90,6 +91,7 @@ script:
                   binary_sensor.is_on: mb_o
                 then:
                   - switch.turn_on: was_in_bed
+                  - light.turn_off: night_light
                 
   - id: left_bed_script
     mode: restart
@@ -103,7 +105,8 @@ script:
                 condition: 
                   - binary_sensor.is_off: mb_o
                 then:
-                  - switch.turn_off: was_in_bed              
+                  - switch.turn_off: was_in_bed
+                  - light.turn_off: night_light
 
 switch:
   - platform: template
@@ -137,7 +140,11 @@ binary_sensor:
       }
     on_press:
       then:
-        - light.turn_off: night_light
+        - if:
+            condition:
+              - switch.is_on: was_in_bed
+            then: 
+              - light.turn_off: night_light
         - switch.turn_on: phone_charge
         - script.execute: was_in_bed_script
     on_release: 
