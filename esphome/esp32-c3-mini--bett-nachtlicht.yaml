@@ -75,8 +75,9 @@ light:
               - binary_sensor.is_on: mb_o
               - switch.is_on: was_in_bed
             then:
-              - light.turn_off: night_light
-                  transition_length: 2s
+              - light.turn_off:
+                  id: night_light
+                  transition_length: 5s
 
 script:
   - id: was_in_bed_script
@@ -151,13 +152,14 @@ binary_sensor:
         - light.turn_on:
             id: night_light
             brightness: !lambda return id(night_brightness).state / 100.0;
-            transition_length: 
-              seconds: 3
+            transition_length: 3s
         - if:
             condition:
               - switch.is_on: was_in_bed
             then: 
-              - light.turn_off: night_light
+              - light.turn_off: 
+                  id: night_light
+                  transition_length: 3s
         - switch.turn_on: phone_charge
         - script.execute: was_in_bed_script
     on_release: 
@@ -166,9 +168,14 @@ binary_sensor:
             condition:
               - switch.is_on: was_in_bed
             then:
+              - light.turn_on: 
+                  id: night_light
+                  transition_length: 0s
+                  brightness: !lambda return (id(night_brightness).state - 7.5) / 100.0;
+              - delay: 1s
               - light.turn_on:
                   id: night_light
-                  transition_length: 1s
+                  transition_length: 1.5s
                   brightness: !lambda return id(night_brightness).state / 100.0;
         - script.execute: left_bed_script
 
