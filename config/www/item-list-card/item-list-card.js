@@ -260,17 +260,6 @@ class ItemListCard extends LitElement {
     }).catch(err => console.error("Error updating filter text:", err));
   }
 
-//   _addFilterTextToShoppingList = () => {
-//     const value = this.hass.states[this.config.filter_entity]?.state || '';
-//     if (!value.trim()) return;
-
-//     this.hass.callService('todo', 'add_item', {
-//       entity_id: this.config.shopping_list_entity,
-//       item: value,
-//       description: '',
-//     }).catch(err => console.error("Error adding search term to shopping list:", err));
-//   }
-
   _addFilterTextToShoppingList = () => {
     const value = this.hass.states[this.config.filter_entity]?.state || '';
     if (!value.trim()) return;
