@@ -76,6 +76,7 @@ light:
               - switch.is_on: was_in_bed
             then:
               - light.turn_off: night_light
+                  transition_length: 2s
 
 script:
   - id: was_in_bed_script
@@ -140,6 +141,18 @@ binary_sensor:
       }
     on_press:
       then:
+        - if: 
+            condition: 
+              - switch.is_off: was_in_bed
+            then: 
+              - homeassistant.action: 
+                  action: script.esphome_rgb_light_set
+                  data: {}
+        - light.turn_on:
+            id: night_light
+            brightness: !lambda return id(night_brightness).state / 100.0;
+            transition_length: 
+              seconds: 3
         - if:
             condition:
               - switch.is_on: was_in_bed
@@ -155,7 +168,8 @@ binary_sensor:
             then:
               - light.turn_on:
                   id: night_light
-                  brightness: !lambda return id(night_brightness).state/ 100.0;
+                  transition_length: 1s
+                  brightness: !lambda return id(night_brightness).state / 100.0;
         - script.execute: left_bed_script
 
 number:
@@ -256,7 +270,7 @@ sensor:
     name: Master Bed Sensor
     id: master_bed_sensor
     icon: mdi:bed
-    update_interval: 250ms
+    update_interval: 200ms
     state_class: measurement
     device_class: voltage
     unit_of_measurement: V
