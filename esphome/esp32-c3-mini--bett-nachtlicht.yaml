@@ -75,7 +75,9 @@ light:
               - binary_sensor.is_on: mb_o
               - switch.is_on: was_in_bed
             then:
-              - light.turn_off: night_light
+              - light.turn_off:
+                  id: night_light
+                  transition_length: 5s
 
 script:
   - id: was_in_bed_script
@@ -140,11 +142,24 @@ binary_sensor:
       }
     on_press:
       then:
+        - if: 
+            condition: 
+              - switch.is_off: was_in_bed
+            then: 
+              - homeassistant.action: 
+                  action: script.esphome_rgb_light_set
+                  data: {}
+        - light.turn_on:
+            id: night_light
+            brightness: !lambda return id(night_brightness).state / 100.0;
+            transition_length: 3s
         - if:
             condition:
               - switch.is_on: was_in_bed
             then: 
-              - light.turn_off: night_light
+              - light.turn_off: 
+                  id: night_light
+                  transition_length: 3s
         - switch.turn_on: phone_charge
         - script.execute: was_in_bed_script
     on_release: 
@@ -153,9 +168,15 @@ binary_sensor:
             condition:
               - switch.is_on: was_in_bed
             then:
+              - light.turn_on: 
+                  id: night_light
+                  transition_length: 0s
+                  brightness: !lambda return (id(night_brightness).state - 7.5) / 100.0;
+              - delay: 1s
               - light.turn_on:
                   id: night_light
-                  brightness: !lambda return id(night_brightness).state/ 100.0;
+                  transition_length: 1.5s
+                  brightness: !lambda return id(night_brightness).state / 100.0;
         - script.execute: left_bed_script
 
 number:
@@ -256,7 +277,7 @@ sensor:
     name: Master Bed Sensor
     id: master_bed_sensor
     icon: mdi:bed
-    update_interval: 250ms
+    update_interval: 200ms
     state_class: measurement
     device_class: voltage
     unit_of_measurement: V
