@@ -3027,6 +3027,24 @@
     - sensor.aqara_p1_illuminance
     above: 79
     id: Light Above 79
+  - trigger: state
+    entity_id:
+    - light.ganglicht_zigbee_led
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    id: Turn off for sure 5min
+  - trigger: state
+    entity_id:
+    - light.ganglicht_zigbee_led
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    id: Turn off for sure 15min
   conditions: []
   actions:
   - variables:
@@ -3263,6 +3281,29 @@
         - condition: state
           entity_id: light.ganglicht_zigbee_led
           state: 'off'
+  - alias: Fix Lamp not turning off completely
+    if:
+    - condition: trigger
+      id:
+      - Turn off for sure 5min
+      - Turn off for sure 15min
+    then:
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 1
+      target:
+        entity_id: light.ganglicht_zigbee_led
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 0
+        milliseconds: 250
+    - action: light.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: light.ganglicht_zigbee_led
   mode: parallel
   max: 6
 - id: '1727504565238'
@@ -5989,25 +6030,86 @@
       - switch.schreibtisch_links_power_strip_l4
   mode: single
 - id: '1740690228362'
-  alias: UPS, on battery -> Stop Folding@Home
+  alias: UPS, on battery -> Stop Non necessary services
   description: ''
   triggers:
   - trigger: state
     entity_id:
     - sensor.myups_status
+    to: Online
+  - trigger: state
+    entity_id:
+    - sensor.myups_status
+    from: Online
   conditions:
-  - condition: not
+  - condition: or
     conditions:
     - condition: state
       entity_id: sensor.myups_status
       state: Online
+      alias: Ups Online
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: sensor.myups_status
+        state: Online
+      alias: Ups not Online
   actions:
-  - sequence:
-    - action: switch.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.ugreen_nas_wol
+  - choose:
+    - conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: sensor.myups_status
+          state: Online
+        alias: Ups not Online
+      sequence:
+      - sequence:
+        - action: switch.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id: switch.ugreen_nas_wol
+        - action: hassio.addon_stop
+          metadata: {}
+          data:
+            addon: ccab4aaf_frigate-fa
+        - action: hassio.addon_stop
+          metadata: {}
+          data:
+            addon: cff83567_ankerctl
+        - action: hassio.addon_stop
+          metadata: {}
+          data:
+            addon: cebe7a76_hassio_google_drive_backup
+        - action: hassio.addon_stop
+          metadata: {}
+          data:
+            addon: de91e161_hassio_onedrive_backup
+    - conditions:
+      - condition: state
+        entity_id: sensor.myups_status
+        state: Online
+        alias: Ups Online
+      sequence:
+      - sequence:
+        - action: hassio.addon_start
+          metadata: {}
+          data:
+            addon: ccab4aaf_frigate-fa
+        - action: hassio.addon_start
+          metadata: {}
+          data:
+            addon: cff83567_ankerctl
+        - action: hassio.addon_start
+          metadata: {}
+          data:
+            addon: cebe7a76_hassio_google_drive_backup
+        - action: hassio.addon_start
+          metadata: {}
+          data:
+            addon: de91e161_hassio_onedrive_backup
+      alias: Ups Back Online
   mode: single
 - id: '1740741927183'
   alias: Turn off Trockner or Waschmaschine fertig using Button
@@ -7026,7 +7128,7 @@
     '
   triggers:
   - entity_id: sensor.lenovo_tab_p11_batterie
-    below: 40
+    below: 39
     trigger: numeric_state
   - entity_id: sensor.lenovo_tab_p11_batterie
     below: 30

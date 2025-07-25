@@ -217,6 +217,16 @@ number:
     mode: BOX
 
   - platform: template
+    name: Min Amperage
+    id: min_amps
+    initial_value: ${min_amps}
+    min_value: ${min_amps}
+    max_value: ${max_amps}
+    optimistic: True
+    step: 1
+    mode: BOX
+
+  - platform: template
     step: 1
     min_value: ${min_amps}
     max_value: ${max_amps}
@@ -294,6 +304,16 @@ text_sensor:
               - sensor.template.publish:
                   id: goe_amp_divider
                   state: 3
+              - if: 
+                  condition: 
+                    - sensor.in_range: 
+                        id: card_used
+                        above: 1.5
+                        below: 2.5
+                  then: 
+                    - number.set: 
+                        id: min_amps
+                        value: 8
 
   - platform: mqtt_subscribe
     topic: ${main_topic}nrg
@@ -382,6 +402,11 @@ sensor:
     id: feedback_amps
     name: Goe Feedback Amperage ${variant}
     internal: True
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}trx
+    name: Card Used
+    id: card_used
 
   # - platform: mqtt_subscribe
   #   topic: smart_meter/total_combined
