@@ -27,6 +27,7 @@ class ItemListCard extends LitElement {
       display: flex;
       gap: 6px;
       margin-bottom: 8px;
+      height: 36px;
     }
 
     .input-row input {
@@ -105,7 +106,11 @@ class ItemListCard extends LitElement {
     .btn:hover {
       color: var(--accent-color, #03a9f4);
     }
-
+    
+    .hidden {
+      display: none !important;
+    }
+    
     .quantity {
       min-width: 20px;
       text-align: center;
@@ -114,10 +119,6 @@ class ItemListCard extends LitElement {
       color: var(--primary-text-color, #333);
     }
     
-    .hidden {
-      display: none !important;
-    }
-
     .empty-state {
       padding: 8px 0;
       font-size: 14px;
@@ -189,7 +190,7 @@ class ItemListCard extends LitElement {
       console.error('Error parsing source_map attribute:', e);
     }
 
-    const totalItemsCount = items.length;
+    const totalItemsCount = this.hass.states[this.config.entity]?.state;
     let displayedItems = items;
 
     // If no filter text, limit items to maxItemsWithoutFilter
@@ -199,20 +200,20 @@ class ItemListCard extends LitElement {
 
     return html`
       <ha-card>
-        <h3 style="text-align: center;">${this.config.title || 'ToDo List'}</h3>
+        <h3 style="text-align: center; font-size: 1.5em;">${this.config.title || 'ToDo List'}</h3>
         <div class="input-row">
           <input
             type="text"
             .value=${filterValue}
-            placeholder="Suche..."
+            placeholder="Tippe einen Suchfilter ein"
             @input=${(e) => this._updateFilterText(e.target.value)}
           />
           <button
             class="btn ${filterValue.length <= 3 ? 'hidden' : ''}"
             @click=${this._addFilterTextToShoppingList}
+            title="Zur Einkaufsliste hinzufügen"
           >
             <ha-icon icon="mdi:cart-plus"></ha-icon>
-            Hinzufügen
           </button>
         </div>
 
@@ -227,44 +228,44 @@ class ItemListCard extends LitElement {
                 ${displayedItems.map(
                   (item) => html`
                     <div class="item-row">
-                      <div class="item-summary" title="${item.summary}">
-                        ${item.summary}
+                      <div class="item-summary" title="${item.s}">
+                        ${item.s}
                       </div>
                       <div class="item-controls">
-                        ${this._isNumeric(item.description)
+                        ${this._isNumeric(item.d)
                           ? html`
-                              ${parseInt(item.description, 10) > 1
+                              ${parseInt(item.d, 10) > 1
                                 ? html`
                                     <button
                                       class="btn"
                                       title="Decrease"
                                       aria-label="Decrease"
                                       @click=${() =>
-                                        this._updateOrCompleteItem(item.uid, {
+                                        this._updateOrCompleteItem(item.u, {
                                           description:
-                                            parseInt(item.description, 10) - 1,
-                                        }, item.source, sourceMap)}
+                                            parseInt(item.d, 10) - 1,
+                                        }, item.c, sourceMap)}
                                     >
                                       <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
                                     </button>
                                   `
                                 : ''}
-                              <div class="quantity">${item.description}</div>
+                              <div class="quantity">${item.d}</div>
                               <button
                                 class="btn"
                                 title="Increase"
                                 aria-label="Increase"
                                 @click=${() =>
-                                  this._updateOrCompleteItem(item.uid, {
+                                  this._updateOrCompleteItem(item.u, {
                                     description:
-                                      parseInt(item.description, 10) + 1,
-                                  }, item.source, sourceMap)}
+                                      parseInt(item.d, 10) + 1,
+                                  }, item.c, sourceMap)}
                               >
                                 <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
                               </button>
                             `
                           : html`
-                              <div class="quantity">${item.description}</div>
+                              <div class="quantity">${item.d}</div>
                             `}
                         <button
                           class="btn"
@@ -344,10 +345,10 @@ class ItemListCard extends LitElement {
   }
 
   _confirmAndComplete(item, sourceMap) {
-    if (confirm(`Möchtest du "${item.summary}" wirklich als erledigt markieren?`)) {
-      this._updateOrCompleteItem(item.uid, { status: 'completed' }, item.source, sourceMap);
+    if (confirm(`Möchtest du "${item.s}" wirklich als erledigt markieren?`)) {
+      this._updateOrCompleteItem(item.u, { status: 'completed' }, item.source, sourceMap);
 
-      const isZero = this._isNumeric(item.description) && parseInt(item.description, 10) === 0;
+      const isZero = this._isNumeric(item.d) && parseInt(item.d, 10) === 0;
       if (isZero) this._addToShoppingList(item, sourceMap);
     }
   }
@@ -359,13 +360,13 @@ class ItemListCard extends LitElement {
         return;
       }
     
-      if (confirm(`Möchtest du "${item.summary}" zur Einkaufsliste hinzufügen?`)) {
+      if (confirm(`Möchtest du "${item.s}" zur Einkaufsliste hinzufügen?`)) {
         this.hass.callService('todo', 'add_item', {
           entity_id: entityId,
-          item: item.summary,
-          description: item.description?.toString() ?? '',
+          item: item.s,
+          description: item.d?.toString() ?? '',
         })
-        .then(() => console.log('Added to shopping list:', item.summary, 'entity:', entityId))
+        .then(() => console.log('Added to shopping list:', item.s, 'entity:', entityId))
         .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
       }
     }
