@@ -2232,10 +2232,13 @@
           entity_id: input_number.pool_temp_stop
         action: input_number.set_value
       alias: Save Stop Temp when was still on
-    - type: turn_off
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.pool_pumpe
+        - switch.pool_ventil_solar
     - alias: '0'
       metadata: {}
       data:
@@ -2249,37 +2252,25 @@
       action: counter.reset
     - delay:
         hours: 0
-        minutes: 1
+        minutes: 0
         seconds: 0
-        milliseconds: 0
+        milliseconds: 100
     - if:
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'on'
       then:
-      - alias: 'Notify of Temperature Change '
-        if:
-        - condition: numeric_state
-          entity_id: input_number.pool_temp_stop
-          above: input_number.pool_temp_start
-        then:
-        - action: notify.duncan
-          metadata: {}
+      - action: notify.duncan
+        alias: Notify of Temperature Change
+        data:
+          title: Pool Temperature Change
           data:
-            title: Pool Temperature Change
-            data:
-              tag: pool_diff_plus
-            message: + {{ (states('input_number.pool_temp_stop') | float(0) - states('input_number.pool_temp_start')
-              | float(0)) | round(2) }}°C
-        else:
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: Pool Temperature Change
-            data:
-              tag: pool_diff_minus
-            message: '- {{ (states(''input_number.pool_temp_start'') | float(0) -
-              states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C'
+            tag: pool_temp_diff
+          message: '{%- set start = states(''input_number.pool_temp_start'') | float(0)
+            -%} {%- set stop = states(''input_number.pool_temp_stop'') | float(0)
+            -%} {%- set diff = (stop - start) | round(2) -%} {{ ''+'' if diff > 0
+            else ''-'' }}{{ diff | abs }}°C'
+      alias: Notify once for Temperature Change
     - action: input_boolean.turn_off
       metadata: {}
       data: {}
@@ -2396,7 +2387,7 @@
   - entity_id:
     - sensor.sun_solar_azimuth
     above: 95
-    id: 'On'
+    id: On 1
     below: 100
     trigger: numeric_state
     enabled: true
@@ -2417,7 +2408,7 @@
     id: 'On'
   - trigger: time
     at: '16:00:00'
-    id: 'On'
+    id: On last
   - trigger: numeric_state
     entity_id:
     - sensor.esp32_c3_mini_pool_temperature_pool_temperature
@@ -2436,6 +2427,8 @@
       - condition: trigger
         id:
         - 'On'
+        - On 1
+        - On last
       - condition: numeric_state
         entity_id: sensor.esp32_c3_mini_pool_temperature_pool_temperature
         below: input_number.pool_heating_stop
@@ -2451,21 +2444,27 @@
           entity_id: sensor.gw1100a_solar_radiation
           above: 300
     then:
-    - action: switch.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.pool_ventil_solar
-    - wait_for_trigger:
-      - trigger: state
-        entity_id:
-        - switch.smart_valve_controller_schalter_1
-        from: unavailable
-      timeout:
-        hours: 0
-        minutes: 1
-        seconds: 0
-        milliseconds: 0
+    - if:
+      - condition: trigger
+        id:
+        - On 1
+      then:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.pool_ventil_solar
+      - wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - switch.smart_valve_controller_schalter_1
+          from: unavailable
+        timeout:
+          hours: 0
+          minutes: 1
+          seconds: 0
+          milliseconds: 0
+      alias: If First Trigger of the day, then turn on switch
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -2478,6 +2477,8 @@
       - condition: trigger
         id:
         - 'On'
+        - On 1
+        - On last
       - condition: or
         conditions:
         - condition: numeric_state
@@ -2500,16 +2501,22 @@
       data: {}
       target:
         entity_id: switch.smart_valve_controller_schalter_1
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-    - action: switch.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.pool_ventil_solar
+    - if:
+      - condition: trigger
+        id:
+        - On last
+      then:
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.pool_ventil_solar
+      alias: Turn plug off if last trigger
   - alias: Disable Solar Heating if to hot
     if:
     - condition: and
