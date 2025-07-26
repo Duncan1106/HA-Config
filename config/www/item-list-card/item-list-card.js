@@ -68,7 +68,18 @@ class ItemListCard extends LitElement {
       white-space: normal;
       overflow: visible;
       text-overflow: unset;
+      user-select: text;
+      -webkit-user-select: text; /* Safari */
+      -moz-user-select: text; /* Firefox */
+      -ms-user-select: text; /* IE10+ */
     }
+
+    .info {
+      font-size: 13px;
+      color: var(--secondary-text-color, #999);
+      margin-bottom: 8px;
+    }
+
 
     .item-controls {
       flex: 0 0 30%;
@@ -102,6 +113,10 @@ class ItemListCard extends LitElement {
       font-size: 14px;
       color: var(--primary-text-color, #333);
     }
+    
+    .hidden {
+      display: none !important;
+    }
 
     .empty-state {
       padding: 8px 0;
@@ -111,8 +126,8 @@ class ItemListCard extends LitElement {
   `;
 
   setConfig(config) {
-    if (!config?.entity || !config?.target_entity || !config?.shopping_list_entity || !config?.filter_entity) {
-      throw new Error("You must define 'entity', 'target_entity', 'shopping_list_entity' AND 'filter_entity' in the card config");
+    if (!config?.entity || !config?.shopping_list_entity || !config?.filter_entity) {
+      throw new Error("You must define 'entity', 'shopping_list_entity', AND 'filter_entity' in the card config");
     }
     this.config = config;
   }
@@ -123,18 +138,16 @@ class ItemListCard extends LitElement {
       if (!oldHass) return true;
 
       const sensorEntity = this.hass.states[this.config.entity];
-      const todoEntity = this.hass.states[this.config.target_entity];
       const filterEntity = this.hass.states[this.config.filter_entity];
 
       const oldSensor = oldHass.states?.[this.config.entity];
-      const oldTodo = oldHass.states?.[this.config.target_entity];
       const oldFilter = oldHass.states?.[this.config.filter_entity];
 
       const sensorChanged = JSON.stringify(sensorEntity?.attributes?.filtered_items) !== JSON.stringify(oldSensor?.attributes?.filtered_items);
-      const todoChanged = JSON.stringify(todoEntity) !== JSON.stringify(oldTodo);
+      const mapChanged = JSON.stringify(sensorEntity?.attributes?.source_map) !== JSON.stringify(oldSensor?.attributes?.source_map);
       const filterChanged = filterEntity?.state !== oldFilter?.state;
 
-      return sensorChanged || todoChanged || filterChanged;
+      return sensorChanged || mapChanged || filterChanged;
     }
     return false;
   }
@@ -146,6 +159,11 @@ class ItemListCard extends LitElement {
 
     const entity = this.hass.states[this.config.entity];
     const filterValue = this.hass.states[this.config.filter_entity]?.state || '';
+
+    // max items to show when no filter is applied, default 20
+    const maxItemsWithoutFilter = this.config.max_items_without_filter ?? 20;
+    
+    const showAddButton = filterValue.length > 3;
 
     let items = [];
     try {
@@ -159,9 +177,29 @@ class ItemListCard extends LitElement {
       return html`<ha-card><div class="empty-state">Error parsing items</div></ha-card>`;
     }
 
+    let sourceMap = {};
+    try {
+      const mapAttr = entity.attributes.source_map;
+      if (typeof mapAttr === 'string') {
+        sourceMap = JSON.parse(mapAttr);
+      } else if (typeof mapAttr === 'object') {
+        sourceMap = mapAttr;
+      }
+    } catch (e) {
+      console.error('Error parsing source_map attribute:', e);
+    }
+
+    const totalItemsCount = items.length;
+    let displayedItems = items;
+
+    // If no filter text, limit items to maxItemsWithoutFilter
+    if (!filterValue.trim()) {
+      displayedItems = items.slice(0, maxItemsWithoutFilter);
+    }
+
     return html`
       <ha-card>
-        <h3>${this.config.title || 'Todo List'}</h3>
+        <h3 style="text-align: center;">${this.config.title || 'ToDo List'}</h3>
         <div class="input-row">
           <input
             type="text"
@@ -170,18 +208,23 @@ class ItemListCard extends LitElement {
             @input=${(e) => this._updateFilterText(e.target.value)}
           />
           <button
-            class="btn"
-            title="Zur Einkaufsliste hinzufügen"
+            class="btn ${filterValue.length <= 3 ? 'hidden' : ''}"
             @click=${this._addFilterTextToShoppingList}
           >
-            <ha-icon icon="mdi:cart-outline"></ha-icon>
+            <ha-icon icon="mdi:cart-plus"></ha-icon>
+            Hinzufügen
           </button>
         </div>
-        ${items.length === 0
+
+        ${!filterValue.trim() && totalItemsCount > maxItemsWithoutFilter
+          ? html`<div class="info">Showing ${displayedItems.length} of ${totalItemsCount} items. Use filter to see more.</div>`
+          : ''}
+
+        ${displayedItems.length === 0
           ? html`<div class="empty-state">No items found</div>`
           : html`
               <div>
-                ${items.map(
+                ${displayedItems.map(
                   (item) => html`
                     <div class="item-row">
                       <div class="item-summary" title="${item.summary}">
@@ -200,7 +243,7 @@ class ItemListCard extends LitElement {
                                         this._updateOrCompleteItem(item.uid, {
                                           description:
                                             parseInt(item.description, 10) - 1,
-                                        })}
+                                        }, item.source, sourceMap)}
                                     >
                                       <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
                                     </button>
@@ -215,7 +258,7 @@ class ItemListCard extends LitElement {
                                   this._updateOrCompleteItem(item.uid, {
                                     description:
                                       parseInt(item.description, 10) + 1,
-                                  })}
+                                  }, item.source, sourceMap)}
                               >
                                 <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
                               </button>
@@ -227,7 +270,7 @@ class ItemListCard extends LitElement {
                           class="btn"
                           title="Zur Einkaufsliste"
                           aria-label="Zur Einkaufsliste"
-                          @click=${() => this._addToShoppingList(item)}
+                          @click=${() => this._addToShoppingList(item, sourceMap)}
                         >
                           <ha-icon icon="mdi:cart-outline"></ha-icon>
                         </button>
@@ -235,19 +278,20 @@ class ItemListCard extends LitElement {
                           class="btn"
                           title="Complete"
                           aria-label="Complete"
-                          @click=${() => this._confirmAndComplete(item)}
+                          @click=${() => this._confirmAndComplete(item, sourceMap)}
                         >
                           <ha-icon icon="mdi:check"></ha-icon>
                         </button>
                       </div>
                     </div>
-                  `,
+                  `
                 )}
               </div>
             `}
       </ha-card>
     `;
   }
+
 
   _isNumeric(str) {
     return /^\d+$/.test(str);
@@ -273,31 +317,16 @@ class ItemListCard extends LitElement {
     }
   }
 
-  _confirmAndComplete(item) {
-    if (confirm(`Möchtest du "${item.summary}" wirklich als erledigt markieren?`)) {
-      this._updateOrCompleteItem(item.uid, { status: 'completed' });
+  _updateOrCompleteItem(uid, updates, source, sourceMap) {
+    const entityId = sourceMap?.[source?.toString()] || this.config.shopping_list_entity;
 
-      const isZero = this._isNumeric(item.description) && parseInt(item.description, 10) === 0;
-      if (isZero) this._addToShoppingList(item);
+    if (!entityId) {
+      console.error('No valid todo entity id for source:', source);
+      return;
     }
-  }
 
-  _addToShoppingList(item) {
-    if (confirm(`Möchtest du "${item.summary}" zur Einkaufsliste hinzufügen?`)) {
-      const target = this.config.shopping_list_entity;
-      this.hass.callService('todo', 'add_item', {
-        entity_id: target,
-        item: item.summary,
-        description: item.description?.toString() ?? '',
-      })
-      .then(() => console.log(`Added "${item.summary}" to shopping list via todo.add_item`))
-      .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
-    }
-  }
-
-  _updateOrCompleteItem(uid, updates) {
     const data = {
-      entity_id: this.config.target_entity,
+      entity_id: entityId,
       item: uid,
       ...updates,
     };
@@ -313,6 +342,33 @@ class ItemListCard extends LitElement {
     this.hass.callService('todo', 'update_item', data)
       .catch(err => console.error("Error calling todo/update_item:", err));
   }
+
+  _confirmAndComplete(item, sourceMap) {
+    if (confirm(`Möchtest du "${item.summary}" wirklich als erledigt markieren?`)) {
+      this._updateOrCompleteItem(item.uid, { status: 'completed' }, item.source, sourceMap);
+
+      const isZero = this._isNumeric(item.description) && parseInt(item.description, 10) === 0;
+      if (isZero) this._addToShoppingList(item, sourceMap);
+    }
+  }
+
+  _addToShoppingList(item) {
+      const entityId = this.config.shopping_list_entity;
+      if (!entityId) {
+        console.error('No valid shopping list entity id configured');
+        return;
+      }
+    
+      if (confirm(`Möchtest du "${item.summary}" zur Einkaufsliste hinzufügen?`)) {
+        this.hass.callService('todo', 'add_item', {
+          entity_id: entityId,
+          item: item.summary,
+          description: item.description?.toString() ?? '',
+        })
+        .then(() => console.log('Added to shopping list:', item.summary, 'entity:', entityId))
+        .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
+      }
+    }
 }
 
 customElements.define('item-list-card', ItemListCard);
