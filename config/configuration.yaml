@@ -108,6 +108,7 @@ recorder:
       - sensor.repairs_gesamt
       - sensor.icloud3_event_log
       - sensor.icloud3_wazehist_track
+      - sensor.kellervorrate_combined_filtered_items
     entity_globs:
       - sensor.dreamebot_d10_plus_*
       - sensor.d9_max_white_*
@@ -335,139 +336,92 @@ template:
             {{ out.times }}
 
   - trigger:
-      # Trigger when the search input changes
       - platform: state
         entity_id: input_text.search_todo_list
       - platform: time_pattern
         seconds: "/1"
-    action:
-      # Call the service that provides your 'action_response' data structure.
-      # As you confirmed, this is todo.get_items
-      - action: todo.get_items
-        target:
-          entity_id: todo.kellervorrate
-        data:
-          status: needs_action
-        response_variable: todo_items
-    sensor:
-      - name: "Kellervorrate Filtered Items"
-        unique_id: kellervorrate_filtered_items_sensor # Ensure unique ID
-        state: >
-          {% set search_item = states('input_text.search_todo_list') | lower %}
-          {% set all_items = todo_items['todo.kellervorrate']['items'] | default([]) %}
-        
-          {% set matching_summaries = all_items
-            | selectattr('summary', 'defined')
-            | selectattr('summary', 'string')
-            | map(attribute='summary')
-            | map('lower')
-            | select('search', search_item if search_item else '')
-            | list %}
-         
-          {{ matching_summaries | count }}
-
-        attributes:
-          filtered_items: >
-                {% set search_item = states('input_text.search_todo_list') | lower %}
-                {% set all_items = todo_items['todo.kellervorrate']['items'] | default([]) %}
-            
-                [
-                  {% for item in all_items %}
-                    {% if item.summary is defined and search_item in item.summary | string | lower %}
-                      {{ item }},
-                    {% endif %}
-                  {% endfor %}
-                ]
-
-  - trigger:
-      # Trigger when the search input changes
       - platform: state
-        entity_id: input_text.search_kellervorrate_safe
-      - platform: time_pattern
-        seconds: "/1"
+        entity_id:
+          - todo.kellervorrate
+          - todo.kellervorrate_katzenfutter
+          - todo.kellervorrate_safe
+          - todo.kellervorrate_marmelade_selbstgemachtes
     action:
-      # Call the service that provides your 'action_response' data structure.
-      # As you confirmed, this is todo.get_items
       - action: todo.get_items
-        target:
-          entity_id: todo.kellervorrate_safe
         data:
           status: needs_action
-        response_variable: todo_items
-    sensor:
-      - name: "Kellervorrate Safe Filtered Items"
-        unique_id: kellervorrate_safe_filtered_items_sensor # Ensure unique ID
-        state: >
-          {% set search_item = states('input_text.search_kellervorrate_safe') | lower %}
-          {% set all_items = todo_items['todo.kellervorrate_safe']['items'] | default([]) %}
-        
-          {% set matching_summaries = all_items
-            | selectattr('summary', 'defined')
-            | selectattr('summary', 'string')
-            | map(attribute='summary')
-            | map('lower')
-            | select('search', search_item if search_item else '')
-            | list %}
-         
-          {{ matching_summaries | count }}
-
-        attributes:
-          filtered_items: >
-                {% set search_item = states('input_text.search_kellervorrate_safe') | lower %}
-                {% set all_items = todo_items['todo.kellervorrate_safe']['items'] | default([]) %}
-            
-                [
-                  {% for item in all_items %}
-                    {% if item.summary is defined and search_item in item.summary | string | lower %}
-                      {{ item }},
-                    {% endif %}
-                  {% endfor %}
-                ]
-
-  - trigger:
-      # Trigger when the search input changes
-      - platform: state
-        entity_id: input_text.search_kellervorrate_katzenfutter
-      - platform: time_pattern
-        seconds: "/1"
-    action:
-      # Call the service that provides your 'action_response' data structure.
-      # As you confirmed, this is todo.get_items
-      - action: todo.get_items
         target:
-          entity_id: todo.kellervorrate_katzenfutter
-        data:
-          status: needs_action
-        response_variable: todo_items
+          entity_id:
+            - todo.kellervorrate
+            - todo.kellervorrate_safe
+            - todo.kellervorrate_katzenfutter
+            - todo.kellervorrate_marmelade_selbstgemachtes
+        response_variable: all_todo_items
     sensor:
-      - name: "Kellervorrate Katzenfutter Filtered Items"
-        unique_id: kellervorrate_katzenfutter_filtered_items # Ensure unique ID
+      - name: "Kellervorrate Combined Filtered Items"
+        unique_id: kellervorrate_combined_filtered_items
         state: >
-          {% set search_item = states('input_text.search_kellervorrate_katzenfutter') | lower %}
-          {% set all_items = todo_items['todo.kellervorrate_katzenfutter']['items'] | default([]) %}
-        
-          {% set matching_summaries = all_items
-            | selectattr('summary', 'defined')
-            | selectattr('summary', 'string')
-            | map(attribute='summary')
-            | map('lower')
-            | select('search', search_item if search_item else '')
-            | list %}
-         
-          {{ matching_summaries | count }}
-
+          {% set search = states('input_text.search_todo_list') | lower %}
+          {% set lists = [
+            'todo.kellervorrate',
+            'todo.kellervorrate_safe',
+            'todo.kellervorrate_katzenfutter',
+            'todo.kellervorrate_marmelade_selbstgemachtes'
+          ] %}
+          {% set count = namespace(total=0) %}
+    
+          {% for list_id in lists %}
+            {% set items = all_todo_items[list_id]['items'] | default([]) %}
+            {% for item in items %}
+              {% if item.summary is defined and (search in item.summary | string | lower) %}
+                {% set count.total = count.total + 1 %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+    
+          {{ count.total }}
         attributes:
+          source_map: >
+            {
+              "1": "todo.kellervorrate",
+              "2": "todo.kellervorrate_safe",
+              "3": "todo.kellervorrate_katzenfutter",
+              "4": "todo.kellervorrate_marmelade_selbstgemachtes"
+            }
           filtered_items: >
-                {% set search_item = states('input_text.search_kellervorrate_katzenfutter') | lower %}
-                {% set all_items = todo_items['todo.kellervorrate_katzenfutter']['items'] | default([]) %}
+            {% set search = states('input_text.search_todo_list') | default('') | lower %}
+            {% set lists = [
+              'todo.kellervorrate',
+              'todo.kellervorrate_safe',
+              'todo.kellervorrate_katzenfutter',
+              'todo.kellervorrate_marmelade_selbstgemachtes'
+            ] %}
+            {% set source_map = {
+              'todo.kellervorrate': 1,
+              'todo.kellervorrate_safe': 2,
+              'todo.kellervorrate_katzenfutter': 3,
+              'todo.kellervorrate_marmelade_selbstgemachtes': 4
+            } %}
+            {% set combined = namespace(items=[]) %}
             
-                [
-                  {% for item in all_items %}
-                    {% if item.summary is defined and search_item in item.summary | string | lower %}
-                      {{ item }},
-                    {% endif %}
-                  {% endfor %}
-                ]
+            {% for list_id in lists %}
+              {% set items = all_todo_items[list_id]['items'] | default([]) %}
+              {% for item in items %}
+                {% if item.summary is defined and item.summary is string %}
+                  {% if search == '' or (search in (item.summary | lower)) %}
+                    {% set minimal_item = {
+                      'u': item.uid,
+                      's': item.summary,
+                      'd': item.description,
+                      'c': source_map[list_id]
+                    } %}
+                    {% set combined.items = combined.items + [minimal_item] %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            
+            {{ combined.items }}
 
   - triggers:
       - platform: time_pattern
