@@ -742,6 +742,23 @@ template:
           {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
           {{ home if home > known_power else known_power }}
 
+      - name: "Home Consumption Total Day"
+        unique_id: home_consumption_total_day
+        unit_of_measurement: "kWh"
+        state_class: total
+        device_class: energy
+        state: |
+            {% set pv = states('sensor.daily_solar_production') | float(0) %}
+            {% set bkw = states('sensor.bkw_outlet_1_energy_today') | float(0) %}
+            {% set bat_charge = states('sensor.inverter_today_battery_charge') | float(0) %}
+            {% set bat_discharge = states('sensor.daily_battery_discharged_energy') | float(0) %}
+            {% set grid_import = states('sensor.daily_netzbezug') | float(0) %}
+            {% set grid_export = states('sensor.daily_netzeinspeisung') | float(0) %}
+            {% set loss_deye= states('sensor.inverter_today_energy_losses') | float(0) %}
+            {% set losses = loss_deye %} 
+            {{ ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) }}
+
+
 cover:
   - platform: template
     covers:
