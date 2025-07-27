@@ -1,5 +1,15 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@2.8.0/index.js?module';
 
+// Simple debounce utility function
+const debounce = (func, delay) => {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
+};
+
 class ItemListCard extends LitElement {
   static properties = {
     hass: {},
@@ -7,6 +17,7 @@ class ItemListCard extends LitElement {
   };
 
   static styles = css`
+    /* CSS unchanged */
     :host {
       display: block;
       font-family: var(--primary-font-family, sans-serif);
@@ -126,9 +137,16 @@ class ItemListCard extends LitElement {
     }
   `;
 
+  constructor() {
+    super();
+    // Create a debounced version of _updateFilterText
+    // The bind(this) ensures 'this' context is correct inside the debounced function
+    this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 200);
+  }
+
   setConfig(config) {
-    if (!config?.entity || !config?.shopping_list_entity || !config?.filter_entity) {
-      throw new Error("You must define 'entity', 'shopping_list_entity', AND 'filter_entity' in the card config");
+    if (!config?.filter_items_entity || !config?.shopping_list_entity || !config?.filter_entity) {
+      throw new Error("You must define 'filter_items_entity', 'shopping_list_entity', AND 'filter_entity' in the card config");
     }
     this.config = config;
   }
@@ -138,171 +156,36 @@ class ItemListCard extends LitElement {
       const oldHass = changedProps.get('hass');
       if (!oldHass) return true;
 
-      const sensorEntity = this.hass.states[this.config.entity];
+      const filterItemsEntity = this.hass.states[this.config.filter_items_entity];
       const filterEntity = this.hass.states[this.config.filter_entity];
 
-      const oldSensor = oldHass.states?.[this.config.entity];
-      const oldFilter = oldHass.states?.[this.config.filter_entity];
+      const oldFilterItemsEntity = oldHass.states?.[this.config.filter_items_entity];
+      const oldFilterEntity = oldHass.states?.[this.config.filter_entity];
 
-      const sensorChanged = JSON.stringify(sensorEntity?.attributes?.filtered_items) !== JSON.stringify(oldSensor?.attributes?.filtered_items);
-      const mapChanged = JSON.stringify(sensorEntity?.attributes?.source_map) !== JSON.stringify(oldSensor?.attributes?.source_map);
-      const filterChanged = filterEntity?.state !== oldFilter?.state;
+      const sensorChanged = JSON.stringify(filterItemsEntity?.attributes?.filtered_items) !== JSON.stringify(oldFilterItemsEntity?.attributes?.filtered_items);
+      const mapChanged = JSON.stringify(filterItemsEntity?.attributes?.source_map) !== JSON.stringify(oldFilterItemsEntity?.attributes?.source_map);
+      const filterChanged = filterEntity?.state !== oldFilterEntity?.state;
 
       return sensorChanged || mapChanged || filterChanged;
     }
     return false;
   }
 
-  render() {
-    if (!this.hass || !this.hass.states[this.config.entity]) {
-      return html`<ha-card><div class="empty-state">Entity not found</div></ha-card>`;
-    }
-
-    const entity = this.hass.states[this.config.entity];
-    const filterValue = this.hass.states[this.config.filter_entity]?.state || '';
-
-    // max items to show when no filter is applied, default 20
-    const maxItemsWithoutFilter = this.config.max_items_without_filter ?? 20;
-    
-    const showAddButton = filterValue.length > 3;
-
-    let items = [];
-    try {
-      const attr = entity.attributes.filtered_items;
-      if (Array.isArray(attr)) {
-        items = attr;
-      } else if (typeof attr === 'string') {
-        items = JSON.parse(attr);
-      }
-    } catch (e) {
-      return html`<ha-card><div class="empty-state">Error parsing items</div></ha-card>`;
-    }
-
-    let sourceMap = {};
-    try {
-      const mapAttr = entity.attributes.source_map;
-      if (typeof mapAttr === 'string') {
-        sourceMap = JSON.parse(mapAttr);
-      } else if (typeof mapAttr === 'object') {
-        sourceMap = mapAttr;
-      }
-    } catch (e) {
-      console.error('Error parsing source_map attribute:', e);
-    }
-
-    const totalItemsCount = this.hass.states[this.config.entity]?.state;
-    let displayedItems = items;
-
-    // If no filter text, limit items to maxItemsWithoutFilter
-    if (!filterValue.trim()) {
-      displayedItems = items.slice(0, maxItemsWithoutFilter);
-    }
-
-    return html`
-      <ha-card>
-        <h3 style="text-align: center; font-size: 1.5em;">${this.config.title || 'ToDo List'}</h3>
-        <div class="input-row">
-          <input
-            type="text"
-            .value=${filterValue}
-            placeholder="Tippe einen Suchfilter ein"
-            @input=${(e) => this._updateFilterText(e.target.value)}
-          />
-          <button
-            class="btn ${filterValue.length <= 3 ? 'hidden' : ''}"
-            @click=${this._addFilterTextToShoppingList}
-            title="Zur Einkaufsliste hinzufügen"
-          >
-            <ha-icon icon="mdi:cart-plus"></ha-icon>
-          </button>
-        </div>
-
-        ${!filterValue.trim() && totalItemsCount > maxItemsWithoutFilter
-          ? html`<div class="info">Showing ${displayedItems.length} of ${totalItemsCount} items. Use filter to see more.</div>`
-          : ''}
-
-        ${displayedItems.length === 0
-          ? html`<div class="empty-state">No items found</div>`
-          : html`
-              <div>
-                ${displayedItems.map(
-                  (item) => html`
-                    <div class="item-row">
-                      <div class="item-summary" title="${item.s}">
-                        ${item.s}
-                      </div>
-                      <div class="item-controls">
-                        ${this._isNumeric(item.d)
-                          ? html`
-                              ${parseInt(item.d, 10) > 1
-                                ? html`
-                                    <button
-                                      class="btn"
-                                      title="Decrease"
-                                      aria-label="Decrease"
-                                      @click=${() =>
-                                        this._updateOrCompleteItem(item.u, {
-                                          description:
-                                            parseInt(item.d, 10) - 1,
-                                        }, item.c, sourceMap)}
-                                    >
-                                      <ha-icon icon="mdi:minus-circle-outline"></ha-icon>
-                                    </button>
-                                  `
-                                : ''}
-                              <div class="quantity">${item.d}</div>
-                              <button
-                                class="btn"
-                                title="Increase"
-                                aria-label="Increase"
-                                @click=${() =>
-                                  this._updateOrCompleteItem(item.u, {
-                                    description:
-                                      parseInt(item.d, 10) + 1,
-                                  }, item.c, sourceMap)}
-                              >
-                                <ha-icon icon="mdi:plus-circle-outline"></ha-icon>
-                              </button>
-                            `
-                          : html`
-                              <div class="quantity">${item.d}</div>
-                            `}
-                        <button
-                          class="btn"
-                          title="Zur Einkaufsliste"
-                          aria-label="Zur Einkaufsliste"
-                          @click=${() => this._addToShoppingList(item, sourceMap)}
-                        >
-                          <ha-icon icon="mdi:cart-outline"></ha-icon>
-                        </button>
-                        <button
-                          class="btn"
-                          title="Complete"
-                          aria-label="Complete"
-                          @click=${() => this._confirmAndComplete(item, sourceMap)}
-                        >
-                          <ha-icon icon="mdi:check"></ha-icon>
-                        </button>
-                      </div>
-                    </div>
-                  `
-                )}
-              </div>
-            `}
-      </ha-card>
-    `;
-  }
-
-
   _isNumeric(str) {
     return /^\d+$/.test(str);
   }
 
-  _updateFilterText(value) {
+  // This is the actual function that calls the Home Assistant service
+  _updateFilterTextActual(value) {
     this.hass.callService('input_text', 'set_value', {
       entity_id: this.config.filter_entity,
       value,
     }).catch(err => console.error("Error updating filter text:", err));
+  }
+
+  // This method will be called on every input event, but it calls the debounced version
+  _handleFilterInputChange(e) {
+    this._debouncedUpdateFilterText(e.target.value);
   }
 
   _addFilterTextToShoppingList = () => {
@@ -319,8 +202,7 @@ class ItemListCard extends LitElement {
   }
 
   _updateOrCompleteItem(uid, updates, source, sourceMap) {
-    const entityId = sourceMap?.[source?.toString()] || this.config.shopping_list_entity;
-
+    const entityId = sourceMap?.[source?.toString()];
     if (!entityId) {
       console.error('No valid todo entity id for source:', source);
       return;
@@ -338,38 +220,124 @@ class ItemListCard extends LitElement {
       data.description = desc.toString();
     }
 
-    console.log("Calling todo/update_item with:", data);
-
     this.hass.callService('todo', 'update_item', data)
       .catch(err => console.error("Error calling todo/update_item:", err));
   }
 
   _confirmAndComplete(item, sourceMap) {
     if (confirm(`Möchtest du "${item.s}" wirklich als erledigt markieren?`)) {
-      this._updateOrCompleteItem(item.u, { status: 'completed' }, item.source, sourceMap);
+      this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
 
       const isZero = this._isNumeric(item.d) && parseInt(item.d, 10) === 0;
-      if (isZero) this._addToShoppingList(item, sourceMap);
+      if (isZero) this._addToShoppingList(item);
     }
   }
 
   _addToShoppingList(item) {
-      const entityId = this.config.shopping_list_entity;
-      if (!entityId) {
-        console.error('No valid shopping list entity id configured');
-        return;
-      }
-    
-      if (confirm(`Möchtest du "${item.s}" zur Einkaufsliste hinzufügen?`)) {
-        this.hass.callService('todo', 'add_item', {
-          entity_id: entityId,
-          item: item.s,
-          description: item.d?.toString() ?? '',
-        })
-        .then(() => console.log('Added to shopping list:', item.s, 'entity:', entityId))
-        .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
-      }
+    const entityId = this.config.shopping_list_entity;
+    if (!entityId) {
+      console.error('No valid shopping list entity id configured');
+      return;
     }
+
+    if (confirm(`Möchtest du "${item.s}" zur Einkaufsliste hinzufügen?`)) {
+      this.hass.callService('todo', 'add_item', {
+        entity_id: entityId,
+        item: item.s,
+        description: item.d?.toString() ?? '',
+      }).catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
+    }
+  }
+
+  _renderQuantityControls(item, sourceMap) {
+    const quantity = parseInt(item.d, 10);
+    if (!this._isNumeric(item.d)) {
+      return html`<div class="quantity">${item.d}</div>`;
+    }
+    return html`
+      ${quantity > 1
+        ? html`<button class="btn" title="Decrease" @click=${() => this._updateOrCompleteItem(item.u, { description: quantity - 1 }, item.c, sourceMap)}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
+        : ''}
+      <div class="quantity">${item.d}</div>
+      <button class="btn" title="Increase" @click=${() => this._updateOrCompleteItem(item.u, { description: quantity + 1 }, item.c, sourceMap)}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
+    `;
+  }
+
+  _renderItemRow(item, sourceMap) {
+    return html`
+      <div class="item-row">
+        <div class="item-summary" title="${item.s}">${item.s}</div>
+        <div class="item-controls">
+          ${this._renderQuantityControls(item, sourceMap)}
+          <button class="btn" title="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item, sourceMap)}><ha-icon icon="mdi:cart-outline"></ha-icon></button>
+          <button class="btn" title="Complete" @click=${() => this._confirmAndComplete(item, sourceMap)}><ha-icon icon="mdi:check"></ha-icon></button>
+        </div>
+      </div>
+    `;
+  }
+
+  render() {
+    if (!this.hass) {
+      return html`<ha-card><div class="empty-state">Home Assistant context not available</div></ha-card>`;
+    }
+
+    if (!this.hass.states[this.config.filter_items_entity]) {
+      return html`<ha-card><div class="empty-state">Entity '${this.config.filter_items_entity}' not found</div></ha-card>`;
+    }
+
+    const filterItemsEntity = this.hass.states[this.config.filter_items_entity];
+    const filterValue = this.hass.states[this.config.filter_entity]?.state || '';
+    const maxItemsWithoutFilter = this.config.max_items_without_filter ?? 20;
+    const showAddButton = filterValue.length > 3;
+
+    let items = [];
+    try {
+      const attr = filterItemsEntity.attributes.filtered_items;
+      items = typeof attr === 'string' ? JSON.parse(attr) : Array.isArray(attr) ? attr : [];
+    } catch {
+      return html`<ha-card><div class="empty-state">Fehler beim Laden der Einträge</div></ha-card>`;
+    }
+
+    let sourceMap = {};
+    try {
+      const mapAttr = filterItemsEntity.attributes.source_map;
+      sourceMap = typeof mapAttr === 'string' ? JSON.parse(mapAttr) : typeof mapAttr === 'object' ? mapAttr : {};
+    } catch (e) {
+      console.error('Error parsing source_map attribute:', e);
+    }
+
+    const totalItemsCount = parseInt(filterItemsEntity?.state, 10) || 0;
+    const displayedItems = !filterValue.trim() ? items.slice(0, maxItemsWithoutFilter) : items;
+
+    return html`
+      <ha-card>
+        <h3>${this.config.title || 'ToDo List'}</h3>
+        <div class="input-row">
+          <input
+            type="text"
+            .value=${filterValue}
+            placeholder="Tippe einen Suchfilter ein"
+            @input=${this._handleFilterInputChange}
+          />
+          <button
+            class="btn ${!showAddButton ? 'hidden' : ''}"
+            @click=${this._addFilterTextToShoppingList}
+            title="Zur Einkaufsliste hinzufügen"
+          >
+            <ha-icon icon="mdi:cart-plus"></ha-icon>
+          </button>
+        </div>
+
+        ${!filterValue.trim() && totalItemsCount > maxItemsWithoutFilter
+          ? html`<div class="info">Showing ${displayedItems.length} of ${totalItemsCount} items. Use filter to see more.</div>`
+          : ''}
+
+        ${displayedItems.length === 0
+          ? html`<div class="empty-state">Keine Ergebnisse gefunden</div>`
+          : html`${displayedItems.map((item) => this._renderItemRow(item, sourceMap))}`}
+      </ha-card>
+    `;
+  }
 }
 
 customElements.define('item-list-card', ItemListCard);
