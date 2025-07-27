@@ -227,9 +227,6 @@ class ItemListCard extends LitElement {
   _confirmAndComplete(item, sourceMap) {
     if (confirm(`Möchtest du "${item.s}" wirklich als erledigt markieren?`)) {
       this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
-
-      const isZero = this._isNumeric(item.d) && parseInt(item.d, 10) === 0;
-      if (isZero) this._addToShoppingList(item);
     }
   }
 
