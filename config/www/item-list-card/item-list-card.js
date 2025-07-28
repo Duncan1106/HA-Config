@@ -17,7 +17,6 @@ class ItemListCard extends LitElement {
   };
 
   static styles = css`
-    /* CSS unchanged */
     :host {
       display: block;
       font-family: var(--primary-font-family, sans-serif);
@@ -32,6 +31,13 @@ class ItemListCard extends LitElement {
       font-size: 16px;
       font-weight: 600;
       color: var(--primary-text-color, #333);
+    }
+    
+    .card-title {
+      text-align: center;
+      font-size: 1.3em;
+      font-weight: bold;
+      color: var(--primary-text-color);
     }
 
     .input-row {
@@ -135,12 +141,16 @@ class ItemListCard extends LitElement {
       font-size: 14px;
       color: var(--secondary-text-color, #999);
     }
+
+    .item-sublabel {
+      font-size: 12px;
+      color: var(--secondary-text-color, #aaa);
+      margin-top: 2px;
+    }
   `;
 
   constructor() {
     super();
-    // Create a debounced version of _updateFilterText
-    // The bind(this) ensures 'this' context is correct inside the debounced function
     this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 200);
   }
 
@@ -148,7 +158,10 @@ class ItemListCard extends LitElement {
     if (!config?.filter_items_entity || !config?.shopping_list_entity || !config?.filter_entity) {
       throw new Error("You must define 'filter_items_entity', 'shopping_list_entity', AND 'filter_entity' in the card config");
     }
-    this.config = config;
+    this.config = {
+      ...config,
+      show_origin: config.show_origin ?? false,
+    };
   }
 
   shouldUpdate(changedProps) {
@@ -189,8 +202,22 @@ class ItemListCard extends LitElement {
   }
 
   _addFilterTextToShoppingList = () => {
-    const value = this.hass.states[this.config.filter_entity]?.state || '';
-    if (!value.trim()) return;
+    let raw = this.hass.states[this.config.filter_entity]?.state || '';
+    if (!raw.trim()) return;
+
+    let value = raw.trim();
+
+    // Remove "todo:xyz" part if it's at the beginning
+    if (value.startsWith('todo:')) {
+      const parts = value.split(' ');
+      if (parts.length > 1) {
+        parts.shift(); // remove "todo:xyz"
+        value = parts.join(' ');
+      } else {
+        // Just "todo:xyz" alone is not a valid item to add
+        return;
+      }
+    }
 
     if (confirm(`Möchtest du "${value}" zur Einkaufsliste hinzufügen?`)) {
       this.hass.callService('todo', 'add_item', {
@@ -261,16 +288,25 @@ class ItemListCard extends LitElement {
   }
 
   _renderItemRow(item, sourceMap) {
-    return html`
-      <div class="item-row">
-        <div class="item-summary" title="${item.s}">${item.s}</div>
-        <div class="item-controls">
-          ${this._renderQuantityControls(item, sourceMap)}
-          <button class="btn" title="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item, sourceMap)}><ha-icon icon="mdi:cart-outline"></ha-icon></button>
-          <button class="btn" title="Complete" @click=${() => this._confirmAndComplete(item, sourceMap)}><ha-icon icon="mdi:check"></ha-icon></button>
+      const showOrigin = this.config?.show_origin;
+      const sourceId = sourceMap?.[item.c?.toString()];
+      const friendlyName = showOrigin && sourceId
+        ? this.hass.states[sourceId]?.attributes?.friendly_name
+        : null;
+    
+      return html`
+        <div class="item-row">
+          <div class="item-summary" title="${item.s}">
+            ${item.s}
+            ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
+          </div>
+          <div class="item-controls">
+            ${this._renderQuantityControls(item, sourceMap)}
+            <button class="btn" title="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item, sourceMap)}><ha-icon icon="mdi:cart-outline"></ha-icon></button>
+            <button class="btn" title="Complete" @click=${() => this._confirmAndComplete(item, sourceMap)}><ha-icon icon="mdi:check"></ha-icon></button>
+          </div>
         </div>
-      </div>
-    `;
+      `;
   }
 
   render() {
@@ -308,7 +344,7 @@ class ItemListCard extends LitElement {
 
     return html`
       <ha-card>
-        <h3>${this.config.title || 'ToDo List'}</h3>
+        <h3 class="card-title">${this.config.title || 'ToDo List'}</h3>
         <div class="input-row">
           <input
             type="text"

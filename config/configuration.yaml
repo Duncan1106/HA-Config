@@ -361,25 +361,37 @@ template:
       - name: "Kellervorrate Combined Filtered Items"
         unique_id: kellervorrate_combined_filtered_items
         state: >
-          {% set search = states('input_text.search_todo_list') | lower %}
-          {% set lists = [
-            'todo.kellervorrate',
-            'todo.kellervorrate_safe',
-            'todo.kellervorrate_katzenfutter',
-            'todo.kellervorrate_marmelade_selbstgemachtes'
-          ] %}
-          {% set count = namespace(total=0) %}
-    
-          {% for list_id in lists %}
-            {% set items = all_todo_items[list_id]['items'] | default([]) %}
-            {% for item in items %}
-              {% if item.summary is defined and (search in item.summary | string | lower) %}
-                {% set count.total = count.total + 1 %}
-              {% endif %}
+            {% set input = states('input_text.search_todo_list') | default('') | lower %}
+            {% set has_filter = 'todo:' in input %}
+            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
+            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
+            
+            {% set lists = [
+              'todo.kellervorrate',
+              'todo.kellervorrate_safe',
+              'todo.kellervorrate_katzenfutter',
+              'todo.kellervorrate_marmelade_selbstgemachtes'
+            ] %}
+            
+            {% set filtered_lists = lists
+              | select('search', filter_key)
+              | list if filter_key else lists %}
+            
+            {% if filtered_lists | length == 0 %}
+              {% set filtered_lists = lists %}
+            {% endif %}
+            
+            {% set count = namespace(total=0) %}
+            {% for list_id in filtered_lists %}
+              {% set items = all_todo_items[list_id]['items'] | default([]) %}
+              {% for item in items %}
+                {% if item.summary is defined and (search_term in item.summary | lower) %}
+                  {% set count.total = count.total + 1 %}
+                {% endif %}
+              {% endfor %}
             {% endfor %}
-          {% endfor %}
-    
-          {{ count.total }}
+            
+            {{ count.total }}
         attributes:
           source_map: >
             {
@@ -389,26 +401,40 @@ template:
               "4": "todo.kellervorrate_marmelade_selbstgemachtes"
             }
           filtered_items: >
-            {% set search = states('input_text.search_todo_list') | default('') | lower %}
+            {% set input = states('input_text.search_todo_list') | default('') | lower %}
+            {% set has_filter = 'todo:' in input %}
+            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
+            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
+            
             {% set lists = [
               'todo.kellervorrate',
               'todo.kellervorrate_safe',
               'todo.kellervorrate_katzenfutter',
               'todo.kellervorrate_marmelade_selbstgemachtes'
             ] %}
+            
             {% set source_map = {
               'todo.kellervorrate': 1,
               'todo.kellervorrate_safe': 2,
               'todo.kellervorrate_katzenfutter': 3,
               'todo.kellervorrate_marmelade_selbstgemachtes': 4
             } %}
+            
+            {% set filtered_lists = lists
+              | select('search', filter_key)
+              | list if filter_key else lists %}
+            
+            {% if filtered_lists | length == 0 %}
+              {% set filtered_lists = lists %}
+            {% endif %}
+            
             {% set combined = namespace(items=[]) %}
             
-            {% for list_id in lists %}
+            {% for list_id in filtered_lists %}
               {% set items = all_todo_items[list_id]['items'] | default([]) %}
               {% for item in items %}
                 {% if item.summary is defined and item.summary is string %}
-                  {% if search == '' or (search in (item.summary | lower)) %}
+                  {% if search_term == '' or (search_term in (item.summary | lower)) %}
                     {% set minimal_item = {
                       'u': item.uid,
                       's': item.summary,
@@ -422,6 +448,7 @@ template:
             {% endfor %}
             
             {{ combined.items }}
+
 
   - triggers:
       - platform: time_pattern
