@@ -361,8 +361,10 @@ class ItemListCard extends LitElement {
           </button>
         </div>
 
-        ${!filterValue.trim() && totalItemsCount > maxItemsWithoutFilter
-          ? html`<div class="info">Showing ${displayedItems.length} of ${totalItemsCount} items. Use filter to see more.</div>`
+        ${filterValue.trim()
+          ? html`<div class="info">Filter: "${filterValue.trim()}" → ${displayedItems.length} Ergebnis${displayedItems.length !== 1 ? 'se' : ''}</div>`
+          : totalItemsCount > maxItemsWithoutFilter
+          ? html`<div class="info">${displayedItems.length} von ${totalItemsCount} Einträgen</div>`
           : ''}
 
         ${displayedItems.length === 0

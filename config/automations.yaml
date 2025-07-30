@@ -1480,7 +1480,6 @@
       - update.spook_not_your_homie_update
       - update.tailscale_update
       - update.tapo_cameras_control_update
-      - update.terminal_ssh_update
       - update.tibber_pulse_local_update
       - update.traffmonetizer_update
       - update.trashcard_update
@@ -7445,11 +7444,9 @@
     entity_id: switch.o2_router
     state: 'on'
     alias: Router ist eingeschaltet
-  - condition: template
-    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}
-
-      '
-    alias: Router verbraucht >10W oder Sensor ist offline-safe
+  - alias: Router verbraucht >10W
+    condition: template
+    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}'
   actions:
   - repeat:
       until:
@@ -7600,6 +7597,16 @@
     id: manual_off
     entity_id: input_boolean.rollo_summer_override
     to: 'off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.rollo_summer_should_close
+    attribute: not_raining
+    to: '0'
+    id: rollo_open
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
   conditions:
   - condition: sun
     before: sunset
@@ -7667,6 +7674,12 @@
             tag: rollo_manual
           message: "\U0001F6D1 Rollo: Manueller Modus aktiviert"
           title: Rollo Mode
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: rollo_automatic
     - alias: Manueller Modus deaktiviert
       conditions:
       - condition: trigger
@@ -7678,6 +7691,12 @@
             tag: rollo_automatic
           message: '✅ Rollo: Automatikmodus wieder aktiv'
           title: Rollo Mode
+      - action: notify.duncan
+        metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: rollo_manual
   mode: single
 - id: '1751548094070'
   alias: Poco F7 Request Location with Retry and Final Notification
@@ -7726,7 +7745,11 @@
       - action: notify.mobile_app_poco_f7
         data:
           message: request_location_update
-      - delay: 00:05:00
+      - delay:
+          hours: 0
+          minutes: 2
+          seconds: 0
+          milliseconds: 0
   - if:
     - condition: or
       conditions:
@@ -7852,12 +7875,25 @@
         tag: renault_zoe_kommt_heim
   mode: single
 - id: '1753297720473'
-  alias: Paludarium Pumpe - 15/45 Minuten Intervall
-  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 45 Min. aus
+  alias: Paludarium Pumpe - 15/15 Minuten Intervall
+  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 15 Min. aus
   triggers:
   - trigger: state
     entity_id:
     - switch.desk_paludarium_turm_links_l3
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_turm_links_l3
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
   conditions:
   - condition: state
     entity_id: switch.schreibtisch_links_power_strip_l1
@@ -7869,19 +7905,19 @@
         entity_id: switch.desk_paludarium_turm_links_l3
         state: 'on'
       sequence:
-      - action: number.set_value
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
         target:
-          entity_id: number.desk_paludarium_turm_links_countdown_l3
-        data:
-          value: 900
+          entity_id: switch.desk_paludarium_turm_links_l3
     - conditions:
       - condition: state
         entity_id: switch.desk_paludarium_turm_links_l3
         state: 'off'
       sequence:
-      - action: number.set_value
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
         target:
-          entity_id: number.desk_paludarium_turm_links_countdown_l3
-        data:
-          value: 2700
+          entity_id: switch.desk_paludarium_turm_links_l3
   mode: single
