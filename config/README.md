@@ -122,75 +122,75 @@ Rows | 15.7 Mio Rows
 
 <ul>
   
-  <li> Advanced SSH & Web Terminal (21.0.2) – [Repo](https://github.com/hassio-addons/addon-ssh) </li>
+  <li> Advanced SSH & Web Terminal (21.0.2) – <a href="https://github.com/hassio-addons/addon-ssh">[Repo]</a> </li>
   
-  <li> ankerctl (v1.2.3) – [Repo](https://github.com/sondregronas/ankermgmt-hassio-addons) </li>
+  <li> ankerctl (v1.2.3) – <a href="https://github.com/sondregronas/ankermgmt-hassio-addons">[Repo]</a> </li>
   
-  <li> Anylist (1.7.3) – [Repo](https://github.com/kevdliu/hassio-addon-anylist) </li>
+  <li> Anylist (1.7.3) – <a href="https://github.com/kevdliu/hassio-addon-anylist">[Repo]</a> </li>
   
-  <li> Beszel Agent Branch (0.12.1) – [Repo](https://github.com/Obamium69/hassio-beszel_agent) </li>
+  <li> Beszel Agent Branch (0.12.1) – <a href="https://github.com/Obamium69/hassio-beszel_agent">[Repo]</a> </li>
   
-  <li> Bookstack (3.1.1) – [Repo](https://github.com/hassio-addons/addon-bookstack) </li>
+  <li> Bookstack (3.1.1) – <a href="https://github.com/hassio-addons/addon-bookstack">[Repo]</a> </li>
   
-  <li> chrony (5.2.0) – [Repo](https://github.com/hassio-addons/addon-chrony) </li>
+  <li> chrony (5.2.0) – <a href="https://github.com/hassio-addons/addon-chrony">[Repo]</a> </li>
   
-  <li> DbStats (0.5.12) – [Repo](https://github.com/jehy/hass-addons/blob/master/dbstats/README.MD) </li>
+  <li> DbStats (0.5.12) – <a href="https://github.com/jehy/hass-addons/blob/master/dbstats/README.MD">[Repo]</a> </li>
   
-  <li> EarnApp (lite-1.294.218) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> EarnApp (lite-1.294.218) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> EarnFM (latest) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> EarnFM (latest) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> EMQX (0.7.7) – [Repo](https://github.com/hassio-addons/addon-emqx) </li>
+  <li> EMQX (0.7.7) – <a href="https://github.com/hassio-addons/addon-emqx">[Repo]</a> </li>
   
-  <li> ESPHome Device Builder (2025.7.4) – [Repo](https://github.com/esphome/home-assistant-addon) </li>
+  <li> ESPHome Device Builder (2025.7.4) – <a href="https://github.com/esphome/home-assistant-addon">[Repo]</a> </li>
   
-  <li> Everything Presence Zone Configurator (1.2.1) – [Repo](https://github.com/EverythingSmartHome/everything-presence-addons) </li>
+  <li> Everything Presence Zone Configurator (1.2.1) – <a href="https://github.com/EverythingSmartHome/everything-presence-addons">[Repo]</a> </li>
   
-  <li> File editor (5.8.0) – [Repo](https://github.com/home-assistant/addons/tree/master/configurator) </li>
+  <li> File editor (5.8.0) – <a href="https://github.com/home-assistant/addons/tree/master/configurator">[Repo]</a> </li>
   
-  <li> Frigate (Full Access) (0.15.2) – [Repo](https://github.com/blakeblackshear/frigate) </li>
+  <li> Frigate (Full Access) (0.15.2) – <a href="https://github.com/blakeblackshear/frigate">[Repo]</a> </li>
   
-  <li> Home Assistant Git Exporter (1.17.1) – [Repo](https://github.com/Poeschl-HomeAssistant-Addons/git-exporter) </li>
+  <li> Home Assistant Git Exporter (1.17.1) – <a href="https://github.com/Poeschl-HomeAssistant-Addons/git-exporter">[Repo]</a> </li>
   
-  <li> Home Assistant Google Drive Backup (0.112.1) – [Repo](https://github.com/sabeechen/hassio-google-drive-backup) </li>
+  <li> Home Assistant Google Drive Backup (0.112.1) – <a href="https://github.com/sabeechen/hassio-google-drive-backup">[Repo]</a> </li>
   
-  <li> Honeygain (0.8.1) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> Honeygain (0.8.1) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> Jellyfin NAS (10.10.7-2) – [Repo](https://github.com/alexbelgium/hassio-addons) </li>
+  <li> Jellyfin NAS (10.10.7-2) – <a href="https://github.com/alexbelgium/hassio-addons">[Repo]</a> </li>
   
-  <li> MariaDB (2.7.2) – [Repo](https://github.com/home-assistant/addons/tree/master/mariadb) </li>
+  <li> MariaDB (2.7.2) – <a href="https://github.com/home-assistant/addons/tree/master/mariadb">[Repo]</a> </li>
   
-  <li> MQTT Explorer (browser-1.0.1) – [Repo](https://github.com/GollumDom/addon-repository) </li>
+  <li> MQTT Explorer (browser-1.0.1) – <a href="https://github.com/GollumDom/addon-repository">[Repo]</a> </li>
   
-  <li> Network UPS Tools (0.14.1) – [Repo](https://github.com/hassio-addons/addon-nut) </li>
+  <li> Network UPS Tools (0.14.1) – <a href="https://github.com/hassio-addons/addon-nut">[Repo]</a> </li>
   
-  <li> OneDrive Backup (2.3.8) – [Repo](https://github.com/lavinir/hassio-onedrive-backup) </li>
+  <li> OneDrive Backup (2.3.8) – <a href="https://github.com/lavinir/hassio-onedrive-backup">[Repo]</a> </li>
   
-  <li> PacketStream (latest) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> PacketStream (latest) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> Pawns.app (0.33.2) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> Pawns.app (0.33.2) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> Repocket (1.1.46) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> Repocket (1.1.46) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> SAIC MQTT Gateway (Python) (0.9.8) – [Repo](https://github.com/SAIC-iSmart-API/saic-home-assistant-addon) </li>
+  <li> SAIC MQTT Gateway (Python) (0.9.8) – <a href="https://github.com/SAIC-iSmart-API/saic-home-assistant-addon">[Repo]</a> </li>
   
-  <li> Samba NAS (12.5.0-nas) – [Repo](https://github.com/dianlight/hassio-addons/tree/master/sambanas) </li>
+  <li> Samba NAS (12.5.0-nas) – <a href="https://github.com/dianlight/hassio-addons/tree/master/sambanas">[Repo]</a> </li>
   
-  <li> Scrutiny (Full Access) (v0.8.1-9) – [Repo](https://github.com/alexbelgium/hassio-addons/tree/master/scrutiny_fa) </li>
+  <li> Scrutiny (Full Access) (v0.8.1-9) – <a href="https://github.com/alexbelgium/hassio-addons/tree/master/scrutiny_fa">[Repo]</a> </li>
   
-  <li> Speedtest (1.6.2) – [Repo](https://github.com/MrSuicideParrot/hassio-speedtest-addon) </li>
+  <li> Speedtest (1.6.2) – <a href="https://github.com/MrSuicideParrot/hassio-speedtest-addon">[Repo]</a> </li>
   
-  <li> Studio Code Server (5.19.3) – [Repo](https://github.com/hassio-addons/addon-vscode) </li>
+  <li> Studio Code Server (5.19.3) – <a href="https://github.com/hassio-addons/addon-vscode">[Repo]</a> </li>
   
-  <li> Tailscale (0.25.0) – [Repo](https://github.com/hassio-addons/addon-tailscale) </li>
+  <li> Tailscale (0.25.0) – <a href="https://github.com/hassio-addons/addon-tailscale">[Repo]</a> </li>
   
-  <li> Tor with bridges (5.0.3-2) – [Repo](https://github.com/alexbelgium/hassio-addons/tree/master/tor) </li>
+  <li> Tor with bridges (5.0.3-2) – <a href="https://github.com/alexbelgium/hassio-addons/tree/master/tor">[Repo]</a> </li>
   
-  <li> Traffmonetizer (1.0) – [Repo](https://github.com/bvlinsky/home-assistant-passive-income) </li>
+  <li> Traffmonetizer (1.0) – <a href="https://github.com/bvlinsky/home-assistant-passive-income">[Repo]</a> </li>
   
-  <li> Vaultwarden (Bitwarden) (0.24.2) – [Repo](https://github.com/hassio-addons/addon-bitwarden) </li>
+  <li> Vaultwarden (Bitwarden) (0.24.2) – <a href="https://github.com/hassio-addons/addon-bitwarden">[Repo]</a> </li>
   
-  <li> Zigbee2MQTT (2.5.1-1) – [Repo](https://github.com/zigbee2mqtt/hassio-zigbee2mqtt/tree/master/zigbee2mqtt) </li>
+  <li> Zigbee2MQTT (2.5.1-1) – <a href="https://github.com/zigbee2mqtt/hassio-zigbee2mqtt/tree/master/zigbee2mqtt">[Repo]</a> </li>
 </ul>
 
 </details>
