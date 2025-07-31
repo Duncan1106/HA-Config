@@ -666,7 +666,7 @@
         minutes: 0
         seconds: 0
         days: 0
-      notify_services_string: notify.mobile_app_24069pc21g
+      notify_services_string: notify.mobile_app_poco_f7
       notification_message: Das {{ friendly_name }} ist offen seit {{ as_timestamp(now()
         - timedelta(minutes=120)) | timestamp_custom('%T', True) }}.
       notification_title: '{{ friendly_name }} offen'
@@ -4998,11 +4998,9 @@
     - condition: state
       entity_id: person.stephan
       state: not_home
-    - condition: not
-      conditions:
-      - condition: state
-        entity_id: person.stephan
-        state: home
+    - condition: state
+      entity_id: person.stephan
+      state: home
   actions:
   - choose:
     - conditions:
@@ -5827,7 +5825,8 @@
         target:
           entity_id: input_boolean.etwas_ist_imbriefkasten
       alias: Clear
-  mode: single
+  mode: queued
+  max: 3
 - id: '1739967189542'
   alias: Reminder Waschmaschine und Trockner
   description: ''
@@ -7875,7 +7874,7 @@
         tag: renault_zoe_kommt_heim
   mode: single
 - id: '1753297720473'
-  alias: Paludarium Pumpe - 15/15 Minuten Intervall
+  alias: Paludarium Links Pumpe - 15/15 Minuten Intervall
   description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 15 Min. aus
   triggers:
   - trigger: state
@@ -7939,4 +7938,71 @@
         data: {}
         target:
           entity_id: switch.desk_paludarium_turm_links_l3
+  mode: restart
+- id: '1753959700627'
+  alias: Paludarium Rechts Pump Cycle 15/15min
+  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 15 Min. aus
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_turm_rechts_l1
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_turm_rechts_l1
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+  conditions:
+  - condition: state
+    entity_id: switch.schreibtisch_rechts_power_strip_l5
+    state: 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_rechts_l1
+        state: 'on'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_turm_rechts_l1
+          - switch.desk_paludarium_turm_rechts_l2
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_turm_rechts_l2
+      - delay:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_turm_rechts_l2
+    - conditions:
+      - condition: state
+        entity_id: switch.desk_paludarium_turm_rechts_l1
+        state: 'off'
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.desk_paludarium_turm_rechts_l1
   mode: restart
