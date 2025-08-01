@@ -3359,12 +3359,6 @@
     id: 'On'
     trigger: numeric_state
     enabled: true
-  - entity_id:
-    - sensor.bad_nachtlicht_illuminance
-    id: Off immediately
-    trigger: numeric_state
-    enabled: true
-    above: 25
   - trigger: state
     entity_id:
     - binary_sensor.kinderbad_bewegung
@@ -3391,46 +3385,48 @@
       hours: 0
       minutes: 1
       seconds: 0
-  - trigger: state
-    entity_id:
-    - light.bad_nachtlicht
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    id: Off if to long on
+  - entity_id:
+    - sensor.bad_nachtlicht_illuminance
+    id: Off immediately
+    trigger: numeric_state
+    enabled: true
+    above: 25
   conditions: []
   actions:
   - alias: 'On'
     if:
     - condition: and
       conditions:
-      - condition: trigger
-        id:
-        - 'On'
-      - type: is_illuminance
-        condition: device
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: d693ba4267735db947d0830cad78379e
-        domain: sensor
-        below: 20
-      - condition: state
-        entity_id: binary_sensor.kinderbad_bewegung
-        state: 'on'
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - 'On'
+        - type: is_illuminance
+          condition: device
+          device_id: 2e7223e910889cdb2c4fcb060c712ac5
+          entity_id: d693ba4267735db947d0830cad78379e
+          domain: sensor
+          below: 20
+        - condition: state
+          entity_id: binary_sensor.kinderbad_bewegung
+          state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: light.bad_nachtlicht
+          state: 'off'
+        - condition: template
+          value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')
+            < 4 }}'
     then:
-    - if:
-      - condition: device
-        type: is_off
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-        domain: light
-      then:
-      - type: turn_on
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-        domain: light
-      alias: If off, then on
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 100
+        transition: 1
+      target:
+        entity_id: light.bad_nachtlicht
   - alias: Off after time x
     if:
     - condition: trigger
@@ -3445,9 +3441,11 @@
     - repeat:
         count: 2
         sequence:
-        - action: light.turn_off
+        - action: light.turn_on
           metadata: {}
-          data: {}
+          data:
+            brightness_pct: 1
+            transition: 1
           target:
             entity_id: light.bad_nachtlicht
         - delay:
@@ -3458,32 +3456,23 @@
     enabled: true
   - alias: Off immediately
     if:
-    - condition: or
-      conditions:
-      - condition: trigger
-        id:
-        - Off immediately
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - Off if to long on
-        - condition: state
-          entity_id: binary_sensor.kinderbad_bewegung
-          state: 'off'
+    - condition: trigger
+      id:
+      - Off immediately
     then:
-    - type: turn_off
-      device_id: 2e7223e910889cdb2c4fcb060c712ac5
-      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-      domain: light
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 1
-    - type: turn_off
-      device_id: 2e7223e910889cdb2c4fcb060c712ac5
-      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-      domain: light
+    - repeat:
+        count: 2
+        sequence:
+        - action: light.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id: light.bad_nachtlicht
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 1
+            milliseconds: 0
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch
