@@ -209,7 +209,6 @@
           - switch.desk_paludarium_turm_rechts_l1
           - switch.desk_paludarium_links_l1
           - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_rechts_l3
       - delay:
           hours: 0
           minutes: 0
@@ -246,7 +245,6 @@
           entity_id:
           - switch.desk_paludarium_links_l1
           - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_rechts_l3
           - switch.desk_paludarium_links_l2
           - switch.desk_paludarium_turm_rechts_l1
       - delay:
@@ -287,7 +285,6 @@
         - switch.desk_paludarium_turm_rechts_l1
         - switch.desk_paludarium_links_l1
         - switch.desk_paludarium_turm_rechts_l3
-        - switch.desk_paludarium_rechts_l3
         - switch.desk_paludarium_turm_links_l2
         - switch.desk_paludarium_turm_links_l3
       action: switch.turn_on
@@ -302,7 +299,6 @@
         entity_id:
         - switch.desk_paludarium_links_l1
         - switch.desk_paludarium_turm_rechts_l3
-        - switch.desk_paludarium_rechts_l3
         - switch.desk_paludarium_turm_links_l2
         - switch.desk_paludarium_links_l2
         - switch.desk_paludarium_turm_rechts_l1
@@ -318,7 +314,6 @@
         entity_id:
         - switch.desk_paludarium_links_l1
         - switch.desk_paludarium_turm_rechts_l3
-        - switch.desk_paludarium_rechts_l3
         - switch.desk_paludarium_turm_links_l2
         - switch.desk_paludarium_links_l2
         - switch.desk_paludarium_turm_rechts_l1
@@ -1954,6 +1949,11 @@
         stop_actions: true
       target:
         entity_id: automation.pool_pulsetime_auto_adjust
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
     - alias: 8 hours
       metadata: {}
       data:
@@ -2013,6 +2013,11 @@
         stop_actions: true
       target:
         entity_id: automation.pool_pulsetime_auto_adjust
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
     - alias: 6 hours
       metadata: {}
       data:
@@ -2445,10 +2450,11 @@
           entity_id: sensor.gw1100a_solar_radiation
           above: 300
     then:
-    - if:
-      - condition: trigger
-        id:
-        - On 1
+    - alias: If First Trigger of the day, then turn on switch
+      if:
+      - condition: state
+        entity_id: switch.pool_ventil_solar
+        state: 'off'
       then:
       - action: switch.turn_on
         metadata: {}
@@ -2465,7 +2471,6 @@
           minutes: 1
           seconds: 0
           milliseconds: 0
-      alias: If First Trigger of the day, then turn on switch
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -3989,7 +3994,6 @@
           entity_id:
           - switch.desk_paludarium_links_l1
           - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_rechts_l3
           - switch.desk_paludarium_links_l2
           - switch.desk_paludarium_turm_rechts_l1
           - switch.desk_paludarium_turm_links_l2
@@ -4006,7 +4010,6 @@
           entity_id:
           - switch.desk_paludarium_links_l1
           - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_rechts_l3
           - switch.desk_paludarium_links_l2
           - switch.desk_paludarium_turm_rechts_l1
           - switch.desk_paludarium_turm_links_l2
@@ -4025,7 +4028,6 @@
           entity_id:
           - switch.desk_paludarium_links_l1
           - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_rechts_l3
           - switch.desk_paludarium_links_l2
           - switch.desk_paludarium_turm_rechts_l1
           - switch.desk_paludarium_turm_links_l2
@@ -6440,15 +6442,7 @@
     zone: zone.home
     event: enter
     id: Home
-  conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: person.enya
-      state: not_home
-    - condition: state
-      entity_id: person.enya
-      state: home
+  conditions: []
   actions:
   - choose:
     - conditions:
@@ -6496,7 +6490,8 @@
           message: clear_notification
           data:
             tag: home_arrival_enya
-  mode: single
+  mode: queued
+  max: 3
 - id: '1744099492999'
   alias: Daily Agenda using OpenAI
   description: ''
