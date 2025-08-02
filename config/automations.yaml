@@ -2217,6 +2217,16 @@
       data: {}
       target:
         entity_id: input_boolean.stop_pool
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
   - alias: Force Stop
     if:
     - condition: trigger
@@ -2393,7 +2403,7 @@
   - entity_id:
     - sensor.sun_solar_azimuth
     above: 95
-    id: On 1
+    id: 'On'
     below: 100
     trigger: numeric_state
     enabled: true
@@ -2414,7 +2424,7 @@
     id: 'On'
   - trigger: time
     at: '16:00:00'
-    id: On last
+    id: 'On'
   - trigger: numeric_state
     entity_id:
     - sensor.esp32_c3_mini_pool_temperature_pool_temperature
@@ -2433,8 +2443,6 @@
       - condition: trigger
         id:
         - 'On'
-        - On 1
-        - On last
       - condition: numeric_state
         entity_id: sensor.esp32_c3_mini_pool_temperature_pool_temperature
         below: input_number.pool_heating_stop
@@ -2507,22 +2515,6 @@
       data: {}
       target:
         entity_id: switch.smart_valve_controller_schalter_1
-    - if:
-      - condition: trigger
-        id:
-        - On last
-      then:
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
-          milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.pool_ventil_solar
-      alias: Turn plug off if last trigger
   - alias: Disable Solar Heating if to hot
     if:
     - condition: and
@@ -3438,21 +3430,38 @@
         minutes: 0
         seconds: 30
         milliseconds: 0
-    - repeat:
-        count: 2
-        sequence:
-        - action: light.turn_on
-          metadata: {}
-          data:
-            brightness_pct: 1
-            transition: 1
-          target:
+    - if:
+      - condition: numeric_state
+        entity_id: sensor.bad_nachtlicht_illuminance
+        above: 10
+      then:
+      - repeat:
+          sequence:
+          - action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: light.bad_nachtlicht
+          until:
+          - condition: state
             entity_id: light.bad_nachtlicht
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
+            state: 'off'
+      else:
+      - repeat:
+          count: 2
+          sequence:
+          - action: light.turn_on
+            metadata: {}
+            data:
+              brightness_pct: 1
+              transition: 1
+            target:
+              entity_id: light.bad_nachtlicht
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
     enabled: true
   - alias: Off immediately
     if:
@@ -4242,7 +4251,7 @@
     - parallel:
       - action: script.save_counts_and_notify_purge_status
         data:
-          threshold_offset: 50000
+          threshold_offset: 40000
           timeout_minutes: 30
           block_id: 2 Days
       - action: recorder.purge_entities
@@ -7903,8 +7912,8 @@
           - switch.desk_paludarium_turm_links_l1
       - delay:
           hours: 0
-          minutes: 5
-          seconds: 0
+          minutes: 2
+          seconds: 30
           milliseconds: 0
       - action: switch.turn_off
         metadata: {}
@@ -7954,39 +7963,159 @@
         entity_id: switch.desk_paludarium_turm_rechts_l1
         state: 'on'
       sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l1
-          - switch.desk_paludarium_turm_rechts_l2
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l2
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l1
+              - switch.desk_paludarium_turm_rechts_l2
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'off'
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l2
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l2
+            state: 'on'
       - delay:
           hours: 0
-          minutes: 5
-          seconds: 0
+          minutes: 2
+          seconds: 30
           milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l2
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l2
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l2
+            state: 'off'
     - conditions:
       - condition: state
         entity_id: switch.desk_paludarium_turm_rechts_l1
         state: 'off'
       sequence:
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l1
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l1
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'on'
   mode: restart
+- id: '1754145555098'
+  alias: Get Beta Release Notes for new HA Version Next Month
+  description: This automation activates during two specific time windows each month—at
+    the start, from the 1st of the month until the first Wednesday, and at the end,
+    from the last Wednesday through the last day of the month—corresponding to Home
+    Assistant’s typical beta release cycle. During these windows, it scrapes the official
+    beta release notes webpage, then uses AI to extract and summarize key updates,
+    including new features, breaking changes, and backward-incompatible updates. The
+    summary is delivered as a persistent notification in Home Assistant, keeping you
+    up-to-date with upcoming changes without any manual effort.
+  triggers:
+  - trigger: time
+    at: '12:00:00'
+  conditions:
+  - condition: or
+    conditions:
+    - condition: template
+      value_template: '{% set today = now().date() %} {% set month_start = today.replace(day=1)
+        %} {% set next_month_start = (month_start + timedelta(days=32)).replace(day=1)
+        %} {% set month_end = next_month_start - timedelta(days=1) %}
+
+        {% set weekday_month_end = month_end.weekday() %} {% set days_since_wed =
+        (weekday_month_end - 2) % 7 %} {% set last_wed = month_end - timedelta(days=days_since_wed)
+        %}
+
+        {{ last_wed <= today <= month_end }}
+
+        '
+    - condition: template
+      value_template: '{% set today = now().date() %} {% set month_start = today.replace(day=1)
+        %}
+
+        {% set weekday_month_start = month_start.weekday() %} {% set days_until_wed
+        = (2 - weekday_month_start) % 7 %} {% set first_wed = month_start + timedelta(days=days_until_wed)
+        %}
+
+        {{ month_start <= today < first_wed }}
+
+        '
+  actions:
+  - sequence:
+    - action: multiscrape.scrape
+      response_variable: beta_scrape
+      data:
+        name: beta_release_scraper
+        resource: https://rc.home-assistant.io/latest-release-notes/
+        sensor:
+        - unique_id: beta_url
+          name: Beta Release URL
+          select: link[rel='canonical']
+          attribute: href
+          value_template: '{!{ value | trim | replace(''www.home'',''rc.home'') }!}'
+        - unique_id: beta_notes_content
+          name: Beta Notes Content
+          select: body
+          value_template: '{!{ value | trim | replace(''\n'', '' '') }!}
+
+            '
+    - action: conversation.process
+      response_variable: agent
+      data:
+        text: 'You are an expert software release notes summarizer.
+
+          The release notes below are for the Home Assistant release found at this
+          URL: {{ beta_scrape.beta_url }}
+
+          Based on the following raw release notes text, please:
+
+          1. Extract and list **New Features** introduced in this release. 2. Identify
+          and list any **Breaking Changes** (features or behaviors that require user
+          attention because they may break existing setups). 3. Highlight **Backward-Incompatible
+          Changes** or deprecations. 4. Optionally include other important notes,
+          like bug fixes or notable improvements.
+
+          Structure your output in a clear, organized format with headings like:
+
+          **Beta Release:** {{ beta_scrape.beta_url }}
+
+          **New Features:**   - Feature 1   - Feature 2   ...
+
+          **Breaking Changes:**   - Change 1   - Change 2   ...
+
+          **Backward-Incompatible Changes:**   - Change 1   - Change 2   ...
+
+          **Other Notes:**   - Note 1   - Note 2   ...
+
+          Only include points actually mentioned in the release notes. Be concise
+          but informative, avoid filler.
+
+          Here is the release notes text:   """   {{ beta_scrape.beta_notes_content
+          }}   """'
+        agent_id: conversation.chatgpt
+    - action: persistent_notification.create
+      data:
+        message: '{{ agent.response.speech.plain.speech }}'
+  mode: single

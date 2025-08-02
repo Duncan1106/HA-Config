@@ -784,6 +784,83 @@ template:
             {% set losses = loss_deye %} 
             {{ ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) }}
 
+  - triggers:
+      - trigger: time
+        at: "12:00:00"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: multiscrape.scrape
+        response_variable: beta_scrape
+        data:
+          name: beta_release_scraper
+          resource: https://rc.home-assistant.io/latest-release-notes/
+          sensor:
+            - unique_id: beta_url
+              name: Beta Release URL
+              select: link[rel='canonical']
+              attribute: href
+              value_template: |
+                {!{ value | trim | replace('www.home','rc.home') }!}
+            - unique_id: beta_notes_content
+              name: Beta Notes Content
+              select: body
+              value_template: |
+                {!{ value | trim | replace('\\n', ' ') }!}
+      - action: conversation.process
+        response_variable: agent
+        data:
+          text: >-
+            You are an expert software release notes summarizer.
+
+            The release notes below are for the Home Assistant release found at
+            this URL: {{ beta_scrape.beta_url }}
+
+            Based on the following raw release notes text, please:
+
+            1. Extract and list **New Features** introduced in this release. 2.
+            Identify and list any **Breaking Changes** (features or behaviors
+            that require user attention because they may break existing setups).
+            3. Highlight **Backward-Incompatible Changes** or deprecations. 4.
+            Optionally include other important notes, like bug fixes or notable
+            improvements.
+
+            Structure your output in a clear, organized format with headings
+            like:
+
+            **Beta Release:** {{ beta_scrape.beta_url }}
+
+            **New Features:**   - Feature 1   - Feature 2 ...
+
+            **Breaking Changes:**   - Change 1   - Change 2 ...
+
+            **Backward-Incompatible Changes:**   - Change 1   - Change 2 ...
+
+            **Other Notes:**   - Note 1   - Note 2 ...
+
+            Only include points actually mentioned in the release notes. Be
+            concise but informative, avoid filler.
+
+            Here is the release notes text:   
+            
+            {{ beta_scrape.beta_notes_content }}
+            
+          agent_id: conversation.chatgpt
+    
+    sensor:
+      - unique_id: home_assistant_beta_release_notes
+        name: Home Assistant Beta Release Notes
+        icon: mdi:home-assistant
+        state: >
+          {% set url = beta_scrape.beta_url | string %}
+          {% if 'release-' in url %}
+            {% set build = url.split('/')[-2].split('-')[1] | int %}
+            {{ '{}.{}'.format(build // 10, build % 10) }}
+          {% else %}
+            Invalid URL
+          {% endif %}
+        attributes:
+          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
 
 cover:
   - platform: template
