@@ -2217,6 +2217,16 @@
       data: {}
       target:
         entity_id: input_boolean.stop_pool
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_ventil_solar
   - alias: Force Stop
     if:
     - condition: trigger
@@ -2393,7 +2403,7 @@
   - entity_id:
     - sensor.sun_solar_azimuth
     above: 95
-    id: On 1
+    id: 'On'
     below: 100
     trigger: numeric_state
     enabled: true
@@ -2414,7 +2424,7 @@
     id: 'On'
   - trigger: time
     at: '16:00:00'
-    id: On last
+    id: 'On'
   - trigger: numeric_state
     entity_id:
     - sensor.esp32_c3_mini_pool_temperature_pool_temperature
@@ -2433,8 +2443,6 @@
       - condition: trigger
         id:
         - 'On'
-        - On 1
-        - On last
       - condition: numeric_state
         entity_id: sensor.esp32_c3_mini_pool_temperature_pool_temperature
         below: input_number.pool_heating_stop
@@ -2507,22 +2515,6 @@
       data: {}
       target:
         entity_id: switch.smart_valve_controller_schalter_1
-    - if:
-      - condition: trigger
-        id:
-        - On last
-      then:
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
-          milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.pool_ventil_solar
-      alias: Turn plug off if last trigger
   - alias: Disable Solar Heating if to hot
     if:
     - condition: and
@@ -3359,12 +3351,6 @@
     id: 'On'
     trigger: numeric_state
     enabled: true
-  - entity_id:
-    - sensor.bad_nachtlicht_illuminance
-    id: Off immediately
-    trigger: numeric_state
-    enabled: true
-    above: 25
   - trigger: state
     entity_id:
     - binary_sensor.kinderbad_bewegung
@@ -3391,46 +3377,48 @@
       hours: 0
       minutes: 1
       seconds: 0
-  - trigger: state
-    entity_id:
-    - light.bad_nachtlicht
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    id: Off if to long on
+  - entity_id:
+    - sensor.bad_nachtlicht_illuminance
+    id: Off immediately
+    trigger: numeric_state
+    enabled: true
+    above: 25
   conditions: []
   actions:
   - alias: 'On'
     if:
     - condition: and
       conditions:
-      - condition: trigger
-        id:
-        - 'On'
-      - type: is_illuminance
-        condition: device
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: d693ba4267735db947d0830cad78379e
-        domain: sensor
-        below: 20
-      - condition: state
-        entity_id: binary_sensor.kinderbad_bewegung
-        state: 'on'
+      - condition: and
+        conditions:
+        - condition: trigger
+          id:
+          - 'On'
+        - type: is_illuminance
+          condition: device
+          device_id: 2e7223e910889cdb2c4fcb060c712ac5
+          entity_id: d693ba4267735db947d0830cad78379e
+          domain: sensor
+          below: 20
+        - condition: state
+          entity_id: binary_sensor.kinderbad_bewegung
+          state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: light.bad_nachtlicht
+          state: 'off'
+        - condition: template
+          value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')
+            < 4 }}'
     then:
-    - if:
-      - condition: device
-        type: is_off
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-        domain: light
-      then:
-      - type: turn_on
-        device_id: 2e7223e910889cdb2c4fcb060c712ac5
-        entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-        domain: light
-      alias: If off, then on
+    - action: light.turn_on
+      metadata: {}
+      data:
+        brightness_pct: 100
+        transition: 1
+      target:
+        entity_id: light.bad_nachtlicht
   - alias: Off after time x
     if:
     - condition: trigger
@@ -3442,6 +3430,45 @@
         minutes: 0
         seconds: 30
         milliseconds: 0
+    - if:
+      - condition: numeric_state
+        entity_id: sensor.bad_nachtlicht_illuminance
+        above: 10
+      then:
+      - repeat:
+          sequence:
+          - action: light.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: light.bad_nachtlicht
+          until:
+          - condition: state
+            entity_id: light.bad_nachtlicht
+            state: 'off'
+      else:
+      - repeat:
+          count: 2
+          sequence:
+          - action: light.turn_on
+            metadata: {}
+            data:
+              brightness_pct: 1
+              transition: 1
+            target:
+              entity_id: light.bad_nachtlicht
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
+    enabled: true
+  - alias: Off immediately
+    if:
+    - condition: trigger
+      id:
+      - Off immediately
+    then:
     - repeat:
         count: 2
         sequence:
@@ -3453,37 +3480,8 @@
         - delay:
             hours: 0
             minutes: 0
-            seconds: 0
-            milliseconds: 500
-    enabled: true
-  - alias: Off immediately
-    if:
-    - condition: or
-      conditions:
-      - condition: trigger
-        id:
-        - Off immediately
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - Off if to long on
-        - condition: state
-          entity_id: binary_sensor.kinderbad_bewegung
-          state: 'off'
-    then:
-    - type: turn_off
-      device_id: 2e7223e910889cdb2c4fcb060c712ac5
-      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-      domain: light
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 1
-    - type: turn_off
-      device_id: 2e7223e910889cdb2c4fcb060c712ac5
-      entity_id: 56d4c08559d3de1ff8cadcc003713fd4
-      domain: light
+            seconds: 1
+            milliseconds: 0
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch
@@ -4253,7 +4251,7 @@
     - parallel:
       - action: script.save_counts_and_notify_purge_status
         data:
-          threshold_offset: 50000
+          threshold_offset: 40000
           timeout_minutes: 30
           block_id: 2 Days
       - action: recorder.purge_entities
@@ -7914,8 +7912,8 @@
           - switch.desk_paludarium_turm_links_l1
       - delay:
           hours: 0
-          minutes: 5
-          seconds: 0
+          minutes: 2
+          seconds: 30
           milliseconds: 0
       - action: switch.turn_off
         metadata: {}
@@ -7965,39 +7963,78 @@
         entity_id: switch.desk_paludarium_turm_rechts_l1
         state: 'on'
       sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l1
-          - switch.desk_paludarium_turm_rechts_l2
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l2
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l1
+              - switch.desk_paludarium_turm_rechts_l2
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'off'
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l2
+            state: 'on'
       - delay:
           hours: 0
-          minutes: 5
-          seconds: 0
+          minutes: 2
+          seconds: 30
           milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l2
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l2
+            state: 'off'
     - conditions:
       - condition: state
         entity_id: switch.desk_paludarium_turm_rechts_l1
         state: 'off'
       sequence:
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_rechts_l1
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.desk_paludarium_turm_rechts_l1
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+          until:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'on'
   mode: restart
