@@ -4496,16 +4496,12 @@
           - sensor.scb_dc3_current
           - sensor.scb_dc3_power
           - sensor.scb_dc3_voltage
-          - sensor.scb_dc_current
-          - sensor.scb_dc_voltage
           - sensor.inverter_pv1_current
           - sensor.inverter_pv1_voltage
           - sensor.inverter_pv1_power
           - sensor.inverter_pv2_current
           - sensor.inverter_pv2_voltage
           - sensor.inverter_pv2_power
-          - sensor.inverter_pv_voltage
-          - sensor.inverter_pv_current
           - sensor.inverter_load_l1_power
           - sensor.inverter_load_l1_voltage
           - sensor.inverter_load_l2_power
@@ -8030,3 +8026,71 @@
             entity_id: switch.desk_paludarium_turm_rechts_l1
             state: 'on'
   mode: restart
+- id: '1754244024626'
+  alias: Disable Prompt Tone Air Conditioner
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    hours: /3
+  - trigger: state
+    entity_id:
+    - switch.153931628718174_prompt_tone
+    to: 'on'
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.153931628718174_prompt_tone
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.153931628718174_prompt_tone
+  mode: single
+- id: '1754256267209'
+  alias: UGREEN NAS Daytime On, Nighttime Off
+  description: ''
+  triggers:
+  - trigger: time
+    at: '10:00:00'
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ugreen_nas_power
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    below: 0.1
+    id: 'Off'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.ugreen_nas
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.ugreen_nas
+  mode: single
