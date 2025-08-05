@@ -4496,16 +4496,12 @@
           - sensor.scb_dc3_current
           - sensor.scb_dc3_power
           - sensor.scb_dc3_voltage
-          - sensor.scb_dc_current
-          - sensor.scb_dc_voltage
           - sensor.inverter_pv1_current
           - sensor.inverter_pv1_voltage
           - sensor.inverter_pv1_power
           - sensor.inverter_pv2_current
           - sensor.inverter_pv2_voltage
           - sensor.inverter_pv2_power
-          - sensor.inverter_pv_voltage
-          - sensor.inverter_pv_current
           - sensor.inverter_load_l1_power
           - sensor.inverter_load_l1_voltage
           - sensor.inverter_load_l2_power
@@ -5497,7 +5493,7 @@
   description: ''
   triggers:
   - trigger: time_pattern
-    seconds: /2
+    seconds: /3
   conditions:
   - condition: state
     entity_id: input_select.smart_home_status
@@ -5509,16 +5505,8 @@
       entity_id:
       - binary_sensor.1_1_1_1
       - binary_sensor.1_0_0_1
-  - action: homeassistant.update_entity
-    metadata: {}
-    data:
-      entity_id:
       - binary_sensor.8_8_8_8
       - binary_sensor.8_8_4_4
-  - action: homeassistant.update_entity
-    metadata: {}
-    data:
-      entity_id:
       - binary_sensor.9_9_9_9
       - binary_sensor.149_112_112_112
   mode: single
@@ -6621,16 +6609,19 @@
       agent_id: conversation.chatgpt
     response_variable: agent
     action: conversation.process
+    enabled: false
   - alias: Send notification
     data:
       title: '{{ now().strftime(''%A'') }} Agenda'
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
+    enabled: false
   - delay:
       hours: 0
       minutes: 0
       seconds: 1
       milliseconds: 0
+    enabled: false
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ calendar_prompt }}
@@ -6983,18 +6974,19 @@
       agent_id: conversation.chatgpt
     response_variable: agent
     action: conversation.process
-    enabled: true
+    enabled: false
   - alias: Send notification
     data:
       title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
       message: '{{ agent.response.speech.plain.speech }}'
     action: notify.duncan
-    enabled: true
+    enabled: false
   - delay:
       hours: 0
       minutes: 0
       seconds: 1
       milliseconds: 0
+    enabled: false
   - alias: Conversation Agent Notification Text
     data:
       text: '{{ pollen_prompt }}
@@ -7866,175 +7858,416 @@
       data:
         tag: renault_zoe_kommt_heim
   mode: single
-- id: '1753297720473'
-  alias: Paludarium Links Pumpe - 15/15 Minuten Intervall
-  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 15 Min. aus
+- id: '1754244024626'
+  alias: Disable Prompt Tone Air Conditioner
+  description: ''
   triggers:
+  - trigger: time_pattern
+    hours: /3
   - trigger: state
     entity_id:
-    - switch.desk_paludarium_turm_links_l3
+    - switch.153931628718174_prompt_tone
     to: 'on'
-    for:
+  conditions: []
+  actions:
+  - action: switch.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.153931628718174_prompt_tone
+  - delay:
       hours: 0
-      minutes: 15
-      seconds: 0
-  - trigger: state
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.153931628718174_prompt_tone
+  mode: single
+- id: '1754256267209'
+  alias: UGREEN NAS Daytime On, Nighttime Off
+  description: ''
+  triggers:
+  - trigger: time
+    at: '10:00:00'
+    id: 'On'
+  - trigger: numeric_state
     entity_id:
+    - sensor.ugreen_nas_power
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    below: 0.1
+    id: 'Off'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.ugreen_nas
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.ugreen_nas
+  mode: single
+- id: '1754291129585'
+  alias: Paludarium Pump Cycle - Combined with Cooldown and Recovery
+  description: Unified Paludarium cycle controller with fan cooldown and backup check.
+    Safe, resilient, parallel.
+  triggers:
+  - entity_id:
     - switch.desk_paludarium_turm_links_l3
-    to: 'off'
+    - switch.desk_paludarium_links_l2
+    - switch.desk_paludarium_turm_rechts_l1
     for:
       hours: 0
       minutes: 15
       seconds: 0
+    trigger: state
+    to: 'off'
+  - entity_id:
+    - switch.desk_paludarium_turm_links_l3
+    - switch.desk_paludarium_links_l2
+    - switch.desk_paludarium_turm_rechts_l1
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    trigger: state
+    to: 'on'
+  - minutes: /5
+    trigger: time_pattern
   conditions:
-  - condition: state
-    entity_id: switch.schreibtisch_links_power_strip_l1
-    state: 'on'
+  - condition: sun
+    after: sunrise
+    before: sunset
   actions:
   - choose:
     - conditions:
       - condition: state
-        entity_id: switch.desk_paludarium_turm_links_l3
+        entity_id: switch.schreibtisch_links_power_strip_l1
         state: 'on'
-      sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_links_l3
-          - switch.desk_paludarium_turm_links_l1
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_links_l1
-      - delay:
-          hours: 0
-          minutes: 2
-          seconds: 30
-          milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_turm_links_l1
-    - conditions:
-      - condition: state
-        entity_id: switch.desk_paludarium_turm_links_l3
-        state: 'off'
-      sequence:
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
+      - condition: or
+        conditions:
+        - condition: state
           entity_id: switch.desk_paludarium_turm_links_l3
-  mode: restart
-- id: '1753959700627'
-  alias: Paludarium Rechts Pump Cycle 15/15min
-  description: Schaltet die Paludarium-Pumpe abwechselnd für 15 Min. an, 15 Min. aus
+          state: 'on'
+          for: 00:15:00
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_links_l3
+          state: 'off'
+          for: 00:15:00
+      sequence:
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_links_l3
+            state: 'on'
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_turm_links_l3
+            data: {}
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_turm_links_l1
+            data: {}
+          - delay: 00:02:30
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_turm_links_l1
+            data: {}
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_links_l3
+            state: 'off'
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_turm_links_l3
+            data: {}
+      alias: Turn Links
+    - conditions:
+      - condition: state
+        entity_id: switch.terrarium_tasmota4
+        state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: switch.desk_paludarium_links_l2
+          state: 'on'
+          for: 00:15:00
+        - condition: state
+          entity_id: switch.desk_paludarium_links_l2
+          state: 'off'
+          for: 00:15:00
+      sequence:
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_links_l2
+            state: 'on'
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_links_l2
+            data: {}
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_links_l3
+            data: {}
+          - delay: 00:02:30
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_links_l3
+            data: {}
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_links_l2
+            state: 'off'
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_links_l2
+            data: {}
+      alias: Kallax
+    - conditions:
+      - condition: state
+        entity_id: switch.schreibtisch_rechts_power_strip_l5
+        state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_rechts_l1
+          state: 'on'
+          for: 00:15:00
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_rechts_l1
+          state: 'off'
+          for: 00:15:00
+      sequence:
+      - choose:
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'on'
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_turm_rechts_l1
+            data: {}
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_turm_rechts_l2
+            data: {}
+          - delay: 00:02:30
+          - action: switch.turn_off
+            target:
+              entity_id: switch.desk_paludarium_turm_rechts_l2
+            data: {}
+        - conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'off'
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.desk_paludarium_turm_rechts_l1
+            data: {}
+      alias: 'Turm Rechts '
+  - variables:
+      pump_p1: switch.desk_paludarium_links_l2
+  mode: parallel
+- id: '1754293444382'
+  alias: Paludarium Pump & Fan Control - Combined Zones
+  description: 'Controls pumps on a 15min on/off cycle per zone, runs associated fan
+    cooldown on pump turn off, with failsafe time pattern trigger and power strip
+    checks.
+
+    '
   triggers:
+  - minutes: /1
+    trigger: time_pattern
   - trigger: state
     entity_id:
+    - switch.desk_paludarium_links_l2
     - switch.desk_paludarium_turm_rechts_l1
-    to: 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-  - trigger: state
-    entity_id:
-    - switch.desk_paludarium_turm_rechts_l1
+    - switch.desk_paludarium_turm_links_l3
     to: 'off'
     for:
       hours: 0
       minutes: 15
       seconds: 0
+  - trigger: state
+    entity_id:
+    - switch.desk_paludarium_links_l2
+    - switch.desk_paludarium_turm_rechts_l1
+    - switch.desk_paludarium_turm_links_l3
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
   conditions:
-  - condition: state
-    entity_id: switch.schreibtisch_rechts_power_strip_l5
-    state: 'on'
+  - condition: sun
+    before: sunset
+    after: sunrise
   actions:
+  - variables:
+      pump_on_duration: 00:14:55
+      pump_off_duration: 00:14:55
+      fan_duration: 00:02:30
+      pump_left: switch.desk_paludarium_turm_links_l3
+      fan_left: switch.desk_paludarium_turm_links_l1
+      pump_kallax: switch.desk_paludarium_links_l2
+      fan_kallax: switch.desk_paludarium_links_l3
+      pump_right: switch.desk_paludarium_turm_rechts_l1
+      fan_right: switch.desk_paludarium_turm_rechts_l2
   - choose:
-    - conditions:
+    - alias: Left Zone Control
+      conditions:
       - condition: state
-        entity_id: switch.desk_paludarium_turm_rechts_l1
+        entity_id: switch.schreibtisch_links_power_strip_l1
         state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_links_l3
+          state: 'on'
+          for: '{{ pump_on_duration }}'
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_links_l3
+          state: 'off'
+          for: '{{ pump_off_duration }}'
       sequence:
-      - repeat:
+      - choose:
+        - alias: Left Pump ON duration elapsed - Turn pump OFF and start fan cooldown
+          conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_links_l3
+            state: 'on'
+            for: '{{ pump_on_duration }}'
           sequence:
           - action: switch.turn_off
-            metadata: {}
             data: {}
             target:
-              entity_id:
-              - switch.desk_paludarium_turm_rechts_l1
-              - switch.desk_paludarium_turm_rechts_l2
-          until:
+              entity_id: '{{ pump_left }}'
+          - data:
+              fan_entity: '{{ fan_left }}'
+              duration: '{{ fan_duration }}'
+            action: script.run_fan_for_duration
+        - alias: Left Pump OFF duration elapsed - Turn pump ON
+          conditions:
           - condition: state
-            entity_id: switch.desk_paludarium_turm_rechts_l1
+            entity_id: switch.desk_paludarium_turm_links_l3
             state: 'off'
-      - repeat:
+            for: '{{ pump_off_duration }}'
           sequence:
           - action: switch.turn_on
-            metadata: {}
             data: {}
             target:
-              entity_id:
-              - switch.desk_paludarium_turm_rechts_l2
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-          until:
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_rechts_l2
-            state: 'on'
-      - delay:
-          hours: 0
-          minutes: 2
-          seconds: 30
-          milliseconds: 0
-      - repeat:
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id:
-              - switch.desk_paludarium_turm_rechts_l2
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-          until:
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_rechts_l2
-            state: 'off'
-    - conditions:
+              entity_id: '{{ pump_left }}'
+    - alias: Kallax Zone Control
+      conditions:
       - condition: state
-        entity_id: switch.desk_paludarium_turm_rechts_l1
-        state: 'off'
+        entity_id: switch.terrarium_tasmota4
+        state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: switch.desk_paludarium_links_l2
+          state: 'on'
+          for: '{{ pump_on_duration }}'
+        - condition: state
+          entity_id: switch.desk_paludarium_links_l2
+          state: 'off'
+          for: '{{ pump_off_duration }}'
       sequence:
-      - repeat:
+      - choose:
+        - alias: Kallax Pump ON duration elapsed - Turn pump OFF and start fan cooldown
+          conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_links_l2
+            state: 'on'
+            for: '{{ pump_on_duration }}'
           sequence:
-          - action: switch.turn_on
-            metadata: {}
+          - target:
+              entity_id: '{{ pump_kallax }}'
+            action: switch.turn_off
             data: {}
-            target:
-              entity_id:
-              - switch.desk_paludarium_turm_rechts_l1
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-          until:
+          - data:
+              fan_entity: '{{ fan_kallax }}'
+              duration: '{{ fan_duration }}'
+            action: script.run_fan_for_duration
+        - alias: Kallax Pump OFF duration elapsed - Turn pump ON
+          conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_links_l2
+            state: 'off'
+            for: '{{ pump_off_duration }}'
+          sequence:
+          - target:
+              entity_id: '{{ pump_kallax }}'
+            action: switch.turn_on
+            data: {}
+    - alias: Right Zone Control
+      conditions:
+      - condition: state
+        entity_id: switch.schreibtisch_rechts_power_strip_l5
+        state: 'on'
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_rechts_l1
+          state: 'on'
+          for: '{{ pump_on_duration }}'
+        - condition: state
+          entity_id: switch.desk_paludarium_turm_rechts_l1
+          state: 'off'
+          for: '{{ pump_off_duration }}'
+      sequence:
+      - choose:
+        - alias: Right Pump ON duration elapsed - Turn pump OFF and start fan cooldown
+          conditions:
           - condition: state
             entity_id: switch.desk_paludarium_turm_rechts_l1
             state: 'on'
-  mode: restart
+            for: '{{ pump_on_duration }}'
+          sequence:
+          - target:
+              entity_id: '{{ pump_right }}'
+            action: switch.turn_off
+            data: {}
+          - data:
+              fan_entity: '{{ fan_right }}'
+              duration: '{{ fan_duration }}'
+            action: script.run_fan_for_duration
+        - alias: Right Pump OFF duration elapsed - Turn pump ON
+          conditions:
+          - condition: state
+            entity_id: switch.desk_paludarium_turm_rechts_l1
+            state: 'off'
+            for: '{{ pump_off_duration }}'
+          sequence:
+          - target:
+              entity_id: '{{ pump_right }}'
+            action: switch.turn_on
+            data: {}
+  mode: parallel
+  max: 10
