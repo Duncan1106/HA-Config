@@ -379,6 +379,18 @@ class ItemListCard extends LitElement {
       .catch(err => console.error('Error calling todo/update_item:', err));
   }
 
+  _confirmAndComplete = async (item, sourceMap) => {
+    const ok = await confirmDialog(
+      this,
+      'Erledigen',
+      `Möchtest du "${item.s}" wirklich als erledigt markieren?`
+    );
+    if (!ok) return;
+
+    // Uses UID placed in 'item' field as required by your service
+    this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
+  };
+
   _addToShoppingList(item) {
     const entityId = this.config.shopping_list_entity;
     if (!entityId) {
