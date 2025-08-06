@@ -161,6 +161,7 @@ class ItemListCard extends LitElement {
     this.config = {
       ...config,
       show_origin: config.show_origin ?? false,
+      hide_add_button: config.hide_add_button ?? false,
     };
   }
 
@@ -321,7 +322,7 @@ class ItemListCard extends LitElement {
     const filterItemsEntity = this.hass.states[this.config.filter_items_entity];
     const filterValue = this.hass.states[this.config.filter_entity]?.state || '';
     const maxItemsWithoutFilter = this.config.max_items_without_filter ?? 20;
-    const showAddButton = filterValue.length > 3;
+    const showAddButton = filterValue.trim().length > 3 && !this.config.hide_add_button;
 
     let items = [];
     try {
@@ -352,6 +353,13 @@ class ItemListCard extends LitElement {
             placeholder="Tippe einen Suchfilter ein"
             @input=${this._handleFilterInputChange}
           />
+          <button
+            class="btn ${!filterValue ? 'hidden' : ''}"
+            @click=${() => this._updateFilterTextActual('')}
+            title="Eingabe leeren"
+          >
+          <ha-icon icon="mdi:close-circle-outline"></ha-icon>
+          </button>
           <button
             class="btn ${!showAddButton ? 'hidden' : ''}"
             @click=${this._addFilterTextToShoppingList}
