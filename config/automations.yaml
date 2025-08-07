@@ -120,7 +120,9 @@
   max: 10
 - id: '1702826722550'
   alias: Presence DESK Controller
-  description: ''
+  description: This automation controls the power to your desk setup based on occupancy
+    sensors. It turns off the laptop and monitor after a period of inactivity, while
+    ensuring all connected devices are back on when someone arrives.
   triggers:
   - type: not_occupied
     device_id: 561b2fddd9cec3889faf18b8ccf214a0
@@ -507,20 +509,22 @@
       end_notify_data: []
       start_custom_actions: []
 - id: '1705101110242'
-  alias: Offline Sensors
-  description: ''
+  alias: Notify When Battery Devices Are Offline
+  description: This automation sends a notification when specific battery-operated
+    devices go offline. It excludes certain devices to avoid unnecessary alerts and
+    triggers at 10:30 AM daily.
   use_blueprint:
     path: Tahutipai/zigbee_zwave_notify_when_battery_devices_have_fallen_offline.yaml
     input:
       exclude:
         entity_id:
         - sensor.fp4_battery_level
-        - sensor.mi_9t_battery_level_2
-        - sensor.m2101k6g_battery_level_2
         - sensor.ipad_air_2_battery_level
         - sensor.iphone_von_enya_battery_level
         - sensor.ipad_von_stephan_battery_level
         - sensor.poco_f7_battery_level
+        - sensor.mi_9t_battery_level
+        - sensor.m2101k6g_battery_level
       actions:
       - metadata: {}
         data:
@@ -1028,8 +1032,10 @@
   mode: parallel
   max: 10
 - id: '1710589916637'
-  alias: Fire detection based on temperature sensors
-  description: ''
+  alias: Fire Detection from Temperature Sensors
+  description: This automation monitors temperature sensors for potential fire conditions.
+    It sends notifications if the temperature exceeds a specified threshold, helping
+    to ensure safety by alerting when fire risk is detected.
   triggers:
   - seconds: /15
     trigger: time_pattern
@@ -1161,9 +1167,9 @@
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: Manages a BKW (Battery-PV) system by controlling associated power outlets/loads
-    based on solar production, battery state of charge, and time of day to optimize
-    energy usage and battery life.
+  description: Controls BKW outlet based on solar production, battery SoC/voltage,
+    sunrise/sunset, inverter state, temperature, and usage to optimize charging/discharging,
+    protect battery health, and ensure nightly shutdown if energy was used.
   triggers:
   - entity_id:
     - sensor.inverter_pv_power
@@ -1577,8 +1583,9 @@
       value: 0
   mode: single
 - id: '1712821937547'
-  alias: Time in Bed
-  description: ''
+  alias: Notify Time in Bed
+  description: This automation sends a notification indicating how long you have spent
+    in bed when the bedside light is turned off, only if it's during daylight hours.
   triggers:
   - entity_id:
     - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
@@ -1601,8 +1608,11 @@
     action: notify.duncan
   mode: single
 - id: '1712941263468'
-  alias: Save PulseTIme
-  description: ''
+  alias: Save Pool Pulse Time
+  description: This automation saves the current pulse time of the pool pump when
+    it is in operation and triggers an MQTT message. It updates the input number representing
+    the actual pulse time value based on the received MQTT payload, provided the pump
+    has been on for at least 5 minutes.
   triggers:
   - id: frommqtt
     topic: stat/tasmota_837238/RESULT
@@ -1629,8 +1639,9 @@
     action: input_number.set_value
   mode: single
 - id: '1713031049792'
-  alias: Get Pulsetime
-  description: ''
+  alias: Get Pool PulseTime
+  description: Periodically retrieves the pool pump's pulse time, ensuring it is operational,
+    while avoiding downtime during specific conditions.
   triggers:
   - seconds: /10
     trigger: time_pattern
@@ -1770,8 +1781,12 @@
         action: counter.reset
   mode: single
 - id: '1714558482048'
-  alias: message on per phase overload
-  description: ''
+  alias: Notify on Overcurrent Phase
+  description: This automation sends a notification if an overcurrent is detected
+    on any phase (L1, L2, or L3) of the smart meter. It checks if the current goes
+    above a predefined limit and alerts the user with the current value and the threshold.
+    Additionally, it disables charging on specific EV chargers if an overcurrent is
+    detected.
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -2286,8 +2301,10 @@
   mode: queued
   max: 50
 - id: '1716921868511'
-  alias: Wasserleck
-  description: ''
+  alias: Wasserleck Alarm
+  description: Notifies when a water leak is detected in the heating room or kitchen.
+    This automation triggers alerts via notifications and persistent notifications
+    for immediate action. It delays further alerts for a minute after the first notification.
   triggers:
   - entity_id:
     - binary_sensor.heizraum_wasser_sensor_zigbee_occupancy
@@ -2326,6 +2343,14 @@
     - binary_sensor.luftbefeuchter_on_windows
     to: 'on'
     id: Luftbefeuchter
+  - trigger: sun
+    event: sunrise
+    offset: +00:30:00
+    id: sunrise
+  - trigger: sun
+    event: sunset
+    offset: -00:30:00
+    id: sunset
   conditions:
   - condition: sun
     before: sunset
@@ -2362,11 +2387,37 @@
       - data: {}
         action: script.luftbefeuchter
       alias: Luftbefeuchter
+    - conditions:
+      - condition: trigger
+        id:
+        - sunrise
+      sequence:
+      - action: script.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: script.terra_sunrise
+      alias: Sunrise
+    - conditions:
+      - condition: trigger
+        id:
+        - sunset
+      sequence:
+      - action: script.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: script.terra_sunset
+      alias: Sunset
   mode: parallel
   max: 10
 - id: '1717951712000'
-  alias: Pool Heizung off If too cold
-  description: ''
+  alias: Pool Heating Control for Optimal Temperature
+  description: This automation manages the solar heating of the pool based on temperature
+    and solar conditions. It activates and deactivates heating as needed to maintain
+    an optimal pool temperature, ensuring energy efficiency and comfort. Steps include
+    monitoring solar power, tracking time conditions, and assessing temperature thresholds
+    for heating on/off actions.
   triggers:
   - entity_id:
     - sensor.sun_solar_azimuth
@@ -2553,7 +2604,9 @@
 - id: '1721083497910'
   alias: Fan for BkW AC Inverter
   description: Controls a fan to cool the BKW AC inverter based on its temperature
-    and power state.
+    and power state. The automation activates the fan when the inverter's temperature
+    exceeds certain thresholds and deactivates it when the temperature drops below
+    a specified level.
   triggers:
   - type: turned_off
     device_id: f7afa3f7d75d54c713ea1d78071ff30c
@@ -2647,8 +2700,10 @@
       domain: switch
   mode: single
 - id: '1721219665412'
-  alias: Pool Pulsetime Auto Adjust
-  description: ''
+  alias: Auto Pool PulseTime Adjust
+  description: Adjusts the Pool PulseTime automatically based on changes in the actual
+    value. It turns the switch off, publishes the adjusted pulse time, and turns it
+    back on if the updated value exceeds thresholds or changes from zero.
   triggers:
   - entity_id:
     - input_number.pulsetimeactualvalue
@@ -2734,8 +2789,11 @@
     domain: switch
   mode: single
 - id: '1723670137701'
-  alias: Reload Dreame Robots after Internet Outage
-  description: ''
+  alias: Reload Dreame Robots After Internet Recovery
+  description: This automation reloads the Dreame Robots configuration after the internet
+    connection returns, ensuring seamless operation of your devices. If the internet
+    goes down for at least 1 minutes, it triggers the reload process for the specific
+    devices and restarts the associated add-on.
   triggers:
   - entity_id:
     - binary_sensor.internet_connection
@@ -2743,7 +2801,7 @@
     to: 'on'
     for:
       hours: 0
-      minutes: 2
+      minutes: 1
       seconds: 0
     trigger: state
   conditions: []
@@ -2824,22 +2882,23 @@
   max: 3
 - id: '1724944606723'
   alias: Vacation or Daily Mode
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
+  description: Automatically adjusts home settings for vacation or daily living modes.
+    Sends notifications based on the current mode.
+  triggers:
+  - entity_id:
     - input_select.smart_home_status
     from: Daily
     to: Vacation
     id: Vacation
-  - platform: state
-    entity_id:
+    trigger: state
+  - entity_id:
     - input_select.smart_home_status
     from: Vacation
     to: Daily
     id: Daily
-  condition: []
-  action:
+    trigger: state
+  conditions: []
+  actions:
   - alias: Vacation
     if:
     - condition: trigger
@@ -3457,8 +3516,9 @@
             milliseconds: 0
   mode: restart
 - id: '1730294194772'
-  alias: Aqara H1 EU Decoupled Switch
-  description: ''
+  alias: Aqara H1 EU Decoupled Switch Right
+  description: Toggle the Aqara H1 EU switch when in decoupled mode and not triggered
+    in the last 10 seconds.
   triggers:
   - domain: mqtt
     device_id: adf0a0e198e203d27f9ac23dd706eceb
@@ -3546,8 +3606,9 @@
           message: clear_notification
   mode: single
 - id: '1730391958900'
-  alias: Daily or Powersave Mode
-  description: ''
+  alias: Daily or Power Save Mode
+  description: Automates the transition between Daily and Power Save modes for efficient
+    energy management, including notifications and control of connected devices.
   triggers:
   - entity_id:
     - input_select.smart_home_status
@@ -3608,8 +3669,10 @@
         message: 'Smart Home '
   mode: single
 - id: '1731148293801'
-  alias: Automatic Backup excluding InfluxDB
-  description: ''
+  alias: Automatic Backup Management
+  description: Automatically backs up Home Assistant configurations at specified intervals.
+    Daily, weekly, monthly, and yearly backups are managed based on user-defined settings,
+    ensuring data safety and compliance with retention policies.
   triggers:
   - id: daily
     at: 02:30:00
@@ -4811,8 +4874,9 @@
       - sensor.boiler_remaining_time
   mode: single
 - id: '1736241679688'
-  alias: Restart Deye ESP if Theoretical Current is Unavailable
-  description: ''
+  alias: Restart Deye ESP When Current Unavailable
+  description: This automation restarts the Deye ESP if the theoretical grid charge
+    current sensor is in an unknown state for more than 5 minutes.
   triggers:
   - trigger: state
     entity_id:
@@ -4945,7 +5009,9 @@
   max_exceeded: silent
 - id: '1736353991047'
   alias: Papa kommt heim
-  description: ''
+  description: 'Notify when Stephan leaves work, enters the home area, and clear the
+    alert on arrival. Steps: restart iCloud3, locate device, send ETA notification,
+    then clear on home entry.'
   triggers:
   - trigger: state
     entity_id:
@@ -5210,8 +5276,9 @@
       notification_message: '{{ friendly_name }} ist offen seit {{ as_timestamp(now()
         - timedelta(minutes=10)) | timestamp_custom(''%T'', True) }}.'
 - id: '1738024300699'
-  alias: UPS changed state
-  description: ''
+  alias: Notify When UPS Changes State
+  description: This automation sends a notification when the UPS changes its state,
+    providing real-time updates on power status.
   triggers:
   - event_type: nut.ups_event
     trigger: event
@@ -5242,8 +5309,9 @@
     action: datetime.set_value
   mode: single
 - id: '1738246026422'
-  alias: Aqara H1 eu Decoupled Switch Left
-  description: ''
+  alias: Aqara H1 EU Decoupled Switch Left
+  description: Toggle the Schräg switch when the Aqara H1 EU decoupled switch is activated,
+    ensuring a cooldown period of 10 seconds to avoid rapid triggering.
   triggers:
   - domain: mqtt
     device_id: adf0a0e198e203d27f9ac23dd706eceb
@@ -5493,8 +5561,10 @@
       - binary_sensor.149_112_112_112
   mode: single
 - id: '1738740501702'
-  alias: Clean EG if Awake
-  description: ''
+  alias: Dreame Clean EG if Awake
+  description: This automation triggers a notification when the Dreame vacuum is set
+    to clean the EG area while someone is awake. Users can choose to start the cleaning
+    or have the vacuum return to the base.
   triggers:
   - entity_id: schedule.dreame_clean_up
     from: 'off'
@@ -5576,8 +5646,10 @@
         entity_id:
         - vacuum.d9_max_gen_2
 - id: '1738740572519'
-  alias: Clean OG if awake
-  description: ''
+  alias: Dreame Clean OG If Awake
+  description: This automation triggers the Dreame robot vacuum to clean the OG area
+    if it is confirmed that someone is awake. A notification is sent with options
+    to start cleaning or return the vacuum to its base.
   triggers:
   - entity_id: schedule.dreame_clean_up
     from: 'off'
@@ -5663,8 +5735,13 @@
         entity_id:
         - vacuum.dreamebot_d10_plus
 - id: '1738879628887'
-  alias: Restart Go-e 11kW if minimum pause duration
-  description: ''
+  alias: Restart Go-e 11kW If Minimum Pause Duration
+  description: 'This automation restarts the Go-e 11kW charger if it detects a minimum
+    pause duration without charging. It ensures the charger operates efficiently without
+    unnecessary downtime.
+
+    Helps resolve the bug, where the firmware gets stuck in the minimum pause duration
+    but.'
   triggers:
   - trigger: state
     entity_id:
@@ -5678,17 +5755,16 @@
     data: {}
     target:
       entity_id: button.go_echarger_270862_rst
-    enabled: false
-  - action: goecharger_mqtt.set_config_key
-    metadata: {}
-    data:
-      key: mcpea
-      value: 'null'
-      serial_number: '270862'
+    enabled: true
   mode: single
 - id: '1738879679202'
-  alias: Restart Gid 22kW if minimum pause duration
-  description: ''
+  alias: Restart Go-e 22kW If Minimum Pause Duration
+  description: 'This automation restarts the Go-e 22kW charger if it detects a minimum
+    pause duration without charging. It ensures the charger operates efficiently without
+    unnecessary downtime.
+
+    Helps resolve the bug, where the firmware gets stuck in the minimum pause duration
+    but.'
   triggers:
   - trigger: state
     entity_id:
@@ -5703,12 +5779,6 @@
     enabled: true
     target:
       entity_id: button.go_echarger_252682_rst
-  - action: goecharger_mqtt.set_config_key
-    metadata: {}
-    data:
-      key: mcpea
-      serial_number: '252682'
-      value: 'null'
   mode: single
 - id: '1739881671493'
   alias: Notify for Tibber Pulse Battery Replacement
@@ -5728,8 +5798,9 @@
       title: Tibber Pulse
   mode: single
 - id: '1739891374135'
-  alias: Briefkasten
-  description: ''
+  alias: Briefkasten Notification
+  description: Notify when new mail is added to the mailbox and clear the notification
+    once checked.
   triggers:
   - type: opened
     device_id: a9a60bacd223dc315ac08b423a29fa30
@@ -5799,8 +5870,10 @@
   mode: queued
   max: 3
 - id: '1739967189542'
-  alias: Reminder Waschmaschine und Trockner
-  description: ''
+  alias: Waschmaschine und Trockner Erinnerungen
+  description: This automation sends notifications and plays audio alerts when the
+    washing machine or dryer has completed its cycle. It continuously notifies until
+    the user clears the signal.
   triggers:
   - trigger: state
     entity_id:
@@ -5946,8 +6019,10 @@
   mode: parallel
   max: 10
 - id: '1740094506579'
-  alias: Wallpanel Reload Browser if -> low memory or 02:00
-  description: ''
+  alias: Wallpanel Browser Reload on Low Memory and time based
+  description: Reloads the browser on the wall panel if RAM usage exceeds 90% or at
+    02:00 every day. This automation ensures smooth performance by resetting the browser
+    when memory is low.
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -6098,7 +6173,11 @@
   mode: single
 - id: '1740741927183'
   alias: Turn off Trockner or Waschmaschine fertig using Button
-  description: ''
+  description: This automation turns off the completion status for the dryer or washing
+    machine when a button is pressed. It monitors specific button triggers for each
+    appliance and resets their respective status if they are marked as done. It ensures
+    the completion indicator is correctly updated for both appliances, allowing for
+    accurate tracking of laundry tasks.
   triggers:
   - domain: mqtt
     device_id: 7be1308679cc0cfa3cc595fe650e29ed
@@ -6292,8 +6371,10 @@
   mode: parallel
   max: 10
 - id: '1742316986881'
-  alias: Wall panel Display Off at Night
-  description: ''
+  alias: Wall Panel Display Control
+  description: Automatically turns off the wall panel display at night and turns it
+    on at sunrise. If the display is on after midnight, it will automatically turn
+    off after a 30-second delay, ensuring it's not left on during non-use hours.
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -6399,7 +6480,9 @@
   mode: single
 - id: '1744046298527'
   alias: Enya kommt heim
-  description: ''
+  description: When Enya leaves work (vehicle starts), restart iCloud3 and request
+    a fresh location; when she enters the big_home_2 zone, send ETA home; when she
+    arrives home, clear the arrival notification.
   triggers:
   - trigger: state
     entity_id:
@@ -6875,8 +6958,9 @@
           entity_id: switch.zirkulationspumpe_zigbee
   mode: single
 - id: '1748530213618'
-  alias: Allergie und Tasks
-  description: ''
+  alias: Allergie und Aufgaben Benachrichtigung
+  description: Daily reminder that combines allergy pollen levels and a task from
+    your to-do list, delivered every morning.
   triggers:
   - trigger: time
     at: 08:10:00
@@ -6944,31 +7028,6 @@
 
 
         {{ prompt }}'
-      agent_id: conversation.chatgpt
-    response_variable: agent
-    action: conversation.process
-    enabled: false
-  - alias: Send notification
-    data:
-      title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
-      message: '{{ agent.response.speech.plain.speech }}'
-    action: notify.duncan
-    enabled: false
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 1
-      milliseconds: 0
-    enabled: false
-  - alias: Conversation Agent Notification Text
-    data:
-      text: '{{ pollen_prompt }}
-
-
-        {{ todo_prompt }}
-
-
-        {{ prompt }}'
       agent_id: conversation.google_generative_ai
     response_variable: agent_2
     action: conversation.process
@@ -6979,8 +7038,11 @@
     action: notify.duncan
   mode: single
 - id: '1748638092151'
-  alias: Restart Honeygain if not running
-  description: ''
+  alias: Restart Honeygain if Not Running
+  description: This automation ensures that the Honeygain addon is restarted if it
+    is not actively running. If the active device count drops below one, the automation
+    will start or restart the addon and reload the relevant configuration entry, helping
+    maintain continuous operation.
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -7096,12 +7158,10 @@
           addon: cff83567_ankerctl
   mode: single
 - id: '1749622712645'
-  alias: Tablet Battery Warnings at Thresholds
-  description: 'Sends a battery warning notification to notify.duncan when the Lenovo
-    Tab P11 drops below key thresholds (40%, 30%, 20%, 10%), regardless of charging
-    state. Uses trigger.from_state > to_state to avoid flapping or false alerts.
-
-    '
+  alias: Tablet Battery Status Alerts
+  description: Sends notifications when the Lenovo Tab P11 battery level drops below
+    specific thresholds (40%, 30%, 20%, 10%). Alerts are designed to avoid flapping
+    and provide timely warnings based on the battery's status.
   triggers:
   - entity_id: sensor.lenovo_tab_p11_batterie
     below: 39
@@ -7172,8 +7232,10 @@
       action: notify.duncan
   mode: single
 - id: '1749768402037'
-  alias: Gang Light Time Based
-  description: ''
+  alias: Gang Light Brightness Control
+  description: Automatically adjust the stairway light brightness based on the light
+    brightness template time based sensor value. If brightness drops to zero, the
+    light will turn off, ensuring optimal lighting conditions at all times.
   triggers:
   - trigger: state
     entity_id:
@@ -7387,11 +7449,9 @@
       - data: {}
         action: hassio.host_reboot
 - id: '1751198541612'
-  alias: Router neustarten bei Internetausfall (mit Backoff-Wartezeit)
-  description: 'Startet den O2 Router bei Internetausfall neu, mit mehreren Versuchen
-    und exponentiellem Backoff-Timer.
-
-    '
+  alias: Router Restart on Internet Outage (with Backoff)
+  description: Restarts the O2 router upon internet failure, with several attempts
+    and an exponential backoff timer.
   triggers:
   - trigger: state
     entity_id: binary_sensor.internet_connection
@@ -7769,7 +7829,9 @@
   mode: single
 - id: '1752582553834'
   alias: Restore Spülmaschine
-  description: ''
+  description: Automatically turns on the dishwasher when powered off, ensuring the
+    plug stays on all the time, when pressed on accident or software bug caused power
+    off of the plug
   triggers:
   - trigger: state
     entity_id:
@@ -7815,8 +7877,9 @@
       alias: Restart Frigate if running
   mode: single
 - id: '1753267693777'
-  alias: Notify wenn Mama losfährt von der Arbeit
-  description: ''
+  alias: Mama fährt von der Arbeit los – Benachrichtigung
+  description: Notify when the car likely starts driving home from work based on a
+    drop in battery range, limited to once every 30 minutes.
   triggers:
   - trigger: state
     entity_id:
@@ -7877,7 +7940,7 @@
 - id: '1754256267209'
   alias: UGREEN NAS Power Management
   description: Turns on the UGREEN NAS at 10:00 AM daily and turns it off if its power
-    consumption indicates it's idle.
+    consumption indicates it's off.
   triggers:
   - trigger: time
     at: '10:00:00'
@@ -7916,10 +7979,10 @@
           entity_id: switch.ugreen_nas
   mode: single
 - id: '1754293444382'
-  alias: Paludarium Pump & Fan Control - Combined Zones
-  description: Controls pumps on a 15min on/off cycle per zone, runs associated fan
-    cooldown on pump turn off, with failsafe time pattern trigger and power strip
-    checks.
+  alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
+  description: Runs left, Kallax, and right paludarium pumps in a 15-minute on/off
+    cycle during daytime; on pump turn-off, starts a fan cooldown. Includes 1‑minute
+    failsafe time pattern trigger and power strip availability checks.
   triggers:
   - minutes: /1
     trigger: time_pattern
