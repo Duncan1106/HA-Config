@@ -612,9 +612,10 @@
       trigger_entity: binary_sensor.garagedoor_zigbee_contact
       friendly_name: Garagentor
       notify_services_string: notify.duncan
-      notification_message: The {{ friendly_name | default('') }} was left open at
-        {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True) }}.
-      notification_title: The {{ friendly_name | default('') }} was left open
+      notification_message: The {{ friendly_name | default('Garage') }} was left open
+        at {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True)
+        }}.
+      notification_title: The {{ friendly_name | default('Garage') }} was left open
 - id: '1705857100421'
   alias: Waschmaschine fertig
   description: ''
@@ -674,10 +675,10 @@
         seconds: 0
         days: 0
       notify_services_string: notify.mobile_app_poco_f7
-      notification_message: Das {{ friendly_name | default('') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=120)) | timestamp_custom('%T', True)
-        }}.
-      notification_title: '{{ friendly_name | default('''') }} offen'
+      notification_message: Das {{ friendly_name | default('Waschküche Fenster') }}
+        ist offen seit {{ as_timestamp(now() - timedelta(minutes=120)) | timestamp_custom('%T',
+        True) }}.
+      notification_title: '{{ friendly_name | default(''Waschküche Fenster'') }} offen'
       repeat_notification: true
       time_between_repeat_notification:
         hours: 3
@@ -3453,6 +3454,7 @@
       data:
         brightness_pct: 100
         transition: 1
+        color_temp_kelvin: 2400
       target:
         entity_id: light.bad_nachtlicht
   - alias: Off after time x
@@ -3489,8 +3491,9 @@
           - action: light.turn_on
             metadata: {}
             data:
-              brightness_pct: 1
               transition: 1
+              color_temp_kelvin: 2400
+              brightness: 9
             target:
               entity_id: light.bad_nachtlicht
           - delay:
@@ -3674,9 +3677,8 @@
   mode: single
 - id: '1731148293801'
   alias: Automatic Backup Management
-  description: Automatically backs up Home Assistant configurations at specified intervals.
-    Daily, weekly, monthly, and yearly backups are managed based on user-defined settings,
-    ensuring data safety and compliance with retention policies.
+  description: Schedules and manages backups at hourly, daily, weekly, monthly, and
+    yearly intervals, with retention rules and descriptive backup names.
   triggers:
   - id: daily
     at: 02:30:00
@@ -4117,10 +4119,10 @@
     input:
       trigger_entity: binary_sensor.kinderbad_fenster_contact
       notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default('''') }} offen'
-      notification_message: Das {{ friendly_name | default('') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom('%T', True)
-        }}.
+      notification_title: '{{ friendly_name | default(''Kinderbad Fenster'') }} offen'
+      notification_message: Das {{ friendly_name | default('Kinderbad Fenster') }}
+        ist offen seit {{ as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom('%T',
+        True) }}.
       duration_issue_state:
         hours: 0
         minutes: 10
@@ -4140,10 +4142,10 @@
     input:
       trigger_entity: binary_sensor.bad_fenster_contact
       notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default('''') }} offen'
-      notification_message: Das {{ friendly_name | default('') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom('%T', True)
-        }}.
+      notification_title: '{{ friendly_name | default(''Bad Fenster'') }} offen'
+      notification_message: Das {{ friendly_name | default('Bad Fenster') }} ist offen
+        seit {{ as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom('%T',
+        True) }}.
       duration_issue_state:
         hours: 0
         minutes: 10
@@ -4163,10 +4165,10 @@
     input:
       trigger_entity: binary_sensor.gasteklo_fenster_contact
       notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default('''') }} offen'
-      notification_message: Das {{ friendly_name | default('') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=15)) | timestamp_custom('%T', True)
-        }}.
+      notification_title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
+      notification_message: Das {{ friendly_name | default('Gästeklo Fenster') }}
+        ist offen seit {{ as_timestamp(now() - timedelta(minutes=15)) | timestamp_custom('%T',
+        True) }}.
       duration_issue_state:
         hours: 0
         minutes: 15
@@ -4235,6 +4237,7 @@
           - automation.get_pulsetime
           - automation.save_pulsetime
           - automation.pool_pulsetime_auto_adjust
+          - automation.disable_prompt_tone_air_conditioner
           - binary_sensor.inverter_connection
           - sensor.auto_backup_last_success
           - sensor.auto_backup_last_failure
@@ -4287,6 +4290,13 @@
           - sensor.esp32_c3_zero_epever_discharger_status
           - sensor.esp32_c3_zero_epever_power_components_temperature
           - sensor.esp32_c3_zero_epever_device_temperature
+          - climate.bad
+          - climate.duncan
+          - climate.kinderbad
+          - climate.kuche
+          - climate.wohnzimmer
+          - climate.153931628718174_climate
+          - climate.lsjwh4097rn105299_vehicle_climate
           keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -4362,13 +4372,6 @@
           - sensor.solcast_pv_forecast_prognose_tag_5
           - sensor.solcast_pv_forecast_prognose_tag_6
           - sensor.solcast_pv_forecast_prognose_tag_7
-          - climate.bad
-          - climate.duncan
-          - climate.kinderbad
-          - climate.kuche
-          - climate.wohnzimmer
-          - climate.153931628718174_climate
-          - climate.lsjwh4097rn105299_vehicle_climate
           - sensor.daily_energy_goe_11kw
           - sensor.daily_energy_goe_22kw
           - sensor.go_echarger_252682_wh
@@ -5268,10 +5271,10 @@
         seconds: 0
         days: 0
       notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default('''') }} offen'
-      notification_message: Das {{ friendly_name | default('') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=60)) | timestamp_custom('%T', True)
-        }}.
+      notification_title: '{{ friendly_name | default(''Hobbyraum Fenster'') }} offen'
+      notification_message: Das {{ friendly_name | default('Hobbyraum Fenster') }}
+        ist offen seit {{ as_timestamp(now() - timedelta(minutes=60)) | timestamp_custom('%T',
+        True) }}.
 - id: '1737391841418'
   alias: Duncan Fenster offen
   description: ''
@@ -5280,10 +5283,10 @@
     input:
       trigger_entity: binary_sensor.duncan_fenster_contact
       notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default('''') }} offen'
-      notification_message: '{{ friendly_name | default('''') }} ist offen seit {{
-        as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom(''%T'', True)
-        }}.'
+      notification_title: '{{ friendly_name | default(''Duncans Fenster'') }} offen'
+      notification_message: '{{ friendly_name | default(''Duncans Fenster'') }} ist
+        offen seit {{ as_timestamp(now() - timedelta(minutes=10)) | timestamp_custom(''%T'',
+        True) }}.'
       repeat_notification: false
 - id: '1738024300699'
   alias: Notify When UPS Changes State
@@ -5548,7 +5551,7 @@
   mode: queued
   max: 10
 - id: '1738676581969'
-  alias: 15s Ping Update
+  alias: 3s Ping Update
   description: Regularly updates connectivity ping sensors when the smart home is
     in 'Daily' mode.
   triggers:
@@ -7559,8 +7562,9 @@
   variables:
     max_retries: 10
 - id: '1751225518081'
-  alias: 'Frigate Notifications (0.14.0.2w) Ding Dong '
-  description: ''
+  alias: Frigate Notifications (0.14.0.2w) Ding Dong
+  description: Sends notification with snapshot, video, and event preview from Frigate
+    detection on Ding Dong camera to specified notify group and device.
   use_blueprint:
     path: SgtBatten/Stable.yaml
     input:
@@ -7582,7 +7586,8 @@
       video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
-  description: ''
+  description: Sends notifications with snapshots from the Keller camera using Frigate
+    detection events, filtering presence and notifying a specific group and device.
   use_blueprint:
     path: SgtBatten/Stable.yaml
     input:
@@ -7919,36 +7924,69 @@
         tag: renault_zoe_kommt_heim
   mode: single
 - id: '1754244024626'
-  alias: Disable Prompt Tone Air Conditioner
-  description: This automation attempts to disable the prompt tone of an air conditioner
-    by quickly toggling its prompt tone switch. It runs periodically and whenever
-    the prompt tone switch turns on, ensuring the tone remains off.
+  alias: Disable Prompt Tone & Display Air Conditioner
+  description: Keeps the air conditioner's prompt tone and screen display disabled.
+    Periodically toggles the prompt tone briefly and turns off the screen display
+    to ensure both remain off.
   triggers:
   - trigger: time_pattern
     hours: /3
+    id: 3 hours
   - trigger: state
     entity_id:
     - switch.153931628718174_prompt_tone
     to: 'on'
-  conditions: []
-  actions:
-  - action: switch.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.153931628718174_prompt_tone
-  - delay:
+    for:
       hours: 0
       minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.153931628718174_prompt_tone
-  mode: queued
-  max: 10
+      seconds: 10
+    id: Prompt Tone
+  - trigger: state
+    entity_id:
+    - switch.153931628718174_screen_display
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
+    id: Dieplay
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 3 hours
+        - Prompt Tone
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_prompt_tone
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_prompt_tone
+    - conditions:
+      - condition: trigger
+        id:
+        - 3 hours
+        - Dieplay
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_screen_display
+  mode: parallel
+  max: 4
 - id: '1754256267209'
   alias: UGREEN NAS Power Management
   description: Turns on the UGREEN NAS at 10:00 AM daily and turns it off if its power
