@@ -3677,9 +3677,8 @@
   mode: single
 - id: '1731148293801'
   alias: Automatic Backup Management
-  description: Automatically backs up Home Assistant configurations at specified intervals.
-    Daily, weekly, monthly, and yearly backups are managed based on user-defined settings,
-    ensuring data safety and compliance with retention policies.
+  description: Schedules and manages backups at hourly, daily, weekly, monthly, and
+    yearly intervals, with retention rules and descriptive backup names.
   triggers:
   - id: daily
     at: 02:30:00
@@ -5552,7 +5551,7 @@
   mode: queued
   max: 10
 - id: '1738676581969'
-  alias: 15s Ping Update
+  alias: 3s Ping Update
   description: Regularly updates connectivity ping sensors when the smart home is
     in 'Daily' mode.
   triggers:
@@ -7925,36 +7924,69 @@
         tag: renault_zoe_kommt_heim
   mode: single
 - id: '1754244024626'
-  alias: Disable Prompt Tone Air Conditioner
-  description: This automation attempts to disable the prompt tone of an air conditioner
-    by quickly toggling its prompt tone switch. It runs periodically and whenever
-    the prompt tone switch turns on, ensuring the tone remains off.
+  alias: Disable Prompt Tone & Display Air Conditioner
+  description: Keeps the air conditioner's prompt tone and screen display disabled.
+    Periodically toggles the prompt tone briefly and turns off the screen display
+    to ensure both remain off.
   triggers:
   - trigger: time_pattern
     hours: /3
+    id: 3 hours
   - trigger: state
     entity_id:
     - switch.153931628718174_prompt_tone
     to: 'on'
-  conditions: []
-  actions:
-  - action: switch.turn_on
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.153931628718174_prompt_tone
-  - delay:
+    for:
       hours: 0
       minutes: 0
-      seconds: 1
-      milliseconds: 0
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.153931628718174_prompt_tone
-  mode: queued
-  max: 10
+      seconds: 10
+    id: Prompt Tone
+  - trigger: state
+    entity_id:
+    - switch.153931628718174_screen_display
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
+    id: Dieplay
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 3 hours
+        - Prompt Tone
+      sequence:
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_prompt_tone
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_prompt_tone
+    - conditions:
+      - condition: trigger
+        id:
+        - 3 hours
+        - Dieplay
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.153931628718174_screen_display
+  mode: parallel
+  max: 4
 - id: '1754256267209'
   alias: UGREEN NAS Power Management
   description: Turns on the UGREEN NAS at 10:00 AM daily and turns it off if its power
