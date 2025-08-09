@@ -448,7 +448,7 @@ class ItemListCard extends LitElement {
           </button>
           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt"
                   @click=${() => this._confirmAndComplete(item, sourceMap)}>
-            <ha-icon icon="mdi:check"></ha-icon>
+            <ha-icon icon="mdi:delete"></ha-icon>
           </button>
         </div>
       </div>
