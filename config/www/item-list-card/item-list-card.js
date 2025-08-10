@@ -197,7 +197,7 @@ class ItemListCard extends LitElement {
     this._filterValue = '';
     this._lastItemsHash = '';
     this._lastSourceMapHash = '';
-    this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 200);
+    this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 250);
   }
 
   disconnectedCallback() {
@@ -448,7 +448,7 @@ class ItemListCard extends LitElement {
           </button>
           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt"
                   @click=${() => this._confirmAndComplete(item, sourceMap)}>
-            <ha-icon icon="mdi:delete"></ha-icon>
+            <ha-icon icon="mdi:delete-outline"></ha-icon>
           </button>
         </div>
       </div>
