@@ -3377,7 +3377,7 @@
     action: button.press
   mode: single
 - id: '1728376825897'
-  alias: Bad Nachlicht Motion
+  alias: Bad Nachtlicht Motion
   description: Controls the bathroom night light based on motion and ambient light
     levels, turning it on when dark and motion is detected, and off when motion stops
     or it gets bright. Includes a visual cue if motion stops in the dark.
@@ -3431,11 +3431,8 @@
         - condition: trigger
           id:
           - 'On'
-        - type: is_illuminance
-          condition: device
-          device_id: 2e7223e910889cdb2c4fcb060c712ac5
-          entity_id: d693ba4267735db947d0830cad78379e
-          domain: sensor
+        - condition: numeric_state
+          entity_id: sensor.bad_nachtlicht_illuminance
           below: 20
         - condition: state
           entity_id: binary_sensor.kinderbad_bewegung
@@ -3446,7 +3443,7 @@
           entity_id: light.bad_nachtlicht
           state: 'off'
         - condition: template
-          value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')
+          value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
             < 10 }}'
     then:
     - action: light.turn_on
@@ -3480,13 +3477,17 @@
             data: {}
             target:
               entity_id: light.bad_nachtlicht
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
           until:
           - condition: state
             entity_id: light.bad_nachtlicht
             state: 'off'
       else:
       - repeat:
-          count: 2
           sequence:
           - action: light.turn_on
             metadata: {}
@@ -3501,6 +3502,10 @@
               minutes: 0
               seconds: 0
               milliseconds: 500
+          until:
+          - condition: template
+            value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
+              == 9 }}'
     enabled: true
   - alias: Off immediately
     if:
@@ -3509,7 +3514,6 @@
       - Off immediately
     then:
     - repeat:
-        count: 2
         sequence:
         - action: light.turn_off
           metadata: {}
@@ -3519,8 +3523,12 @@
         - delay:
             hours: 0
             minutes: 0
-            seconds: 1
-            milliseconds: 0
+            seconds: 0
+            milliseconds: 500
+        until:
+        - condition: state
+          entity_id: light.bad_nachtlicht
+          state: 'off'
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch Right
