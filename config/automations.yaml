@@ -337,6 +337,12 @@
       seconds: 30
     below: -1249
     trigger: numeric_state
+  - trigger: state
+    entity_id:
+    - device_tracker.renault_zoe_standort
+    - device_tracker.wvgzzze2zpe005371_position
+    - device_tracker.lsjwh4097rn105299_vehicle_position
+    to: home
   conditions:
   - condition: and
     conditions:
@@ -357,6 +363,9 @@
     - condition: template
       value_template: '{{ states(''sensor.evs_home_and_ready_to_charge'') != ''Alle
         Fahrzeuge geladen oder nicht zu Hause'' }}'
+    - condition: numeric_state
+      entity_id: sensor.grid_export_negative
+      below: -1248
   actions:
   - parallel:
     - alias: Notify Papa
@@ -716,7 +725,7 @@
       end_appliance_power: 2
       end_time_delay: 1
       include_power_tracking: disable_power_tracking
-      include_watchdog: enable_watchdog
+      include_watchdog: disable_watchdog
       watchdog_timeframe:
         hours: 3
         minutes: 0
@@ -2093,6 +2102,9 @@
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'off'
+      - condition: state
+        entity_id: binary_sensor.pool_temperatur_trend
+        state: 'on'
     then:
     - action: automation.turn_off
       metadata: {}
@@ -3420,6 +3432,12 @@
     trigger: numeric_state
     enabled: true
     above: 25
+  - entity_id:
+    - sensor.bad_nachtlicht_illuminance
+    id: Off immediately
+    trigger: numeric_state
+    enabled: true
+    above: 50
   conditions: []
   actions:
   - alias: 'On'
@@ -4435,6 +4453,7 @@
           - sensor.lsjwh4097rn105299_last_charge_state
           - sensor.lsjwh4097rn105299_last_vehicle_state
           - sensor.lsjwh4097rn105299_last_poll_error
+          - binary_sensor.pool_temperatur_trend
           entity_globs: sensor.esp32_s3_zero_deye8k*
     enabled: true
   - alias: Keep 3 Day

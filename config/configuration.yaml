@@ -1,6 +1,12 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
+# Temperory until next solarman logger relase with fix
+logger:
+  filters:
+    homeassistant.helpers.entity_platform:
+      - ".*The deprecated function platform_translations was called from solarman.*"
+
 recorder:
   purge_keep_days: 10
   commit_interval: 10
@@ -383,7 +389,7 @@ template:
             
             {% set count = namespace(total=0) %}
             {% for list_id in filtered_lists %}
-              {% set items = all_todo_items[list_id]['items'] | default([]) %}
+              {% set items = all_todo_items[list_id]['items'] | default([], true) %}
               {% for item in items %}
                 {% if item.summary is defined and (search_term in item.summary | lower) %}
                   {% set count.total = count.total + 1 %}
@@ -431,7 +437,7 @@ template:
             {% set combined = namespace(items=[]) %}
             
             {% for list_id in filtered_lists %}
-              {% set items = all_todo_items[list_id]['items'] | default([]) %}
+              {% set items = all_todo_items[list_id]['items'] | default([], true) %}
               {% for item in items %}
                 {% if item.summary is defined and item.summary is string %}
                   {% if search_term == '' or (search_term in (item.summary | lower)) %}
@@ -1085,7 +1091,7 @@ sensor:
 
 multiscrape:
   - name: TIbber Pulse Metrics
-    resource:  !secret tibber_bridge_url
+    resource: !secret tibber_bridge_url
     method: GET
     scan_interval: 300
     headers:
