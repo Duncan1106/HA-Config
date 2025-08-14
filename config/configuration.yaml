@@ -391,7 +391,8 @@ template:
             {% for list_id in filtered_lists %}
               {% set items = all_todo_items[list_id]['items'] | default([], true) %}
               {% for item in items %}
-                {% if item.summary is defined and (search_term in item.summary | lower) %}
+                {% set terms = search_term.split() %}
+                {% if search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count) %}
                   {% set count.total = count.total + 1 %}
                 {% endif %}
               {% endfor %}
@@ -411,7 +412,7 @@ template:
             {% set has_filter = 'todo:' in input %}
             {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
             {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
-            
+
             {% set lists = [
               'todo.kellervorrate',
               'todo.kellervorrate_safe',
@@ -440,7 +441,8 @@ template:
               {% set items = all_todo_items[list_id]['items'] | default([], true) %}
               {% for item in items %}
                 {% if item.summary is defined and item.summary is string %}
-                  {% if search_term == '' or (search_term in (item.summary | lower)) %}
+                  {% set terms = search_term.split() %}
+                  {% if (search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count)) %}
                     {% set minimal_item = {
                       'u': item.uid,
                       's': item.summary,
