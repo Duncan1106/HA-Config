@@ -505,10 +505,10 @@ class ItemListCard extends LitElement {
         </div>
         <div class="item-controls">
           ${this._renderQuantityControls(item, sourceMap)}
-          <button class="btn" @click=${() => this._addToShoppingList(item)}>
+          <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
             <ha-icon icon="mdi:cart-outline"></ha-icon>
           </button>
-          <button class="btn" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
+          <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
             <ha-icon icon="mdi:delete-outline"></ha-icon>
           </button>
         </div>
