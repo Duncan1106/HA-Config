@@ -412,6 +412,10 @@ class ItemListCard extends LitElement {
 
   _renderQuantityControls(item, sourceMap) {
     const qStr = String(item.d ?? '');
+    if (qStr === '') {
+      qStr = '1';
+    }
+    
     if (!this._isNumeric(qStr)) {
       return html`<div class="quantity" title="Menge">${qStr}</div>`;
     }
