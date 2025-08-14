@@ -411,10 +411,8 @@ class ItemListCard extends LitElement {
   }
 
   _renderQuantityControls(item, sourceMap) {
-    const qStr = String(item.d ?? '');
-    if (qStr === '') {
-      qStr = '1';
-    }
+    let qStr = String(item.d ?? '');
+    if (qStr === '') qStr = '1';
     
     if (!this._isNumeric(qStr)) {
       return html`<div class="quantity" title="Menge">${qStr}</div>`;
@@ -426,7 +424,7 @@ class ItemListCard extends LitElement {
       ${quantity > 1
         ? html`<button class="btn" type="button" title="Verringern" aria-label="Verringern" @click=${dec}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
         : ''}
-      <div class="quantity" title="Menge">${qStr}</div>
+      <div class="quantity" title="Menge">${quantity}</div>
       <button class="btn" type="button" title="Erhöhen" aria-label="Erhöhen" @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
     `;
   }
