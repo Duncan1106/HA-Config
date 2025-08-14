@@ -188,6 +188,11 @@ class ItemListCard extends LitElement {
       color: var(--secondary-text-color, #aaa);
       margin-top: 2px;
     }
+    .highlight {
+      background-color: rgba(255, 235, 59, 0.4); /* soft yellow */
+      padding: 0 2px;
+      border-radius: 3px;
+    }
   `;
 
   constructor() {
@@ -217,6 +222,7 @@ class ItemListCard extends LitElement {
       show_origin: false,
       hide_add_button: false,
       max_items_without_filter: 20,
+      highlight_matches: false, 
       ...config,
     };
   }
@@ -429,6 +435,34 @@ class ItemListCard extends LitElement {
     `;
   }
 
+//   _renderItemRow(item, sourceMap) {
+//     const showOrigin = !!this.config?.show_origin;
+//     const sourceId = sourceMap?.[String(item.c)];
+//     const friendlyName = showOrigin && sourceId
+//       ? this.hass.states[sourceId]?.attributes?.friendly_name
+//       : null;
+
+//     return html`
+//       <div class="item-row" role="listitem">
+//         <div class="item-summary" title=${item.s}>
+//           ${item.s}
+//           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
+//         </div>
+//         <div class="item-controls">
+//           ${this._renderQuantityControls(item, sourceMap)}
+//           <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste"
+//                   @click=${() => this._addToShoppingList(item)}>
+//             <ha-icon icon="mdi:cart-outline"></ha-icon>
+//           </button>
+//           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt"
+//                   @click=${() => this._confirmAndComplete(item, sourceMap)}>
+//             <ha-icon icon="mdi:delete-outline"></ha-icon>
+//           </button>
+//         </div>
+//       </div>
+//     `;
+//   }
+  
   _renderItemRow(item, sourceMap) {
     const showOrigin = !!this.config?.show_origin;
     const sourceId = sourceMap?.[String(item.c)];
@@ -436,26 +470,52 @@ class ItemListCard extends LitElement {
       ? this.hass.states[sourceId]?.attributes?.friendly_name
       : null;
 
+    const filter = (this._filterValue || '').trim().toLowerCase();
+
+    let parts = [item.s];
+    if (filter) {
+      const terms = filter.split(/\s+/).filter(t => t);
+      parts = [];
+      let remaining = item.s;
+      while (remaining.length) {
+        let found = false;
+        for (const term of terms) {
+          const idx = remaining.toLowerCase().indexOf(term);
+          if (idx >= 0) {
+            if (idx > 0) parts.push(remaining.slice(0, idx));
+            parts.push(html`<span class="highlight">${remaining.slice(idx, idx + term.length)}</span>`);
+            remaining = remaining.slice(idx + term.length);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          parts.push(remaining);
+          break;
+        }
+      }
+    }
+    const shouldHighlight = filter && this.config.highlight_matches;
+    
     return html`
       <div class="item-row" role="listitem">
         <div class="item-summary" title=${item.s}>
-          ${item.s}
+          ${shouldHighlight ? parts : item.s}
           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
         </div>
         <div class="item-controls">
           ${this._renderQuantityControls(item, sourceMap)}
-          <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste"
-                  @click=${() => this._addToShoppingList(item)}>
+          <button class="btn" @click=${() => this._addToShoppingList(item)}>
             <ha-icon icon="mdi:cart-outline"></ha-icon>
           </button>
-          <button class="btn" type="button" title="Erledigt" aria-label="Erledigt"
-                  @click=${() => this._confirmAndComplete(item, sourceMap)}>
+          <button class="btn" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
             <ha-icon icon="mdi:delete-outline"></ha-icon>
           </button>
         </div>
       </div>
     `;
   }
+
 
   render() {
     if (!this.hass) {
