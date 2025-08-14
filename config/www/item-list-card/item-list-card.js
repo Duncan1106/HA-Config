@@ -33,16 +33,21 @@ const showToast = (el, message) => {
 
 // Try to use HA confirmation dialog; fallback to window.confirm
 const confirmDialog = async (el, title, text) => {
+  // First try to ask the frontend to show its built-in confirm dialog.
+  // Many HA frontends support a "show-dialog" event; we dispatch it but
+  // do not rely on any specific import or returned promise from the handler.
   try {
-    const event = new CustomEvent("show-dialog", {
+    const event = new CustomEvent('show-dialog', {
       detail: {
-        dialogTag: "ha-dialog-confirm",
-        dialogImport: () => import("https://unpkg.com/home-assistant-js-websocket"),
+        dialogTag: 'ha-dialog-confirm',
+        // Do not try to import a module here — the frontend will handle
+        // loading the dialog. Providing dialogParams is sufficient for many setups.
         dialogParams: {
           title,
           text,
-          confirmText: "OK",
-          dismissText: "Abbrechen",
+          confirmText: 'OK',
+          dismissText: 'Abbrechen',
+          // some frontends recognize `confirm` as a flag to show confirm button
           confirm: true,
         },
       },
@@ -50,12 +55,16 @@ const confirmDialog = async (el, title, text) => {
       composed: true,
     });
     el.dispatchEvent(event);
-    // If your setup doesn't resolve the dialog promise, fallback to confirm:
-    return typeof window.confirm === "function" ? window.confirm(text) : true;
+    // If the frontend handles the event it will show the dialog. Since the
+    // show-dialog flow is implementation-dependent, fall back to the
+    // blocking window.confirm for guaranteed behavior.
+    return typeof window.confirm === 'function' ? window.confirm(text) : true;
   } catch {
+    // If dispatch fails for any reason just use the built-in confirm
     return window.confirm(text);
   }
 };
+
 
 class ItemListCard extends LitElement {
   static properties = {
@@ -64,6 +73,7 @@ class ItemListCard extends LitElement {
     _cachedItems: { state: true },
     _cachedSourceMap: { state: true },
     _filterValue: { state: true },
+    _pendingUpdates: { state: true },
     _lastItemsHash: { state: false },
     _lastSourceMapHash: { state: false },
   };
@@ -71,93 +81,110 @@ class ItemListCard extends LitElement {
   static styles = css`
     :host {
       display: block;
-      font-family: var(--primary-font-family, sans-serif);
+      font-family: var(--primary-font-family, 'Helvetica Neue', Arial, sans-serif);
+      --card-padding: 12px;
     }
     ha-card {
-      padding: 10px;
+      padding: var(--card-padding);
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.06);
     }
-    h3 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--primary-text-color, #333);
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
     .card-title {
-      text-align: center;
-      font-size: 1.3em;
-      font-weight: bold;
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
       color: var(--primary-text-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .count-badge {
+      background: var(--accent-color, #03a9f4);
+      color: white;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.82rem;
     }
     .input-row {
       display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-      height: 36px;
+      gap: 8px;
+      margin-bottom: 10px;
+      height: 40px;
+      align-items: center;
     }
     .input-row input {
       flex: 1;
-      padding: 6px 8px;
+      padding: 8px 10px;
       font-size: 14px;
-      border: 1px solid var(--divider-color, #ccc);
-      border-radius: 4px;
+      border: 1px solid var(--divider-color, #e0e0e0);
+      border-radius: 8px;
       color: var(--primary-text-color);
       background: var(--card-background-color);
+      transition: box-shadow 0.12s ease, border-color 0.12s ease;
     }
     .input-row input:focus {
-      outline: 2px solid var(--accent-color, #03a9f4);
-      outline-offset: 1px;
+      outline: none;
+      border-color: var(--accent-color, #03a9f4);
+      box-shadow: 0 0 0 4px rgba(3,169,244,0.06);
     }
     .input-row .btn {
       width: 36px;
       height: 36px;
       background: none;
-      border: none;
+      border: 1px solid transparent;
       cursor: pointer;
       padding: 0;
       color: var(--primary-text-color, #555);
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 8px;
+      transition: background 0.12s ease, color 0.12s ease;
     }
     .input-row .btn:hover,
     .btn:hover {
       background: rgba(0,0,0,0.04);
       color: var(--accent-color, #03a9f4);
+      transform: translateY(-1px);
     }
     .item-row {
       display: flex;
       align-items: center;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--divider-color, #e0e0e0);
+      padding: 10px 0;
+      border-bottom: 1px solid var(--divider-color, #f0f0f0);
+      gap: 8px;
     }
     .item-summary {
       flex: 1 1 70%;
       font-size: 14px;
-      color: var(--primary-text-color, #555);
+      color: var(--primary-text-color, #333);
       white-space: normal;
       overflow: visible;
-      text-overflow: unset;
       user-select: text;
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
     }
     .info {
       font-size: 13px;
-      color: var(--secondary-text-color, #999);
+      color: var(--secondary-text-color, #888);
       margin-bottom: 8px;
     }
     .item-controls {
-      flex: 0 0 30%;
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: flex-end;
-      gap: 4px;
+      gap: 6px;
     }
     .btn {
-      width: 28px;
-      height: 28px;
+      width: 32px;
+      height: 32px;
       background: none;
       border: none;
       cursor: pointer;
@@ -166,32 +193,98 @@ class ItemListCard extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
+      border-radius: 6px;
+    }
+    .btn[title] {
+      position: relative;
     }
     .hidden {
       display: none !important;
     }
     .quantity {
-      min-width: 20px;
+      min-width: 26px;
       text-align: center;
-      font-weight: 500;
+      font-weight: 600;
       font-size: 14px;
       color: var(--primary-text-color, #333);
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.03);
     }
     .empty-state {
-      padding: 8px 0;
+      padding: 14px 0;
       font-size: 14px;
-      color: var(--secondary-text-color, #999);
+      color: var(--secondary-text-color, #888);
+      text-align: center;
     }
     .item-sublabel {
       font-size: 12px;
-      color: var(--secondary-text-color, #aaa);
-      margin-top: 2px;
+      color: var(--secondary-text-color, #9a9a9a);
+      margin-top: 4px;
     }
     .highlight {
-      background-color: rgba(255, 235, 59, 0.4); /* soft yellow */
-      padding: 0 2px;
+      background-color: rgba(255, 235, 59, 0.35);
+      padding: 0 3px;
       border-radius: 3px;
+    }
+
+    /* small screens adjustments */
+    @media (max-width: 420px) {
+      .input-row { height: 38px; gap: 6px; }
+      .btn, .input-row .btn { width: 34px; height: 34px; }
+      .quantity { min-width: 22px; }
+    }
+    
+    /* fixed-size centered spinner wrapper to avoid layout shift */
+    .loading-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.2em;
+      height: 1.2em;
+      vertical-align: middle;
+      pointer-events: none;
+    }
+    
+    /* animate the inner ha-icon and svg explicitly */
+    .loading-icon ha-icon,
+    .loading-icon ha-icon svg,
+    .loading-icon ha-icon * {
+      display: block;
+      width: 100%;
+      height: 100%;
+      transform-origin: 50% 50%;
+      transform-box: fill-box;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      will-change: transform;
+      animation: spin 1s linear infinite;
+    }
+    
+    /* fallback: animate svg children directly if present */
+    .loading-icon svg {
+      animation: spin 1s linear infinite;
+      transform-origin: 50% 50%;
+      transform-box: fill-box;
+    }
+    
+    /* smooth rotation */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    
+    
+    /* make disabled buttons clearly non-interactive and remove focus ring */
+    .btn[disabled] {
+      opacity: 0.5;
+      cursor: default;
+      transform: none;
+      pointer-events: none;
+    }
+    .btn[disabled]:focus-visible {
+      outline: none;
+      box-shadow: none;
     }
   `;
 
@@ -203,6 +296,7 @@ class ItemListCard extends LitElement {
     this._lastItemsHash = '';
     this._lastSourceMapHash = '';
     this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 250);
+    this._pendingUpdates = new Set();
   }
 
   disconnectedCallback() {
@@ -306,11 +400,31 @@ class ItemListCard extends LitElement {
     return typeof str === 'string' && /^\d+$/.test(str);
   }
 
+//   _updateFilterTextActual(value) {
+//     this.hass.callService('input_text', 'set_value', {
+//       entity_id: this.config.filter_entity,
+//       value,
+//     }).catch(err => console.error("Error updating filter text:", err));
+//   }
+  
   _updateFilterTextActual(value) {
-    this.hass.callService('input_text', 'set_value', {
-      entity_id: this.config.filter_entity,
-      value,
-    }).catch(err => console.error("Error updating filter text:", err));
+    try {
+      const entityId = this.config?.filter_entity;
+      if (!entityId || !this.hass) {
+        return;
+      }
+      const current = this.hass.states?.[entityId]?.state ?? '';
+      const curTrim = String(current).trim();
+      const valTrim = String(value ?? '').trim();
+      if (curTrim === valTrim) return;
+
+      this.hass.callService('input_text', 'set_value', {
+        entity_id: entityId,
+        value,
+      }).catch(err => console.error("Error updating filter text:", err));
+    } catch (err) {
+      console.error("Error in _updateFilterTextActual:", err);
+    }
   }
 
   _handleFilterInputChange(e) {
@@ -361,6 +475,87 @@ class ItemListCard extends LitElement {
     }).catch(err => console.error("Error adding search term to shopping list:", err));
   }
 
+//   _updateOrCompleteItem(uid, updates, source, sourceMap) {
+//     const entityId = sourceMap?.[String(source)];
+//     if (!entityId) {
+//       console.error('No valid todo entity id for source:', source);
+//       return;
+//     }
+
+//     const data = {
+//       entity_id: entityId,
+//       item: uid,          // IMPORTANT: use item key, value is the UID
+//       ...updates,         // { description: n } or { status: 'completed' }
+//     };
+
+//     // Optional: coerce numeric description to string if your service requires it
+//     if (updates.description !== undefined) {
+//       let desc = parseInt(updates.description, 10);
+//       if (isNaN(desc) || desc < 0) desc = 0;
+//       data.description = String(desc);
+//     }
+
+//     this.hass.callService('todo', 'update_item', data)
+//       .catch(err => console.error('Error calling todo/update_item:', err));
+//   }
+
+//   _confirmAndComplete = async (item, sourceMap) => {
+//     const ok = await confirmDialog(
+//       this,
+//       'Erledigen',
+//       `Möchtest du "${item.s}" wirklich als erledigt markieren?`
+//     );
+//     if (!ok) return;
+
+//     // Uses UID placed in 'item' field as required by your service
+//     this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
+//   };
+
+//   _updateOrCompleteItem(uid, updates, source, sourceMap) {
+//     const entityId = sourceMap?.[String(source)];
+//     if (!entityId) {
+//       console.error('No valid todo entity id for source:', source);
+//       return;
+//     }
+
+//     const data = {
+//       entity_id: entityId,
+//       item: uid,
+//       ...updates,
+//     };
+
+//     // Optional: coerce numeric description to string if your service requires it
+//     if (updates.description !== undefined) {
+//       let desc = parseInt(updates.description, 10);
+//       if (isNaN(desc) || desc < 0) desc = 0;
+//       data.description = String(desc);
+//     }
+
+//     // mark pending so UI can disable controls for this UID (use reassignment
+//     // so Lit reliably notices the change)
+//     try {
+//       const s = new Set(this._pendingUpdates);
+//       s.add(uid);
+//       this._pendingUpdates = s;
+//     } catch (e) {
+//       // ignore
+//     }
+
+//     this.hass.callService('todo', 'update_item', data)
+//       .then(() => {
+//         // remove pending mark using reassignment to trigger update
+//         const s = new Set(this._pendingUpdates);
+//         s.delete(uid);
+//         this._pendingUpdates = s;
+//       })
+//       .catch(err => {
+//         console.error('Error calling todo/update_item:', err);
+//         const s = new Set(this._pendingUpdates);
+//         s.delete(uid);
+//         this._pendingUpdates = s;
+//       });
+//   }
+  
   _updateOrCompleteItem(uid, updates, source, sourceMap) {
     const entityId = sourceMap?.[String(source)];
     if (!entityId) {
@@ -370,32 +565,68 @@ class ItemListCard extends LitElement {
 
     const data = {
       entity_id: entityId,
-      item: uid,          // IMPORTANT: use item key, value is the UID
-      ...updates,         // { description: n } or { status: 'completed' }
+      item: uid,
+      ...updates,
     };
 
     // Optional: coerce numeric description to string if your service requires it
+    let newDesc;
     if (updates.description !== undefined) {
       let desc = parseInt(updates.description, 10);
       if (isNaN(desc) || desc < 0) desc = 0;
       data.description = String(desc);
+      newDesc = String(desc);
+    }
+
+    // --- Optimistic UI update: update cached item description immediately ---
+    let previousDesc = null;
+    if (newDesc !== undefined && Array.isArray(this._cachedItems)) {
+      const idx = this._cachedItems.findIndex(it => String(it.u) === String(uid));
+      if (idx >= 0) {
+        // copy array and item to trigger reactive update
+        const newItems = this._cachedItems.slice();
+        previousDesc = newItems[idx].d;
+        // set optimistic value (keep numeric-ish as string to match how items store d)
+        newItems[idx] = { ...newItems[idx], d: newDesc };
+        this._cachedItems = newItems;
+      }
+    }
+
+    // mark pending so UI can disable controls for this UID (use reassignment
+    // so Lit reliably notices the change)
+    try {
+      const s = new Set(this._pendingUpdates);
+      s.add(uid);
+      this._pendingUpdates = s;
+    } catch (e) {
+      // ignore
     }
 
     this.hass.callService('todo', 'update_item', data)
-      .catch(err => console.error('Error calling todo/update_item:', err));
+      .then(() => {
+        // remove pending mark using reassignment to trigger update
+        const s = new Set(this._pendingUpdates);
+        s.delete(uid);
+        this._pendingUpdates = s;
+        // On success we keep the optimistic value — HA will push true state soon.
+      })
+      .catch(err => {
+        console.error('Error calling todo/update_item:', err);
+        // revert optimistic change if we set one
+        if (previousDesc !== null && Array.isArray(this._cachedItems)) {
+          const idx = this._cachedItems.findIndex(it => String(it.u) === String(uid));
+          if (idx >= 0) {
+            const newItems = this._cachedItems.slice();
+            newItems[idx] = { ...newItems[idx], d: previousDesc };
+            this._cachedItems = newItems;
+          }
+        }
+        const s = new Set(this._pendingUpdates);
+        s.delete(uid);
+        this._pendingUpdates = s;
+      });
   }
 
-  _confirmAndComplete = async (item, sourceMap) => {
-    const ok = await confirmDialog(
-      this,
-      'Erledigen',
-      `Möchtest du "${item.s}" wirklich als erledigt markieren?`
-    );
-    if (!ok) return;
-
-    // Uses UID placed in 'item' field as required by your service
-    this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
-  };
 
   _addToShoppingList(item) {
     const entityId = this.config.shopping_list_entity;
@@ -416,22 +647,59 @@ class ItemListCard extends LitElement {
     })();
   }
 
+//   _renderQuantityControls(item, sourceMap) {
+//     let qStr = String(item.d ?? '');
+//     if (qStr === '') qStr = '1';
+    
+//     if (!this._isNumeric(qStr)) {
+//       return html`<div class="quantity" title="Menge">${qStr}</div>`;
+//     }
+//     const quantity = parseInt(qStr, 10);
+//     const dec = () => this._updateOrCompleteItem(item.u, { description: Math.max(quantity - 1, 0) }, item.c, sourceMap);
+//     const inc = () => this._updateOrCompleteItem(item.u, { description: quantity + 1 }, item.c, sourceMap);
+//     return html`
+//       ${quantity > 1
+//         ? html`<button class="btn" type="button" title="Verringern" aria-label="Verringern" @click=${dec}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
+//         : ''}
+//       <div class="quantity" title="Menge">${quantity}</div>
+//       <button class="btn" type="button" title="Erhöhen" aria-label="Erhöhen" @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
+//     `;
+//   }
+
   _renderQuantityControls(item, sourceMap) {
     let qStr = String(item.d ?? '');
     if (qStr === '') qStr = '1';
-    
+
+    // if not numeric, just show text
     if (!this._isNumeric(qStr)) {
       return html`<div class="quantity" title="Menge">${qStr}</div>`;
     }
     const quantity = parseInt(qStr, 10);
-    const dec = () => this._updateOrCompleteItem(item.u, { description: Math.max(quantity - 1, 0) }, item.c, sourceMap);
-    const inc = () => this._updateOrCompleteItem(item.u, { description: quantity + 1 }, item.c, sourceMap);
+    const pending = this._pendingUpdates.has(item.u);
+
+    const dec = () => {
+      if (pending) return;
+      this._updateOrCompleteItem(item.u, { description: Math.max(quantity - 1, 0) }, item.c, sourceMap);
+    };
+    const inc = () => {
+      if (pending) return;
+      this._updateOrCompleteItem(item.u, { description: quantity + 1 }, item.c, sourceMap);
+    };
+
     return html`
       ${quantity > 1
-        ? html`<button class="btn" type="button" title="Verringern" aria-label="Verringern" @click=${dec}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
+        ? html`<button class="btn" type="button" title="Verringern" aria-label="Verringern"
+                      ?disabled=${pending}
+                      @click=${dec}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
         : ''}
-      <div class="quantity" title="Menge">${quantity}</div>
-      <button class="btn" type="button" title="Erhöhen" aria-label="Erhöhen" @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
+      <div class="quantity" title="Menge">
+        ${pending
+          ? html`<span class="loading-icon" aria-hidden="true"><ha-icon icon="mdi:loading"></ha-icon></span>`
+          : quantity}
+      </div>
+      <button class="btn" type="button" title="Erhöhen" aria-label="Erhöhen"
+              ?disabled=${pending}
+              @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
     `;
   }
 
@@ -463,6 +731,59 @@ class ItemListCard extends LitElement {
 //     `;
 //   }
   
+//   _renderItemRow(item, sourceMap) {
+//     const showOrigin = !!this.config?.show_origin;
+//     const sourceId = sourceMap?.[String(item.c)];
+//     const friendlyName = showOrigin && sourceId
+//       ? this.hass.states[sourceId]?.attributes?.friendly_name
+//       : null;
+
+//     const filter = (this._filterValue || '').trim().toLowerCase();
+
+//     let parts = [item.s];
+//     if (filter) {
+//       const terms = filter.split(/\s+/).filter(t => t);
+//       parts = [];
+//       let remaining = item.s;
+//       while (remaining.length) {
+//         let found = false;
+//         for (const term of terms) {
+//           const idx = remaining.toLowerCase().indexOf(term);
+//           if (idx >= 0) {
+//             if (idx > 0) parts.push(remaining.slice(0, idx));
+//             parts.push(html`<span class="highlight">${remaining.slice(idx, idx + term.length)}</span>`);
+//             remaining = remaining.slice(idx + term.length);
+//             found = true;
+//             break;
+//           }
+//         }
+//         if (!found) {
+//           parts.push(remaining);
+//           break;
+//         }
+//       }
+//     }
+//     const shouldHighlight = filter && this.config.highlight_matches;
+    
+//     return html`
+//       <div class="item-row" role="listitem">
+//         <div class="item-summary" title=${item.s}>
+//           ${shouldHighlight ? parts : item.s}
+//           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
+//         </div>
+//         <div class="item-controls">
+//           ${this._renderQuantityControls(item, sourceMap)}
+//           <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
+//             <ha-icon icon="mdi:cart-outline"></ha-icon>
+//           </button>
+//           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
+//             <ha-icon icon="mdi:delete-outline"></ha-icon>
+//           </button>
+//         </div>
+//       </div>
+//     `;
+//   }
+
   _renderItemRow(item, sourceMap) {
     const showOrigin = !!this.config?.show_origin;
     const sourceId = sourceMap?.[String(item.c)];
@@ -470,37 +791,46 @@ class ItemListCard extends LitElement {
       ? this.hass.states[sourceId]?.attributes?.friendly_name
       : null;
 
-    const filter = (this._filterValue || '').trim().toLowerCase();
+    const filter = (this._filterValue || '').trim();
+    let contentParts = [];
 
-    let parts = [item.s];
-    if (filter) {
-      const terms = filter.split(/\s+/).filter(t => t);
-      parts = [];
-      let remaining = item.s;
-      while (remaining.length) {
-        let found = false;
-        for (const term of terms) {
-          const idx = remaining.toLowerCase().indexOf(term);
-          if (idx >= 0) {
-            if (idx > 0) parts.push(remaining.slice(0, idx));
-            parts.push(html`<span class="highlight">${remaining.slice(idx, idx + term.length)}</span>`);
-            remaining = remaining.slice(idx + term.length);
-            found = true;
-            break;
+    if (!filter) {
+      contentParts = [item.s];
+    } else {
+      // build safe regex from terms and highlight all occurrences (global, case-insensitive)
+      const terms = filter.split(/\s+/).filter(Boolean).map(t =>
+        t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex metachars
+      );
+      if (terms.length === 0) {
+        contentParts = [item.s];
+      } else {
+        const re = new RegExp(`(${terms.join('|')})`, 'gi');
+        let lastIndex = 0;
+        let match;
+        const text = String(item.s);
+        while ((match = re.exec(text)) !== null) {
+          const idx = match.index;
+          if (idx > lastIndex) {
+            contentParts.push(text.slice(lastIndex, idx));
           }
+          // push highlighted match (Lit will escape text nodes automatically)
+          contentParts.push(html`<span class="highlight">${match[0]}</span>`);
+          lastIndex = idx + match[0].length;
         }
-        if (!found) {
-          parts.push(remaining);
-          break;
+        if (lastIndex < text.length) {
+          contentParts.push(text.slice(lastIndex));
         }
+        // if nothing matched (edge-case), fall back to raw string
+        if (contentParts.length === 0) contentParts = [item.s];
       }
     }
+
     const shouldHighlight = filter && this.config.highlight_matches;
-    
+
     return html`
       <div class="item-row" role="listitem">
         <div class="item-summary" title=${item.s}>
-          ${shouldHighlight ? parts : item.s}
+          ${shouldHighlight ? contentParts : item.s}
           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
         </div>
         <div class="item-controls">
@@ -515,7 +845,6 @@ class ItemListCard extends LitElement {
       </div>
     `;
   }
-
 
   render() {
     if (!this.hass) {
@@ -550,7 +879,10 @@ class ItemListCard extends LitElement {
 
     return html`
       <ha-card>
-        <h3 class="card-title">${this.config.title || 'ToDo List'}</h3>
+        <div class="card-header">
+          <div class="card-title">${this.config.title || 'ToDo List'}</div>
+          <div class="count-badge" title="Gesamtanzahl Einträge">${totalItemsCount}</div>
+        </div>
         <div class="input-row">
           <input
             type="text"
@@ -581,13 +913,13 @@ class ItemListCard extends LitElement {
         </div>
 
         ${filterValue.trim()
-          ? html`<div class="info">Filter: "${filterValue.trim()}" → ${displayedItems.length} Ergebnis${displayedItems.length !== 1 ? 'se' : ''}</div>`
+          ? html`<div class="info" aria-live="polite">Filter: "${filterValue.trim()}" → ${displayedItems.length} Ergebnis${displayedItems.length !== 1 ? 'se' : ''}</div>`
           : totalItemsCount > (this.config.max_items_without_filter ?? 20)
-          ? html`<div class="info">${displayedItems.length} von ${totalItemsCount} Einträgen</div>`
+          ? html`<div class="info" aria-live="polite">${displayedItems.length} von ${totalItemsCount} Einträgen</div>`
           : ''}
 
         ${displayedItems.length === 0
-          ? html`<div class="empty-state">Keine Ergebnisse gefunden</div>`
+          ? html`<div class="empty-state" aria-live="polite">Keine Ergebnisse gefunden</div>`
           : html`<div role="list" aria-label="Trefferliste">${displayedItems.map((item) => this._renderItemRow(item, this._cachedSourceMap))}</div>`}
       </ha-card>
     `;
