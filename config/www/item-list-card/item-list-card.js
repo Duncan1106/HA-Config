@@ -400,13 +400,6 @@ class ItemListCard extends LitElement {
     return typeof str === 'string' && /^\d+$/.test(str);
   }
 
-//   _updateFilterTextActual(value) {
-//     this.hass.callService('input_text', 'set_value', {
-//       entity_id: this.config.filter_entity,
-//       value,
-//     }).catch(err => console.error("Error updating filter text:", err));
-//   }
-  
   _updateFilterTextActual(value) {
     try {
       const entityId = this.config?.filter_entity;
@@ -474,87 +467,6 @@ class ItemListCard extends LitElement {
       this._updateFilterTextActual('');
     }).catch(err => console.error("Error adding search term to shopping list:", err));
   }
-
-//   _updateOrCompleteItem(uid, updates, source, sourceMap) {
-//     const entityId = sourceMap?.[String(source)];
-//     if (!entityId) {
-//       console.error('No valid todo entity id for source:', source);
-//       return;
-//     }
-
-//     const data = {
-//       entity_id: entityId,
-//       item: uid,          // IMPORTANT: use item key, value is the UID
-//       ...updates,         // { description: n } or { status: 'completed' }
-//     };
-
-//     // Optional: coerce numeric description to string if your service requires it
-//     if (updates.description !== undefined) {
-//       let desc = parseInt(updates.description, 10);
-//       if (isNaN(desc) || desc < 0) desc = 0;
-//       data.description = String(desc);
-//     }
-
-//     this.hass.callService('todo', 'update_item', data)
-//       .catch(err => console.error('Error calling todo/update_item:', err));
-//   }
-
-//   _confirmAndComplete = async (item, sourceMap) => {
-//     const ok = await confirmDialog(
-//       this,
-//       'Erledigen',
-//       `Möchtest du "${item.s}" wirklich als erledigt markieren?`
-//     );
-//     if (!ok) return;
-
-//     // Uses UID placed in 'item' field as required by your service
-//     this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
-//   };
-
-//   _updateOrCompleteItem(uid, updates, source, sourceMap) {
-//     const entityId = sourceMap?.[String(source)];
-//     if (!entityId) {
-//       console.error('No valid todo entity id for source:', source);
-//       return;
-//     }
-
-//     const data = {
-//       entity_id: entityId,
-//       item: uid,
-//       ...updates,
-//     };
-
-//     // Optional: coerce numeric description to string if your service requires it
-//     if (updates.description !== undefined) {
-//       let desc = parseInt(updates.description, 10);
-//       if (isNaN(desc) || desc < 0) desc = 0;
-//       data.description = String(desc);
-//     }
-
-//     // mark pending so UI can disable controls for this UID (use reassignment
-//     // so Lit reliably notices the change)
-//     try {
-//       const s = new Set(this._pendingUpdates);
-//       s.add(uid);
-//       this._pendingUpdates = s;
-//     } catch (e) {
-//       // ignore
-//     }
-
-//     this.hass.callService('todo', 'update_item', data)
-//       .then(() => {
-//         // remove pending mark using reassignment to trigger update
-//         const s = new Set(this._pendingUpdates);
-//         s.delete(uid);
-//         this._pendingUpdates = s;
-//       })
-//       .catch(err => {
-//         console.error('Error calling todo/update_item:', err);
-//         const s = new Set(this._pendingUpdates);
-//         s.delete(uid);
-//         this._pendingUpdates = s;
-//       });
-//   }
   
   _updateOrCompleteItem(uid, updates, source, sourceMap) {
     const entityId = sourceMap?.[String(source)];
@@ -627,6 +539,17 @@ class ItemListCard extends LitElement {
       });
   }
 
+  _confirmAndComplete = async (item, sourceMap) => {
+    const ok = await confirmDialog(
+      this,
+      'Erledigen',
+      `Möchtest du "${item.s}" wirklich als erledigt markieren?`
+    );
+    if (!ok) return;
+
+    // Uses UID placed in 'item' field as required by your service
+    this._updateOrCompleteItem(item.u, { status: 'completed' }, item.c, sourceMap);
+  };
 
   _addToShoppingList(item) {
     const entityId = this.config.shopping_list_entity;
@@ -641,30 +564,11 @@ class ItemListCard extends LitElement {
       this.hass.callService('todo', 'add_item', {
         entity_id: entityId,
         item: item.s,
-        description: this._isNumeric(item.d) ? String(item.d) : (item.d?.toString() ?? ''),
+        description: '',
       }).then(() => showToast(this, `Hinzugefügt: ${item.s}`))
         .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
     })();
   }
-
-//   _renderQuantityControls(item, sourceMap) {
-//     let qStr = String(item.d ?? '');
-//     if (qStr === '') qStr = '1';
-    
-//     if (!this._isNumeric(qStr)) {
-//       return html`<div class="quantity" title="Menge">${qStr}</div>`;
-//     }
-//     const quantity = parseInt(qStr, 10);
-//     const dec = () => this._updateOrCompleteItem(item.u, { description: Math.max(quantity - 1, 0) }, item.c, sourceMap);
-//     const inc = () => this._updateOrCompleteItem(item.u, { description: quantity + 1 }, item.c, sourceMap);
-//     return html`
-//       ${quantity > 1
-//         ? html`<button class="btn" type="button" title="Verringern" aria-label="Verringern" @click=${dec}><ha-icon icon="mdi:minus-circle-outline"></ha-icon></button>`
-//         : ''}
-//       <div class="quantity" title="Menge">${quantity}</div>
-//       <button class="btn" type="button" title="Erhöhen" aria-label="Erhöhen" @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
-//     `;
-//   }
 
   _renderQuantityControls(item, sourceMap) {
     let qStr = String(item.d ?? '');
@@ -702,87 +606,6 @@ class ItemListCard extends LitElement {
               @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
     `;
   }
-
-//   _renderItemRow(item, sourceMap) {
-//     const showOrigin = !!this.config?.show_origin;
-//     const sourceId = sourceMap?.[String(item.c)];
-//     const friendlyName = showOrigin && sourceId
-//       ? this.hass.states[sourceId]?.attributes?.friendly_name
-//       : null;
-
-//     return html`
-//       <div class="item-row" role="listitem">
-//         <div class="item-summary" title=${item.s}>
-//           ${item.s}
-//           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
-//         </div>
-//         <div class="item-controls">
-//           ${this._renderQuantityControls(item, sourceMap)}
-//           <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste"
-//                   @click=${() => this._addToShoppingList(item)}>
-//             <ha-icon icon="mdi:cart-outline"></ha-icon>
-//           </button>
-//           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt"
-//                   @click=${() => this._confirmAndComplete(item, sourceMap)}>
-//             <ha-icon icon="mdi:delete-outline"></ha-icon>
-//           </button>
-//         </div>
-//       </div>
-//     `;
-//   }
-  
-//   _renderItemRow(item, sourceMap) {
-//     const showOrigin = !!this.config?.show_origin;
-//     const sourceId = sourceMap?.[String(item.c)];
-//     const friendlyName = showOrigin && sourceId
-//       ? this.hass.states[sourceId]?.attributes?.friendly_name
-//       : null;
-
-//     const filter = (this._filterValue || '').trim().toLowerCase();
-
-//     let parts = [item.s];
-//     if (filter) {
-//       const terms = filter.split(/\s+/).filter(t => t);
-//       parts = [];
-//       let remaining = item.s;
-//       while (remaining.length) {
-//         let found = false;
-//         for (const term of terms) {
-//           const idx = remaining.toLowerCase().indexOf(term);
-//           if (idx >= 0) {
-//             if (idx > 0) parts.push(remaining.slice(0, idx));
-//             parts.push(html`<span class="highlight">${remaining.slice(idx, idx + term.length)}</span>`);
-//             remaining = remaining.slice(idx + term.length);
-//             found = true;
-//             break;
-//           }
-//         }
-//         if (!found) {
-//           parts.push(remaining);
-//           break;
-//         }
-//       }
-//     }
-//     const shouldHighlight = filter && this.config.highlight_matches;
-    
-//     return html`
-//       <div class="item-row" role="listitem">
-//         <div class="item-summary" title=${item.s}>
-//           ${shouldHighlight ? parts : item.s}
-//           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
-//         </div>
-//         <div class="item-controls">
-//           ${this._renderQuantityControls(item, sourceMap)}
-//           <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
-//             <ha-icon icon="mdi:cart-outline"></ha-icon>
-//           </button>
-//           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
-//             <ha-icon icon="mdi:delete-outline"></ha-icon>
-//           </button>
-//         </div>
-//       </div>
-//     `;
-//   }
 
   _renderItemRow(item, sourceMap) {
     const showOrigin = !!this.config?.show_origin;
