@@ -387,18 +387,22 @@ template:
               {% set filtered_lists = lists %}
             {% endif %}
             
-            {% set count = namespace(total=0) %}
-            {% for list_id in filtered_lists %}
-              {% set items = all_todo_items[list_id]['items'] | default([], true) %}
-              {% for item in items %}
-                {% set terms = search_term.split() %}
-                {% if search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count) %}
-                  {% set count.total = count.total + 1 %}
-                {% endif %}
+            {% if all_todo_items is defined %}
+              {% set count = namespace(total=0) %}
+              {% for list_id in filtered_lists %}
+                {% set items = all_todo_items[list_id]['items'] | default([], true) %}
+                {% for item in items %}
+                  {% set terms = search_term.split() %}
+                  {% if search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count) %}
+                    {% set count.total = count.total + 1 %}
+                  {% endif %}
+                {% endfor %}
               {% endfor %}
-            {% endfor %}
             
-            {{ count.total }}
+              {{ count.total }}
+            {% else %}
+              0
+            {% endif %}
         attributes:
           source_map: >
             {
@@ -437,25 +441,29 @@ template:
             
             {% set combined = namespace(items=[]) %}
             
-            {% for list_id in filtered_lists %}
-              {% set items = all_todo_items[list_id]['items'] | default([], true) %}
-              {% for item in items %}
-                {% if item.summary is defined and item.summary is string %}
-                  {% set terms = search_term.split() %}
-                  {% if (search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count)) %}
-                    {% set minimal_item = {
-                      'u': item.uid,
-                      's': item.summary,
-                      'd': item.description,
-                      'c': source_map[list_id]
-                    } %}
-                    {% set combined.items = combined.items + [minimal_item] %}
+            {% if all_todo_items is defined %}
+              {% for list_id in filtered_lists %}
+                {% set items = all_todo_items[list_id]['items'] | default([], true) %}
+                {% for item in items %}
+                  {% if item.summary is defined and item.summary is string %}
+                    {% set terms = search_term.split() %}
+                    {% if (search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count)) %}
+                      {% set minimal_item = {
+                        'u': item.uid,
+                        's': item.summary,
+                        'd': item.description,
+                        'c': source_map[list_id]
+                      } %}
+                      {% set combined.items = combined.items + [minimal_item] %}
+                    {% endif %}
                   {% endif %}
-                {% endif %}
+                {% endfor %}
               {% endfor %}
-            {% endfor %}
             
-            {{ combined.items }}
+              {{ combined.items }}
+            {% else %}
+              []
+            {% endif %}
 
 
   - triggers:
