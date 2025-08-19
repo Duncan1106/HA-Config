@@ -2104,9 +2104,15 @@
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'off'
-      - condition: state
-        entity_id: binary_sensor.pool_temperatur_trend
-        state: 'on'
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.pool_temperatur_trend
+          state: 'off'
+          for:
+            hours: 0
+            minutes: 5
+            seconds: 0
     then:
     - action: automation.turn_off
       metadata: {}
@@ -6900,23 +6906,14 @@
         entity_id: switch.kaffeemaschine_tasmota
   mode: single
 - id: '1747074473799'
-  alias: Github Backup of Configs at 1 o'clock
-  description: Performs a daily backup of configurations to GitHub and restarts several
-    add-ons to maintain their operation.
+  alias: Restart Add-ons at 01:00 daily
+  description: Restarts a series of add-ons (repocket, earnapp, earnfm, packetstream,
+    pawns, traffmonetizer) with short delays between restarts to recover after updates.
   triggers:
   - trigger: time
     at: 01:00:00
   conditions: []
   actions:
-  - action: hassio.addon_start
-    metadata: {}
-    data:
-      addon: 68413af6_git-exporter
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -7070,23 +7067,42 @@
         nothing more to the message youre generating.  Only add helpful instructions
         or informations never replace, translate or manipulate the task in any way!
         make good suggestions on how to do it '
-  - alias: Conversation Agent Notification Text
-    data:
-      text: '{{ pollen_prompt }}
+  - repeat:
+      sequence:
+      - alias: Conversation Agent Notification Text
+        data:
+          text: '{{ pollen_prompt }}
 
 
-        {{ todo_prompt }}
+            {{ todo_prompt }}
 
 
-        {{ prompt }}'
-      agent_id: conversation.google_generative_ai
-    response_variable: agent_2
-    action: conversation.process
-  - alias: Send notification
-    data:
-      title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
-      message: '{{ agent_2.response.speech.plain.speech }}'
-    action: notify.duncan
+            {{ prompt }}'
+          agent_id: conversation.google_generative_ai
+        response_variable: agent_gemini
+        action: conversation.process
+      until:
+      - condition: template
+        value_template: "{{ agent_gemini.response.speech.plain.speech != \"Unable
+          to get response\"\n               or repeat.index >= 5 }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ agent_gemini.response.speech.plain.speech == "Unable to
+          get response"}}'
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben (Fehlgeschlagen
+            nach {{ repeat.index }} Versuchen)'
+          message: Heute konnte leider keine Nachricht generiert werden.
+    default:
+    - alias: Send notification
+      data:
+        title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
+        message: '{{ agent_gemini.response.speech.plain.speech }}'
+      action: notify.duncan
   mode: single
 - id: '1748638092151'
   alias: Restart Honeygain if Not Running
@@ -8241,3 +8257,16 @@
             data: {}
   mode: parallel
   max: 10
+- id: '1755587220350'
+  alias: GitHub Exporter addon start every hour
+  description: Starts the git-exporter addon every hour.
+  triggers:
+  - trigger: time_pattern
+    hours: /2
+  conditions: []
+  actions:
+  - action: hassio.addon_start
+    metadata: {}
+    data:
+      addon: 68413af6_git-exporter
+  mode: single
