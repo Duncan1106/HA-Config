@@ -7076,23 +7076,42 @@
         nothing more to the message youre generating.  Only add helpful instructions
         or informations never replace, translate or manipulate the task in any way!
         make good suggestions on how to do it '
-  - alias: Conversation Agent Notification Text
-    data:
-      text: '{{ pollen_prompt }}
+  - repeat:
+      sequence:
+      - alias: Conversation Agent Notification Text
+        data:
+          text: '{{ pollen_prompt }}
 
 
-        {{ todo_prompt }}
+            {{ todo_prompt }}
 
 
-        {{ prompt }}'
-      agent_id: conversation.google_generative_ai
-    response_variable: agent_2
-    action: conversation.process
-  - alias: Send notification
-    data:
-      title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
-      message: '{{ agent_2.response.speech.plain.speech }}'
-    action: notify.duncan
+            {{ prompt }}'
+          agent_id: conversation.google_generative_ai
+        response_variable: agent_gemini
+        action: conversation.process
+      until:
+      - condition: template
+        value_template: "{{ agent_gemini.response.speech.plain.speech != \"Unable
+          to get response\"\n               or repeat.index >= 5 }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ agent_gemini.response.speech.plain.speech == "Unable to
+          get response"}}'
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben (Fehlgeschlagen
+            nach {{ repeat.index }} Versuchen)'
+          message: Heute konnte leider keine Nachricht generiert werden.
+    default:
+    - alias: Send notification
+      data:
+        title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
+        message: '{{ agent_gemini.response.speech.plain.speech }}'
+      action: notify.duncan
   mode: single
 - id: '1748638092151'
   alias: Restart Honeygain if Not Running
