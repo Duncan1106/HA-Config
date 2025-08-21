@@ -687,7 +687,7 @@ luftbefeuchter:
   - alias: If air moist -> humidifier off
     if:
     - condition: template
-      value_template: '{% set hum = states(''sensor.esp32_c3_mini_terra_terrarium_humidity_average'')
+      value_template: '{% set hum1 = states(''sensor.esp32_c3_mini_terra_terrarium_humidity_average'')
         | float(0) %}
 
         {% set hum2 = states(''sensor.t_h_terrarium_humidity'') | float(0) %}
@@ -700,7 +700,7 @@ luftbefeuchter:
 
         {% set compare = threshold + offset %}
 
-        {{ hum >= compare or hum2 >= compare }}'
+        {{ hum1 >= compare or hum2 >= compare }}'
     then:
     - action: switch.turn_off
       metadata: {}
@@ -719,21 +719,14 @@ luftbefeuchter:
       - condition: state
         entity_id: input_boolean.terrarium_on
         state: 'on'
-      - condition: device
-        type: is_off
-        device_id: cb754e11257e7b140e732b51b3457d49
-        entity_id: 0da0445bb1137737a147e4ab96e26655
-        domain: switch
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_mini_terra_terrarium_humidity_average
-          below: input_number.terrarium_humidity_control_threshold
-          enabled: true
-        - condition: numeric_state
-          entity_id: sensor.t_h_terrarium_humidity
-          below: input_number.terrarium_humidity_control_threshold
-          enabled: true
+      - condition: state
+        entity_id: switch.terrarium_tasmota3
+        state: 'off'
+      - condition: template
+        value_template: "  {% set threshold = states('input_number.terrarium_humidity_control_threshold')
+          | float(0) %}\n  {% set hum1 = states('sensor.esp32_c3_mini_terra_terrarium_humidity_average')
+          | float(0) %}\n  {% set hum2 = states('sensor.t_h_terrarium_humidity') |
+          float(0) %}\n  {{ (hum1 <= threshold) or (hum2 <= threshold) }}"
     then:
     - action: switch.turn_on
       metadata: {}
