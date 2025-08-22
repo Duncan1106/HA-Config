@@ -1317,10 +1317,11 @@
         id:
         - off day
     then:
-    - type: turn_off
-      device_id: f7afa3f7d75d54c713ea1d78071ff30c
-      entity_id: 12403f847e9caae174f8b14a11ab9c19
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.bkw_outlet_1_bkw_outlet_1
   - alias: on night
     if:
     - condition: and
@@ -1440,6 +1441,7 @@
       device_id: 93a7dbc1ab0380e01f4cd6d5eb91b9bc
       entity_id: c75f234504dc77b5d544518a8128c688
       domain: switch
+      enabled: false
   mode: queued
   max: 15
 - id: '1712568670640'
@@ -4338,6 +4340,7 @@
           - sensor.ugreen_nas_power
           - sensor.o2_router_power
           - sensor.server_plug_power
+          - sensor.wvgzzze2zpe005371_last_data_refresh
           keep_days: 1
   - alias: Keep 2 Day
     if:
@@ -7141,6 +7144,8 @@
   triggers:
   - trigger: homeassistant
     event: start
+  - trigger: time_pattern
+    hours: /12
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -7225,26 +7230,46 @@
   mode: single
 - id: '1749622712645'
   alias: Tablet Battery Status Alerts
-  description: Sends notifications when the Lenovo Tab P11 battery level drops below
-    specific thresholds (40%, 30%, 20%, 10%). Alerts are designed to avoid flapping
-    and provide timely warnings based on the battery's status.
+  description: Sends notifications at battery thresholds (40%, 30%, 20%, 10%) and
+    clears when charging above 40%, with flapping protection and automatic charging
+    process restart.
   triggers:
-  - entity_id: sensor.lenovo_tab_p11_batterie
+  - entity_id:
+    - sensor.lenovo_tab_p11_batterie
+    - sensor.lenovo_tb_j606f_battery_level
     below: 39
     trigger: numeric_state
-  - entity_id: sensor.lenovo_tab_p11_batterie
+  - entity_id:
+    - sensor.lenovo_tab_p11_batterie
+    - sensor.lenovo_tb_j606f_battery_level
     below: 30
     trigger: numeric_state
-  - entity_id: sensor.lenovo_tab_p11_batterie
+  - entity_id:
+    - sensor.lenovo_tab_p11_batterie
+    - sensor.lenovo_tb_j606f_battery_level
     below: 20
     trigger: numeric_state
-  - entity_id: sensor.lenovo_tab_p11_batterie
+  - entity_id:
+    - sensor.lenovo_tab_p11_batterie
+    - sensor.lenovo_tb_j606f_battery_level
     below: 10
     trigger: numeric_state
+  - trigger: numeric_state
+    entity_id:
+    - sensor.lenovo_tab_p11_batterie
+    - sensor.lenovo_tb_j606f_battery_level
+    above: 40
+    id: Above_40
   conditions:
-  - condition: template
-    value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
-      | float(100)) > (trigger.to_state.state | float(0)) }}\n"
+  - condition: or
+    conditions:
+    - condition: template
+      value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
+        | float(100)) > (trigger.to_state.state | float(0)) }}\n"
+      alias: Check if Batters is dropping
+    - condition: trigger
+      id:
+      - Above_40
   actions:
   - choose:
     - conditions:
@@ -7260,6 +7285,10 @@
           data:
             tag: lenovo_p11_battery_warning
         action: notify.duncan
+      - action: script.restart_charging_process
+        metadata: {}
+        data: {}
+      alias: Battery below 10
     - conditions:
       - condition: template
         value_template: '{{ (trigger.to_state.state | float(0)) < 21 }}'
@@ -7273,6 +7302,10 @@
           data:
             tag: lenovo_p11_battery_warning
         action: notify.duncan
+      - action: script.restart_charging_process
+        metadata: {}
+        data: {}
+      alias: Battery below 20
     - conditions:
       - condition: template
         value_template: '{{ (trigger.to_state.state | float(0)) < 31 }}'
@@ -7286,6 +7319,24 @@
           data:
             tag: lenovo_p11_battery_warning
         action: notify.duncan
+      - action: script.restart_charging_process
+        metadata: {}
+        data: {}
+      alias: Battery below 30
+    - conditions:
+      - condition: trigger
+        id:
+        - Above_40
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
+          | float(0)) < (trigger.to_state.state | float(100)) }}\n   "
+      sequence:
+      - data:
+          data:
+            tag: lenovo_p11_battery_warning
+          message: clear_notification
+        action: notify.duncan
+      alias: Remove Notification if charging and above 40
     default:
     - data:
         title: ⚠️ Tablet Battery Notice
