@@ -1,19 +1,13 @@
 import { LitElement, html, css } from 'https://unpkg.com/lit@2.8.0/index.js?module';
 
-// Debounce: leading-edge responsive feel, trailing commit
 const debounce = (fn, delay = 200) => {
-  let t, lastArgs, lastThis;
-  const later = () => {
-    t = undefined;
-    fn.apply(lastThis, lastArgs);
+  let timer;
+  const debounced = function (...a) {          // regular fn so its own "this" works
+    clearTimeout(timer);
+    // timer = setTimeout(() => fn.apply(this, a), delay);
+    timer = setTimeout(() => fn.call(this, ...a), delay);
   };
-  const debounced = function (...args) {
-    lastArgs = args;
-    lastThis = this;
-    if (t) clearTimeout(t);
-    t = setTimeout(later, delay);
-  };
-  debounced.cancel = () => t && clearTimeout(t);
+  debounced.cancel = () => clearTimeout(timer);
   return debounced;
 };
 
@@ -31,40 +25,28 @@ const showToast = (el, message) => {
   }
 };
 
-// Try to use HA confirmation dialog; fallback to window.confirm
-const confirmDialog = async (el, title, text) => {
-  // First try to ask the frontend to show its built-in confirm dialog.
-  // Many HA frontends support a "show-dialog" event; we dispatch it but
-  // do not rely on any specific import or returned promise from the handler.
+// Use the native confirm dialog only (synchronous). Keep async signature.
+const confirmDialog = async (_el, _title, text) => {
   try {
-    const event = new CustomEvent('show-dialog', {
-      detail: {
-        dialogTag: 'ha-dialog-confirm',
-        // Do not try to import a module here — the frontend will handle
-        // loading the dialog. Providing dialogParams is sufficient for many setups.
-        dialogParams: {
-          title,
-          text,
-          confirmText: 'OK',
-          dismissText: 'Abbrechen',
-          // some frontends recognize `confirm` as a flag to show confirm button
-          confirm: true,
-        },
-      },
-      bubbles: true,
-      composed: true,
-    });
-    el.dispatchEvent(event);
-    // If the frontend handles the event it will show the dialog. Since the
-    // show-dialog flow is implementation-dependent, fall back to the
-    // blocking window.confirm for guaranteed behavior.
-    return typeof window.confirm === 'function' ? window.confirm(text) : true;
+    if (typeof window.confirm === 'function') {
+      return window.confirm(text);
+    }
+    // If no native confirm function is available, refuse by default.
+    return false;
   } catch {
-    // If dispatch fails for any reason just use the built-in confirm
-    return window.confirm(text);
+    // On error, refuse by default.
+    return false;
   }
 };
 
+const callService = async (hass, domain, service, data, toastEl, fallbackMsg = 'Fehler') => {
+  try {
+    await hass.callService(domain, service, data);
+  } catch (err) {
+    console.error(`Error calling ${domain}.${service}:`, err);
+    showToast(toastEl, fallbackMsg);
+  }
+};
 
 class ItemListCard extends LitElement {
   static properties = {
@@ -295,13 +277,14 @@ class ItemListCard extends LitElement {
     this._filterValue = '';
     this._lastItemsHash = '';
     this._lastSourceMapHash = '';
-    this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual.bind(this), 250);
+    this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual, 250);
     this._pendingUpdates = new Set();
+    this.MAX_DISPLAY = () => this.config?.max_items_without_filter ?? 20;
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this._debouncedUpdateFilterText?.cancel) this._debouncedUpdateFilterText.cancel();
+    this._debouncedUpdateFilterText?.cancel?.();
   }
 
   setConfig(config) {
@@ -411,10 +394,10 @@ class ItemListCard extends LitElement {
       const valTrim = String(value ?? '').trim();
       if (curTrim === valTrim) return;
 
-      this.hass.callService('input_text', 'set_value', {
-        entity_id: entityId,
-        value,
-      }).catch(err => console.error("Error updating filter text:", err));
+       callService(this.hass, 'input_text', 'set_value',
+        { entity_id: entityId, value },
+        this,
+        'Fehler beim Aktualisieren des Suchfeldes');
     } catch (err) {
       console.error("Error in _updateFilterTextActual:", err);
     }
@@ -457,18 +440,14 @@ class ItemListCard extends LitElement {
 
     const ok = await confirmDialog(this, 'Zur Einkaufsliste hinzufügen', `Möchtest du "${value}" zur Einkaufsliste hinzufügen?`);
     if (!ok) return;
-
-    this.hass.callService('todo', 'add_item', {
-      entity_id: this.config.shopping_list_entity,
-      item: value,
-      description: '',
-    }).then(() => {
-      showToast(this, `Hinzugefügt: ${value}`);
-      this._updateFilterTextActual('');
-    }).catch(err => console.error("Error adding search term to shopping list:", err));
+    await callService(this.hass, 'todo', 'add_item',
+      { entity_id: this.config.shopping_list_entity, item: value, description: '' },
+      this,
+      'Konnte \''+value+'\' **nicht** zur Einkaufsliste hinzufügen'
+    );
   }
   
-  _updateOrCompleteItem(uid, updates, source, sourceMap) {
+  async _updateOrCompleteItem(uid, updates, source, sourceMap) {
     const entityId = sourceMap?.[String(source)];
     if (!entityId) {
       console.error('No valid todo entity id for source:', source);
@@ -514,29 +493,27 @@ class ItemListCard extends LitElement {
       // ignore
     }
 
-    this.hass.callService('todo', 'update_item', data)
-      .then(() => {
-        // remove pending mark using reassignment to trigger update
-        const s = new Set(this._pendingUpdates);
-        s.delete(uid);
-        this._pendingUpdates = s;
-        // On success we keep the optimistic value — HA will push true state soon.
-      })
-      .catch(err => {
-        console.error('Error calling todo/update_item:', err);
-        // revert optimistic change if we set one
-        if (previousDesc !== null && Array.isArray(this._cachedItems)) {
-          const idx = this._cachedItems.findIndex(it => String(it.u) === String(uid));
-          if (idx >= 0) {
-            const newItems = this._cachedItems.slice();
-            newItems[idx] = { ...newItems[idx], d: previousDesc };
-            this._cachedItems = newItems;
-          }
+    try {
+      await this.hass.callService('todo', 'update_item', data);
+      /* success */
+      const s = new Set(this._pendingUpdates);
+      s.delete(uid);
+      this._pendingUpdates = s;
+    } catch (err) {
+      console.error('todo/update_item:', err);
+      // revert
+      if (previousDesc !== null && Array.isArray(this._cachedItems)) {
+        const idx = this._cachedItems.findIndex(it => String(it.u) === String(uid));
+        if (idx >= 0) {
+          const newItems = this._cachedItems.slice();
+          newItems[idx] = { ...newItems[idx], d: previousDesc };
+          this._cachedItems = newItems;
         }
-        const s = new Set(this._pendingUpdates);
-        s.delete(uid);
-        this._pendingUpdates = s;
-      });
+      }
+      const s = new Set(this._pendingUpdates);
+      s.delete(uid);
+      this._pendingUpdates = s;
+    }
   }
 
   _confirmAndComplete = async (item, sourceMap) => {
@@ -561,12 +538,11 @@ class ItemListCard extends LitElement {
     (async () => {
       const ok = await confirmDialog(this, 'Zur Einkaufsliste', text);
       if (!ok) return;
-      this.hass.callService('todo', 'add_item', {
-        entity_id: entityId,
-        item: item.s,
-        description: '',
-      }).then(() => showToast(this, `Hinzugefügt: ${item.s}`))
-        .catch(err => console.error('Fehler beim Hinzufügen zur Einkaufsliste:', err));
+      await callService(this.hass, 'todo', 'add_item',
+        { entity_id: entityId, item: item.s, description: '' },
+        this,
+        'Einkaufsliste aktualisieren fehlgeschlagen'
+      );
     })();
   }
 
@@ -608,66 +584,92 @@ class ItemListCard extends LitElement {
   }
 
   _renderItemRow(item, sourceMap) {
-    const showOrigin = !!this.config?.show_origin;
-    const sourceId = sourceMap?.[String(item.c)];
-    const friendlyName = showOrigin && sourceId
-      ? this.hass.states[sourceId]?.attributes?.friendly_name
-      : null;
-
-    const filter = (this._filterValue || '').trim();
-    let contentParts = [];
-
-    if (!filter) {
-      contentParts = [item.s];
-    } else {
-      // build safe regex from terms and highlight all occurrences (global, case-insensitive)
-      const terms = filter.split(/\s+/).filter(Boolean).map(t =>
-        t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex metachars
-      );
-      if (terms.length === 0) {
-        contentParts = [item.s];
-      } else {
-        const re = new RegExp(`(${terms.join('|')})`, 'gi');
-        let lastIndex = 0;
-        let match;
-        const text = String(item.s);
-        while ((match = re.exec(text)) !== null) {
-          const idx = match.index;
-          if (idx > lastIndex) {
-            contentParts.push(text.slice(lastIndex, idx));
+      const showOrigin = !!this.config?.show_origin;
+      const sourceId = sourceMap?.[String(item.c)];
+      const friendlyName = showOrigin && sourceId
+        ? this.hass.states[sourceId]?.attributes?.friendly_name
+        : null;
+    
+      const filterValue = (this._filterValue || '').trim();
+      const shouldHighlight = filterValue && this.config.highlight_matches;
+    
+      // Default to raw string unless highlighting is enabled AND we have filter terms
+      let contentParts = [item.s];
+      
+      if (shouldHighlight) {
+        // Split filter into terms, escape regex metachars, skip empty
+        const terms = filterValue.split(/\s+/)
+          .filter(Boolean)
+          .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        
+        if (terms.length > 0) {
+          // Skip regex processing entirely if no term is found as substring (case-insensitive)
+          const textLower = String(item.s).toLowerCase();
+          const hasMatch = terms.some(term => {
+            // Remove escape characters for substring search (but keep for regex)
+            const rawTerm = term.replace(/\\/g, '').toLowerCase();
+            return textLower.includes(rawTerm);
+          });
+    
+          if (hasMatch) {
+            try {
+              // Build regex that matches any of the terms, global and case-insensitive
+              const re = new RegExp(`(${terms.join('|')})`, 'gi');
+              const text = String(item.s);
+              const parts = [];
+              let lastIndex = 0;
+              let match;
+    
+              // Iterate all matches in text
+              while ((match = re.exec(text)) !== null) {
+                // Push non-matching segment before this match
+                if (match.index > lastIndex) {
+                  parts.push(text.slice(lastIndex, match.index));
+                }
+                // Push highlighted matching segment
+                parts.push(html`<span class="highlight">${match[0]}</span>`);
+                // Advance to end of match
+                lastIndex = match.index + match[0].length;
+                // Avoid infinite loop if match is empty (though our terms should not be empty)
+                if (match.index === lastIndex) {
+                  lastIndex++;
+                }
+              }
+              // Push remaining text after last match
+              if (lastIndex < text.length) {
+                parts.push(text.slice(lastIndex));
+              }
+    
+              // Only replace if we actually found matches (parts not empty)
+              if (parts.length > 0) {
+                contentParts = parts;
+              }
+            } catch (e) {
+              console.warn('Highlighting failed for item:', item, e);
+              // Fallback to unhighlighted text on error
+            }
           }
-          // push highlighted match (Lit will escape text nodes automatically)
-          contentParts.push(html`<span class="highlight">${match[0]}</span>`);
-          lastIndex = idx + match[0].length;
         }
-        if (lastIndex < text.length) {
-          contentParts.push(text.slice(lastIndex));
-        }
-        // if nothing matched (edge-case), fall back to raw string
-        if (contentParts.length === 0) contentParts = [item.s];
       }
+    
+      return html`
+        <div class="item-row" role="listitem">
+          <div class="item-summary" title=${item.s}>
+            ${shouldHighlight ? contentParts : item.s}
+            ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
+          </div>
+          <div class="item-controls">
+            ${this._renderQuantityControls(item, sourceMap)}
+            <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
+              <ha-icon icon="mdi:cart-outline"></ha-icon>
+            </button>
+            <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
+              <ha-icon icon="mdi:delete-outline"></ha-icon>
+            </button>
+          </div>
+        </div>
+      `;
     }
-
-    const shouldHighlight = filter && this.config.highlight_matches;
-
-    return html`
-      <div class="item-row" role="listitem">
-        <div class="item-summary" title=${item.s}>
-          ${shouldHighlight ? contentParts : item.s}
-          ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
-        </div>
-        <div class="item-controls">
-          ${this._renderQuantityControls(item, sourceMap)}
-          <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
-            <ha-icon icon="mdi:cart-outline"></ha-icon>
-          </button>
-          <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
-            <ha-icon icon="mdi:delete-outline"></ha-icon>
-          </button>
-        </div>
-      </div>
-    `;
-  }
 
   render() {
     if (!this.hass) {
@@ -686,9 +688,10 @@ class ItemListCard extends LitElement {
     if (!this._lastItemsHash) {
       const attr = itemsEntity.attributes.filtered_items;
       const items = typeof attr === 'string' ? this._safeParseJSON(attr, []) : Array.isArray(attr) ? attr : [];
+      const limit = this.MAX_DISPLAY();
       this._cachedItems = filterValue.trim()
         ? items
-        : items.slice(0, this.config.max_items_without_filter);
+        : items.slice(0, limit);
       const mapAttr = itemsEntity.attributes.source_map;
       this._cachedSourceMap = typeof mapAttr === 'string'
         ? this._safeParseJSON(mapAttr, {})
@@ -765,138 +768,3 @@ class ItemListCard extends LitElement {
 if (!customElements.get('item-list-card')) {
   customElements.define('item-list-card', ItemListCard);
 }
-
-
-// 1. Debounce Function Optimization
-// Problem: The custom debounce implementation is stateful and potentially leaks memory by storing lastArgs and lastThis.
-// Improvement: Use a simpler, standard debounce that only delays execution without retaining arguments/context unnecessarily.
-
-// const debounce = (fn, delay = 200) => {
-//   let t;
-//   return function (...args) {
-//     clearTimeout(t);
-//     t = setTimeout(() => fn.apply(this, args), delay);
-//   };
-// };
-// If you still need cancellation, attach .cancel to the returned function.
-// 2. Memoization and Caching
-// Problem: Recomputing _cachedItems and _cachedSourceMap on every shouldUpdate is expensive, especially with JSON serialization and hashing.
-
-// Improvement:
-
-// Use memoization for _cachedItems and _cachedSourceMap based on filterItemsEntity state and _filterValue.
-// Avoid re-parsing JSON unless the raw attribute string changes.
-
-// shouldUpdate(changedProps) {
-//   // ... existing logic ...
-
-//   // Check if the raw attributes changed (instead of parsing every time)
-//   const itemsAttr = filterItemsEntity?.attributes?.filtered_items;
-//   const mapAttr = filterItemsEntity?.attributes?.source_map;
-//   const itemsChanged = itemsAttr !== this._lastItemsRaw;
-//   const mapChanged = mapAttr !== this._lastSourceMapRaw;
-
-//   if (itemsChanged || mapChanged) {
-//     // Parse and update cached values only if raw data changed
-//     this._lastItemsRaw = itemsAttr;
-//     this._lastSourceMapRaw = mapAttr;
-//     // ... parse and update cachedItems/cachedSourceMap ...
-//   }
-
-//   // ... rest of logic ...
-// }
-// 3. Optimistic Update Refinement
-// Problem: The optimistic update in _updateOrCompleteItem mutates state in-place and may cause issues if multiple updates occur.
-
-// Improvement:
-
-// Use immutable updates with structuredClone or spread operators to avoid unintended mutations.
-// Consider batching updates if multiple items change.
-
-// // Instead of:
-// const newItems = this._cachedItems.slice();
-// newItems[idx] = { ...newItems[idx], d: newDesc };
-
-// // Use (if supported):
-// const newItems = structuredClone(this._cachedItems);
-// newItems[idx].d = newDesc;
-// 4. Efficient Rendering for Large Lists
-// Problem: Rendering many items with regex highlighting and complex controls can be slow.
-
-// Improvement:
-
-// Use a virtualized list (e.g., lit-virtualizer) if the list is large.
-// Memoize the highlighted content in _renderItemRow to avoid recalculating on every render.
-
-// _renderItemRow(item, sourceMap) {
-//   // Memoize the highlighted content based on item.s and filterValue
-//   const key = `${item.s}|${this._filterValue}`;
-//   if (!this._highlightCache) this._highlightCache = new Map();
-//   if (this._highlightCache.has(key)) {
-//     return this._highlightCache.get(key);
-//   }
-//   // ... compute highlightedContent ...
-//   this._highlightCache.set(key, highlightedContent);
-//   return highlightedContent;
-// }
-// Clear the cache when _filterValue changes.
-// 5. Service Call Error Handling
-// Problem: Inconsistent error handling—some errors are logged, others are not.
-
-// Improvement: Standardize error handling with a helper function or consistent try/catch.
-
-
-// async _callService(domain, service, data) {
-//   try {
-//     await this.hass.callService(domain, service, data);
-//   } catch (err) {
-//     console.error(`Error calling ${domain}.${service}:`, err);
-//     showToast(this, `Fehler bei ${service}`);
-//   }
-// }
-// 6. Reduce DOM Updates
-// Problem: Frequent updates to _pendingUpdates and _cachedItems cause re-renders.
-
-// Improvement:
-
-// Batch state updates using requestAnimationFrame or a microtask.
-// Avoid updating state if the value hasn’t changed.
-
-// // Example for _pendingUpdates:
-// _setPendingUpdate(uid, isPending) {
-//   if (isPending && this._pendingUpdates.has(uid)) return;
-//   if (!isPending && !this._pendingUpdates.has(uid)) return;
-//   this._pendingUpdates = new Set(isPending ? 
-//     [...this._pendingUpdates, uid] : 
-//     [...this._pendingUpdates].filter(id => id !== uid)
-//   );
-// }
-// 7. CSS and Accessibility
-// Problem: Some styles (e.g., .btn:hover) may cause layout shifts due to transform: translateY.
-
-// Improvement: Use transform only on elements that won’t affect layout (e.g., absolute positioned) or remove if unnecessary.
-
-// Accessibility: Ensure all interactive elements have proper ARIA labels and roles.
-
-// 8. Code Maintainability
-// Extract Helper Functions: Move repeated logic (e.g., confirmation dialogs, toast notifications) into reusable helpers.
-// Use Constants: Define repeated strings (e.g., service names, CSS classes) as constants.
-// 9. Bundle Size
-// Problem: The component imports the entire lit package from a CDN.
-
-// Improvement: Use tree-shaken imports if possible, or leverage a build process to reduce bundle size.
-
-
-// import { LitElement, html, css } from 'https://unpkg.com/lit@2.8.0/index.js?module';
-// // Consider using specific imports if available in the future
-// 10. Edge Cases
-// Problem: The _hash function may collide or fail on non-string values.
-
-// Improvement: Use a more robust hashing method (e.g., cyrb53 for simple hashing) or rely on Lit's built-in dirty checking.
-
-
-// _hash(obj) {
-//   // Simple, fast hash for objects
-//   return JSON.stringify(obj);
-// }
-
