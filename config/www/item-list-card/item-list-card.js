@@ -25,37 +25,17 @@ const showToast = (el, message) => {
   }
 };
 
-// Try to use HA confirmation dialog; fallback to window.confirm
-const confirmDialog = async (el, title, text) => {
-  // First try to ask the frontend to show its built-in confirm dialog.
-  // Many HA frontends support a "show-dialog" event; we dispatch it but
-  // do not rely on any specific import or returned promise from the handler.
+// Use the native confirm dialog only (synchronous). Keep async signature.
+const confirmDialog = async (_el, _title, text) => {
   try {
-    const event = new CustomEvent('show-dialog', {
-      detail: {
-        dialogTag: 'ha-dialog-confirm',
-        // Do not try to import a module here — the frontend will handle
-        // loading the dialog. Providing dialogParams is sufficient for many setups.
-        dialogParams: {
-          title,
-          text,
-          confirmText: 'OK',
-          dismissText: 'Abbrechen',
-          // some frontends recognize `confirm` as a flag to show confirm button
-          confirm: true,
-        },
-      },
-      bubbles: true,
-      composed: true,
-    });
-    el.dispatchEvent(event);
-    // If the frontend handles the event it will show the dialog. Since the
-    // show-dialog flow is implementation-dependent, fall back to the
-    // blocking window.confirm for guaranteed behavior.
-    return typeof window.confirm === 'function' ? window.confirm(text) : true;
+    if (typeof window.confirm === 'function') {
+      return window.confirm(text);
+    }
+    // If no native confirm function is available, refuse by default.
+    return false;
   } catch {
-    // If dispatch fails for any reason just use the built-in confirm
-    return window.confirm(text);
+    // On error, refuse by default.
+    return false;
   }
 };
 
@@ -460,15 +440,6 @@ class ItemListCard extends LitElement {
 
     const ok = await confirmDialog(this, 'Zur Einkaufsliste hinzufügen', `Möchtest du "${value}" zur Einkaufsliste hinzufügen?`);
     if (!ok) return;
-
-    // this.hass.callService('todo', 'add_item', {
-    //   entity_id: this.config.shopping_list_entity,
-    //   item: value,
-    //   description: '',
-    // }).then(() => {
-    //   showToast(this, `Hinzugefügt: ${value}`);
-    //   this._updateFilterTextActual('');
-    // }).catch(err => console.error("Error adding search term to shopping list:", err));
     await callService(this.hass, 'todo', 'add_item',
       { entity_id: this.config.shopping_list_entity, item: value, description: '' },
       this,
@@ -611,68 +582,6 @@ class ItemListCard extends LitElement {
               @click=${inc}><ha-icon icon="mdi:plus-circle-outline"></ha-icon></button>
     `;
   }
-
-//   _renderItemRow(item, sourceMap) {
-//     const showOrigin = !!this.config?.show_origin;
-//     const sourceId = sourceMap?.[String(item.c)];
-//     const friendlyName = showOrigin && sourceId
-//       ? this.hass.states[sourceId]?.attributes?.friendly_name
-//       : null;
-
-//     const filter = (this._filterValue || '').trim();
-//     let contentParts = [];
-
-//     if (!filter) {
-//       contentParts = [item.s];
-//     } else {
-//       // build safe regex from terms and highlight all occurrences (global, case-insensitive)
-//       const terms = filter.split(/\s+/).filter(Boolean).map(t =>
-//         t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // escape regex metachars
-//       );
-//       if (terms.length === 0) {
-//         contentParts = [item.s];
-//       } else {
-//         const re = new RegExp(`(${terms.join('|')})`, 'gi');
-//         let lastIndex = 0;
-//         let match;
-//         const text = String(item.s);
-//         while ((match = re.exec(text)) !== null) {
-//           const idx = match.index;
-//           if (idx > lastIndex) {
-//             contentParts.push(text.slice(lastIndex, idx));
-//           }
-//           // push highlighted match (Lit will escape text nodes automatically)
-//           contentParts.push(html`<span class="highlight">${match[0]}</span>`);
-//           lastIndex = idx + match[0].length;
-//         }
-//         if (lastIndex < text.length) {
-//           contentParts.push(text.slice(lastIndex));
-//         }
-//         // if nothing matched (edge-case), fall back to raw string
-//         if (contentParts.length === 0) contentParts = [item.s];
-//       }
-//     }
-
-//     const shouldHighlight = filter && this.config.highlight_matches;
-
-//     return html`
-//       <div class="item-row" role="listitem">
-//         <div class="item-summary" title=${item.s}>
-//           ${shouldHighlight ? contentParts : item.s}
-//           ${friendlyName ? html`<div class="item-sublabel">${friendlyName}</div>` : ''}
-//         </div>
-//         <div class="item-controls">
-//           ${this._renderQuantityControls(item, sourceMap)}
-//           <button class="btn" type="button" title="Zur Einkaufsliste" aria-label="Zur Einkaufsliste" @click=${() => this._addToShoppingList(item)}>
-//             <ha-icon icon="mdi:cart-outline"></ha-icon>
-//           </button>
-//           <button class="btn" type="button" title="Erledigt" aria-label="Erledigt" @click=${() => this._confirmAndComplete(item, this._cachedSourceMap)}>
-//             <ha-icon icon="mdi:delete-outline"></ha-icon>
-//           </button>
-//         </div>
-//       </div>
-//     `;
-//   }
 
   _renderItemRow(item, sourceMap) {
       const showOrigin = !!this.config?.show_origin;
