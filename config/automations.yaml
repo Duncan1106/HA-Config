@@ -6730,20 +6730,39 @@
         }}\n      {% endif -%}\n      {%- if event.location is defined %}\n        Location:
         {{ event.location }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n
         \   - No upcoming events.\n  {%- endif %}\n{%- endif %}"
-  - alias: Conversation Agent Notification Text
-    data:
-      text: '{{ calendar_prompt }}
+  - repeat:
+      sequence:
+      - alias: Conversation Agent Notification Text
+        data:
+          text: '{{ calendar_prompt }}
 
 
-        {{ prompt }}'
-      agent_id: conversation.google_generative_ai
-    response_variable: agent_2
-    action: conversation.process
-  - alias: Send notification
-    data:
-      title: '{{ now().strftime(''%A'') }} Agenda'
-      message: '{{ agent_2.response.speech.plain.speech }}'
-    action: notify.duncan
+            {{ prompt }}'
+          agent_id: conversation.google_generative_ai
+        response_variable: agent_2
+        action: conversation.process
+      until:
+      - condition: template
+        value_template: "{{ agent_gemini.response.speech.plain.speech != \"Unable
+          to get response\"\n               or repeat.index >= 5 }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ agent_gemini.response.speech.plain.speech == "Unable to
+          get response"}}'
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: '{{ now().strftime(''%A'') }} Agenda und Wetter (Fehlgeschlagen nach
+            {{ repeat.index }} Versuchen)'
+          message: Heute konnte leider keine Nachricht generiert werden.
+    default:
+    - alias: Send notification
+      data:
+        title: '{{ now().strftime(''%A'') }} Agenda'
+        message: '{{ agent_2.response.speech.plain.speech }}'
+      action: notify.duncan
 - id: '1744915571531'
   alias: Kinderbad Restore
   description: ''
@@ -7012,7 +7031,7 @@
     your to-do list, delivered every morning.
   triggers:
   - trigger: time
-    at: 08:10:00
+    at: 08:05:00
   conditions: []
   actions:
   - action: todo.get_items
@@ -8017,6 +8036,8 @@
     value_template: '{{ now() - state_attr(''automation.notify_mama_fahrt_los_von_arbeit'',
       ''last_triggered'') | default( as_datetime(''0''), true) > timedelta(minutes=30)
       }}'
+  - condition: time
+    after: 08:00:00
   actions:
   - action: notify.duncan
     data:
