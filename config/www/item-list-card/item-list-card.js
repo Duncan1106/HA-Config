@@ -268,6 +268,79 @@ class ItemListCard extends LitElement {
       outline: none;
       box-shadow: none;
     }
+    /* key button can reuse .btn but override to be wider and centered */
+    /* container: full-width flex; allow wrapping on narrow screens */
+    .key-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 8px 0 12px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    
+    /* key buttons: single row that fills full width (no wrap) */
+    .key-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 8px 0 12px;
+      flex-wrap: nowrap;      /* force single row */
+      width: 100%;
+      overflow: visible;       /* avoid scrollbar if something goes slightly over */
+    }
+    
+    /* make each button share available space equally */
+    .key-buttons .key-btn,
+    .key-buttons button {
+      flex: 1 1 0;            /* grow & shrink equally, no base width forcing wrap */
+      padding: 8px 12px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.03);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.12s ease, transform 0.08s ease, color 0.12s ease;
+      box-sizing: border-box;
+      min-width: 0;           /* allow shrinking below default content width */
+    }
+    
+    /* hover / focus */
+    .key-buttons .key-btn:hover,
+    .key-buttons .key-btn:focus,
+    .key-buttons button:hover,
+    .key-buttons button:focus {
+      background: rgba(0,0,0,0.06);
+      transform: translateY(-1px);
+      color: var(--accent-color, #03a9f4);
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(3,169,244,0.06);
+      border-color: var(--accent-color, #03a9f4);
+    }
+    
+    /* icon centering & sizing */
+    .key-buttons .key-btn ha-icon,
+    .btn ha-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 18px !important;
+      height: 18px !important;
+      line-height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    /* For icon-only buttons (if any), keep a minimum tap target without stretching */
+    .key-buttons .key-btn.icon-only {
+      flex: 0 0 auto;
+      min-width: 44px;
+      padding: 8px;
+    }
   `;
 
   constructor() {
@@ -299,7 +372,8 @@ class ItemListCard extends LitElement {
       show_origin: false,
       hide_add_button: false,
       max_items_without_filter: 20,
-      highlight_matches: false, 
+      highlight_matches: false,
+      filter_key_buttons: [],
       ...config,
     };
   }
@@ -383,6 +457,13 @@ class ItemListCard extends LitElement {
     return typeof str === 'string' && /^\d+$/.test(str);
   }
 
+  _onFilterKeyButtonClick(filterKey) {
+    if (!filterKey) return;
+    const value = `todo:${String(filterKey)}`;
+    // Use the immediate update so the input_text value is set right away.
+    this._updateFilterTextActual(value);
+  }
+
   _updateFilterTextActual(value) {
     try {
       const entityId = this.config?.filter_entity;
@@ -402,6 +483,42 @@ class ItemListCard extends LitElement {
       console.error("Error in _updateFilterTextActual:", err);
     }
   }
+
+  _clearFilterPreservingTodoKey() {
+    try {
+      const entityId = this.config?.filter_entity;
+      const current = this.hass?.states?.[entityId]?.state ?? '';
+      const trimmed = String(current).trim();
+      if (!trimmed) {
+        // nothing to do
+        this._updateFilterTextActual('');
+        return;
+      }
+
+      // find token like todo:somekey (no spaces inside)
+      const tokens = trimmed.split(/\s+/).filter(Boolean);
+      const todoTokenIndex = tokens.findIndex(t => /^todo:[^\s]+$/.test(t));
+
+      if (todoTokenIndex === -1) {
+        // no todo:key => clear completely
+        this._updateFilterTextActual('');
+        return;
+      }
+
+      // if only that token present -> clear as well
+      if (tokens.length === 1) {
+        this._updateFilterTextActual('');
+        return;
+      }
+
+      // preserve only the todo:key token (keep original case)
+      const preserved = tokens[todoTokenIndex];
+      this._updateFilterTextActual(preserved);
+    } catch (err) {
+      console.error('Error while clearing filter:', err);
+      this._updateFilterTextActual('');
+    }
+   }
 
   _handleFilterInputChange(e) {
     this._debouncedUpdateFilterText(e.target.value);
@@ -721,7 +838,7 @@ class ItemListCard extends LitElement {
           <button
             class="btn ${!filterValue ? 'hidden' : ''}"
             type="button"
-            @click=${() => this._updateFilterTextActual('')}
+            @click=${() => this._clearFilterPreservingTodoKey('')}
             title="Eingabe leeren"
             aria-label="Eingabe leeren"
           >
@@ -737,6 +854,27 @@ class ItemListCard extends LitElement {
             <ha-icon icon="mdi:cart-plus"></ha-icon>
           </button>
         </div>
+        
+        ${Array.isArray(this.config.filter_key_buttons) && this.config.filter_key_buttons.length
+          ? html`<div class="key-buttons" role="toolbar" aria-label="Schnellfilter">
+              ${this.config.filter_key_buttons.map(btn => {
+                const label = btn.name || btn.filter_key || '';
+                const icon = btn.icon;
+                const fk = btn.filter_key || '';
+                return html`
+                  <button
+                    class="key-btn"
+                    type="button"
+                    title=${label}
+                    aria-label=${label}
+                    @click=${() => this._onFilterKeyButtonClick(fk)}
+                  >
+                    ${icon ? html`<ha-icon .icon=${icon}></ha-icon>` : html`${label}`}
+                  </button>
+                `;
+              })}
+            </div>`
+          : ''}
 
         ${filterValue.trim()
           ? html`<div class="info" aria-live="polite">Filter: "${filterValue.trim()}" → ${displayedItems.length} Ergebnis${displayedItems.length !== 1 ? 'se' : ''}</div>`
