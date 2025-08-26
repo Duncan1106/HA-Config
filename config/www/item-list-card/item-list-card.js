@@ -206,7 +206,7 @@ class ItemListCard extends LitElement {
     }
     .highlight {
       background-color: rgba(255, 235, 59, 0.35);
-      padding: 0 3px;
+      /* padding: 0 3px; */
       border-radius: 3px;
     }
 
@@ -255,7 +255,6 @@ class ItemListCard extends LitElement {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
     }
-    
     
     /* make disabled buttons clearly non-interactive and remove focus ring */
     .btn[disabled] {
