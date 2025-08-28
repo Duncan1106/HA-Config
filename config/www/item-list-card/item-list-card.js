@@ -4,14 +4,12 @@ const debounce = (fn, delay = 200) => {
   let timer;
   const debounced = function (...a) {          // regular fn so its own "this" works
     clearTimeout(timer);
-    // timer = setTimeout(() => fn.apply(this, a), delay);
     timer = setTimeout(() => fn.call(this, ...a), delay);
   };
   debounced.cancel = () => clearTimeout(timer);
   return debounced;
 };
 
-// Try to show HA toast if possible
 const showToast = (el, message) => {
   if (!el) return;
   el.dispatchEvent(new CustomEvent('hass-notification', {
@@ -359,17 +357,6 @@ class ItemListCard extends LitElement {
     return base + Math.min(this._cachedItems?.length || 0, 6);
   }
 
-  // Compute cheap hashes to detect attribute changes without JSON.stringify of arrays
-//   _hash(val) {
-//     try {
-//       const s = typeof val === 'string' ? val : JSON.stringify(val);
-//       let h = 0, i = 0, len = s.length;
-//       while (i < len) h = (h << 5) - h + s.charCodeAt(i++) | 0;
-//       return h.toString();
-//     } catch {
-//       return Math.random().toString(36).slice(2);
-//     }
-//   }
   _hash(val) {
     try {
       const s = typeof val === 'string' ? val : JSON.stringify(val);
