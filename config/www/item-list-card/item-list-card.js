@@ -13,31 +13,14 @@ const debounce = (fn, delay = 200) => {
 
 // Try to show HA toast if possible
 const showToast = (el, message) => {
-  try {
-    const event = new CustomEvent('hass-notification', {
-      detail: { message },
-      bubbles: true,
-      composed: true,
-    });
-    el.dispatchEvent(event);
-  } catch (_) {
-    // no-op
-  }
+  if (!el) return;
+  el.dispatchEvent(new CustomEvent('hass-notification', {
+    detail: { message }, bubbles: true, composed: true,
+  }));
 };
 
-// Use the native confirm dialog only (synchronous). Keep async signature.
-const confirmDialog = async (_el, _title, text) => {
-  try {
-    if (typeof window.confirm === 'function') {
-      return window.confirm(text);
-    }
-    // If no native confirm function is available, refuse by default.
-    return false;
-  } catch {
-    // On error, refuse by default.
-    return false;
-  }
-};
+const confirmDialog = async (_el, _title, text) =>
+  typeof window.confirm === 'function' ? window.confirm(text) : false;
 
 const callService = async (hass, domain, service, data, toastEl, fallbackMsg = 'Fehler') => {
   try {
@@ -45,6 +28,7 @@ const callService = async (hass, domain, service, data, toastEl, fallbackMsg = '
   } catch (err) {
     console.error(`Error calling ${domain}.${service}:`, err);
     showToast(toastEl, fallbackMsg);
+    throw err;
   }
 };
 
@@ -268,16 +252,6 @@ class ItemListCard extends LitElement {
       box-shadow: none;
     }
     /* key button can reuse .btn but override to be wider and centered */
-    /* container: full-width flex; allow wrapping on narrow screens */
-    .key-buttons {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin: 8px 0 12px;
-      flex-wrap: wrap;
-      width: 100%;
-    }
-    
     /* key buttons: single row that fills full width (no wrap) */
     .key-buttons {
       display: flex;
@@ -351,7 +325,10 @@ class ItemListCard extends LitElement {
     this._lastSourceMapHash = '';
     this._debouncedUpdateFilterText = debounce(this._updateFilterTextActual, 250);
     this._pendingUpdates = new Set();
-    this.MAX_DISPLAY = () => this.config?.max_items_without_filter ?? 20;
+  }
+  
+  get MAX_DISPLAY() {
+    return this.config?.max_items_without_filter ?? 20;
   }
 
   disconnectedCallback() {
@@ -383,15 +360,36 @@ class ItemListCard extends LitElement {
   }
 
   // Compute cheap hashes to detect attribute changes without JSON.stringify of arrays
+//   _hash(val) {
+//     try {
+//       const s = typeof val === 'string' ? val : JSON.stringify(val);
+//       let h = 0, i = 0, len = s.length;
+//       while (i < len) h = (h << 5) - h + s.charCodeAt(i++) | 0;
+//       return h.toString();
+//     } catch {
+//       return Math.random().toString(36).slice(2);
+//     }
+//   }
   _hash(val) {
     try {
       const s = typeof val === 'string' ? val : JSON.stringify(val);
-      let h = 0, i = 0, len = s.length;
-      while (i < len) h = (h << 5) - h + s.charCodeAt(i++) | 0;
-      return h.toString();
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+      return String(h);
     } catch {
-      return Math.random().toString(36).slice(2);
+      return '';
     }
+  }
+  _addPending(uid) {
+    // create a new Set so Lit notices the state change
+    this._pendingUpdates = new Set(this._pendingUpdates);
+    this._pendingUpdates.add(uid);
+  }
+
+  _removePending(uid) {
+    const s = new Set(this._pendingUpdates);
+    s.delete(uid);
+    this._pendingUpdates = s;
   }
 
   shouldUpdate(changedProps) {
@@ -601,20 +599,21 @@ class ItemListCard extends LitElement {
 
     // mark pending so UI can disable controls for this UID (use reassignment
     // so Lit reliably notices the change)
+    this._addPending(uid);
+    
     try {
-      const s = new Set(this._pendingUpdates);
-      s.add(uid);
-      this._pendingUpdates = s;
-    } catch (e) {
-      // ignore
-    }
-
-    try {
-      await this.hass.callService('todo', 'update_item', data);
+      // Use shared callService wrapper (will show toast on failure)
+      await callService(
+        this.hass,
+        'todo',
+        'update_item',
+        data,
+        this,
+        'Fehler beim Aktualisieren des Eintrags'
+      );
+      // success => nothing else to do here
       /* success */
-      const s = new Set(this._pendingUpdates);
-      s.delete(uid);
-      this._pendingUpdates = s;
+      this._removePending(uid);
     } catch (err) {
       console.error('todo/update_item:', err);
       // revert
@@ -626,9 +625,7 @@ class ItemListCard extends LitElement {
           this._cachedItems = newItems;
         }
       }
-      const s = new Set(this._pendingUpdates);
-      s.delete(uid);
-      this._pendingUpdates = s;
+      this._removePending(uid);
     }
   }
 
@@ -804,7 +801,7 @@ class ItemListCard extends LitElement {
     if (!this._lastItemsHash) {
       const attr = itemsEntity.attributes.filtered_items;
       const items = typeof attr === 'string' ? this._safeParseJSON(attr, []) : Array.isArray(attr) ? attr : [];
-      const limit = this.MAX_DISPLAY();
+      const limit = this.MAX_DISPLAY;
       this._cachedItems = filterValue.trim()
         ? items
         : items.slice(0, limit);
