@@ -494,22 +494,23 @@ template:
           {% set within_daylight = this.attributes.within_daylight | int(0) %}
           {% set sun_hits_window = this.attributes.sun_hits_window | int(0) %}
           {% set not_raining = this.attributes.not_raining | int(0) %}
-          
+        
           {% if manual > 0 %}
             false
           {% elif ( ( summer + within_daylight + sun_hits_window + not_raining ) < 4 ) %}
             false
           {% else %}
-            {% set strong_uv_index = this.attributes.strong_uv_index | int(0) %}
-            {% set strong_uv_lux = this.attributes.strong_uv_lux | int(0) %}
-            {% set high_temp_diff = this.attributes.high_temp_diff | int(0) %}
-            {% set extreme_temp = this.attributes.extreme_temp | int(0) %}
+            {% set strong_uv_index = (this.attributes.strong_uv_index | float(0)) %}
+            {% set strong_uv_lux = (this.attributes.strong_uv_lux | float(0)) %}
+            {% set high_temp_diff = (this.attributes.high_temp_diff | float(0)) %}
+            {% set extreme_temp = (this.attributes.extreme_temp | float(0)) %}
             {% set sum = strong_uv_index + strong_uv_lux + high_temp_diff + extreme_temp %}
-            {% if sum > 1 %}
-              true
+            {% if sum >= 1.9 %}
+                true
+            {% else %}
+                false
             {% endif %}
           {% endif %}
-
         attributes:
           manual_mode: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
           first_blockers: ''
@@ -557,36 +558,57 @@ template:
               {{ 1 if (count_true < 2) else 0 }}
           heat_reasons: ''
           strong_uv_index: >
-            {% set UV_INDEX_THRESHOLD_STRONG = 4 %}
-            {% set TEMP_OUTSIDE_THRESHOLD = 22 %}
-            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+            {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
+            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
             {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
             {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {{ 1 if (uv_index > UV_INDEX_THRESHOLD_STRONG and temp_outside > TEMP_OUTSIDE_THRESHOLD) else 0 }}
-            
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                0.0
+            {% else %}
+                {% set ratio = uv_index / UV_INDEX_THRESHOLD_STRONG if UV_INDEX_THRESHOLD_STRONG > 0 else 0 %}
+                {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
           strong_uv_lux: >
-            {% set UV_THRESHOLD_STRONG = 60000 %}
-            {% set TEMP_OUTSIDE_THRESHOLD = 22 %}
+            {% set UV_THRESHOLD_STRONG = 60000.0 %}
+            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
             {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
-            {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
             {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {{ 1 if (uv > UV_THRESHOLD_STRONG and temp_outside > TEMP_OUTSIDE_THRESHOLD) else 0 }}
-            
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+            0.0
+            {% else %}
+            {% set ratio = uv / UV_THRESHOLD_STRONG if UV_THRESHOLD_STRONG > 0 else 0 %}
+            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
           high_temp_diff: >
             {% set TEMP_DIFF_THRESHOLD = 2.5 %}
-            {% set TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF = 22 %}
-            {% set UV_THRESHOLD_TEMP_DIFF = 25000 %}
+            {% set TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF = 22.0 %}
+            {% set UV_THRESHOLD_TEMP_DIFF = 25000.0 %}
             {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
             {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
             {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
-            {{ 1 if (((temp_outside - temp_inside) > TEMP_DIFF_THRESHOLD) and
-               (temp_outside > TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF) and
-               (uv > UV_THRESHOLD_TEMP_DIFF)) else 0 }}
+            {% set diff = temp_outside - temp_inside %}
+            {# Require outside temp and uv gate; if they pass, scale by diff/threshold #}
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF or uv <= UV_THRESHOLD_TEMP_DIFF %}
+            0.0
+            {% else %}
+            {% set ratio = diff / TEMP_DIFF_THRESHOLD if TEMP_DIFF_THRESHOLD > 0 else 0 %}
+            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
 
           extreme_temp: >
-            {% set EXTREME_TEMP_THRESHOLD = 28 %}
+            {% set BASELINE = 20.0 %}
+            {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
             {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {{ 1 if temp_outside > EXTREME_TEMP_THRESHOLD else 0}}
+            {% set denom = (EXTREME_TEMP_THRESHOLD - BASELINE) if (EXTREME_TEMP_THRESHOLD - BASELINE) != 0 else 1 %}
+            {% set ratio = (temp_outside - BASELINE) / denom %}
+            {% if ratio <= 0 %}
+              0.0
+            {% elif ratio >= 1 %}
+              1.0
+            {% else %}
+              {{ ratio }}
+            {% endif %}
+            
           Reason: ''
           reason: >
               {% set ns = namespace(reasons=[]) %}
@@ -597,8 +619,7 @@ template:
               {% else %}
                 {# Summer check #}
                 {% set summer_months = [5,6,7,8] %}
-                {% set month = now().month %}
-                {% if month not in summer_months %}
+                {% if now().month not in summer_months %}
                   {% set ns.reasons = ns.reasons + ['Not summer month'] %}
                 {% endif %}
             
@@ -625,77 +646,78 @@ template:
                   {% set ns.reasons = ns.reasons + ['Sun not hitting window'] %}
                 {% endif %}
             
-                {# Not raining - new logic with two conditions needed #}
+                {# Not raining - require fewer than 2 positive rain signals #}
                 {% set RAIN_RATE_THRESHOLD = 0.1 %}
                 {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
-            
                 {% set rain_rate = states('sensor.gw1100a_rain_rate') | float(0) %}
                 {% set sunflower_wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
                 {% set weather_condition = states('weather.irauen33') | lower | default('') %}
                 {% set weather_says_rain = RAIN_KEYWORDS | select('in', weather_condition) | list | count > 0 %}
-            
-                {% set rain_conditions = [
-                  rain_rate > RAIN_RATE_THRESHOLD,
-                  sunflower_wet,
-                  weather_says_rain
-                ] %}
-            
+                {% set rain_conditions = [ rain_rate > RAIN_RATE_THRESHOLD, sunflower_wet, weather_says_rain ] %}
                 {% set count_true = rain_conditions | select('equalto', true) | list | count %}
-                {% set rain_risk_count = rain_conditions | list | count %}
-                {% set count_true_rain = rain_conditions | select('equalto', true) | list | count %}
                 {% if count_true >= 2 %}
-                  {% set ns.reasons = ns.reasons + ['Raining detected: ' ~ count_true_rain ~ ' of ' ~ rain_risk_count] %}
+                  {% set ns.reasons = ns.reasons + ['Raining detected (' ~ count_true ~ ' of 3)'] %}
                 {% endif %}
             
-                {# Heat risks #}
-                {% set UV_THRESHOLD_STRONG = 60000 %}
-                {% set UV_INDEX_THRESHOLD_STRONG = 4 %}
-                {% set TEMP_OUTSIDE_THRESHOLD_HIGH_UV = 22 %}
-                {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-                {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
-                {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
-                {% set strong_uv_index = uv_index > UV_INDEX_THRESHOLD_STRONG and temp_outside > TEMP_OUTSIDE_THRESHOLD_HIGH_UV %}
-                {% set strong_uv_lux = uv > UV_THRESHOLD_STRONG and temp_outside > TEMP_OUTSIDE_THRESHOLD_HIGH_UV %}
-            
+                {# Heat risks: compute percentages directly from sensors (same logic as attributes) #}
+                {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
+                {% set UV_THRESHOLD_STRONG = 60000.0 %}
+                {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
                 {% set TEMP_DIFF_THRESHOLD = 2.5 %}
-                {% set TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF = 22 %}
-                {% set UV_THRESHOLD_TEMP_DIFF = 25000 %}
+                {% set UV_THRESHOLD_TEMP_DIFF = 25000.0 %}
+                {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
+            
+                {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
+                {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+                {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
                 {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
-                {% set high_temp_diff = ((temp_outside - temp_inside) > TEMP_DIFF_THRESHOLD) and (temp_outside > TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF) and (uv > UV_THRESHOLD_TEMP_DIFF) %}
+                {% set diff = temp_outside - temp_inside %}
             
-                {% set EXTREME_TEMP_THRESHOLD = 28 %}
-                {% set extreme_temp = temp_outside > EXTREME_TEMP_THRESHOLD %}
-            
-                {% set heat_risks = [strong_uv_index, strong_uv_lux, high_temp_diff, extreme_temp] %}
-                {% set heat_risk_count = heat_risks | list | count %}
-                {% set count_true_heat = heat_risks | select('equalto', true) | list | count %}
-            
-                {% set ns.reasons = ns.reasons + ['Heat risks met: ' ~ count_true_heat ~ ' of ' ~ heat_risk_count] %}
-                {% if strong_uv_index or strong_uv_lux or high_temp_diff or extreme_temp %}
-                    {% if strong_uv_index %}
-                      {% set ns.reasons = ns.reasons + [' - Strong UV condition met'] %}
-                    {% else %}
-                      {% set ns.reasons = ns.reasons + [' - Strong UV NOT met'] %}
-                    {% endif %}
-                    {% if strong_uv_lux %}
-                      {% set ns.reasons = ns.reasons + [' - Strong Lux condition met'] %}
-                    {% else %}
-                      {% set ns.reasons = ns.reasons + [' - Strong Lux NOT met'] %}
-                    {% endif %}
-                    {% if high_temp_diff %}
-                      {% set ns.reasons = ns.reasons + [' - High temperature difference met'] %}
-                    {% else %}
-                      {% set ns.reasons = ns.reasons + [' - High temperature difference NOT met'] %}
-                    {% endif %}
-                    {% if extreme_temp %}
-                      {% set ns.reasons = ns.reasons + [' - Extreme temperature met'] %}
-                    {% else %}
-                      {% set ns.reasons = ns.reasons + [' - Extreme temperature NOT met'] %}
-                    {% endif %}
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                  {% set s_uv_index = 0.0 %}
                 {% else %}
-                   {% set ns.reasons = ns.reasons + [' - Heat Conditions NOT met'] %}
+                  {% set s_uv_index = uv_index / UV_INDEX_THRESHOLD_STRONG %}
+                  {% if s_uv_index < 0 %}{% set s_uv_index = 0.0 %}{% endif %}
+                  {% if s_uv_index > 1 %}{% set s_uv_index = 1.0 %}{% endif %}
                 {% endif %}
+            
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                  {% set s_uv_lux = 0.0 %}
+                {% else %}
+                  {% set s_uv_lux = uv / UV_THRESHOLD_STRONG %}
+                  {% if s_uv_lux < 0 %}{% set s_uv_lux = 0.0 %}{% endif %}
+                  {% if s_uv_lux > 1 %}{% set s_uv_lux = 1.0 %}{% endif %}
+                {% endif %}
+            
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD or uv <= UV_THRESHOLD_TEMP_DIFF %}
+                  {% set h_temp_diff = 0.0 %}
+                {% else %}
+                  {% set h_temp_diff = diff / TEMP_DIFF_THRESHOLD %}
+                  {% if h_temp_diff < 0 %}{% set h_temp_diff = 0.0 %}{% endif %}
+                  {% if h_temp_diff > 1 %}{% set h_temp_diff = 1.0 %}{% endif %}
+                {% endif %}
+            
+                {# Extreme temp scaled from baseline 20 up to EXTREME_TEMP_THRESHOLD #}
+                {% set BASELINE = 20.0 %}
+                {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
+                {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+                {% set denom = (EXTREME_TEMP_THRESHOLD - BASELINE) if (EXTREME_TEMP_THRESHOLD - BASELINE) != 0 else 1 %}
+                {% set e_temp = (temp_outside - BASELINE) / denom %}
+                {% if e_temp < 0 %}{% set e_temp = 0.0 %}{% endif %}
+                {% if e_temp > 1 %}{% set e_temp = 1.0 %}{% endif %}
+            
+                {% set sum = (s_uv_index + s_uv_lux + h_temp_diff + e_temp) %}
+                {% set count_nonzero = [s_uv_index, s_uv_lux, h_temp_diff, e_temp] | select('gt', 0) | list | count %}
+            
+                {% set ns.reasons = ns.reasons + ['Heat risk score: ' ~ (sum | round(2)) ~ ' (components: ' ~ count_nonzero ~ '/4)'] %}
+                {% set ns.reasons = ns.reasons + [
+                  'UV index: ' ~ (s_uv_index | round(2)),
+                  'UV lux: ' ~ (s_uv_lux | round(2)),
+                  'Temp diff: ' ~ (h_temp_diff | round(2)),
+                  'Extreme temp: ' ~ (e_temp | round(2))
+                ] %}
               {% endif %}
+            
               {{ ns.reasons | join(',\n') }}
           Time: ''
           current_time: "{{ now().strftime('%H:%M') }}"
