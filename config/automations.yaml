@@ -1348,17 +1348,6 @@
       target:
         entity_id: counter.battery_full
       action: counter.increment
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ (states(''sensor.charged_energy_to_bkw_battery'') | float(0) |
-          round(2) - states(''sensor.discharged_energy_from_bkw_battery'') | float(0)
-          | round(2)) | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_charged_energy_to_bkw_battery
-      enabled: false
     - action: utility_meter.calibrate
       metadata: {}
       data:
@@ -1367,6 +1356,26 @@
         entity_id:
         - sensor.charged_energy_to_bkw_battery
         - sensor.discharged_energy_from_bkw_battery
+    - wait_for_trigger:
+      - trigger: numeric_state
+        entity_id:
+        - sensor.bkw_outlet_1_energy_power
+        above: 10
+      timeout:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+      continue_on_timeout: true
+    - if:
+      - condition: template
+        value_template: '{{ not wait.completed }}'
+      then:
+      - action: notify.duncan
+        data:
+          message: ⚠️ The load did not rise above 10W within 1 minute after turning
+            on at night.
+          title: BKW Error
   - alias: off night
     if:
     - condition: and
