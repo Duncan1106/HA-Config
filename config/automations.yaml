@@ -5506,7 +5506,7 @@
     at: '23:00:00'
     id: 'Off'
   - trigger: time
-    at: 02:00:00
+    at: 01:00:00
     id: Off sleep
   - trigger: state
     entity_id:
@@ -5602,7 +5602,7 @@
         id:
         - Off sleep
       - condition: time
-        after: 01:59:00
+        after: 00:59:00
         before: 04:00:00
       sequence:
       - action: switch.turn_off
@@ -8407,4 +8407,71 @@
     data: {}
     target:
       entity_id: switch.bett_plug_left
+  mode: single
+- id: '1757273749465'
+  alias: Garage Gate Power Scheduler
+  description: 'Controls the power state of the garage gate based on the current Smart
+    Home status: it turns the gate off at 23:00 and turns it back on at 04:00 when
+    in Daily mode, and completely powers it down during Vacation mode.'
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+    id: '23'
+  - trigger: time
+    at: 04:00:00
+    id: '4'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Daily
+      - condition: trigger
+        id:
+        - '23'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.garagentor_tasmota
+            state: 'off'
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.garagentor_tasmota
+      alias: Power off at 23
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Daily
+      - condition: trigger
+        id:
+        - '4'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.garagentor_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.garagentor_tasmota
+      alias: Power on at 4
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Vacation
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.garagentor_tasmota
+      alias: Power off all the way
   mode: single
