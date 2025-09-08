@@ -7735,12 +7735,12 @@
       zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: true
-      final_delay: 15
+      final_delay: 10
       message: '{{ label }} detected - {{ camera_name }}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: false
+      update_sub_label: true
       video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
@@ -7759,11 +7759,13 @@
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: false
       final_delay: 10
-      message: '{{ label }} detected - {{ camera_name }}'
+      message: '{{ label }} detected - {{ camera_name }} at {{event[''after''][''start_time'']|timestamp_custom(''%H:%M'')}}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: false
+      update_sub_label: true
+      silence_timer: 30
+      initial_delay: 1
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
   description: 'Steuert den Wintergarten-Rolladen automatisch basierend auf dem Sensor
@@ -8409,10 +8411,11 @@
       entity_id: switch.bett_plug_left
   mode: single
 - id: '1757273749465'
-  alias: Garage Gate Power Scheduler
-  description: 'Controls the power state of the garage gate based on the current Smart
-    Home status: it turns the gate off at 23:00 and turns it back on at 04:00 when
-    in Daily mode, and completely powers it down during Vacation mode.'
+  alias: Garage Oven Vacuum Power Control
+  description: Automates scheduled power on/off of the garage door, vacuum cleaner
+    and oven according to the smart home status (Daily or Vacation). At 23:00 it turns
+    them off, at 04:00 it turns them on, and in vacation mode it immediately switches
+    them off.
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -8442,6 +8445,44 @@
             data: {}
             target:
               entity_id: switch.garagentor_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.sauger_tasmota
+            state: 'off'
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.sauger_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            state: 'off'
+            entity_id: switch.backofen_tasmota
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.backofen_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
       alias: Power off at 23
     - conditions:
       - condition: state
@@ -8462,6 +8503,44 @@
             data: {}
             target:
               entity_id: switch.garagentor_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.sauger_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.sauger_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.backofen_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.backofen_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
       alias: Power on at 4
     - conditions:
       - condition: state
@@ -8472,6 +8551,13 @@
         metadata: {}
         data: {}
         target:
-          entity_id: switch.garagentor_tasmota
+          entity_id:
+          - switch.garagentor_tasmota
+          - switch.sauger_tasmota
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
       alias: Power off all the way
   mode: single
