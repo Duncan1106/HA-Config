@@ -29,6 +29,7 @@ captive_portal:
 button:
   - platform: restart
     name: Restart
+    id: restart_btn
 
 esphome:
   name: esp32-c3-zero--epever
@@ -88,6 +89,10 @@ time:
   - platform: sntp
     id: sntp_time
     servers: "pool.ntp.org"
+    on_time: 
+      at: 04:00
+      then: 
+        button.press: restart_btn
 
 uart:
   id: mod_bus
@@ -890,6 +895,18 @@ sensor:
 binary_sensor:
   - platform: status
     name: Status
+    id: status_connected
+    on_state_change: 
+      then:
+        if:
+          condition:
+            for:
+              time: 1min
+              condition:
+                binary_sensor.is_off: status_connected
+          then: 
+            button.press: restart_btn
+
   - platform: modbus_controller
     modbus_controller_id: epever
     id: charging_input_volt_failure

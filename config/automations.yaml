@@ -636,7 +636,7 @@
       end_notify_device: []
       end_message_title: Waschmaschine
       end_message: Waschmaschine ausräumen
-      end_time_delay: 0.7
+      end_time_delay: 0.73
       start_appliance_power: 30
       end_appliance_power: 10
       include_start_notify: enable_start_notify_options
@@ -671,6 +671,7 @@
       watchdog_message: Check die Waschmaschine
       watchdog_notify_device:
       - 905c163dcc62544838edb078413723b2
+      - 0d88285a82251e06c1a2bfced7afbd00
 - id: '1706024033086'
   alias: 'Waschküche Fenster Offen '
   description: ''
@@ -1348,17 +1349,6 @@
       target:
         entity_id: counter.battery_full
       action: counter.increment
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ (states(''sensor.charged_energy_to_bkw_battery'') | float(0) |
-          round(2) - states(''sensor.discharged_energy_from_bkw_battery'') | float(0)
-          | round(2)) | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_charged_energy_to_bkw_battery
-      enabled: false
     - action: utility_meter.calibrate
       metadata: {}
       data:
@@ -1367,6 +1357,26 @@
         entity_id:
         - sensor.charged_energy_to_bkw_battery
         - sensor.discharged_energy_from_bkw_battery
+    - wait_for_trigger:
+      - trigger: numeric_state
+        entity_id:
+        - sensor.bkw_outlet_1_energy_power
+        above: 10
+      timeout:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+      continue_on_timeout: true
+    - if:
+      - condition: template
+        value_template: '{{ not wait.completed }}'
+      then:
+      - action: notify.duncan
+        data:
+          message: ⚠️ The load did not rise above 10W within 1 minute after turning
+            on at night.
+          title: BKW Error
   - alias: off night
     if:
     - condition: and
@@ -2964,7 +2974,7 @@
         title: 'Willkommen zurück '
   mode: single
 - id: '1726817233810'
-  alias: Restart at 4:15 every Night
+  alias: Restart at 4:15 every second Night
   description: ''
   triggers:
   - at: 04:15:00
@@ -5496,7 +5506,7 @@
     at: '23:00:00'
     id: 'Off'
   - trigger: time
-    at: 02:00:00
+    at: 01:00:00
     id: Off sleep
   - trigger: state
     entity_id:
@@ -5592,7 +5602,7 @@
         id:
         - Off sleep
       - condition: time
-        after: 01:59:00
+        after: 00:59:00
         before: 04:00:00
       sequence:
       - action: switch.turn_off
@@ -5604,28 +5614,57 @@
   mode: queued
   max: 10
 - id: '1738676581969'
-  alias: 3s Ping Update
-  description: Regularly updates connectivity ping sensors when the smart home is
-    in 'Daily' mode.
+  alias: Connectivity Ping Update
+  description: Keeps connectivity ping sensors updated in ‘Daily’ and ‘Vacation’ modes
+    by refreshing them every 3 seconds or 15 seconds respectively.
   triggers:
   - trigger: time_pattern
     seconds: /3
-  conditions:
-  - condition: state
-    entity_id: input_select.smart_home_status
-    state: Daily
+    id: 3s
+  - trigger: time_pattern
+    seconds: /15
+    id: 15s
+  conditions: []
   actions:
-  - action: homeassistant.update_entity
-    metadata: {}
-    data:
-      entity_id:
-      - binary_sensor.1_1_1_1
-      - binary_sensor.1_0_0_1
-      - binary_sensor.8_8_8_8
-      - binary_sensor.8_8_4_4
-      - binary_sensor.9_9_9_9
-      - binary_sensor.149_112_112_112
-  mode: single
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 3s
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Daily
+      sequence:
+      - action: homeassistant.update_entity
+        metadata: {}
+        data:
+          entity_id:
+          - binary_sensor.1_1_1_1
+          - binary_sensor.1_0_0_1
+          - binary_sensor.8_8_8_8
+          - binary_sensor.8_8_4_4
+          - binary_sensor.9_9_9_9
+          - binary_sensor.149_112_112_112
+    - conditions:
+      - condition: trigger
+        id:
+        - 15s
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Vacation
+      sequence:
+      - action: homeassistant.update_entity
+        metadata: {}
+        data:
+          entity_id:
+          - binary_sensor.1_1_1_1
+          - binary_sensor.1_0_0_1
+          - binary_sensor.8_8_8_8
+          - binary_sensor.8_8_4_4
+          - binary_sensor.9_9_9_9
+          - binary_sensor.149_112_112_112
+  mode: parallel
+  max: 3
 - id: '1738740501702'
   alias: Dreame Clean EG if Awake
   description: This automation triggers a notification when the Dreame vacuum is set
@@ -6385,7 +6424,7 @@
     type: set_value
     metadata:
       secondary: false
-    value: 15
+    value: 20
   mode: single
 - id: '1741102167233'
   alias: Publish Energy Data to MQTT
@@ -6749,15 +6788,24 @@
           agent_id: conversation.google_generative_ai
         response_variable: agent_gemini
         action: conversation.process
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
       until:
       - condition: template
-        value_template: "{{ agent_gemini.response.speech.plain.speech != \"Unable
-          to get response\"\n               or repeat.index >= 10 }}"
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ agent_gemini.response.speech.plain.speech == "Unable to
-          get response"}}'
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count == 0 }}"
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -7109,15 +7157,24 @@
           agent_id: conversation.google_generative_ai
         response_variable: agent_gemini
         action: conversation.process
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
       until:
       - condition: template
-        value_template: "{{ agent_gemini.response.speech.plain.speech != \"Unable
-          to get response\"\n               or repeat.index >= 10 }}"
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ agent_gemini.response.speech.plain.speech == "Unable to
-          get response"}}'
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count == 0 }}"
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -7707,12 +7764,12 @@
       zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: true
-      final_delay: 15
+      final_delay: 10
       message: '{{ label }} detected - {{ camera_name }}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: false
+      update_sub_label: true
       video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
@@ -7731,11 +7788,13 @@
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: false
       final_delay: 10
-      message: '{{ label }} detected - {{ camera_name }}'
+      message: '{{ label }} detected - {{ camera_name }} at {{event[''after''][''start_time'']|timestamp_custom(''%H:%M'')}}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: false
+      update_sub_label: true
+      silence_timer: 30
+      initial_delay: 1
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
   description: 'Steuert den Wintergarten-Rolladen automatisch basierend auf dem Sensor
@@ -7991,11 +8050,11 @@
       entity_id: switch.spulmaschine_tasmota
   mode: single
 - id: '1753221152708'
-  alias: Restart Frigate at 0 o'clock
+  alias: Restart Frigate at 1 o'clock
   description: ''
   triggers:
   - trigger: time
-    at: 00:00:00
+    at: 01:00:00
   conditions: []
   actions:
   - choose:
@@ -8347,4 +8406,187 @@
     metadata: {}
     data:
       addon: 68413af6_git-exporter
+  mode: single
+- id: '1757084399628'
+  alias: Turn Off Bett Plug Right Over 25W
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.bett_plug_right_power
+    above: 25
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.bett_plug_right
+  mode: single
+- id: '1757084461870'
+  alias: Turn Off Bett Plug Left Over 25W
+  description: ''
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.bett_plug_left_power
+    above: 25
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.bett_plug_left
+  mode: single
+- id: '1757273749465'
+  alias: Garage Oven Vacuum Power Control
+  description: Automates scheduled power on/off of the garage door, vacuum cleaner
+    and oven according to the smart home status (Daily or Vacation). At 23:00 it turns
+    them off, at 04:00 it turns them on, and in vacation mode it immediately switches
+    them off.
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+    id: '23'
+  - trigger: time
+    at: 04:00:00
+    id: '4'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Daily
+      - condition: trigger
+        id:
+        - '23'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.garagentor_tasmota
+            state: 'off'
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.garagentor_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.sauger_tasmota
+            state: 'off'
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.sauger_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            state: 'off'
+            entity_id: switch.backofen_tasmota
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.backofen_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      alias: Power off at 23
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Daily
+      - condition: trigger
+        id:
+        - '4'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.garagentor_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.garagentor_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.sauger_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - switch.sauger_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.backofen_tasmota
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.backofen_tasmota
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      alias: Power on at 4
+    - conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state: Vacation
+      sequence:
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - switch.garagentor_tasmota
+          - switch.sauger_tasmota
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      alias: Power off all the way
   mode: single
