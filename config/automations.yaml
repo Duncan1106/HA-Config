@@ -788,14 +788,7 @@
     - condition: trigger
       id:
       - 3h
-    then:
-    - metadata: {}
-      data: {}
-      target:
-        device_id:
-        - 9914e6e4fe991b11910d0b307255e881
-      action: homeassistant.reload_config_entry
-      enabled: false
+    then: []
     enabled: true
   mode: queued
   max: 10
@@ -4736,7 +4729,7 @@
     - parallel:
       - action: script.save_counts_and_notify_purge_status
         data:
-          threshold_offset: 50000
+          threshold_offset: 20000
           timeout_minutes: 30
           block_id: 7 Days
       - action: recorder.purge_entities
@@ -8590,3 +8583,74 @@
           milliseconds: 0
       alias: Power off all the way
   mode: single
+- id: '1757687903185'
+  alias: Auto Heizraum Lüfter
+  description: Automatically turns the fan on or off based on another fans power consumption—switches
+    on after 0.1 W and off after 0.01 W with a 1‑minute delay, saving energy.
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.heizraum_lufter_abluft_power
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    below: 0.01
+    id: 'Off'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.heizraum_lufter_abluft_power
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: 'On'
+    above: 0.1
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.heizraum_lufter
+            state: 'off'
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.heizraum_lufter
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      alias: Fan off
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - repeat:
+          until:
+          - condition: state
+            entity_id: switch.heizraum_lufter
+            state: 'on'
+          sequence:
+          - action: switch.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.heizraum_lufter
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      alias: Fan on
+  mode: restart
