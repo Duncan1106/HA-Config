@@ -354,7 +354,7 @@ text_sensor:
     internal: true
     filters: 
       - map:
-        - 0 -> Unkown
+        - 0 -> Unknown
         - 1 -> Idle
         - 2 -> Charging
         - 3 -> WaitCar
@@ -416,8 +416,7 @@ sensor:
     name: Available Grid Power ${variant}
     internal: true
     filters:
-      - multiply: -1          
-      - lambda: !lambda return x;
+      - multiply: -1
 
   - platform: mqtt_subscribe
     topic: grid/solar
@@ -486,7 +485,7 @@ sensor:
 
   - platform: copy
     source_id: available_battery_power
-    id: availbale_battery_amps
+    id: available_battery_amps
     name: Available Battery Amps ${variant}
     device_class: current
     unit_of_measurement: A
@@ -560,7 +559,7 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
-      return (id(available_grid_amps).state + (id(goe_amps).state * id(goe_amp_divider).state) + id(availbale_battery_amps).state) / id(goe_amp_divider).state;
+      return (id(available_grid_amps).state + (id(goe_amps).state * id(goe_amp_divider).state) + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 
           min_value: 0
@@ -654,9 +653,13 @@ script:
   - id: stop_charging
     mode: single
     then:
-      - number.set: # Set Amps to Min
+      - number.set:
           id: amps
-          value: ${min_amps}
+          value: !lambda |-
+            return std::max(
+              (float)id(amps_goe_calculated_rounded).state,
+              (float)id(min_amps).state
+            );
       - if:
           condition:
             - switch.is_on: never_stop_charging
@@ -668,11 +671,11 @@ script:
       - if: # if not Don't Charge then set to Don't Charge and log that
           condition: 
             - and:
-              - switch.is_off: never_stop_charging
-              - not:
-                - text_sensor.state:
-                    id: goe_status
-                    state: "Don't Charge"
+                - switch.is_off: never_stop_charging
+                - not:
+                  - text_sensor.state:
+                      id: goe_status
+                      state: "Don't Charge"
           then:
             - mqtt.publish:
                 id: broker
@@ -715,9 +718,6 @@ script:
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Car not Charging, but allowed, restarting..."
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Car not Charging, but allowed, restarting..."
             - mqtt.publish: 
                 id: broker
                 payload: 1
@@ -768,13 +768,13 @@ script:
                     - number.in_range:
                         below: 10
                         id: skip_counter
-                    - lambda: !lambda return (id(solar_amps).state + (id(availbale_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
+                    - lambda: !lambda return (id(solar_amps).state + (id(available_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
                 then:
                   - script.execute: 
                       id: log_txt_queued
                       log_text: !lambda |-
                         char text_amps[200];
-                        sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(availbale_battery_amps).state, id(amps_goe_calculated_rounded).state);
+                        sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(available_battery_amps).state, id(amps_goe_calculated_rounded).state);
                         return ((std::string) text_amps).c_str();
                   - number.increment: 
                       cycle: false
@@ -832,11 +832,7 @@ script:
               - script.stop: charge_ev
         - if: # Stop Charging if Batterybelow Threshold
             condition:
-              - and:
-                  - lambda: !lambda return id(battery_soc).state < id(battery_soc_threshold).state;
-                  - number.in_range:
-                      id: battery_power_offset
-                      above: 500.0
+              - lambda: !lambda return id(battery_soc).state < id(battery_soc_threshold).state;
             then:
               - script.execute: stop_charging_battery
         - if: # If Amps are below the min threshold then stop charging    
