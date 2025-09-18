@@ -137,6 +137,7 @@ switch:
     optimistic: True
     id: never_stop_charging
     name: Dont Stop Charging ${variant}
+    restore_mode: ALWAYS_OFF
 
   - platform: template
     optimistic: True
@@ -226,7 +227,7 @@ number:
     mode: BOX
 
   - platform: template
-    name: Min Amperage
+    name: Min Amperage ${variant}
     id: min_amps
     initial_value: ${min_amps}
     min_value: ${min_amps}
@@ -307,16 +308,6 @@ text_sensor:
               - sensor.template.publish:
                   id: goe_amp_divider
                   state: 3
-              - if: 
-                  condition: 
-                    - sensor.in_range: 
-                        id: card_used
-                        above: 1.5
-                        below: 2.5
-                  then: 
-                    - number.set: 
-                        id: min_amps
-                        value: 8
 
   - platform: mqtt_subscribe
     topic: ${main_topic}nrg
@@ -408,29 +399,23 @@ sensor:
 
   - platform: mqtt_subscribe
     topic: ${main_topic}trx
-    name: Card Used
+    name: Card Used ${variant}
     id: card_used
     filters: 
       - round: 0
-
-  # - platform: mqtt_subscribe
-  #   topic: smart_meter/total_combined
-  #   accuracy_decimals: 2
-  #   state_class: measurement
-  #   device_class: power
-  #   unit_of_measurement: W
-  #   id: grid_gen
-  #   name: Smart Meter HA Power ${variant}
-  #   internal: False
-  #   filters: 
-  #     # - multiply: -1
-  #     - lambda: !lambda return x + id(battery_power_offset).state;
-
-  # - platform: template
-  #   name: Smart Meter MQTT Power $variant
-  #   id: smart_meter_power
-  #   unit_of_measurement: W
-  #   device_class: power
+    on_value_range: 
+      above: 1.5
+      below: 2.5
+      then:
+        - if:
+            condition:
+              - sensor.in_range:
+                  id: goe_amp_divider
+                  above: 2.5
+            then:
+              - number.set: 
+                  id: min_amps
+                  value: 8
 
   - platform: mqtt_subscribe
     topic: grid/power
@@ -602,19 +587,6 @@ sensor:
           min_value: 0
           max_value: ${max_amps}
 
-
-    #on_value:
-    #  then:
-    #    - if:
-    #        condition:
-    #          - switch.is_on: enable_pv_charging
-    #        then:
-    #          - script.execute: charge_ev
-    #        else:
-    #          - text_sensor.template.publish:
-    #              id: log_txt
-    #              state: "PV Surplus Charging OFF"
-
 interval:
   interval: 
     seconds: 10
@@ -631,9 +603,6 @@ interval:
            - script.execute: 
                 id: log_txt_queued
                 log_text: "PV Surplus Charging OFF"
-          # - text_sensor.template.publish:
-          #     id: log_txt
-          #     state: "PV Surplus Charging OFF"
 
 script:
   - id: log_txt_queued
@@ -662,9 +631,12 @@ script:
   - id: stop_charging
     mode: single
     then:
-      - number.set: # Set Amps to Min
+      # - number.set:
+      #     id: amps
+      #     value: ${min_amps}
+      - number.set: 
           id: amps
-          value: ${min_amps}
+          value: !lambda return id(min_amps).state;
       - if:
           condition:
             - switch.is_on: never_stop_charging
@@ -764,7 +736,6 @@ script:
     mode: single
     then: 
       - switch.turn_off: low_amp_flag
-      # - script.execute: start_charging
       - if: # Set amps to the calculated ones if not already done so, also skip if not enough solar or battery power is available to provide the requested amps
           condition: 
             - lambda: !lambda return id(amps_goe_calculated_rounded).state != id(feedback_amps).state;
@@ -794,9 +765,16 @@ script:
                       id: skip_counter
                   - script.stop: charge_ev
                 else:
+                  # - number.set: # set amps to calculated amps when enough solar or battery power is available
+                  #     id: amps
+                  #     value: !lambda return id(amps_goe_calculated_rounded).state;
                   - number.set: # set amps to calculated amps when enough solar or battery power is available
                       id: amps
-                      value: !lambda return id(amps_goe_calculated_rounded).state;
+                      value: !lambda |-
+                        return std::max(
+                          (float)id(amps_goe_calculated_rounded).state,
+                          (float)id(min_amps).state
+                        );
                   - script.execute: start_charging
                   - delay: 2s
                   - number.to_min: skip_counter # resetting skip counter since we dont skip anymore

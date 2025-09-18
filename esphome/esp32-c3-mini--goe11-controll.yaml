@@ -230,6 +230,16 @@ number:
     mode: BOX
 
   - platform: template
+    name: Min Amperage ${variant}
+    id: min_amps
+    initial_value: ${min_amps}
+    min_value: ${min_amps}
+    max_value: ${max_amps}
+    optimistic: True
+    step: 1
+    mode: BOX
+
+  - platform: template
     step: 1
     min_value: ${min_amps}
     max_value: ${max_amps}
@@ -361,7 +371,7 @@ text_sensor:
                 - sun.is_above_horizon:
                 - switch.is_off: enable_pv_charging
             then: 
-              - switch.turn_on: enable_pv_charging              
+              - switch.turn_on: enable_pv_charging
 
 sensor:
   - platform: wifi_signal
@@ -395,25 +405,6 @@ sensor:
     id: feedback_amps
     name: Goe Feedback Amperage ${variant}
     internal: True
-
-  # - platform: mqtt_subscribe
-  #   topic: smart_meter/total_combined
-  #   accuracy_decimals: 2
-  #   state_class: measurement
-  #   device_class: power
-  #   unit_of_measurement: W
-  #   id: grid_gen
-  #   name: Smart Meter HA Power ${variant}
-  #   internal: False
-  #   filters: 
-  #     # - multiply: -1
-  #     - lambda: !lambda return x + id(battery_power_offset).state;
-
-  # - platform: template
-  #   name: Smart Meter MQTT Power $variant
-  #   id: smart_meter_power
-  #   unit_of_measurement: W
-  #   device_class: power
 
   - platform: mqtt_subscribe
     topic: grid/power
@@ -585,18 +576,25 @@ sensor:
           min_value: 0
           max_value: ${max_amps}
 
-
-    #on_value:
-    #  then:
-    #    - if:
-    #        condition:
-    #          - switch.is_on: enable_pv_charging
-    #        then:
-    #          - script.execute: charge_ev
-    #        else:
-    #          - text_sensor.template.publish:
-    #              id: log_txt
-    #              state: "PV Surplus Charging OFF"
+  - platform: mqtt_subscribe
+    topic: ${main_topic}trx
+    name: Card Used ${variant}
+    id: card_used
+    filters: 
+      - round: 0
+    on_value_range: 
+      above: 1.5
+      below: 2.5
+      then:
+        - if:
+            condition:
+              - sensor.in_range:
+                  id: goe_amp_divider
+                  above: 2.5
+            then:
+              - number.set: 
+                  id: min_amps
+                  value: 8
 
 interval:
   interval: 
