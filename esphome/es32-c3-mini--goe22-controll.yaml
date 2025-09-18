@@ -135,6 +135,11 @@ switch:
 
   - platform: template
     optimistic: True
+    id: never_stop_charging
+    name: Dont Stop Charging ${variant}
+
+  - platform: template
+    optimistic: True
     id: enable_pv_charging
     name: Enable Surplus Charging ${variant}
     restore_mode: RESTORE_DEFAULT_OFF
@@ -143,18 +148,10 @@ switch:
         - script.execute: 
             id: log_txt_queued
             log_text: "PV Surplus Charging ON"
-        # - text_sensor.template.publish:
-        #     id: log_txt
-        #     state: "PV Surplus Charging ON"
     on_turn_off:
       then:
+        - switch.turn_off: never_stop_charging
         - script.execute: stop_charging
-        # - mqtt.publish: # Stop charging
-        #     topic: ${main_topic}frc/set
-        #     payload: 1
-        - number.set: # Set Amps to Min
-            id: amps
-            value: ${min_amps}
         - number.to_min: restart_charging_counter
 
 number:
@@ -253,12 +250,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              # - text_sensor.template.publish:
-              #     id: log_txt
-              #     state: !lambda |-
-              #       char text_amps[200];
-              #       sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-              #       return ((std::string) text_amps).c_str();
               - script.execute: 
                   id: log_txt_queued
                   log_text: !lambda |-
@@ -654,7 +645,6 @@ script:
           id: log_txt
           state: !lambda return log_text;
       - delay: 500ms
-
   - id: blink_led
     parameters:
       repeat_count: int
@@ -672,28 +662,33 @@ script:
   - id: stop_charging
     mode: single
     then:
+      - number.set: # Set Amps to Min
+          id: amps
+          value: ${min_amps}
+      - if:
+          condition:
+            - switch.is_on: never_stop_charging
+          then:
+            - script.execute:
+                id: log_txt_queued
+                log_text: "Never Stop Charging active: set to min amps instead of stopping"
+
       - if: # if not Don't Charge then set to Don't Charge and log that
           condition: 
-            - not:
-              - text_sensor.state:
-                  id: goe_status
-                  state: "Don't Charge"
+            - and:
+              - switch.is_off: never_stop_charging
+              - not:
+                - text_sensor.state:
+                    id: goe_status
+                    state: "Don't Charge"
           then:
             - mqtt.publish:
                 id: broker
                 payload: 1
                 topic: ${main_topic}frc/set
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Disallow Charging"
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Disallow Charging"
-            # - delay: 500ms
-          # else:
-          #   - text_sensor.template.publish:
-          #       id: log_txt
-          #       state: "Charging already disallowed"
   - id: start_charging
     mode: single
     then:
@@ -711,17 +706,8 @@ script:
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Allow Charging"
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Allow Charging"
             - number.to_min: 
                 id: restart_charging_counter
-            # - delay: 2s
-          # else: 
-          #   - text_sensor.template.publish:
-          #       id: log_txt
-          #       state: "Charging already allowed"
-          #   - delay: 500ms
   - id: restart_charging
     mode: single
     then:
@@ -737,9 +723,6 @@ script:
             - script.execute: 
                 id: log_txt_queued
                 log_text: "Car not Charging, but allowed, restarting..."
-            # - text_sensor.template.publish:
-            #     id: log_txt
-            #     state: "Car not Charging, but allowed, restarting..."
             - mqtt.publish: 
                 id: broker
                 payload: 1
@@ -765,13 +748,6 @@ script:
             char text_amps[200];
             sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
             return ((std::string) text_amps).c_str();
-      # - text_sensor.template.publish:
-      #     id: log_txt
-      #     state: !lambda |-
-      #       char text_amps[200];
-      #       sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
-      #       return ((std::string) text_amps).c_str();
-      # - delay: 1s
       - script.stop: charge_ev
   - id: below_amp_threshold
     mode: single
