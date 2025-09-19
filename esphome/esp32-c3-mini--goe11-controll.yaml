@@ -78,9 +78,9 @@ time:
 sun:
   latitude: !secret latitude
   longitude: !secret longitude
-  on_sunset: 
-    then: 
-      - switch.turn_off: enable_pv_charging
+  #on_sunset: 
+  #  then: 
+  #    - switch.turn_off: enable_pv_charging
   
 output:
   - platform: gpio
@@ -159,6 +159,17 @@ switch:
         - number.to_min: restart_charging_counter
 
 number:
+  - platform: template
+    min_value: 0
+    max_value: 10
+    initial_value: 0
+    restore_value: true
+    id: card_zoe
+    name: RFID Card Zoe ${variant}
+    step: 1
+    optimistic: true
+    mode: BOX
+
   - platform: template
     max_value: 10
     min_value: 0
@@ -581,29 +592,36 @@ sensor:
     id: card_used
     filters: 
       - round: 0
-    on_value_range: 
-      - above: 1.5
-        below: 2.5
-        then:
-          - if:
-              condition:
-                - sensor.in_range:
-                    id: goe_amp_divider
-                    above: 2.5
-              then:
-                - number.set: 
-                    id: min_amps
-                    value: 8
-      - below: 1.5
-        then:
-          - number.set: 
-              id: min_amps
-              value: ${min_amps}
-      - above: 2.5
-        then:
-          - number.set: 
-              id: min_amps
-              value: ${min_amps}
+    on_value: 
+      then:
+        - if:
+            condition:
+              lambda: !lambda return x == id(card_zoe).state;
+            then:
+              - number.set:
+                  id: min_amps
+                  value: 8
+            else:
+              - number.set:
+                  id: min_amps
+                  value: ${min_amps}
+    #on_value_range: 
+    #  - above: 1.5
+    #    below: 2.5
+    #    then:
+    #      - number.set: 
+    #          id: min_amps
+    #          value: 8
+    #  - below: 1.5
+    #    then:
+    #      - number.set: 
+    #          id: min_amps
+    #          value: ${min_amps}
+    #  - above: 2.5
+    #    then:
+    #      - number.set: 
+    #          id: min_amps
+    #          value: ${min_amps}
 
 interval:
   interval: 
@@ -619,11 +637,8 @@ interval:
               repeat_count: 1 # flash button for duration of 250ms to inidcate working
         else:
            - script.execute: 
-                id: log_txt_queued
-                log_text: "PV Surplus Charging OFF"
-          # - text_sensor.template.publish:
-          #     id: log_txt
-          #     state: "PV Surplus Charging OFF"
+              id: log_txt_queued
+              log_text: "PV Surplus Charging OFF"
 
 script:
   - id: log_txt_queued
