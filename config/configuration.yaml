@@ -1168,19 +1168,27 @@ multiscrape:
         name: NVME SSD Status
         device_class: problem
         value_template: "{{ bool(value_json.data.device.device_status) }}"
-        attributes:
+        attributes:          
           - name: "Model Name"
-            value_template: "{{ value_json.data.device.model_name }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr[0].model_name if sr|length>0 and sr[0].model_name is defined else 'unavailable') }}
           - name: "Device Name"
-            value_template: "{{ value_json.data.device.device_name }}"
-          - name: "Device Protocol"
-            value_template: "{{ value_json.data.device.device_protocol }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr[0].device_name if sr|length>0 and sr[0].device_name is defined else 'unavailable') }}
           - name: "Serial Number"
-            value_template: "{{ value_json.data.device.serial_number }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr[0].serial_number if sr|length>0 and sr[0].serial_number is defined else 'unavailable') }}
           - name: "Updated At"
-            value_template: "{{ value_json.data.device.UpdatedAt }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr[0].UpdatedAt if sr|length>0 and sr[0].UpdatedAt is defined else 'unavailable') }}
           - name: "Device Status"
-            value_template: "{{ value_json.data.device.device_status }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr[0].device_status if sr|length>0 and sr[0].device_status is defined else 'unavailable') }}
           - name: "Capacity"
             value_template: "{{ value_json.data.device.capacity | filesizeformat  }}"
           - name: "Temperature"
