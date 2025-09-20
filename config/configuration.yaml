@@ -1172,25 +1172,27 @@ multiscrape:
           - name: "Model Name"
             value_template: >-
               {% set sr = value_json.data.device | default([], true) %}
-              {{ (sr[0].model_name if sr|length>0 and sr[0].model_name is defined else 'unavailable') }}
+              {{ (sr.model_name if sr|length>0 and sr.model_name is defined else 'unavailable') }}
           - name: "Device Name"
             value_template: >-
               {% set sr = value_json.data.device | default([], true) %}
-              {{ (sr[0].device_name if sr|length>0 and sr[0].device_name is defined else 'unavailable') }}
+              {{ (sr.device_name if sr|length>0 and sr.device_name is defined else 'unavailable') }}
           - name: "Serial Number"
             value_template: >-
               {% set sr = value_json.data.device | default([], true) %}
-              {{ (sr[0].serial_number if sr|length>0 and sr[0].serial_number is defined else 'unavailable') }}
+              {{ (sr.serial_number if sr|length>0 and sr.serial_number is defined else 'unavailable') }}
           - name: "Updated At"
             value_template: >-
               {% set sr = value_json.data.device | default([], true) %}
-              {{ (sr[0].UpdatedAt if sr|length>0 and sr[0].UpdatedAt is defined else 'unavailable') }}
+              {{ (sr.UpdatedAt if sr|length>0 and sr.UpdatedAt is defined else 'unavailable') }}
           - name: "Device Status"
             value_template: >-
               {% set sr = value_json.data.device | default([], true) %}
-              {{ (sr[0].device_status if sr|length>0 and sr[0].device_status is defined else 'unavailable') }}
+              {{ (sr.device_status if sr|length>0 and sr.device_status is defined else 'unavailable') }}
           - name: "Capacity"
-            value_template: "{{ value_json.data.device.capacity | filesizeformat  }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ ((sr.capacity|filesizeformat) if sr|length>0 and sr.capacity is defined else 'unavailable') }}
           - name: "Temperature"
             value_template: >-
               {% set sr = value_json.data.smart_results | default([], true) %}
@@ -1219,21 +1221,31 @@ multiscrape:
         name: SATA SSD Status
         device_class: problem
         value_template: "{{  bool(value_json.data.device.device_status) }}"
-        attributes:
+        attributes:          
           - name: "Model Name"
-            value_template: "{{ value_json.data.device.model_name }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr.model_name if sr|length>0 and sr.model_name is defined else 'unavailable') }}
           - name: "Device Name"
-            value_template: "{{ value_json.data.device.device_name }}"
-          - name: "Device Protocol"
-            value_template: "{{ value_json.data.device.device_protocol }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr.device_name if sr|length>0 and sr.device_name is defined else 'unavailable') }}
           - name: "Serial Number"
-            value_template: "{{ value_json.data.device.serial_number }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr.serial_number if sr|length>0 and sr.serial_number is defined else 'unavailable') }}
           - name: "Updated At"
-            value_template: "{{ value_json.data.device.UpdatedAt }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr.UpdatedAt if sr|length>0 and sr.UpdatedAt is defined else 'unavailable') }}
           - name: "Device Status"
-            value_template: "{{ value_json.data.device.device_status }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ (sr.device_status if sr|length>0 and sr.device_status is defined else 'unavailable') }}
           - name: "Capacity"
-            value_template: "{{ value_json.data.device.capacity | filesizeformat }}"
+            value_template: >-
+              {% set sr = value_json.data.device | default([], true) %}
+              {{ ((sr.capacity|filesizeformat) if sr|length>0 and sr.capacity is defined else 'unavailable') }}
           - name: "Temperature"
             value_template: >-
               {% set sr = value_json.data.smart_results | default([], true) %}
@@ -1246,7 +1258,7 @@ multiscrape:
             value_template: >-
               {% set sr = value_json.data.smart_results | default([], true) %}
               {{ (sr[0].power_cycle_count if sr|length>0 and sr[0].power_cycle_count is defined else 'unavailable') }}
-            
+        
 
 automation: !include automations.yaml
 script: !include scripts.yaml
