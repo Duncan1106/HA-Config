@@ -8640,3 +8640,52 @@
               milliseconds: 0
       alias: Fan on
   mode: restart
+- id: '1758358981299'
+  alias: Wasserenthärtung – Salz Erinnerung mit Bestätigung
+  description: Erinnert bei niedrigem Salz, setzt Utility Meter erst nach Bestätigung
+    zurück.
+  triggers:
+  - entity_id: sensor.wasserenthartung
+    id: usage_change
+    trigger: state
+  - entity_id:
+    - input_boolean.salz_nachgefullt
+    to: 'off'
+    id: confirm_reset
+    trigger: state
+    from: 'on'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: usage_change
+      - condition: template
+        value_template: '{{ states(''sensor.wasserenthartung'') | float > 42 }}
+
+          '
+      - condition: template
+        value_template: "{{ (as_timestamp(now()) -\n    as_timestamp(state_attr('automation.wasserenthartung_salz_erinnerung_mit_bestatigung',
+          'last_triggered') | default(0))) > 86400 }}\n"
+      sequence:
+      - target:
+          entity_id:
+          - input_boolean.salz_nachgefullt
+        action: input_boolean.turn_on
+        data: {}
+      - data:
+          title: "\U0001F4A7 Erinnerung: Salz nachfüllen"
+          message: 'Der Wasserenthärter hat {{ states(''sensor.wasserenthartung'')
+            }} m³ erreicht. Bitte Salz nachfüllen und danach den Schalter ''Salz nachgefüllt''
+            ausschalten.
+
+            '
+        action: notify.duncan
+    - conditions:
+      - condition: trigger
+        id: confirm_reset
+      sequence:
+      - target:
+          entity_id: sensor.wasserenthartung
+        action: utility_meter.reset
+  mode: single
