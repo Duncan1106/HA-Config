@@ -948,13 +948,21 @@ template:
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
         state: >
-          {% set url = beta_scrape.beta_url | string %}
-          {% if 'release-' in url %}
-            {% set build = url.split('/')[-2].split('-')[1] | int %}
-            {{ '{}.{}'.format(build // 10, build % 10) }}
-          {% else %}
-            Invalid URL
-          {% endif %}
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url %}
+              {% set url = beta_scrape.beta_url|string %}
+              {% if 'release-' in url %}
+                {% set build = url.split('/')[-2].split('-')[1] %}
+                {% set year = build[0:4] if build|length >= 4 else '0000' %}
+                {% set month = build[4:6] if build|length >= 6 else '0' %}
+                {% set patch = build[6:] if build|length >= 7 else '0' %}
+                {{ year ~ '.' ~ (month|int) ~ '.' ~ (patch|int) }}
+              {% else %}
+                Invalid URL
+              {% endif %}
+            {% else %}
+              Unknown
+            {% endif %}
+
         attributes:
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
 
