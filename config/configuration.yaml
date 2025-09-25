@@ -880,6 +880,35 @@ template:
             {% set losses = loss_deye %} 
             {{ ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) }}
 
+      - name: "Unmonitored"
+        unique_id: unmonitored
+        state: >
+          {% set known = states('sensor.known_power') | float(0) %}
+          {% set home = states('sensor.home_power') | float(0) %}
+          {% set diff = (home - known) | round(2) %}
+          {{ diff if diff > 0 else 0 }}
+        availability: >
+          {{ states('sensor.known_power') not in ['unavailable','unknown'] and states('sensor.home_power') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash-outline
+
+      - name: "Unmonitored Consumption"
+        unique_id: unmonitored_consumption
+        state: >
+          {% set home = states('sensor.home_consumption_total_day') | float(0) %}
+          {% set known = states('sensor.known_energy') | float(0) %}
+          {% set unmetered = (home - known) | round(3) %}
+          {{ unmetered if unmetered > 0 else 0 }}
+        availability: >
+          {{ states('sensor.home_consumption_total_day') not in ['unavailable','unknown'] and states('sensor.known_energy') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        icon: mdi:power-plug-off
+
+
   - triggers:
       - trigger: homeassistant
         event: start
@@ -911,7 +940,7 @@ template:
             You are an expert software release notes summarizer.
 
             The release notes below are for the Home Assistant release found at
-            this URL: {{ beta_scrape.beta_url }}
+            this URL: {{ beta_scrape.beta_url.value }}
 
             Based on the following raw release notes text, please:
 
@@ -925,7 +954,7 @@ template:
             Structure your output in a clear, organized format with headings
             like:
 
-            **Beta Release:** {{ beta_scrape.beta_url }}
+            **Beta Release:** {{ beta_scrape.beta_url.value }}
 
             **New Features:**   - Feature 1   - Feature 2 ...
 
@@ -949,8 +978,8 @@ template:
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
         state: >
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url %}
-              {% set url = beta_scrape.beta_url|string|trim %}
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
+              {% set url = beta_scrape.beta_url.value|string|trim %}
               {% if 'release-' in url %}
                 {% set build = url.split('/')[-2]|trim %}
                 {% set year = build.split('-')[1][0:4] %}

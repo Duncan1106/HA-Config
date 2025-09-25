@@ -3135,6 +3135,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion & dark enough & no timed light
     then:
     - action: light.turn_on
       metadata: {}
@@ -3161,6 +3162,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion oben & dark enough & no timed light
     then:
     - action: light.turn_on
       metadata: {}
@@ -3264,6 +3266,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion & no timed light
     then:
     - action: script.5_min_turn_off_ganglicht
       metadata: {}
@@ -3277,7 +3280,8 @@
       entity_id: sensor.light_brighness
       above: 0.1
     then:
-    - repeat:
+    - alias: turn on until on or we tried 10 times
+      repeat:
         sequence:
         - action: light.turn_on
           metadata: {}
@@ -3287,9 +3291,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'on'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'on'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: either light on or we tried 10 times and failed
   - alias: Off Light Sync
     if:
     - condition: trigger
@@ -3320,9 +3329,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: light off or we tried 10 times and failed
   - alias: 'Off Illumination '
     if:
     - condition: trigger
@@ -3344,9 +3358,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: light off or we tried 10 times and failed
   - alias: Fix Lamp not turning off completely
     if:
     - condition: trigger
@@ -5426,9 +5445,12 @@
         %}\n  {{ max(light_max * light_float, 10)/2 }}\n{% endif %}\n"
   mode: single
 - id: '1738339387324'
-  alias: Orangina Lampe
-  description: Controls the Orangina Lamp based on the staircase light activity and
-    specific times, including automatic turn-off for night hours and synchronization.
+  alias: Orangina Lamp Light
+  description: Controls the Orangina Lamp based on staircase light activity, brightness
+    level, bed-led night mode, and specific time windows – automatically turning it
+    on when the staircase is active and bright enough, turning it off at night or
+    when the bed light is on, and synchronising its state with the staircase light
+    turning off.
   triggers:
   - trigger: state
     entity_id:
@@ -5448,49 +5470,17 @@
       hours: 0
       minutes: 0
       seconds: 10
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
-    id: 'On'
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 15
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
-    id: 'On'
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
-    id: 'On'
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-  - trigger: state
-    entity_id:
-    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-    to: 'on'
-    id: 'Off'
   - trigger: time
     at: '23:00:00'
     id: 'Off'
   - trigger: time
     at: 01:00:00
-    id: Off sleep
+    id: Off end time
   - trigger: state
     entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'off'
-    id: Off sync
+    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+    to: 'on'
+    id: 'Off'
   - trigger: state
     entity_id:
     - light.esp32_c3_mini_treppenhaus_licht
@@ -5498,8 +5488,17 @@
     id: Off sync
     for:
       hours: 0
-      minutes: 1
-      seconds: 0
+      minutes: 0
+      seconds: 5
+  - trigger: state
+    entity_id:
+    - light.esp32_c3_mini_treppenhaus_licht
+    to: 'off'
+    id: Off sync
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
   conditions: []
   actions:
   - choose:
@@ -5512,11 +5511,6 @@
         value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
           int(1) > 27 }}'
       sequence:
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
       - repeat:
           sequence:
           - action: switch.turn_on
@@ -5530,65 +5524,74 @@
               seconds: 5
               milliseconds: 0
           until:
-          - condition: state
-            entity_id: switch.orangina_lampe_zigbee
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.orangina_lampe_zigbee
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index >= 10 }}'
+            alias: switch is on or we tried 10 times
       alias: 'On'
     - conditions:
-      - condition: trigger
-        id:
-        - 'Off'
-      - condition: time
-        after: '23:00:00'
-        before: 04:00:00
-      - condition: state
-        entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-        state: 'on'
+      - condition: or
+        conditions:
+        - alias: 23 o'clock and in bed off
+          condition: and
+          conditions:
+          - condition: time
+            after: '22:59:00'
+            before: 04:00:00
+          - condition: state
+            entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+            state: 'on'
+          - condition: trigger
+            id:
+            - 'Off'
+        - alias: Daytime or if bright enough
+          condition: and
+          conditions:
+          - condition: time
+            before: '20:00:00'
+            after: 04:00:00
+          - condition: numeric_state
+            entity_id: sensor.light_brighness
+            below: 1
+          - condition: trigger
+            id:
+            - Off sync
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - Off end time
+          - condition: time
+            after: 00:59:00
+            before: 04:00:00
+          alias: After 1 o'clock force off
       sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
+      - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.orangina_lampe_zigbee
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index >= 10 }}'
+            alias: switch is off or we tried 10 times
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.orangina_lampe_zigbee
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
       alias: 'Off'
-    - conditions:
-      - condition: time
-        before: '20:00:00'
-        after: 04:00:00
-      - condition: trigger
-        id:
-        - Off sync
-      sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 10
-          milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
-      alias: Off Sync
-    - conditions:
-      - condition: trigger
-        id:
-        - Off sleep
-      - condition: time
-        after: 00:59:00
-        before: 04:00:00
-      sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
-      alias: Off Sleep
   mode: queued
   max: 10
 - id: '1738676581969'
@@ -7549,6 +7552,7 @@
         target:
           entity_id:
           - select.go_echarger_270862_frc
+        enabled: true
       alias: 'Turn off at midnight '
     - conditions:
       - condition: trigger
@@ -7578,6 +7582,7 @@
         target:
           entity_id:
           - select.go_echarger_270862_frc
+        enabled: true
       - delay:
           hours: 0
           minutes: 0
