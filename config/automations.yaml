@@ -5505,9 +5505,14 @@
               seconds: 5
               milliseconds: 0
           until:
-          - condition: state
-            entity_id: switch.orangina_lampe_zigbee
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.orangina_lampe_zigbee
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index >= 10 }}'
+            alias: switch is on or we tried 10 times
       alias: 'On'
     - conditions:
       - condition: or
@@ -5546,11 +5551,27 @@
             before: 04:00:00
           alias: After 1 o'clock force off
       sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: switch.orangina_lampe_zigbee
+      - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.orangina_lampe_zigbee
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index >= 10 }}'
+            alias: switch is off or we tried 10 times
+          sequence:
+          - action: switch.turn_off
+            metadata: {}
+            data: {}
+            target:
+              entity_id: switch.orangina_lampe_zigbee
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
       alias: 'Off'
   mode: queued
   max: 10
