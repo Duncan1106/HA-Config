@@ -3135,6 +3135,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion & dark enough & no timed light
     then:
     - action: light.turn_on
       metadata: {}
@@ -3161,6 +3162,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion oben & dark enough & no timed light
     then:
     - action: light.turn_on
       metadata: {}
@@ -3264,6 +3266,7 @@
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
+      alias: motion & no timed light
     then:
     - action: script.5_min_turn_off_ganglicht
       metadata: {}
@@ -3277,7 +3280,8 @@
       entity_id: sensor.light_brighness
       above: 0.1
     then:
-    - repeat:
+    - alias: turn on until on or we tried 10 times
+      repeat:
         sequence:
         - action: light.turn_on
           metadata: {}
@@ -3287,9 +3291,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'on'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'on'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: either light on or we tried 10 times and failed
   - alias: Off Light Sync
     if:
     - condition: trigger
@@ -3320,9 +3329,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: light off or we triied 10 times and failed
   - alias: 'Off Illumination '
     if:
     - condition: trigger
@@ -3344,9 +3358,14 @@
             entity_id: '{{ light_ganglicht }}'
         - delay: '{{ light_delay }}'
         until:
-        - condition: state
-          entity_id: light.ganglicht_zigbee_led
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: light.ganglicht_zigbee_led
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index >= 10 }}'
+          alias: light off or we tried 10 times and failed
   - alias: Fix Lamp not turning off completely
     if:
     - condition: trigger
