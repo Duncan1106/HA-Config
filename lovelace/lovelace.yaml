@@ -5722,12 +5722,11 @@ config:
           type: custom:mushroom-entity-card
         type: horizontal-stack
       - content: "**\u23F0 Aktuelle Zeit:** `{{ now().strftime('%H:%M:%S') }}`\n**\U0001F305\
-          \ Offset-Zeiten**\n- Start: `{% set start = state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'next_sunrise_offset_start') %}{% if start %}{{ strptime(start, '%Y-%m-%d\
-          \ %H:%M:%S').strftime('%H:%M:%S') }}{% else %} N/A {% endif %}`\n- Ende:\
-          \ `{% set end = state_attr('binary_sensor.luftbefeuchter_on_windows', 'next_sunset_offset_end')\
-          \ %} {% if end %} {{ strptime(end, '%Y-%m-%d %H:%M:%S').strftime('%H:%M:%S')\
-          \ }} {% else %} N/A {% endif %}`\n\n**\U0001F552 Zeitfenster & Intervall**\n\
+          \ Offset-Zeiten**\n- Start: `{% set start = as_datetime(state_attr('binary_sensor.luftbefeuchter_on_windows',\
+          \ 'next_sunrise_offset_start')) %}{{ start.timestamp() | timestamp_custom('%H:%M:%S',\
+          \ true) if start else ' N/A' }}`\n- Ende: `{% set end = as_datetime(state_attr('binary_sensor.luftbefeuchter_on_windows',\
+          \ 'next_sunset_offset_end')) %} {{ end.timestamp() | timestamp_custom('%H:%M:%S',\
+          \ true) if end else ' N/A' }}`\n\n**\U0001F552 Zeitfenster & Intervall**\n\
           - Zeitfenster: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
           \ 'window_duration') }}`\n- Intervall: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
           \ 'trigger_interval') }}`\n\n**\U0001F4CA Status** - Verbleibend: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
@@ -5803,6 +5802,13 @@ config:
           icon: mdi:water-percent
           show_icon: true
           show_state: true
+          type: entity
+        - color: state
+          entity: sensor.terrarium_energy_power
+          show_icon: true
+          show_state: true
+          tap_action:
+            action: more-info
           type: entity
         heading: Sensoren
         heading_style: title
