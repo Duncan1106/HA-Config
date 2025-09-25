@@ -880,6 +880,35 @@ template:
             {% set losses = loss_deye %} 
             {{ ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) }}
 
+      - name: "Unmonitored"
+        unique_id: unmonitored
+        state: >
+          {% set known = states('sensor.known_power') | float(0) %}
+          {% set home = states('sensor.home_power') | float(0) %}
+          {% set diff = (home - known) | round(2) %}
+          {{ diff if diff > 0 else 0 }}
+        availability: >
+          {{ not ( is_state('sensor.known_power', 'unavailable') or is_state('sensor.home_power', 'unavailable') ) }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash-outline
+
+      - name: "Unmonitored Consumption"
+        unique_id: unmonitored_consumption
+        state: >
+          {% set home = states('sensor.home_consumption_total_day') | float(0) %}
+          {% set known = states('sensor.known_energy') | float(0) %}
+          {% set unmetered = (home - known) | round(3) %}
+          {{ unmetered if unmetered > 0 else 0 }}
+        availability: >
+          {{ not ( is_state('sensor.home_consumption_total_day', 'unavailable') or is_state('sensor.known_energy', 'unavailable') ) }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:power-plug-off
+
+
   - triggers:
       - trigger: homeassistant
         event: start
