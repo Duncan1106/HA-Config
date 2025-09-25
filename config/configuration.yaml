@@ -111,6 +111,7 @@ recorder:
       - sensor.kellervorrate_combined_filtered_items_hash
       - switch.153931628718174_prompt_tone
       - binary_sensor.water_monitor_low_flow_leak
+      - sensor.home_assistant_beta_release_notes
     entity_globs:
       - sensor.dreamebot_d10_plus_*
       - sensor.d9_max_white_*
@@ -949,11 +950,11 @@ template:
         icon: mdi:home-assistant
         state: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url %}
-              {% set url = beta_scrape.beta_url|string %}
+              {% set url = beta_scrape.beta_url|string|trim %}
               {% if 'release-' in url %}
-                {% set build = url.split('/')[-2].split('-')[1]|trim %}
-                {% set year = build[0:4] %}
-                {% set month = build[4:]|int %}
+                {% set build = url.split('/')[-2]|trim %}
+                {% set year = build.split('-')[1][0:4] %}
+                {% set month = build.split('-')[1][4:]|int %}
                 {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
               {% else %}
                 Invalid URL
@@ -964,7 +965,7 @@ template:
         attributes:
           beta_url: > 
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url %}
-              {{beta_scrape.beta_url|string }}
+              {{beta_scrape.beta_url.value|string }}
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
 
