@@ -667,220 +667,100 @@ config:
           type: horizontal-stack
         - cards:
           - card:
-              card:
-                align_header: center
-                align_state: center
-                animate: true
-                cache: false
-                color_thresholds:
-                - color: '#008000'
-                  value: 200
-                - color: '#90EE90'
-                  value: 500
-                - color: '#FFA500'
-                  value: 1500
-                - color: '#ff0050'
-                  value: 3600
-                font_size: 60
-                height: 50
-                hour24: true
-                hours_to_show: 6
-                line_width: 2
-                points_per_hour: 10
-                show:
-                  fill: true
-                  icon: false
-                  labels: false
-                  points: hover
-                tap_action:
-                  action: navigate
-                  navigation_path: /test-sankey/power-distribution
-                type: custom:mini-graph-card
-              filter:
-                template: '{{ states(''sensor.1st_max_sensor'') }}
-
-                  '
-              type: custom:auto-entities
-            conditions:
-            - above: 10
-              condition: numeric_state
-              entity: sensor.1st_max_state
-            type: conditional
+              align_header: center
+              align_state: center
+              animate: true
+              cache: false
+              color_thresholds:
+              - color: '#008000'
+                value: 200
+              - color: '#90EE90'
+                value: 500
+              - color: '#FFA500'
+                value: 1500
+              - color: '#ff0050'
+                value: 3600
+              font_size: 60
+              height: 50
+              hour24: true
+              hours_to_show: 6
+              line_width: 2
+              points_per_hour: 10
+              show:
+                fill: true
+                icon: false
+                labels: false
+                points: hover
+              tap_action:
+                action: navigate
+                navigation_path: /test-sankey/power-distribution
+              type: custom:mini-graph-card
+            filter:
+              template: "{% set list_str = states('sensor.1st_max_sensor') %}\n{%\
+                \ if list_str in ['unknown', 'unavailable', 'none', '[]' ] %}\n  []\n\
+                {% else %}\n  {% set entity_id = list_str | regex_replace('[\\[\\\
+                ]\\'\"]+', '') | trim %}\n  {% if entity_id and has_value(entity_id)\
+                \ %}\n    {% set raw_state = states(entity_id) %}\n    {% if is_number(raw_state)\
+                \ and raw_state | float(10) > 10 %}\n      ['{{ entity_id }}']\n \
+                \   {% else %}\n      []\n    {% endif %}\n  {% else %}\n    []\n\
+                \  {% endif %}\n{% endif %}\n"
+            show_empty: false
+            type: custom:auto-entities
           - card:
-              card:
-                align_header: center
-                align_state: center
-                animate: true
-                cache: false
-                color_thresholds:
-                - color: '#008000'
-                  value: 200
-                - color: '#90EE90'
-                  value: 500
-                - color: '#FFA500'
-                  value: 1500
-                - color: '#ff0050'
-                  value: 3600
-                font_size: 60
-                height: 50
-                hour24: true
-                hours_to_show: 6
-                line_width: 2
-                lower_bound: 0
-                points_per_hour: 10
-                show:
-                  fill: true
-                  icon: false
-                  label: true
-                  labels: false
-                  points: hover
-                tap_action:
-                  action: navigate
-                  navigation_path: /test-sankey/power-distribution
-                type: custom:mini-graph-card
-              filter:
-                template: '{{ states(''sensor.2nd_max_sensor'') }}
-
-                  '
-              type: custom:auto-entities
-            conditions:
-            - above: 10
-              condition: numeric_state
-              entity: sensor.2nd_max_state
-            type: conditional
+              align_header: center
+              align_state: center
+              animate: true
+              cache: false
+              color_thresholds:
+              - color: '#008000'
+                value: 200
+              - color: '#90EE90'
+                value: 500
+              - color: '#FFA500'
+                value: 1500
+              - color: '#ff0050'
+                value: 3600
+              font_size: 60
+              height: 50
+              hour24: true
+              hours_to_show: 6
+              line_width: 2
+              lower_bound: 0
+              points_per_hour: 10
+              show:
+                fill: true
+                icon: false
+                label: true
+                labels: false
+                points: hover
+              tap_action:
+                action: navigate
+                navigation_path: /test-sankey/power-distribution
+              type: custom:mini-graph-card
+            filter:
+              template: "{% set list_str = states('sensor.2nd_max_sensor') %}\n{%\
+                \ if list_str in ['unknown', 'unavailable', 'none', '[]' ] %}\n  []\n\
+                {% else %}\n  {% set entity_id = list_str | regex_replace('[\\[\\\
+                ]\\'\"]+', '') | trim %}\n  {% if entity_id and has_value(entity_id)\
+                \ %}\n    {% set raw_state = states(entity_id) %}\n    {% if is_number(raw_state)\
+                \ and raw_state | float(10) > 10 %}\n      ['{{ entity_id }}']\n \
+                \   {% else %}\n      []\n    {% endif %}\n  {% else %}\n    []\n\
+                \  {% endif %}\n{% endif %}\n"
+            show_empty: false
+            type: custom:auto-entities
           type: horizontal-stack
-        - card:
-            entity: sensor.solar_production_today
-            fill_container: true
-            icon: ''
-            layout: vertical
-            primary: '{% set remaining = states(''sensor.solcast_pv_forecast_prognose_verbleibende_leistung_heute'')
-              | float(0) | round(2) | string %}
-
-              {% set total = states(''sensor.solcast_pv_forecast_prognose_heute'')
-              | float(0) | round(2) | string %}
-
-              {% set real = states(''sensor.solar_production_today'') | float(0) |
-              round(2) | string %}
-
-              {{ remaining + "kWh / " + total + "kWh (" + real + "kWh)"}}'
-            secondary: Remaining  / Total Today (Real)
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/energie
-            type: custom:mushroom-template-card
-          conditions:
-          - condition: user
-            users: []
-          - condition: state
-            entity: sensor.scb_inverter_state
-            state: FeedIn
-          type: conditional
-        - card:
-            entity: sensor.forecast_text
-            fill_container: true
-            icon: ''
-            layout: vertical
-            primary: '{{ states(''sensor.forecast_text'') | replace('' - '','', '')}} '
-            secondary: ''
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/energie
-            type: custom:mushroom-template-card
-          conditions:
-          - condition: user
-            users:
-            - e7fe7b076dbb49a3aaa82b75c63cc302
-            - 4f7767cac0c342edb25e991662a2f56c
-            - 690f4c6bedc44a9daad30c216f237d1d
-          type: conditional
+        - entity: sensor.forecast_text
+          features_position: bottom
+          icon: ''
+          multiline_secondary: false
+          primary: '{{ states(''sensor.forecast_text'') | replace('' - '','', '')}} '
+          secondary: ''
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace/energie
+          type: custom:mushroom-template-card
+          vertical: true
         type: vertical-stack
-      - cards:
-        - card:
-            align_header: center
-            align_state: center
-            animate: true
-            cache: false
-            color_thresholds:
-            - color: '#008000'
-              value: 200
-            - color: '#90EE90'
-              value: 500
-            - color: '#FFA500'
-              value: 1500
-            - color: '#ff0050'
-              value: 3600
-            font_size: 60
-            height: 50
-            hour24: true
-            hours_to_show: 6
-            line_width: 2
-            points_per_hour: 10
-            show:
-              fill: true
-              icon: false
-              labels: false
-              points: hover
-            tap_action:
-              action: navigate
-              navigation_path: /test-sankey/power-distribution
-            type: custom:mini-graph-card
-          filter:
-            template: "{% set list_str = states('sensor.1st_max_sensor') %}\n{% if\
-              \ list_str in ['unknown', 'unavailable', 'none', '[]' ] %}\n  []\n{%\
-              \ else %}\n  {% set entity_id = list_str | regex_replace('[\\[\\]\\\
-              '\"]+', '') | trim %}\n  {% if entity_id and has_value(entity_id) %}\n\
-              \    {% set raw_state = states(entity_id) %}\n    {% if is_number(raw_state)\
-              \ and raw_state | float(10) > 10 %}\n      ['{{ entity_id }}']\n   \
-              \ {% else %}\n      []\n    {% endif %}\n  {% else %}\n    []\n  {%\
-              \ endif %}\n{% endif %}\n"
-          type: custom:auto-entities
-        - card:
-            align_header: center
-            align_state: center
-            animate: true
-            cache: false
-            color_thresholds:
-            - color: '#008000'
-              value: 200
-            - color: '#90EE90'
-              value: 500
-            - color: '#FFA500'
-              value: 1500
-            - color: '#ff0050'
-              value: 3600
-            font_size: 60
-            height: 50
-            hour24: true
-            hours_to_show: 6
-            line_width: 2
-            lower_bound: 0
-            points_per_hour: 10
-            show:
-              fill: true
-              icon: false
-              label: true
-              labels: false
-              points: hover
-            tap_action:
-              action: navigate
-              navigation_path: /test-sankey/power-distribution
-            type: custom:mini-graph-card
-          filter:
-            template: "{% set list_str = states('sensor.2nd_max_sensor') %}\n{% if\
-              \ list_str in ['unknown', 'unavailable', 'none', '[]' ] %}\n  []\n{%\
-              \ else %}\n  {% set entity_id = list_str | regex_replace('[\\[\\]\\\
-              '\"]+', '') | trim %}\n  {% if entity_id and has_value(entity_id) %}\n\
-              \    {% set raw_state = states(entity_id) %}\n    {% if is_number(raw_state)\
-              \ and raw_state | float(10) > 10 %}\n      ['{{ entity_id }}']\n   \
-              \ {% else %}\n      []\n    {% endif %}\n  {% else %}\n    []\n  {%\
-              \ endif %}\n{% endif %}\n"
-          type: custom:auto-entities
-        type: horizontal-stack
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
       type: grid
     - cards:
       - card:
