@@ -1486,12 +1486,13 @@ save_counts_and_notify_purge_status:
         action: notify.duncan
         data:
           title: ⚠️ DB Purge Failed — {{ block_id }}
-          message: 'The DB purge for block ''{{ block_id }}'' likely failed.\n
+          message: '{% set removed_rows = current_count - states(''sensor.maria_db_rows'')
+            | int(0) %} The DB purge for block ''{{ block_id }}'' likely failed.\n
 
             • Start: {{ current_count }}\n • Threshold: {{ threshold }}\n • Final:
-            {{ states(''sensor.maria_db_rows'') | int(0) }}\n • Removed: {{ current_count
-            - states(''sensor.maria_db_rows'') | int(0) }} rows\n • Timed out after
-            {{ timeout_minutes }} minutes.\n\n
+            {{ states(''sensor.maria_db_rows'') | int(0) }}\n • {{''Added: +'' if
+            removed_rows <= 0 else ''Removed: ''}}{{ removed_rows | abs }} rows\n
+            • Timed out after {{ timeout_minutes }} minutes.\n\n
 
             Consider checking your recorder and DB status manually.
 
