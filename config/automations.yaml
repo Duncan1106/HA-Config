@@ -3049,8 +3049,39 @@
   mode: single
 - id: '1727387566504'
   alias: Ganglicht Motion
-  description: Controls hallway and staircase lights based on motion, ambient light
-    levels, and includes reliability fixes for light states.
+  description: "## \U0001F6B6 Ganglicht Motion  \n\n### \U0001F4CB **Motion-Activated
+    Hallway & Stairway Lighting**  \nControls both hallway (`ganglicht`) and stairway
+    (`treppenlicht`) lights based on motion sensors, ambient light levels, and adds
+    robust sync & reliability fixes to ensure lights turn on/off correctly.  \n\n---\n\n###
+    \U0001F506 **Turn ON Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
+    **Motion (below)** | `binary_sensor.aqara_p1_occupancy`, `binary_sensor.gang_bewegung_keller_tur_occupancy`
+    | State = **on** |\n| **Motion (above)** | `binary_sensor.treppenhaus_occupancy`
+    | State = **on** |\n| **Sync ON** | `sensor.light_brighness` | Above **0.1** |\n\n---\n\n###
+    \U0001F319 **Turn OFF Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
+    **Sync OFF** | `sensor.light_brighness` | Below **0.1** |\n| **Illuminance** |
+    `sensor.aqara_p1_illuminance` | Above **79 / 100 / 150 / 200 lux** |\n| **Force
+    OFF** | `light.ganglicht_zigbee_led` | Off for **5 min / 15 min** |\n\n---\n\n###
+    \U0001F3AF **Smart Logic**  \n\n#### **\U0001F506 Motion-Driven ON**  \n- **Downstairs
+    motion** (dark < 80 lux & no timed light)  \n  → `ganglicht` ON at **100%**  \n
+    \ → `treppenlicht` OFF  \n- **Upstairs motion** (dark < 80 lux & no timed light)
+    \ \n  → `treppenlicht` ON at **10%**  \n  → `ganglicht` ON at **75%** after 0.5s
+    \ \n  → Wait 1min for downstairs motion → adjust ganglicht/treppenlicht accordingly
+    \ \n\n---\n\n#### **\U0001F319 Auto-OFF**  \n- **After 5 min of no motion** →
+    `script.5_min_turn_off_ganglicht`  \n- **Sync OFF** (sensor < 0.1 & no motion
+    detected) → Retry up to 10× with 0.5s delays until confirmed OFF  \n- **High Lux
+    Override** (above 79–200 lux) → Retry up to 10× until confirmed OFF  \n- **Force
+    OFF failsafe** (light stuck off for 5–15 min) → Briefly set `brightness=1%` →
+    then OFF again  \n\n---\n\n#### **\U0001F501 Sync & Reliability Fixes**  \n- **Sync
+    ON**: Retry up to 10× until ganglicht confirms **ON**  \n- **Sync OFF**: Retry
+    up to 10× until ganglicht confirms **OFF**  \n- **Failsafe OFF**: If stuck, cycle
+    ON (1%) → OFF  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Targets:**
+    \ \n  - Hallway: `light.ganglicht_zigbee_led`  \n  - Stairway: `light.esp32_c3_mini_treppenhaus_licht`
+    \ \n- **Sensors:**  \n  - Motion: `aqara_p1`, `treppenhaus`, `keller_tur`  \n
+    \ - Lux: `sensor.aqara_p1_illuminance`  \n  - Brightness state: `sensor.light_brighness`
+    \ \n- **Brightness Profiles:**  \n  - Hallway (motion below): **100%**  \n  -
+    Hallway (motion above): **75%**  \n  - Stairway: **10%**  \n- **Delays & Retries:**
+    0.5s between retries, up to 10 attempts  \n- **Mode:** `parallel` (max 6 concurrent
+    runs)"
   triggers:
   - trigger: state
     entity_id:
@@ -7432,9 +7463,24 @@
   mode: single
 - id: '1749768402037'
   alias: Gang Light Brightness Control
-  description: Automatically adjust the stairway light brightness based on the light
-    brightness template time based sensor value. If brightness drops to zero, the
-    light will turn off, ensuring optimal lighting conditions at all times.
+  description: "## \U0001F6B6‍♂️ Gang Light Brightness Control  \n\n### \U0001F4CB
+    **Adaptive Stairway Illumination**  \nAutomatically synchronizes the stairway
+    light with the brightness sensor value. When brightness is above zero, the light
+    adjusts accordingly. If brightness drops to zero, the light switches off — ensuring
+    optimal stairway lighting at all times.  \n\n---\n\n### \U0001F506 **Turn ON Trigger**
+    \ \n| Condition | Threshold | Note |\n|-----------|-----------|------|\n| **Brightness
+    Change** | `sensor.light_brighness` > **0** | Any increase or decrease above zero
+    triggers adjustment |\n\n---\n\n### \U0001F319 **Turn OFF Trigger**  \n| Condition
+    | Threshold | Note |\n|-----------|-----------|------|\n| **Brightness Sync**
+    | `sensor.light_brighness` < **1** | Turns off light if brightness goes to zero
+    |\n\n---\n\n### \U0001F3AF **Smart Logic**  \n\n#### **\U0001F506 ON Action**
+    \ \n- Checks if light is **OFF** or brightness is **different** from sensor value
+    \ \n- If true → `light.turn_on` with brightness percentage = sensor value  \n\n####
+    **\U0001F319 OFF Action**  \n- If brightness sensor changes to **0** from a previous
+    nonzero value  \n- Then → `light.turn_off`  \n\n---\n\n### \U0001F527 **Technical
+    Specs**  \n- **Target:** `light.esp32_c3_mini_treppenhaus_licht`  \n- **Sensor:**
+    `sensor.light_brighness`  \n- **Mode:** `single` (one run at a time)  \n- **Conversion:**
+    Sensor value (%) × 2.55 → HA light brightness scale"
   triggers:
   - trigger: state
     entity_id:
