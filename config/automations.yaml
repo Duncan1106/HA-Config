@@ -5445,30 +5445,29 @@
   mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
-  description: Controls the Orangina Lamp based on staircase light activity, brightness
-    level, bed-led night mode, and specific time windows – automatically turning it
-    on when the staircase is active and bright enough, turning it off at night or
-    when the bed light is on, and synchronising its state with the staircase light
-    turning off.
+  description: Automatically turns the Orangina lamp on when staircase brightness
+    is sufficient and after 4 PM, and turns it off at 23:00, when the bed‑night light
+    is on, or when brightness drops. It also synchronises the lamp’s state when the
+    staircase light turns off.
   triggers:
-  - trigger: state
+  - trigger: numeric_state
     entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
-    id: 'On'
+    - sensor.light_brighness
     for:
       hours: 0
       minutes: 0
-      seconds: 5
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
+      seconds: 30
+    above: 1
     id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
     for:
       hours: 0
-      minutes: 0
-      seconds: 10
+      minutes: 1
+      seconds: 0
+    above: 1
+    id: 'On'
   - trigger: time
     at: '23:00:00'
     id: 'Off'
@@ -5480,24 +5479,24 @@
     - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
     to: 'on'
     id: 'Off'
-  - trigger: state
+  - trigger: numeric_state
     entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'off'
-    id: Off sync
+    - sensor.light_brighness
     for:
       hours: 0
       minutes: 0
-      seconds: 5
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'off'
+      seconds: 30
+    below: 1
     id: Off sync
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
     for:
       hours: 0
-      minutes: 0
-      seconds: 10
+      minutes: 1
+      seconds: 0
+    below: 1
+    id: Off sync
   conditions: []
   actions:
   - choose:
@@ -5505,10 +5504,6 @@
       - condition: trigger
         id:
         - 'On'
-      - condition: template
-        enabled: true
-        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
-          int(1) > 27 }}'
       sequence:
       - repeat:
           sequence:
@@ -5553,9 +5548,6 @@
           - condition: time
             before: '20:00:00'
             after: 04:00:00
-          - condition: numeric_state
-            entity_id: sensor.light_brighness
-            below: 1
           - condition: trigger
             id:
             - Off sync
@@ -7527,7 +7519,7 @@
   description: ''
   triggers:
   - trigger: time
-    at: 00:00:00
+    at: '23:45:00'
     id: 'Off'
   - trigger: time
     at: 05:00:00
