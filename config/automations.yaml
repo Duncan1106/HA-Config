@@ -3049,8 +3049,39 @@
   mode: single
 - id: '1727387566504'
   alias: Ganglicht Motion
-  description: Controls hallway and staircase lights based on motion, ambient light
-    levels, and includes reliability fixes for light states.
+  description: "## \U0001F6B6 Ganglicht Motion  \n\n### \U0001F4CB **Motion-Activated
+    Hallway & Stairway Lighting**  \nControls both hallway (`ganglicht`) and stairway
+    (`treppenlicht`) lights based on motion sensors, ambient light levels, and adds
+    robust sync & reliability fixes to ensure lights turn on/off correctly.  \n\n---\n\n###
+    \U0001F506 **Turn ON Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
+    **Motion (below)** | `binary_sensor.aqara_p1_occupancy`, `binary_sensor.gang_bewegung_keller_tur_occupancy`
+    | State = **on** |\n| **Motion (above)** | `binary_sensor.treppenhaus_occupancy`
+    | State = **on** |\n| **Sync ON** | `sensor.light_brighness` | Above **0.1** |\n\n---\n\n###
+    \U0001F319 **Turn OFF Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
+    **Sync OFF** | `sensor.light_brighness` | Below **0.1** |\n| **Illuminance** |
+    `sensor.aqara_p1_illuminance` | Above **79 / 100 / 150 / 200 lux** |\n| **Force
+    OFF** | `light.ganglicht_zigbee_led` | Off for **5 min / 15 min** |\n\n---\n\n###
+    \U0001F3AF **Smart Logic**  \n\n#### **\U0001F506 Motion-Driven ON**  \n- **Downstairs
+    motion** (dark < 80 lux & no timed light)  \n  → `ganglicht` ON at **100%**  \n
+    \ → `treppenlicht` OFF  \n- **Upstairs motion** (dark < 80 lux & no timed light)
+    \ \n  → `treppenlicht` ON at **10%**  \n  → `ganglicht` ON at **75%** after 0.5s
+    \ \n  → Wait 1min for downstairs motion → adjust ganglicht/treppenlicht accordingly
+    \ \n\n---\n\n#### **\U0001F319 Auto-OFF**  \n- **After 5 min of no motion** →
+    `script.5_min_turn_off_ganglicht`  \n- **Sync OFF** (sensor < 0.1 & no motion
+    detected) → Retry up to 10× with 0.5s delays until confirmed OFF  \n- **High Lux
+    Override** (above 79–200 lux) → Retry up to 10× until confirmed OFF  \n- **Force
+    OFF failsafe** (light stuck off for 5–15 min) → Briefly set `brightness=1%` →
+    then OFF again  \n\n---\n\n#### **\U0001F501 Sync & Reliability Fixes**  \n- **Sync
+    ON**: Retry up to 10× until ganglicht confirms **ON**  \n- **Sync OFF**: Retry
+    up to 10× until ganglicht confirms **OFF**  \n- **Failsafe OFF**: If stuck, cycle
+    ON (1%) → OFF  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Targets:**
+    \ \n  - Hallway: `light.ganglicht_zigbee_led`  \n  - Stairway: `light.esp32_c3_mini_treppenhaus_licht`
+    \ \n- **Sensors:**  \n  - Motion: `aqara_p1`, `treppenhaus`, `keller_tur`  \n
+    \ - Lux: `sensor.aqara_p1_illuminance`  \n  - Brightness state: `sensor.light_brighness`
+    \ \n- **Brightness Profiles:**  \n  - Hallway (motion below): **100%**  \n  -
+    Hallway (motion above): **75%**  \n  - Stairway: **10%**  \n- **Delays & Retries:**
+    0.5s between retries, up to 10 attempts  \n- **Mode:** `parallel` (max 6 concurrent
+    runs)"
   triggers:
   - trigger: state
     entity_id:
@@ -4351,7 +4382,6 @@
           - climate.wohnzimmer
           - climate.153931628718174_climate
           - climate.lsjwh4097rn105299_vehicle_climate
-          - sensor.cudy_switch_power
           - sensor.ugreen_nas_power
           - sensor.o2_router_power
           - sensor.server_plug_power
@@ -5446,30 +5476,45 @@
   mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
-  description: Controls the Orangina Lamp based on staircase light activity, brightness
-    level, bed-led night mode, and specific time windows – automatically turning it
-    on when the staircase is active and bright enough, turning it off at night or
-    when the bed light is on, and synchronising its state with the staircase light
-    turning off.
+  description: "## \U0001F34A Orangina Lamp Light\n\n### \U0001F4CB **Smart Brightness-Controlled
+    Ambient Lighting**\nAutomatically manages the Orangina lamp based on light sensor
+    readings with robust retry logic and multiple safety shutoff conditions.\n\n---\n\n###
+    \U0001F506 **Turn ON Triggers**\n| Condition | Duration | Threshold |\n|-----------|----------|-----------|\n|
+    **Light Level** | 30 seconds | `sensor.light_brighness` > **1 %** |\n| **Light
+    Level** | 60 seconds | `sensor.light_brighness` > **1 %** |\n\n### \U0001F319
+    **Turn OFF Triggers**\n\n#### **⏰ Time-Based**\n- **\U0001F55A 23:00** - Standard
+    bedtime shutoff\n- **\U0001F550 01:00** - Force off (end time safety)\n\n####
+    **\U0001F6CF️ Bedtime Detection** \n- When bed night-light turns **ON** (`switch.esp32_c3_mini_bett_nachtlicht_was_in_bed`)\n\n####
+    **\U0001F305 Brightness-Based Sync**\n- When `sensor.light_brighness` drops **below
+    1 %** for 30s or 60s\n\n---\n\n### \U0001F3AF **Smart Logic**\n\n#### **\U0001F506
+    ON Action**\n```\n✅ Retry up to 10 times with 5s delays\n✅ Continues until switch
+    confirms \"on\" state\n```\n\n#### **\U0001F319 OFF Actions** (3 scenarios)\n1.
+    **\U0001F6CF️ Bedtime Mode** (22:59-04:00 + bed light ON + 23:00 trigger)\n2.
+    **\U0001F305 Daytime Override** (04:00-20:00 + brightness sync trigger)  \n3.
+    **⏰ Force Off** (00:59-04:00 + 01:00 end time trigger)\n\n```\n✅ Each scenario
+    retries up to 10 times with 5s delays\n✅ Continues until switch confirms \"off\"
+    state\n```\n\n---\n\n### \U0001F527 **Technical Specs**\n- **Target:** `switch.orangina_lampe_zigbee`\n-
+    **Sensor:** `sensor.light_brighness` \n- **Mode:** `queued` (max 10 concurrent)\n-
+    **Retry Logic:** 10 attempts × 5s delay for bulletproof switching\n"
   triggers:
-  - trigger: state
+  - trigger: numeric_state
     entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
-    id: 'On'
+    - sensor.light_brighness
     for:
       hours: 0
       minutes: 0
-      seconds: 5
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'on'
+      seconds: 30
+    above: 1
     id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
     for:
       hours: 0
-      minutes: 0
-      seconds: 10
+      minutes: 1
+      seconds: 0
+    above: 1
+    id: 'On'
   - trigger: time
     at: '23:00:00'
     id: 'Off'
@@ -5481,24 +5526,24 @@
     - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
     to: 'on'
     id: 'Off'
-  - trigger: state
+  - trigger: numeric_state
     entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'off'
-    id: Off sync
+    - sensor.light_brighness
     for:
       hours: 0
       minutes: 0
-      seconds: 5
-  - trigger: state
-    entity_id:
-    - light.esp32_c3_mini_treppenhaus_licht
-    to: 'off'
+      seconds: 30
+    below: 1
     id: Off sync
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
     for:
       hours: 0
-      minutes: 0
-      seconds: 10
+      minutes: 1
+      seconds: 0
+    below: 1
+    id: Off sync
   conditions: []
   actions:
   - choose:
@@ -5506,10 +5551,6 @@
       - condition: trigger
         id:
         - 'On'
-      - condition: template
-        enabled: true
-        value_template: '{{ state_attr(''light.esp32_c3_mini_treppenhaus_licht'',''brightness'')|
-          int(1) > 27 }}'
       sequence:
       - repeat:
           sequence:
@@ -5554,9 +5595,6 @@
           - condition: time
             before: '20:00:00'
             after: 04:00:00
-          - condition: numeric_state
-            entity_id: sensor.light_brighness
-            below: 1
           - condition: trigger
             id:
             - Off sync
@@ -7148,9 +7186,10 @@
       until:
       - condition: template
         value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count == 0)\n   or repeat.index >= 10 }}"
+          I had a problem getting a response from Google Generative AI.\",\n  \"The
+          message got blocked due to content violations\"\n] %}\n{{ (bad_phrases |
+          select('in', agent_gemini.response.speech.plain.speech) | list | count ==
+          0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
@@ -7424,9 +7463,24 @@
   mode: single
 - id: '1749768402037'
   alias: Gang Light Brightness Control
-  description: Automatically adjust the stairway light brightness based on the light
-    brightness template time based sensor value. If brightness drops to zero, the
-    light will turn off, ensuring optimal lighting conditions at all times.
+  description: "## \U0001F6B6‍♂️ Gang Light Brightness Control  \n\n### \U0001F4CB
+    **Adaptive Stairway Illumination**  \nAutomatically synchronizes the stairway
+    light with the brightness sensor value. When brightness is above zero, the light
+    adjusts accordingly. If brightness drops to zero, the light switches off — ensuring
+    optimal stairway lighting at all times.  \n\n---\n\n### \U0001F506 **Turn ON Trigger**
+    \ \n| Condition | Threshold | Note |\n|-----------|-----------|------|\n| **Brightness
+    Change** | `sensor.light_brighness` > **0** | Any increase or decrease above zero
+    triggers adjustment |\n\n---\n\n### \U0001F319 **Turn OFF Trigger**  \n| Condition
+    | Threshold | Note |\n|-----------|-----------|------|\n| **Brightness Sync**
+    | `sensor.light_brighness` < **1** | Turns off light if brightness goes to zero
+    |\n\n---\n\n### \U0001F3AF **Smart Logic**  \n\n#### **\U0001F506 ON Action**
+    \ \n- Checks if light is **OFF** or brightness is **different** from sensor value
+    \ \n- If true → `light.turn_on` with brightness percentage = sensor value  \n\n####
+    **\U0001F319 OFF Action**  \n- If brightness sensor changes to **0** from a previous
+    nonzero value  \n- Then → `light.turn_off`  \n\n---\n\n### \U0001F527 **Technical
+    Specs**  \n- **Target:** `light.esp32_c3_mini_treppenhaus_licht`  \n- **Sensor:**
+    `sensor.light_brighness`  \n- **Mode:** `single` (one run at a time)  \n- **Conversion:**
+    Sensor value (%) × 2.55 → HA light brightness scale"
   triggers:
   - trigger: state
     entity_id:
@@ -7499,12 +7553,15 @@
   conditions:
   - condition: numeric_state
     entity_id: sensor.inverter_battery_corrected_capacity
-    above: 500
+    above: number.inverter_battery_capacity
+  - condition: numeric_state
+    entity_id: sensor.felicity_ess_soc_avg
+    above: 99
   actions:
   - action: number.set_value
     metadata: {}
     data:
-      value: '501'
+      value: '{{ states(''number.inverter_battery_capacity'')|int(500) - 1 }}'
     target:
       entity_id: number.inverter_battery_capacity
   - delay:
@@ -7515,7 +7572,7 @@
   - action: number.set_value
     metadata: {}
     data:
-      value: '500'
+      value: '{{ states(''number.inverter_battery_capacity'')|int(500) + 1 }}'
     target:
       entity_id: number.inverter_battery_capacity
   mode: single
@@ -7524,7 +7581,7 @@
   description: ''
   triggers:
   - trigger: time
-    at: 00:00:00
+    at: '23:45:00'
     id: 'Off'
   - trigger: time
     at: 05:00:00
@@ -7560,7 +7617,7 @@
         target:
           entity_id:
           - select.go_echarger_270862_frc
-        enabled: true
+        enabled: false
       alias: 'Turn off at midnight '
     - conditions:
       - condition: trigger
@@ -7590,7 +7647,7 @@
         target:
           entity_id:
           - select.go_echarger_270862_frc
-        enabled: true
+        enabled: false
       - delay:
           hours: 0
           minutes: 0
@@ -8725,9 +8782,12 @@
       - condition: trigger
         id: confirm_reset
       sequence:
-      - target:
+      - action: utility_meter.calibrate
+        metadata: {}
+        data:
+          value: '0'
+        target:
           entity_id: sensor.wasserenthartung
-        action: utility_meter.reset
       - action: notify.duncan
         data:
           message: clear_notification

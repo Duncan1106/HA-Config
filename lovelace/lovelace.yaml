@@ -760,6 +760,51 @@ config:
           type: custom:mushroom-template-card
           vertical: true
         type: vertical-stack
+      - cards:
+        - heading: Internet
+          heading_style: title
+          type: heading
+        - alignment:
+            header: left
+            icon_first: true
+            status: spaced
+          average_template: '[[[ return variables.uptime.toFixed(2); ]]]% Uptime'
+          bar:
+            amount: 60
+            height: 32
+            round: 3
+            spacing: 1
+          entity: binary_sensor.internet_connection
+          hours_to_show: 72
+          icon: mdi:network-outline
+          icon_adaptive_color: true
+          init:
+            animation: slide
+          ko:
+          - 'off'
+          - unavailable
+          ko_icon: mdi:network-off-outline
+          ok:
+          - 'on'
+          - unknown
+          show:
+            average: true
+            footer: true
+            header: true
+            status: false
+            timeline: true
+          status_adaptive_color: true
+          tap_action:
+            action: navigate
+            navigation_path: /lovelace/internet
+          title_adaptive_color: true
+          tooltip:
+            animation: true
+            hour24: true
+          tooltip_adaptive_color: true
+          type: custom:uptime-card
+          update_interval: 5
+        type: vertical-stack
       type: grid
     - cards:
       - card:
@@ -943,51 +988,6 @@ config:
           - 336b62364b064bd6996f5f9e67feb7b9
           - 944daa47da8b4cf5bd9aab91ab7458e6
       - cards:
-        - heading: Internet
-          heading_style: title
-          type: heading
-        - alignment:
-            header: left
-            icon_first: true
-            status: spaced
-          average_template: '[[[ return variables.uptime.toFixed(2); ]]]% Uptime'
-          bar:
-            amount: 60
-            height: 32
-            round: 3
-            spacing: 1
-          entity: binary_sensor.internet_connection
-          hours_to_show: 72
-          icon: mdi:network-outline
-          icon_adaptive_color: true
-          init:
-            animation: slide
-          ko:
-          - 'off'
-          - unavailable
-          ko_icon: mdi:network-off-outline
-          ok:
-          - 'on'
-          - unknown
-          show:
-            average: true
-            footer: true
-            header: true
-            status: false
-            timeline: true
-          status_adaptive_color: true
-          tap_action:
-            action: navigate
-            navigation_path: /lovelace/internet
-          title_adaptive_color: true
-          tooltip:
-            animation: true
-            hour24: true
-          tooltip_adaptive_color: true
-          type: custom:uptime-card
-          update_interval: 5
-        type: vertical-stack
-      - cards:
         - badges:
           - entity: sensor.boiler_temperature
             tap_action:
@@ -1106,187 +1106,178 @@ config:
         type: conditional
       type: grid
     - cards:
-      - card:
-          cards:
-          - badges:
-            - color: state
-              entity: sensor.t_h_duncan_zigbee_battery_plus
-              show_icon: true
-              show_state: true
+      - cards:
+        - badges:
+          - color: state
+            entity: sensor.t_h_duncan_zigbee_battery_plus
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: more-info
+            type: entity
+          heading: Duncan
+          heading_style: title
+          icon: ''
+          type: heading
+        - cards:
+          - entity: sensor.t_h_duncan_zigbee_temperature
+            features_position: bottom
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/duncan
+            name: Temperature
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/duncan
+            type: tile
+            vertical: true
+          - entity: sensor.t_h_duncan_zigbee_humidity
+            features_position: bottom
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/duncan
+            name: Luftfeuchtigkeit
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/duncan
+            type: tile
+            vertical: true
+          - card:
+              entity: sensor.esp32_c3_zero_epever_battery_voltage
+              fill_container: true
+              icon: mdi:car-battery
+              layout: vertical
+              name: Battery Voltage
+              primary_info: name
+              secondary_info: state
               tap_action:
-                action: more-info
-              type: entity
-            heading: Duncan
-            heading_style: title
-            icon: ''
-            type: heading
-          - cards:
-            - entity: sensor.t_h_duncan_zigbee_temperature
-              features_position: bottom
-              icon_tap_action:
                 action: navigate
-                navigation_path: /lovelace/duncan
-              name: Temperature
-              state_content: current_temperature
-              tap_action:
-                action: navigate
-                navigation_path: /lovelace/duncan
-              type: tile
-              vertical: true
-            - entity: sensor.t_h_duncan_zigbee_humidity
-              features_position: bottom
-              icon_tap_action:
-                action: navigate
-                navigation_path: /lovelace/duncan
-              name: Luftfeuchtigkeit
-              state_content: temperature
-              tap_action:
-                action: navigate
-                navigation_path: /lovelace/duncan
-              type: tile
-              vertical: true
-            - card:
-                entity: sensor.esp32_c3_zero_epever_battery_voltage
-                fill_container: true
-                icon: mdi:car-battery
-                layout: vertical
-                name: Battery Voltage
-                primary_info: name
-                secondary_info: state
-                tap_action:
-                  action: navigate
-                  navigation_path: /lovelace/bkw
-                type: custom:mushroom-entity-card
+                navigation_path: /lovelace/bkw
+              type: custom:mushroom-entity-card
+            conditions:
+            - above: 22
+              condition: numeric_state
+              entity: sensor.esp32_c3_zero_epever_battery_voltage
+            type: conditional
+          type: horizontal-stack
+        type: vertical-stack
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+      - cards:
+        - badges:
+          - color: state
+            entity: sensor.t_h_terra_lo_battery_plus
+            name: LO
+            show_icon: true
+            show_state: true
+            state_content:
+            - name
+            - state
+            type: entity
+            visibility:
+            - condition: or
               conditions:
-              - above: 22
+              - below: 20
                 condition: numeric_state
-                entity: sensor.esp32_c3_zero_epever_battery_voltage
-              type: conditional
-            type: horizontal-stack
-          type: vertical-stack
-        conditions:
+                entity: sensor.t_h_terra_lo_battery_plus
+              - condition: state
+                entity: sensor.t_h_terra_lo_battery_plus
+                state: unavailable
+          - color: state
+            entity: sensor.t_h_terra_lu_battery_plus
+            name: LU
+            show_icon: true
+            show_state: true
+            state_content:
+            - name
+            - state
+            type: entity
+            visibility:
+            - condition: or
+              conditions:
+              - below: 20
+                condition: numeric_state
+                entity: sensor.t_h_terra_lu_battery_plus
+              - condition: state
+                entity: sensor.t_h_terra_lu_battery_plus
+                state: unavailable
+          - color: state
+            entity: sensor.t_h_terra_ro_battery_plus
+            name: RO
+            show_icon: true
+            show_state: true
+            state_content:
+            - name
+            - state
+            type: entity
+            visibility:
+            - condition: or
+              conditions:
+              - below: 20
+                condition: numeric_state
+                entity: sensor.t_h_terra_ro_battery_plus
+              - condition: state
+                entity: sensor.t_h_terra_ro_battery_plus
+                state: unavailable
+          - color: state
+            entity: sensor.t_h_terra_ru_battery_plus
+            name: RU
+            show_icon: true
+            show_state: true
+            state_content:
+            - name
+            - state
+            type: entity
+            visibility:
+            - condition: or
+              conditions:
+              - below: 20
+                condition: numeric_state
+                entity: sensor.t_h_terra_ru_battery_plus
+              - condition: state
+                entity: sensor.t_h_terra_ru_battery_plus
+                state: unavailable
+          heading: Terrarium
+          heading_style: title
+          icon: mdi:snake
+          type: heading
+        - cards:
+          - entity: sensor.t_h_terrarium_temperature
+            features_position: bottom
+            hold_action:
+              action: more-info
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/terrarium
+            name: Temperature
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/terrarium
+            type: tile
+            vertical: true
+          - entity: sensor.t_h_terrarium_humidity
+            features_position: bottom
+            hold_action:
+              action: more-info
+            icon_tap_action:
+              action: navigate
+              navigation_path: /lovelace/terrarium
+            name: Luftfeuchtigkeit
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/terrarium
+            type: tile
+            vertical: true
+          type: horizontal-stack
+        type: vertical-stack
+        visibility:
         - condition: user
           users:
           - 4f7767cac0c342edb25e991662a2f56c
-        type: conditional
-      - card:
-          cards:
-          - badges:
-            - color: state
-              entity: sensor.t_h_terra_lo_battery_plus
-              name: LO
-              show_icon: true
-              show_state: true
-              state_content:
-              - name
-              - state
-              type: entity
-              visibility:
-              - condition: or
-                conditions:
-                - below: 20
-                  condition: numeric_state
-                  entity: sensor.t_h_terra_lo_battery_plus
-                - condition: state
-                  entity: sensor.t_h_terra_lo_battery_plus
-                  state: unavailable
-            - color: state
-              entity: sensor.t_h_terra_lu_battery_plus
-              name: LU
-              show_icon: true
-              show_state: true
-              state_content:
-              - name
-              - state
-              type: entity
-              visibility:
-              - condition: or
-                conditions:
-                - below: 20
-                  condition: numeric_state
-                  entity: sensor.t_h_terra_lu_battery_plus
-                - condition: state
-                  entity: sensor.t_h_terra_lu_battery_plus
-                  state: unavailable
-            - color: state
-              entity: sensor.t_h_terra_ro_battery_plus
-              name: RO
-              show_icon: true
-              show_state: true
-              state_content:
-              - name
-              - state
-              type: entity
-              visibility:
-              - condition: or
-                conditions:
-                - below: 20
-                  condition: numeric_state
-                  entity: sensor.t_h_terra_ro_battery_plus
-                - condition: state
-                  entity: sensor.t_h_terra_ro_battery_plus
-                  state: unavailable
-            - color: state
-              entity: sensor.t_h_terra_ru_battery_plus
-              name: RU
-              show_icon: true
-              show_state: true
-              state_content:
-              - name
-              - state
-              type: entity
-              visibility:
-              - condition: or
-                conditions:
-                - below: 20
-                  condition: numeric_state
-                  entity: sensor.t_h_terra_ru_battery_plus
-                - condition: state
-                  entity: sensor.t_h_terra_ru_battery_plus
-                  state: unavailable
-            heading: Terrarium
-            heading_style: title
-            icon: mdi:snake
-            type: heading
-          - cards:
-            - entity: sensor.t_h_terrarium_temperature
-              features_position: bottom
-              hold_action:
-                action: more-info
-              icon_tap_action:
-                action: navigate
-                navigation_path: /lovelace/terrarium
-              name: Temperature
-              state_content: state
-              tap_action:
-                action: navigate
-                navigation_path: /lovelace/terrarium
-              type: tile
-              vertical: true
-            - entity: sensor.t_h_terrarium_humidity
-              features_position: bottom
-              hold_action:
-                action: more-info
-              icon_tap_action:
-                action: navigate
-                navigation_path: /lovelace/terrarium
-              name: Luftfeuchtigkeit
-              state_content: state
-              tap_action:
-                action: navigate
-                navigation_path: /lovelace/terrarium
-              type: tile
-              vertical: true
-            type: horizontal-stack
-          type: vertical-stack
-        conditions:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
-        - condition: state
-          entity: input_boolean.terrarium_display_toggle
-          state: 'on'
-        type: conditional
       - cards:
         - heading: Pollen
           heading_style: title
@@ -1417,8 +1408,8 @@ config:
         hash_entity: sensor.kellervorrate_combined_filtered_items_hash
         hide_add_button: false
         highlight_matches: true
-        max_items_with_filter: 15
-        max_items_without_filter: 15
+        max_items_with_filter: 25
+        max_items_without_filter: 10
         shopping_list_entity: todo.einkaufsliste
         show_more_buttons: 10,15,20,25
         show_origin: true
@@ -5351,7 +5342,6 @@ config:
       - entity: sensor.server_plug_power
       - entity: sensor.o2_router_power
       - entity: sensor.ugreen_nas_power
-      - entity: sensor.cudy_switch_power
       - entity: sensor.smart_plug_energy_power
       type: entities
     path: smart
@@ -7691,6 +7681,14 @@ config:
           start: day
         type: custom:apexcharts-card
         update_interval: 30sec
+      - entity: sensor.inverter_battery
+        features_position: inline
+        type: tile
+        vertical: false
+      - entity: sensor.felicity_ess_soc_avg
+        features_position: inline
+        type: tile
+        vertical: false
       type: grid
     - cards:
       - heading: Kontrolle
