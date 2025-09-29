@@ -104,7 +104,7 @@ binary_sensor:
         - if:
             condition:
               for:
-                time: 1min
+                time: 5min
                 condition:
                   binary_sensor.is_off: status_connected
             then:
@@ -551,6 +551,12 @@ sensor:
     name: Goe Amps Divider
     accuracy_decimals: 0
     internal: true
+    lambda: |-
+      std::string fsp = id(goe_fsp).state;
+      if (fsp.empty()) {
+        return 1.0;  // Default to 3-phase until goe_fsp is available
+      }
+      return (fsp == "1 Phase") ? 1.0 : 3.0;
 
   - platform: template
     accuracy_decimals: 1
