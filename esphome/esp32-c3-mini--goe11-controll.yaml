@@ -591,6 +591,7 @@ sensor:
     topic: ${main_topic}trx
     name: Card Used ${variant}
     id: card_used
+    accuracy_decimals: 0
     filters: 
       - round: 0
     on_value: 
@@ -614,23 +615,6 @@ sensor:
               - number.set:
                   id: min_amps
                   value: ${min_amps}
-    #on_value_range: 
-    #  - above: 1.5
-    #    below: 2.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: 8
-    #  - below: 1.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: ${min_amps}
-    #  - above: 2.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: ${min_amps}
 
 interval:
   interval: 
@@ -807,7 +791,11 @@ script:
                 else:
                   - number.set: # set amps to calculated amps when enough solar or battery power is available
                       id: amps
-                      value: !lambda return id(amps_goe_calculated_rounded).state;
+                      value: !lambda |-
+                        return std::max(
+                          (float)id(amps_goe_calculated_rounded).state,
+                          (float)id(min_amps).state
+                        );
                   - script.execute: start_charging
                   - delay: 1s
                   - number.to_min: skip_counter # resetting skip counter since we dont skip anymore
