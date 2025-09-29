@@ -78,9 +78,6 @@ time:
 sun:
   latitude: !secret latitude
   longitude: !secret longitude
-  #on_sunset: 
-  #  then: 
-  #    - switch.turn_off: enable_pv_charging
   
 output:
   - platform: gpio
@@ -149,9 +146,6 @@ switch:
         - script.execute: 
             id: log_txt_queued
             log_text: "PV Surplus Charging ON"
-        # - text_sensor.template.publish:
-        #     id: log_txt
-        #     state: "PV Surplus Charging ON"
     on_turn_off:
       then:
         - switch.turn_off: never_stop_charging
@@ -266,12 +260,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              # - text_sensor.template.publish:
-              #     id: log_txt
-              #     state: !lambda |-
-              #       char text_amps[200];
-              #       sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-              #       return ((std::string) text_amps).c_str();
               - script.execute: 
                   id: log_txt_queued
                   log_text: !lambda |-
@@ -554,7 +542,7 @@ sensor:
     lambda: |-
       std::string fsp = id(goe_fsp).state;
       if (fsp.empty()) {
-        return 1.0;  // Default to 3-phase until goe_fsp is available
+        return 1.0;  // Default to 1-phase until goe_fsp is available
       }
       return (fsp == "1 Phase") ? 1.0 : 3.0;
 
