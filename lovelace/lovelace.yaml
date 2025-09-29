@@ -2035,6 +2035,59 @@ config:
         remaining_low_color_start: '#ff0000'
         show_tooltips: false
         type: custom:clock-pv-forecast-card
+      - apex_config:
+          legend:
+            show: true
+          tooltip:
+            enabled: true
+            marker:
+              show: false
+            y:
+              formatter: 'EVAL:function(y) {return y.toFixed(3);}
+
+                '
+        graph_span: 23h
+        header:
+          show: true
+          show_states: false
+          title: Solcast Dampening
+        series:
+        - color: orange
+          data_generator: "const factors = entity.attributes.detailedForecast;\nreturn\
+            \ factors.map(entry => {\n  return {\n    x: entry.period_start,\n   \
+            \ y: entry.dampening_factor\n  };\n});                 \n"
+          entity: sensor.solcast_pv_forecast_prognose_heute
+          name: Applied
+          show:
+            in_header: false
+            legend_value: false
+          stroke_width: 1
+          type: line
+        - color: grey
+          data_generator: "const factors = entity.attributes.factors; const now =\
+            \ new Date(); // local time (browser)\nreturn factors.map(({ interval,\
+            \ factor }) => {\n  const [h, m] = interval.split(':').map(Number);\n\
+            \  // Build a Date for \"today\" at the given hh:mm in local time\n  const\
+            \ x = new Date(\n    now.getFullYear(), now.getMonth(), now.getDate(),\
+            \ h, m\n  ).getTime(); // epoch ms for ApexCharts\n\n  return { x, y:\
+            \ factor };\n});\n"
+          entity: sensor.solcast_pv_forecast_dampfung
+          name: Base
+          opacity: 0.5
+          show:
+            in_header: false
+            legend_value: false
+          stroke_width: 0
+          type: area
+        span:
+          start: day
+        type: custom:apexcharts-card
+        yaxis:
+        - apex_config:
+            tickAmount: 5
+          decimals: 3
+          max: 1
+          min: 0
       type: grid
     theme: Backend-selected
     title: 'Energie '
