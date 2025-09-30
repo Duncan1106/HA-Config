@@ -4663,7 +4663,7 @@
           - sensor.mikrowelle_energy_today
           - sensor.pool_pumpe_energy_today
           - sensor.smart_plug_energy_today
-          - sensor.antella_plug_energy_today
+          - sensor.regal_planzen_energy_today
           - sensor.spulmaschine_energy_today
           - sensor.waschmaschine_energy_today
           - sensor.gefrierschrank_energy_today
@@ -4800,7 +4800,7 @@
           - sensor.kaffeemaschine_philips_energy_power
           - sensor.energy_monitoring_smartplug_leistung
           - sensor.dunstabzugshaube_power
-          - sensor.antella_plug_power
+          - sensor.regal_planzen_power
           - sensor.herd_ct_klemme_power_ab
           - sensor.dunstabzugshaube_power
           - sensor.herd_energy_total
@@ -4815,7 +4815,7 @@
           - sensor.mikrowelle_energy_total
           - sensor.pool_pumpe_energy_total
           - sensor.smart_plug_energy_total
-          - sensor.antella_plug_energy_total
+          - sensor.regal_planzen_energy_total
           - sensor.spulmaschine_energy_total
           - sensor.waschmaschine_energy_total
           - sensor.gefrierschrank_energy_total
@@ -7550,6 +7550,9 @@
     offset: 0
   - trigger: time
     at: 00:00:00
+  - trigger: state
+    entity_id:
+    - sensor.inverter_battery_corrected_capacity
   conditions:
   - condition: numeric_state
     entity_id: sensor.inverter_battery_corrected_capacity
@@ -7581,11 +7584,27 @@
   description: ''
   triggers:
   - trigger: time
-    at: '23:45:00'
+    at: 00:00:00
     id: 'Off'
+    enabled: false
   - trigger: time
     at: 05:00:00
     id: 'On'
+    enabled: false
+  - trigger: state
+    entity_id:
+    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
+    to: 'off'
+    id: 'On'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - trigger: state
+    entity_id:
+    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
+    to: 'on'
+    id: 'Off'
   conditions: []
   actions:
   - choose:
@@ -7653,12 +7672,14 @@
           minutes: 0
           seconds: 30
           milliseconds: 0
+        enabled: false
       - action: automation.turn_off
         metadata: {}
         data:
           stop_actions: true
         target:
           entity_id: automation.octopus_night_usage_turn_battery_off
+        enabled: false
       alias: 'Turn on at 5 o''clock '
   mode: single
 - id: '1750706221080'

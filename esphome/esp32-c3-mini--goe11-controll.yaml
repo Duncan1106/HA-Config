@@ -78,9 +78,6 @@ time:
 sun:
   latitude: !secret latitude
   longitude: !secret longitude
-  #on_sunset: 
-  #  then: 
-  #    - switch.turn_off: enable_pv_charging
   
 output:
   - platform: gpio
@@ -104,7 +101,7 @@ binary_sensor:
         - if:
             condition:
               for:
-                time: 1min
+                time: 5min
                 condition:
                   binary_sensor.is_off: status_connected
             then:
@@ -149,9 +146,6 @@ switch:
         - script.execute: 
             id: log_txt_queued
             log_text: "PV Surplus Charging ON"
-        # - text_sensor.template.publish:
-        #     id: log_txt
-        #     state: "PV Surplus Charging ON"
     on_turn_off:
       then:
         - switch.turn_off: never_stop_charging
@@ -266,12 +260,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              # - text_sensor.template.publish:
-              #     id: log_txt
-              #     state: !lambda |-
-              #       char text_amps[200];
-              #       sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-              #       return ((std::string) text_amps).c_str();
               - script.execute: 
                   id: log_txt_queued
                   log_text: !lambda |-
@@ -314,21 +302,21 @@ text_sensor:
       - map: 
         - true -> 1 Phase
         - false -> 3 Phase
-    on_value: 
-      then:
-        - if: 
-            condition:
-              - text_sensor.state: 
-                  id: goe_fsp
-                  state: "1 Phase"
-            then:
-              - sensor.template.publish:
-                  id: goe_amp_divider
-                  state: 1
-            else:
-              - sensor.template.publish:
-                  id: goe_amp_divider
-                  state: 3
+    #on_value: 
+    #  then:
+    #    - if: 
+    #        condition:
+    #          - text_sensor.state: 
+    #              id: goe_fsp
+    #              state: "1 Phase"
+    #        then:
+    #          - sensor.template.publish:
+    #              id: goe_amp_divider
+    #              state: 1
+    #        else:
+    #          - sensor.template.publish:
+    #              id: goe_amp_divider
+    #              state: 3
 
   - platform: mqtt_subscribe
     topic: ${main_topic}nrg
@@ -551,6 +539,12 @@ sensor:
     name: Goe Amps Divider
     accuracy_decimals: 0
     internal: true
+    lambda: |-
+      std::string fsp = id(goe_fsp).state;
+      if (fsp.empty()) {
+        return 1.0;  // Default to 1-phase until goe_fsp is available
+      }
+      return (fsp == "1 Phase") ? 1.0 : 3.0;
 
   - platform: template
     accuracy_decimals: 1
@@ -591,6 +585,7 @@ sensor:
     topic: ${main_topic}trx
     name: Card Used ${variant}
     id: card_used
+    accuracy_decimals: 0
     filters: 
       - round: 0
     on_value: 
@@ -614,23 +609,6 @@ sensor:
               - number.set:
                   id: min_amps
                   value: ${min_amps}
-    #on_value_range: 
-    #  - above: 1.5
-    #    below: 2.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: 8
-    #  - below: 1.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: ${min_amps}
-    #  - above: 2.5
-    #    then:
-    #      - number.set: 
-    #          id: min_amps
-    #          value: ${min_amps}
 
 interval:
   interval: 
@@ -807,7 +785,11 @@ script:
                 else:
                   - number.set: # set amps to calculated amps when enough solar or battery power is available
                       id: amps
-                      value: !lambda return id(amps_goe_calculated_rounded).state;
+                      value: !lambda |-
+                        return std::max(
+                          (float)id(amps_goe_calculated_rounded).state,
+                          (float)id(min_amps).state
+                        );
                   - script.execute: start_charging
                   - delay: 1s
                   - number.to_min: skip_counter # resetting skip counter since we dont skip anymore
