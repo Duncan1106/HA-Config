@@ -413,8 +413,31 @@
   max: 10
 - id: '1704466926541'
   alias: Appliance Auto Count
-  description: Tracks and counts the usage of various household appliances like coffee
-    machines and refrigerators based on their power consumption.
+  description: "## ⚡ Appliance Auto Count  \n\n### \U0001F4CB **Appliance Usage Tracking**
+    \ \nThis automation tracks and counts the usage of household appliances, including
+    coffee machines and refrigerators, based on their power consumption.  \n\nIt increments
+    dedicated Home Assistant counters whenever an appliance is powered on and actively
+    consuming energy above a defined threshold.  \n\n---\n\n### ⏰ **Triggers**  \n\n|
+    Trigger Entity | Threshold / Event | Appliance |\n|----------------|-----------------|-----------|\n|
+    `sensor.kaffeemaschine_philips_energy_power` | > 10 W | Coffee Machine (Philips)
+    |\n| `sensor.kaffeemaschine_energy_power` | > 300 W | Coffee Machine |\n| `sensor.kuhlschrank_drinnen_energy_power`
+    | > 30 W | Refrigerator (Inside) |\n| `sensor.kuhlschrank_draussen_energy_power`
+    | > 30 W | Refrigerator (Outside) |\n\n> **Note:** Each trigger is a numeric state
+    trigger that activates when the power consumption rises above the defined threshold.
+    \ \n\n---\n\n### ✅ **Conditions**  \n- None. This automation runs whenever any
+    trigger threshold is exceeded.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**
+    \ \n\n1. **Increment Counters**  \n   - `sensor.kuhlschrank_drinnen_energy_power`
+    → `counter.kuhlschrank`  \n   - `sensor.kuhlschrank_draussen_energy_power` → `counter.kuhlschrank_draussen`
+    \ \n   - `sensor.kaffeemaschine_energy_power` → `counter.kaffeemaschine`  \n\nEach
+    action only runs if its corresponding trigger fired, ensuring accurate appliance
+    usage counting.  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Mode:**
+    `parallel` (max 10 concurrent executions)  \n- **Counters Used:**  \n  - `counter.kaffeemaschine`
+    \ \n  - `counter.kuhlschrank`  \n  - `counter.kuhlschrank_draussen`  \n- **Power
+    Thresholds:** Configurable per appliance as numeric state triggers  \n\n---\n\n###
+    ⚡ **Notes / Best Practices**  \n- Useful for monitoring appliance usage patterns
+    over time.  \n- Running in parallel mode allows multiple appliances to trigger
+    simultaneously without blocking other counts.  \n- Ensure that energy sensors
+    are accurate and reflect true appliance usage to avoid false counts.  \n"
   triggers:
   - entity_id:
     - sensor.kaffeemaschine_philips_energy_power
@@ -789,8 +812,36 @@
   max: 10
 - id: '1709073413848'
   alias: Auto Boiler
-  description: Automates the control of the boiler based on a schedule, manages energy
-    saving, and notifies about low water temperature.
+  description: "## \U0001F525 Auto Boiler  \n\n### \U0001F4CB **Boiler Automation
+    and Energy Management**  \nThis automation controls the boiler based on a schedule,
+    optimizes energy usage, and notifies if the water temperature is too low.  \n\nIt
+    automatically runs the energy-saving script when the boiler turns on and ensures
+    notifications are sent if the water temperature drops below 30°C.  \n\n---\n\n###
+    ⏰ **Triggers**  \n\n| Trigger Entity | Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
+    `schedule.boiler_pumpe` | State changes from `null` → `on` | \"On\" |\n| `schedule.boiler_pumpe`
+    | State changes from `null` → `off` | \"Off\" |\n| `script.boiler_save_energy_script`
+    | State changes from `on` → `off` | \"Script finished\" |\n\n> **Note:** The first
+    trigger starts the automation when the boiler schedule turns on, the second triggers
+    when the schedule turns off, and the third ensures the energy-saving script is
+    re-executed if needed.  \n\n---\n\n### ✅ **Conditions**  \n- No explicit conditions;
+    triggers execute actions directly.  \n- Internal checks exist in actions, e.g.,
+    numeric state for water temperature.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**
+    \ \n\n1. **On Trigger** (`schedule.boiler_pumpe` → on)  \n   - Checks if `sensor.boiler_temperature`
+    < 30°C  \n     - Sends notification:  \n       `Das Wasser hat nur {{ states('sensor.boiler_temperature')
+    | float(0)| round(0) }}°C!`  \n   - Executes `script.boiler_save_energy_script`
+    to optimize energy usage  \n\n2. **Off Trigger** (`schedule.boiler_pumpe` → off)
+    \ \n   - Turns off the boiler switch (`switch.zirkulationspumpe_zigbee`)  \n\n3.
+    **Script Finished Trigger** (`script.boiler_save_energy_script` → off)  \n   -
+    If `schedule.boiler_pumpe` is still on, re-executes the energy-saving script  \n
+    \  - Ensures boiler remains optimized if still in the scheduled timeframe  \n\n---\n\n###
+    \U0001F527 **Technical Specs**  \n- **Mode:** `queued` (max 10 concurrent)  \n-
+    **Energy Management:** Uses `script.boiler_save_energy_script` to optimize consumption
+    \ \n- **Notifications:** Sends a message to `notify.duncan` if water < 30°C  \n-
+    **Devices Controlled:** Boiler switch device (`switch.zirkulationspumpe_zigbee`)
+    \ \n\n---\n\n### ⚡ **Notes / Best Practices**  \n- Minimizes energy waste by automating
+    the boiler only when needed.  \n- Notification threshold can be adjusted for personal
+    preference.  \n- Queued mode prevents overlapping executions if triggers occur
+    in rapid succession.\n"
   triggers:
   - entity_id:
     - schedule.boiler_pumpe
@@ -842,10 +893,11 @@
       id:
       - 'Off'
     then:
-    - type: turn_off
-      device_id: 2d4856e9b534472fb57e5601a3f5110e
-      entity_id: 4537b8f00f743d73e53e52b828f58d2c
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.zirkulationspumpe_zigbee
   - if:
     - condition: trigger
       id:
@@ -862,7 +914,41 @@
   max: 10
 - id: '1710427927351'
   alias: 'Daily Energy Summary '
-  description: ''
+  description: "## \U0001F31E Daily Energy Summary Automation\n\n### \U0001F4CB **Purpose**\n\nThis
+    automation provides a comprehensive daily energy summary for your household. It
+    sends notifications at sunrise, sunset, and midnight with summaries of energy
+    usage, appliance activity, EV charging, and solar forecasts. The automation can
+    be selectively enabled or disabled via input booleans.\n\n---\n\n### ⏰ **Triggers**\n\n|
+    Trigger | Description | Trigger ID |\n|---------|------------|------------|\n|
+    Time | 23:59:55 (end of day) | Day End |\n| Sun | Sunrise | Rise |\n| Sun | Sunset
+    | Set |\n\n> Note: Sunrise and sunset triggers provide summaries and forecasts,
+    while the midnight trigger ensures end-of-day summaries and appliance logging.\n\n---\n\n###
+    ✅ **Conditions**\n\n- Conditional notifications are controlled via input booleans:
+    \ \n  - `input_boolean.automation_enable_sunrise`  \n  - `input_boolean.automation_enable_sunset`
+    \ \n  - `input_boolean.automation_enable_midnight`  \n  - `input_boolean.automation_enable_appliance`
+    \ \n  - `input_boolean.automation_enable_go_echarger`  \n  - `input_boolean.automation_enable_forecast`
+    \ \n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **Sunrise Message**  \n
+    \  - Sends `sensor.energy_summary_1st_block` and `sensor.energy_summary_1st_block_2`
+    if enabled.  \n\n2. **Sunset Message**  \n   - Sends the same energy summary as
+    sunrise if enabled.  \n\n3. **Midnight Message**  \n   - Sends energy summary
+    at day end if enabled.  \n\n4. **Appliance Summary (Day End)**  \n   - Sends `sensor.appliance_used`
+    if appliance reporting is enabled.  \n\n5. **EV Charging Notification (Sunset)**
+    \ \n   - Checks `sensor.daily_energy_goe_11kw` and `sensor.daily_energy_goe_22kw`.
+    \ \n   - Sends notification detailing 11kW, 22kW, and total charged energy if
+    enabled.  \n   - Adds a 5-second delay before reporting to ensure data availability.
+    \ \n\n6. **Reset EV Messages Counter (Day End)**  \n   - Resets `counter.ev_charging_messages`
+    to 0.  \n\n7. **Solar Forecast Notifications**  \n   - Sunset: Sends tomorrow's
+    solar forecast (`sensor.solar_forecast_text_tomorrow`) if enabled.  \n   - Sunrise:
+    Sends today's solar forecast (`sensor.solar_forecast_text_today`) if enabled.
+    \ \n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Mode:** `parallel` (max
+    10 concurrent notifications)  \n- **Notification Target:** `notify.duncan`  \n-
+    **Controlled Input Booleans:** Enables/disables specific message categories.  \n-
+    **Counters:** Tracks EV charging messages and resets daily.\n\n---\n\n### ⚡ **Notes
+    / Best Practices**\n\n- Conditional triggers prevent unnecessary messages if certain
+    summaries are disabled.  \n- Includes slight delays where necessary to ensure
+    sensor data is accurate before notification.  \n- Forecast and EV notifications
+    provide actionable insights for daily energy planning.  \n- Easily extendable
+    with new summary sensors or notification channels.\n"
   triggers:
   - at: '23:59:55'
     id: Day End
@@ -1089,7 +1175,26 @@
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
-  description: ''
+  description: "## \U0001F50B Count Battery Full Automation\n\n### \U0001F4CB **Battery
+    State Monitoring**\n\nThis automation tracks the battery voltage to determine
+    if the battery is full or empty. It updates an `input_boolean` and records the
+    last charged energy to help with energy management and monitoring.\n\n---\n\n###
+    ⏰ **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
+    `sensor.esp32_c3_zero_epever_battery_voltage` | Above 28.3 V | Full |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below 24 V | Empty |\n\n> Note: The automation monitors battery voltage in real-time
+    to determine charging state.\n\n---\n\n### ✅ **Conditions**\n\n- **Full Trigger:**
+    Only executes if `input_boolean.battery_full` is currently `off`.\n- **Empty Trigger:**
+    Only executes if `input_boolean.battery_full` is currently `on`.\n\n---\n\n###
+    \U0001F3AF **Actions / Workflow**\n\n1. **Full Trigger**\n   - Turns on `input_boolean.battery_full`.\n
+    \  - Updates `input_number.last_charged_energy_to_bkw_battery` with the current
+    `sensor.charged_energy_to_bkw_battery` value (rounded to 2 decimal places).\n\n2.
+    **Empty Trigger**\n   - Turns off `input_boolean.battery_full`.\n\n---\n\n###
+    \U0001F527 **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**
+    \ \n  - `input_boolean.battery_full`  \n  - `input_number.last_charged_energy_to_bkw_battery`\n-
+    **Monitoring Entities:** Battery voltage sensor.\n\n---\n\n### ⚡ **Notes / Best
+    Practices**\n\n- Keeps battery monitoring and state tracking simple and reliable.\n-
+    Thresholds (28.3V full, 24V empty) can be adjusted based on battery specifications.\n-
+    Integrates seamlessly with other energy management automations, such as BKW Control.\n"
   triggers:
   - entity_id:
     - sensor.esp32_c3_zero_epever_battery_voltage
@@ -1100,18 +1205,6 @@
     - sensor.esp32_c3_zero_epever_battery_voltage
     below: 24
     id: Empty
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_battery_soc
-    above: 98
-    id: Full
-    enabled: false
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_battery_soc
-    id: Empty
-    below: 40
-    enabled: false
     trigger: numeric_state
   conditions: []
   actions:
@@ -1132,12 +1225,6 @@
         - input_boolean.battery_full
       data: {}
       action: input_boolean.turn_on
-    - metadata: {}
-      data: {}
-      target:
-        entity_id: counter.battery_full
-      enabled: false
-      action: counter.increment
     - action: input_number.set_value
       metadata: {}
       data:
@@ -1163,18 +1250,52 @@
       target:
         entity_id: input_boolean.battery_full
       action: input_boolean.turn_off
-    - metadata: {}
-      data: {}
-      target:
-        entity_id: counter.battery_empty
-      enabled: false
-      action: counter.increment
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: Controls BKW outlet based on solar production, battery SoC/voltage,
-    sunrise/sunset, inverter state, temperature, and usage to optimize charging/discharging,
-    protect battery health, and ensure nightly shutdown if energy was used.
+  description: "## ⚡ BKW Control Automation\n\n### \U0001F4CB **Optimized Outlet Control
+    for Solar & Battery System**\n\nThis automation manages the BKW outlet based on
+    solar production, battery SoC/voltage, inverter state, sunrise/sunset times, device
+    temperature, and usage. Its primary goals are:\n\n- Optimize charging and discharging
+    to maximize solar self-consumption.\n- Protect battery health by enforcing SoC/voltage
+    thresholds.\n- Ensure nightly shutdown if energy has been used.\n- Increment counters
+    for monitoring energy events.\n\n---\n\n### ⏰ **Triggers**\n\n| Trigger Entity
+    | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
+    `sensor.inverter_pv_power` | Above 2250 W | on day |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below 23 V | off night |\n| `sensor.esp32_c3_zero_epever_pv_array_input_power`
+    | Below 200, 175, 125, 75 W | off day |\n| `sensor.inverter_pv_power` | Below
+    2250, 2000 W | off day |\n| Sun | Sunset offset -00:15 | on night |\n| Sun | Sunrise
+    offset +00:15 | off night |\n| `time_pattern` | Every minute | on day |\n| `sensor.bkw_outlet_1_energy_power`
+    | Below 50 W | off night |\n\n> Note: Multiple triggers are used to cover day/night
+    transitions, solar power variations, and battery state.\n\n---\n\n### ✅ **Conditions**\n\n-
+    Complex condition structure ensures:\n  - Outlet only turns on if battery is full
+    or above 95% SOC / 27.75V.\n  - Outlet turns off if PV power drops below thresholds
+    and the outlet is on.\n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **On
+    Day Trigger**\n   - Only executes if:\n     - Inverter state is `FeedIn`.\n     -
+    Battery full or SoC > 80%.\n     - PV power > 2000 W.\n     - Device temperature
+    < 44°C.\n   - Turns on:\n     - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
+    \    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n2. **Off Day Trigger**\n   - During
+    daytime before sunset and after sunrise.\n   - Turns off BKW outlet if PV power
+    or device conditions drop.\n\n3. **On Night Trigger**\n   - Executes if battery
+    is full at sunset.\n   - Turns on the outlet and increments `counter.battery_full`.\n
+    \  - Calibrates utility meters for charged/discharged energy.\n   - Waits for
+    load to rise above 10 W (30s timeout), otherwise notifies.\n\n4. **Off Night Trigger**\n
+    \  - Executes between 00:00–09:00 if energy was used (`sensor.bkw_outlet_1_energy_today
+    > 0.001`).\n   - Repeats turning off BKW outlet until confirmed off.\n   - Resets
+    `input_boolean.battery_full`.\n   - Increments `counter.battery_empty` if discharged
+    energy > 0.\n   - Updates `input_number.last_discharged_energy_from_bkw_battery`.\n
+    \  - Calibrates utility meter for discharged energy.\n   - Adds a short delay
+    to ensure stability.\n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Mode:**
+    `queued` (max 15 concurrent)\n- **Devices Controlled:**  \n  - `switch.bkw_outlet_1_bkw_outlet_1`
+    \ \n  - `switch.esp32_c3_zero_epever_manual_control_the_load`\n- **Monitoring
+    Entities:**  \n  - Solar inverter, battery voltage, battery SoC, PV array input
+    power, outlet energy, device temperature.\n- **Counters:** `battery_full`, `battery_empty`\n-
+    **Utility Meters:** Charged/discharged energy tracked and calibrated nightly.\n\n---\n\n###
+    ⚡ **Notes / Best Practices**\n\n- Designed for battery protection and efficient
+    solar self-consumption.\n- Nighttime actions ensure energy isn't wasted while
+    maintaining monitoring.\n- Queued mode ensures multiple triggers can be processed
+    without overlap.\n- Thresholds for PV power, battery SOC/voltage, and temperature
+    can be tuned for system optimization.\n"
   triggers:
   - entity_id:
     - sensor.inverter_pv_power
@@ -1255,11 +1376,9 @@
       - condition: numeric_state
         entity_id: sensor.inverter_pv_power
         below: 2001
-      - condition: device
-        type: is_on
-        device_id: f7afa3f7d75d54c713ea1d78071ff30c
-        entity_id: 12403f847e9caae174f8b14a11ab9c19
-        domain: switch
+      - condition: state
+        entity_id: switch.bkw_outlet_1_bkw_outlet_1
+        state: 'on'
   actions:
   - alias: on day
     if:
@@ -1287,13 +1406,11 @@
     - metadata: {}
       data: {}
       target:
-        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+        entity_id:
+        - switch.esp32_c3_zero_epever_manual_control_the_load
+        - switch.bkw_outlet_1_bkw_outlet_1
       enabled: true
       action: switch.turn_on
-    - type: turn_on
-      device_id: f7afa3f7d75d54c713ea1d78071ff30c
-      entity_id: 12403f847e9caae174f8b14a11ab9c19
-      domain: switch
   - alias: off day
     if:
     - condition: and
@@ -1325,13 +1442,11 @@
     - metadata: {}
       data: {}
       target:
-        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+        entity_id:
+        - switch.esp32_c3_zero_epever_manual_control_the_load
+        - switch.bkw_outlet_1_bkw_outlet_1
       enabled: true
       action: switch.turn_on
-    - type: turn_on
-      device_id: f7afa3f7d75d54c713ea1d78071ff30c
-      entity_id: 12403f847e9caae174f8b14a11ab9c19
-      domain: switch
     - metadata: {}
       data: {}
       target:
@@ -1435,11 +1550,6 @@
         minutes: 0
         seconds: 5
         milliseconds: 0
-    - type: turn_off
-      device_id: 93a7dbc1ab0380e01f4cd6d5eb91b9bc
-      entity_id: c75f234504dc77b5d544518a8128c688
-      domain: switch
-      enabled: false
   mode: queued
   max: 15
 - id: '1712568670640'
@@ -2630,41 +2740,41 @@
       - null
 - id: '1721083497910'
   alias: Fan for BkW AC Inverter
-  description: Controls a fan to cool the BKW AC inverter based on its temperature
-    and power state. The automation activates the fan when the inverter's temperature
-    exceeds certain thresholds and deactivates it when the temperature drops below
-    a specified level.
+  description: "## \U0001F32C️ Fan for BKW AC Inverter Automation\n\n### \U0001F4CB
+    **Purpose**\n\nThis automation manages a cooling fan for the BKW AC inverter.
+    It ensures the inverter stays within safe operating temperatures by turning the
+    fan on when the inverter heats up and off when it cools down.\n\n---\n\n### ⏰
+    **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
+    `switch.bkw_outlet_1_bkw_outlet_1` | Turns off | Off |\n| `switch.bkw_outlet_1_bkw_outlet_1`
+    | Turns on | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above
+    15°C | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Below 10°C |
+    Off |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above 25°C | On |\n|
+    `sensor.esp32_c3_zero_epever_device_temperature` | Above 30°C | On |\n\n> Note:
+    Multiple temperature thresholds are used to ensure proactive and reactive cooling
+    depending on the inverter’s load.\n\n---\n\n### ✅ **Conditions**\n\n- No global
+    conditions. Trigger-specific checks ensure the fan only turns on when needed.\n\n---\n\n###
+    \U0001F3AF **Actions / Workflow**\n\n1. **On Conditions**\n   - Activates the
+    fan (`switch.gartenhaus_usb_switch_zigbee_l2`) if:\n     - The inverter is on
+    and the temperature is above 15°C, or\n     - The temperature exceeds 25°C regardless
+    of inverter state.\n\n2. **Off Conditions**\n   - Deactivates the fan when the
+    inverter is turned off or the temperature drops below 10°C.\n\n---\n\n### \U0001F527
+    **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**  \n
+    \ - `switch.gartenhaus_usb_switch_zigbee_l2` (fan)  \n- **Monitoring Entities:**
+    \ \n  - Inverter power switch  \n  - Inverter temperature sensor\n\n---\n\n###
+    ⚡ **Notes / Best Practices**\n\n- Ensures inverter longevity by preventing overheating.
+    \ \n- Temperature thresholds can be fine-tuned depending on ambient conditions
+    and fan efficiency.  \n- Simple logic keeps the automation lightweight and responsive.\n"
   triggers:
-  - type: turned_off
-    device_id: f7afa3f7d75d54c713ea1d78071ff30c
-    entity_id: 12403f847e9caae174f8b14a11ab9c19
-    domain: switch
-    for:
-      hours: 0
-      minutes: 5
-      seconds: 0
+  - trigger: state
+    entity_id:
+    - switch.bkw_outlet_1_bkw_outlet_1
+    to: 'off'
     id: 'Off'
-    trigger: device
-  - type: turned_on
-    device_id: f7afa3f7d75d54c713ea1d78071ff30c
-    entity_id: 12403f847e9caae174f8b14a11ab9c19
-    domain: switch
+  - trigger: state
+    entity_id:
+    - switch.bkw_outlet_1_bkw_outlet_1
+    to: 'on'
     id: 'On'
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 0
-    trigger: device
-  - type: turned_off
-    device_id: 93a7dbc1ab0380e01f4cd6d5eb91b9bc
-    entity_id: c75f234504dc77b5d544518a8128c688
-    domain: switch
-    for:
-      hours: 0
-      minutes: 5
-      seconds: 0
-    id: 'Off'
-    trigger: device
   - trigger: numeric_state
     entity_id:
     - sensor.esp32_c3_zero_epever_device_temperature
@@ -2711,20 +2821,23 @@
           entity_id: sensor.esp32_c3_zero_epever_device_temperature
           above: 25
     then:
-    - type: turn_on
-      device_id: bed54c26cf6525e3fe9269dbbe02fcdd
-      entity_id: 49b4763d5c8011ddddabd6298a49a272
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - switch.gartenhaus_usb_switch_zigbee_l2
   - alias: 'Off'
     if:
     - condition: trigger
       id:
       - 'Off'
     then:
-    - type: turn_off
-      device_id: bed54c26cf6525e3fe9269dbbe02fcdd
-      entity_id: 49b4763d5c8011ddddabd6298a49a272
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.gartenhaus_usb_switch_zigbee_l2
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
@@ -2787,8 +2900,26 @@
       domain: switch
   mode: single
 - id: '1721345437021'
-  alias: Auto Turn Off after 15 Min after Completion
-  description: ''
+  alias: AnkerMake 3D Printer Auto Turn Off
+  description: "## \U0001F5A8️ AnkerMake 3D Printer Auto Turn Off Automation\n\n###
+    \U0001F4CB **Purpose**\n\nThis automation automatically powers off the AnkerMake
+    3D printer to save energy and prevent unnecessary idle time once a print is finished
+    or the printer is no longer drawing significant power.\n\n---\n\n### ⏰ **Triggers**\n\n|
+    Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
+    `sensor.ankermake_m5c_progress` | Above 99.9% for 15 minutes | Print Finished
+    |\n| `sensor.ankermake_power` | Below 15W for 30 minutes | Idle Power |\n\n> Note:
+    Ensures the printer only turns off after a print has completed or it has been
+    idle for a significant duration.\n\n---\n\n### ✅ **Conditions**\n\n- No explicit
+    conditions; triggers act directly on the printer switch.\n\n---\n\n### \U0001F3AF
+    **Actions / Workflow**\n\n- Turns off the printer switch (`switch.ankermake_1`)
+    when any of the above triggers occur.\n\n---\n\n### \U0001F527 **Technical Specs**\n\n-
+    **Mode:** `single`  \n- **Device Controlled:** `switch.ankermake_1` (3D printer
+    main switch)  \n- **Monitoring Entities:**  \n  - `sensor.ankermake_m5c_progress`
+    (print progress)  \n  - `sensor.ankermake_power` (printer power draw)\n\n---\n\n###
+    ⚡ **Notes / Best Practices**\n\n- Provides energy efficiency by automatically
+    shutting down idle or finished prints.  \n- Delay thresholds prevent premature
+    shutdown during normal printer operation.  \n- Can be adjusted for longer idle
+    periods or different power thresholds depending on printer usage patterns.\n"
   triggers:
   - entity_id:
     - sensor.ankermake_m5c_progress
@@ -2798,22 +2929,21 @@
       seconds: 0
     above: 99.9
     trigger: numeric_state
-  - type: power
-    device_id: 7b50ca1fdd0a5ceb179537cac54ed999
-    entity_id: c8c1983e6bcaf5b9c2acf5d654cf7bc2
-    domain: sensor
-    trigger: device
-    below: 15
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ankermake_power
     for:
       hours: 0
       minutes: 30
       seconds: 0
+    below: 15
   conditions: []
   actions:
-  - type: turn_off
-    device_id: 7b50ca1fdd0a5ceb179537cac54ed999
-    entity_id: 2c74e7833eafa89cf52abba6f4e629a4
-    domain: switch
+  - action: switch.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: switch.ankermake_1
   mode: single
 - id: '1723670137701'
   alias: Reload Dreame Robots After Internet Recovery
@@ -2850,8 +2980,32 @@
   mode: single
 - id: '1723675237746'
   alias: 3D Printer Timelapse
-  description: Takes snapshots from the 3D printer camera during a print and creates
-    a timelapse video when the print finishes.
+  description: "## \U0001F5A8️ 3D Printer Timelapse  \n\n### \U0001F4CB **Timelapse
+    Capture Automation**  \nThis automation captures snapshots from the 3D printer
+    camera at regular intervals during a print and generates a timelapse video when
+    the print finishes.  \n\nIt ensures that snapshots are only taken when the printer
+    is powered and actively printing, preventing unnecessary captures.  \n\n---\n\n###
+    ⏰ **Triggers**  \n\n| Trigger | Event / Condition |\n|---------|-----------------|\n|
+    `time_pattern` | Every 15 seconds (`/15` seconds) |\n| `sensor.ankermake_m5c_progress`
+    | Numeric state above 99.99% for 10 minutes → indicates print finished |\n\n---\n\n###
+    ✅ **Conditions**  \n- **Printer switch is on**: `switch.ankermake_1`\n\nThis prevents
+    taking snapshots if the printer is powered off.  \n\n---\n\n### \U0001F3AF **Actions
+    / Workflow**  \n\n1. **Capture Timelapse Pictures**  \n   - Runs **every 15 seconds**
+    while the printer is powered and actively printing (sensor `c8c1983e6bcaf5b9c2acf5d654cf7bc2`
+    above 15).  \n   - Snapshot filename format:  \n     ```\n     /media/m5ccam/pictures/{{
+    job_name }}_YYYYMMDD-HHMMSS.jpg\n     ```\n   - Captures images using `camera.ankermake_m5c_camera_mainstream`.
+    \ \n\n2. **Create Timelapse Video**  \n   - Triggered when `sensor.ankermake_m5c_progress`
+    exceeds 99.99% for 10 minutes (print finished).  \n   - Calls `script.create_timelapse`
+    to generate the video from captured snapshots.  \n\n---\n\n### \U0001F527 **Technical
+    Specs**  \n- **Camera:** `camera.ankermake_m5c_camera_mainstream`  \n- **Power
+    Sensor:** `c8c1983e6bcaf5b9c2acf5d654cf7bc2`  \n- **Job Name Sensor:** `sensor.job_name_2`
+    \ \n- **Snapshot Interval:** 15 seconds  \n- **Print Finish Detection:** 99.99%
+    completion for 10 minutes  \n- **Mode:** `parallel` (max 3 concurrent executions)
+    \ \n\n---\n\n### ⚡ **Notes / Best Practices**  \n- Ensures snapshots are only
+    taken if the printer is on and actively printing.  \n- Timelapse creation triggers
+    automatically when the print completes.  \n- Filenames are timestamped to avoid
+    overwriting previous snapshots.  \n- Running in `parallel` mode allows overlapping
+    snapshot intervals if needed, but max 3 concurrent executions prevent overload.\n"
   triggers:
   - seconds: /15
     id: every_15th_second
@@ -2867,11 +3021,9 @@
     enabled: true
     trigger: numeric_state
   conditions:
-  - condition: device
-    type: is_on
-    device_id: 7b50ca1fdd0a5ceb179537cac54ed999
-    entity_id: 2c74e7833eafa89cf52abba6f4e629a4
-    domain: switch
+  - condition: state
+    entity_id: switch.ankermake_1
+    state: 'on'
   actions:
   - alias: Time lapse pictures
     if:
@@ -4945,19 +5097,35 @@
   max: 10
 - id: '1735214695890'
   alias: Dunstabzugshaube
-  description: ''
+  description: "## \U0001F4A8 Dunstabzugshaube (Range Hood Control)\n\n### \U0001F4CB
+    **Automatic Range Hood Activation Based on Window Sensor**  \nThis automation
+    controls the kitchen range hood (`switch.dunstabzugshaube`) based on the state
+    of the `binary_sensor.wintergarten_tur_contact` (window/door contact). It ensures
+    the hood turns on when the window opens and turns off when the window closes.\n\n---\n\n###
+    ⏰ **Triggers**\n| Entity | Event | Trigger ID |\n|--------|-------|------------|\n|
+    `binary_sensor.wintergarten_tur_contact` | Changes to `off` | Close |\n| `binary_sensor.wintergarten_tur_contact`
+    | Changes to `on` | Open |\n\n---\n\n### ✅ **Conditions**\n- None. Actions are
+    executed directly based on the trigger.\n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1.
+    **Window Closed Trigger** (`Close`)  \n   - Turns **off** the `switch.dunstabzugshaube`.\n\n2.
+    **Window Open Trigger** (`Open`)  \n   - Turns **on** the `switch.dunstabzugshaube`.\n\n---\n\n###
+    \U0001F527 **Technical Specs**\n- **Controlled Device:** `switch.dunstabzugshaube`
+    \ \n- **Trigger Sensor:** `binary_sensor.wintergarten_tur_contact`  \n- **Mode:**
+    `single` — ensures only one instance of the automation runs at a time.\n\n---\n\n###
+    ⚡ **Notes & Best Practices**\n- Ideal for preventing energy waste by only running
+    the hood when ventilation is needed.  \n- Can be extended with a delay if you
+    want the hood to stay on/off for a short buffer period after opening or closing
+    the window.  \n- Simple, reliable automation suitable for kitchen ventilation
+    safety and efficiency.\n"
   triggers:
-  - type: not_opened
-    device_id: e2cc9734d6f5740e3d29c0293fbceb9b
-    entity_id: 9b97a26c321418e7a1e38f1a2ca41312
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.wintergarten_tur_contact
+    to: 'off'
     id: Close
-  - type: opened
-    device_id: e2cc9734d6f5740e3d29c0293fbceb9b
-    entity_id: 9b97a26c321418e7a1e38f1a2ca41312
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.wintergarten_tur_contact
+    to: 'on'
     id: Open
   conditions: []
   actions:
@@ -4967,20 +5135,22 @@
       id:
       - Close
     then:
-    - type: turn_off
-      device_id: ef01d2ddf47a4af5d7628e467cc8c934
-      entity_id: d541b035c04edb6c74fdc91ea72c7743
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.dunstabzugshaube
   - alias: Open -> on
     if:
     - condition: trigger
       id:
       - Open
     then:
-    - type: turn_on
-      device_id: ef01d2ddf47a4af5d7628e467cc8c934
-      entity_id: d541b035c04edb6c74fdc91ea72c7743
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.dunstabzugshaube
   mode: single
 - id: '1735498655841'
   alias: Update Boiler Remaining Time Timer
@@ -5260,9 +5430,37 @@
   mode: single
 - id: '1737030430090'
   alias: Calculate PV Savings
-  description: Calculates daily photovoltaic savings/costs by subtracting various
-    energy cost sensors from a total PV cost input number, logs the daily summary
-    to a file, and uploads it to OneDrive.
+  description: "## \U0001F31E Calculate PV Savings Automation\n\n### \U0001F4CB **Purpose**\n\nThis
+    automation calculates daily photovoltaic (PV) savings and costs by subtracting
+    various energy cost components from a total PV cost. It logs the daily summary
+    to a file and uploads it to OneDrive.\n\n---\n\n### ⏰ **Triggers**\n\n| Trigger
+    | Description | Trigger ID |\n|---------|------------|------------|\n| Sun | Sunrise
+    event | Sunrise |\n| Sun | Sunset event | Sunset |\n| Time | At `23:59:57` (end
+    of day) | Dayend |\n\n> Note: The main calculations occur at day end, but sunrise
+    and sunset triggers can be used for additional logging or future extensions.\n\n---\n\n###
+    ✅ **Conditions**\n\n- No explicit conditions; all actions run based on triggers.\n\n---\n\n###
+    \U0001F3AF **Actions / Workflow**\n\n1. **Dayend Trigger**  \n   - Stores the
+    current total PV cost in `input_number.before_gesamt_pv_kosten`.  \n   - Sequentially
+    subtracts the following daily cost sensors from `input_number.gesamte_pv_kosten`:
+    \ \n     - `sensor.inverter_total_battery_discharge_daily_energy_cost`  \n     -
+    `sensor.daily_money_generated_solar`  \n     - `sensor.bkw_outlet_1_total_daily_energy_cost`
+    \ \n     - `sensor.solar_to_home_daily_energy_cost`  \n     - `sensor.battery_charge_from_solar_daily_energy_cost`
+    \ \n   - Logs a daily summary to `notify.file` including timestamp and all cost
+    components.  \n   - Updates `input_number.after_gesamt_pv_kosten` with the final
+    total PV cost after deductions.  \n   - Uploads the CSV file `/media/Gesamt_Kosten.csv`
+    to OneDrive using the configured account.\n\n---\n\n### \U0001F527 **Technical
+    Specs**\n\n- **Mode:** `single`  \n- **Input Numbers Controlled:**  \n  - `input_number.gesamte_pv_kosten`
+    \ \n  - `input_number.before_gesamt_pv_kosten`  \n  - `input_number.after_gesamt_pv_kosten`
+    \ \n- **Sensors Monitored for Calculation:**  \n  - `sensor.inverter_total_battery_discharge_daily_energy_cost`
+    \ \n  - `sensor.daily_money_generated_solar`  \n  - `sensor.bkw_outlet_1_total_daily_energy_cost`
+    \ \n  - `sensor.solar_to_home_daily_energy_cost`  \n  - `sensor.battery_charge_from_solar_daily_energy_cost`
+    \ \n  - `sensor.gesamt_kosten_pv`  \n- **Notification Target:** `notify.file`
+    \ \n- **OneDrive Upload:** Uses `onedrive.upload` service to store CSV summary
+    daily.\n\n---\n\n### ⚡ **Notes / Best Practices**\n\n- Delays between calculations
+    prevent race conditions when updating `input_number` entities.  \n- CSV logging
+    ensures a historical record is kept for analysis and reporting.  \n- Easily extendable
+    by adding new sensors or cost components to subtract.  \n- Offsets for sunrise/sunset
+    can be adjusted for custom reporting schedules.\n"
   triggers:
   - trigger: sun
     event: sunrise
@@ -7064,9 +7262,36 @@
   mode: single
 - id: '1747048995618'
   alias: Coffee Machine Power Control
-  description: Monitors coffee machine power. Activates the smart plug upon initial
-    power draw, and if the brewing power isn't reached within 5 minutes, turns the
-    plug off to prevent idle consumption.
+  description: "## ☕ Coffee Machine Power Control\n\n### \U0001F4CB **Automatic Smart-Plug
+    Management for Coffee Machine**  \nMonitors the coffee machine's power draw and
+    automatically powers the smart plug when an initial draw is detected. If the expected
+    brewing power level isn't reached within **5 minutes**, the plug is turned off
+    to avoid prolonged idle consumption (e.g., kettle-like standby or false triggers).\n\n---\n\n###
+    ⏰ **Triggers**\n| Entity | Event |\n|--------|-------|\n| `sensor.kaffeemaschine_philips_energy_power`
+    | Any state change (used to detect the initial power-up spike) |\n\n---\n\n###
+    ✅ **Conditions**\n- Template ensures this automation only reacts when the sensor
+    crosses from near-zero to a small positive draw (initial start):\n  - Detects
+    transition: `from < 0.5` → `to > 0.5`\n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1.
+    **Initial detection**  \n   - When initial draw detected (template condition passes)
+    → `switch.kaffeemaschine_tasmota` **turn_on** immediately.\n\n2. **Wait for brewing
+    power**  \n   - Wait for `sensor.kaffeemaschine_energy_power` to rise **above
+    50 W** (numeric_state trigger).\n   - Timeout: **5 minutes** (continue_on_timeout:
+    true).\n\n3. **Fail-safe**  \n   - If the wait **timed out** (i.e., brewing threshold
+    not reached within 5 minutes) → turn **off** `switch.kaffeemaschine_tasmota` to
+    prevent idle power draw.\n\n---\n\n### \U0001F527 **Technical Specs**\n- **Trigger
+    Sensor:** `sensor.kaffeemaschine_philips_energy_power`  \n- **Brewing Detection
+    Sensor:** `sensor.kaffeemaschine_energy_power`  \n- **Controlled Device:** `switch.kaffeemaschine_tasmota`
+    \ \n- **Initial-detect threshold:** ~**0.5 W** (transition from near-zero to >0.5)
+    \ \n- **Brewing threshold:** **50 W** (tunable)  \n- **Timeout:** **5 minutes**
+    \ \n- **Mode:** `queued` (max 3 concurrent) — allows overlapping short starts
+    but limits runaway executions\n\n---\n\n### ⚡ **Notes & Best Practices**\n- Thresholds
+    (`0.5` for initial start, `50` for brewing) and timeout (5 min) are tuned heuristics
+    — adapt them to your machine's real measured behavior to avoid false positives/negatives.
+    \ \n- Consider adding small hysteresis or a minimum-on-time if the coffee machine
+    briefly toggles during brew to avoid rapid on/off cycles.  \n- Useful to log occasional
+    timeouts to check whether the coffee machine often fails to reach brew power (could
+    indicate a device issue).  \n- This keeps the smart plug honest: power it on when
+    action begins, but don't let an accidental small draw sit forever.\n"
   triggers:
   - entity_id:
     - sensor.kaffeemaschine_philips_energy_power
@@ -7164,8 +7389,24 @@
   mode: single
 - id: '1747573166845'
   alias: Boiler Timer
-  description: Controls the hot water circulation pump based on the 'boiler_on_demand'
-    timer.
+  description: "## \U0001F4A7 Boiler Timer  \n\n### \U0001F4CB **Hot Water Circulation
+    Control**  \nThis automation controls the hot water circulation pump (`switch.zirkulationspumpe_zigbee`)
+    based on the `boiler_on_demand` timer.  \n\nWhen the timer becomes active, the
+    pump is switched on. When the timer finishes and goes idle, the pump is turned
+    off.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Trigger Entity | Event / Condition
+    | Trigger ID |\n|----------------|-----------------|------------|\n| `timer.boiler_on_demand`
+    | State changes from `idle` → `active` | \"Start\" |\n| `timer.boiler_on_demand`
+    | State changes from `active` → `idle` | \"Stop\" |\n\n> **Note:** The pump operation
+    is fully synchronized with the timer.  \n\n---\n\n### ✅ **Conditions**  \n- None;
+    all triggers execute the actions directly.  \n\n---\n\n### \U0001F3AF **Actions
+    / Workflow**  \n\n1. **Start Trigger** (`timer.boiler_on_demand` → active)  \n
+    \  - Turns on `switch.zirkulationspumpe_zigbee`  \n\n2. **Stop Trigger** (`timer.boiler_on_demand`
+    → idle)  \n   - Turns off `switch.zirkulationspumpe_zigbee`  \n\n---\n\n### \U0001F527
+    **Technical Specs**  \n- **Mode:** `single` (prevents overlapping executions)
+    \ \n- **Device Controlled:** Hot water circulation pump (`switch.zirkulationspumpe_zigbee`)
+    \ \n\n---\n\n### ⚡ **Notes / Best Practices**  \n- Ensures pump only runs when
+    needed, saving energy.  \n- Simple and reliable control synced to the `boiler_on_demand`
+    timer.  \n"
   triggers:
   - trigger: state
     entity_id:
