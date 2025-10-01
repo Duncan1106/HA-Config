@@ -7540,10 +7540,24 @@
   mode: single
 - id: '1749938010439'
   alias: Reset Deye Battery Capacity closer to real
-  description: Deye I'm Inverter estimates the battery capacity and it always overshoots,
-    this is a way to hopefully combat this and keep the battery soc estimation in
-    a reasonable amount around the real soc the BMS provides, wich is unfortunately
-    not compatible in the current setup with deye 8k
+  description: "## \U0001F50B Reset Deye Battery Capacity  \n\n### \U0001F4CB **Keeping
+    SOC Estimation in Check**  \nThe Deye inverter tends to overshoot its calculated
+    battery capacity. This automation corrects the capacity estimate by making small
+    adjustments around the true SOC reported by the BMS, keeping values closer to
+    reality.  \n\n---\n\n### ⏰ **Triggers**  \n| Condition | Entity/Event | Threshold
+    |\n|-----------|--------------|-----------|\n| **Daily Reset** | `sunset` | Exact
+    time |\n| **Midnight Reset** | `00:00:00` | Exact time |\n| **Capacity Update**
+    | `sensor.inverter_battery_corrected_capacity` | Any change |\n| **SOC Full**
+    | `sensor.felicity_ess_soc_avg` | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**
+    \ \n- `sensor.inverter_battery_corrected_capacity` > `number.inverter_battery_capacity`
+    \ \n- `sensor.felicity_ess_soc_avg` > **99%**  \n\n---\n\n### \U0001F3AF **Correction
+    Logic**  \n\n#### **Step 1**  \n- Increase inverter’s capacity value by **+1**
+    \ \n\n#### **Step 2**  \n- Wait **15s**  \n\n#### **Step 3**  \n- Decrease inverter’s
+    capacity value by **-1**  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Target
+    Number Entity:** `number.inverter_battery_capacity`  \n- **Sensors Used:**  \n
+    \ - `sensor.inverter_battery_corrected_capacity`  \n  - `sensor.felicity_ess_soc_avg`
+    \ \n- **Mode:** `single` (no overlap)  \n- **Adjustment Logic:** ±1 step correction
+    with short delay"
   triggers:
   - trigger: sun
     event: sunset
@@ -7568,7 +7582,10 @@
   - action: number.set_value
     metadata: {}
     data:
-      value: '{{ states(''number.inverter_battery_capacity'')|int(500) - 1 }}'
+      value: '
+
+
+        {{ states(''number.inverter_battery_capacity'')|int(500) + 1 }}'
     target:
       entity_id: number.inverter_battery_capacity
   - delay:
@@ -7579,7 +7596,10 @@
   - action: number.set_value
     metadata: {}
     data:
-      value: '{{ states(''number.inverter_battery_capacity'')|int(500) + 1 }}'
+      value: '
+
+
+        {{ states(''number.inverter_battery_capacity'')|int(500) - 1 }}'
     target:
       entity_id: number.inverter_battery_capacity
   mode: single
