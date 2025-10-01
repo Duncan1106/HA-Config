@@ -287,15 +287,15 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_mqtt_details
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
         primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
           2)}}'
         secondary: MQTT Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - cards:
@@ -320,7 +320,7 @@ config:
                 action: more-info
               type: custom:mushroom-template-card
             type: horizontal-stack
-          - aggregate_func: dif
+          - aggregate_func: diff
             align_header: center
             entities:
             - entity: sensor.mqtt_stats_messages_received
@@ -611,7 +611,7 @@ config:
               } thead tr th, tbody tr td {padding: 4px 10px; }
 
               '
-        content: "{% set ns_batteries = namespace(batteries={}) %}\n\n{% for entity_id\
+        content: "{% set ns_batteries = namespace(batteries={}) %}\n{% for entity_id\
           \ in integration_entities('battery_notes') if entity_id is search('_battery_type$',\
           \ ignorecase=False) -%}\n    {% set battery_raw = states[entity_id].state\
           \ %}\n    \n    {# Support both \xD7 and x as multipliers #}\n    {% if\
@@ -620,10 +620,10 @@ config:
           \ = battery_raw.split(\"x\") %}\n    {% else %}\n        {% set battery_split\
           \ = [battery_raw] %}\n    {% endif %}\n    \n    {% if battery_split | length\
           \ > 1 %}\n        {% set battery_count = battery_split[0] | trim | int(1)\
-          \ %}\n        {% set battery_type = battery_split[1] | trim %}\n    {% else\
-          \ %}\n        {% set battery_count = 1 %}\n        {% set battery_type =\
-          \ battery_split[0] | trim %}\n    {% endif %}\n    \n    {% if battery_type\
-          \ not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
+          \ %}\n        {% set battery_type = battery_split[1] | trim | upper %}\n\
+          \    {% else %}\n        {% set battery_count = 1 %}\n        {% set battery_type\
+          \ = battery_split[0] | trim | upper %}\n    {% endif %}\n    \n    {% if\
+          \ battery_type not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
           \ = dict(ns_batteries.batteries, **{battery_type: battery_count}) %}\n \
           \   {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
           \ **{battery_type: ns_batteries.batteries[battery_type] + battery_count})\
@@ -637,7 +637,7 @@ config:
         - entities:
           - entity: input_text.batterie_suche
             icon: mdi:magnify
-            name: Serch by battery type
+            name: Search by battery type
             secondary_info: none
           state_color: false
           type: entities
@@ -646,9 +646,9 @@ config:
             \   | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
             \   | list %}\n\n{% set ns = namespace(buffer=[]) %}\n\n{% for device\
             \ in devices %}\n  {% set bt_raw = device.attributes.battery_type_and_quantity\
-            \ | replace('\xD7','x') %}\n  {% if search_term == \"\" or search_term\
-            \ in bt_raw %}\n    {% set lvl = device.state | int %}\n    {% set entry\
-            \ = {\n      'type': bt_raw,\n      'lvl': lvl,\n      'line': bt_raw\
+            \ | replace('\xD7','x') %}\n  {% if search_term == \"\" or search_term|lower\
+            \ in bt_raw|lower %}\n    {% set lvl = device.state | int %}\n    {% set\
+            \ entry = {\n      'type': bt_raw,\n      'lvl': lvl,\n      'line': bt_raw\
             \ ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%',\n      'sort_key':\
             \ bt_raw ~ '-' ~ (\"%03d\"|format(lvl))\n    } %}\n    {% set ns.buffer\
             \ = ns.buffer + [ entry ] %}\n  {% endif %}\n{% endfor %}\n\n{% if ns.buffer\
