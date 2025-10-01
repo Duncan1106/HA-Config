@@ -193,15 +193,16 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_mariadb_graphs
-        fill_container: true
-        layout: vertical
+        features_position: bottom
         primary: '{% set rows = states(''sensor.maria_db_rows'') | int(0) %} {{ ((states(''sensor.maria_db_size'')
           | float(0)) * 1000000) | filesizeformat() }} @ {{ ''{:,.3f}''.format(rows
-          / 1000).replace('','', ''.'') }} Rows'
+          / 1000).replace('','', ''.'') }} Rows @ {{ states(''sensor.db_purges_success_rate'',
+          with_unit=true) }} Purge Success'
         secondary: Maria DB Size
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - align_header: center
@@ -265,6 +266,18 @@ config:
                 labels: true
                 points: hover
               type: custom:mini-graph-card
+            type: horizontal-stack
+          - cards:
+            - entity: counter.db_purge_success
+              features_position: bottom
+              show_entity_picture: false
+              type: tile
+              vertical: false
+            - entity: counter.db_purge_failure
+              features_position: bottom
+              show_entity_picture: false
+              type: tile
+              vertical: false
             type: horizontal-stack
           type: vertical-stack
         conditions:
