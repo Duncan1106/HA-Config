@@ -609,20 +609,26 @@ config:
               } thead tr th, tbody tr td {padding: 4px 10px; }
 
               '
-        content: "{% set ns_batteries = namespace(batteries={}) %}\n{% for entity_id\
+        content: "{% set ns_batteries = namespace(batteries={}) %}\n\n{% for entity_id\
           \ in integration_entities('battery_notes') if entity_id is search('_battery_type$',\
-          \ ignorecase=False) -%}\n    {% set battery_type = states[entity_id].state\
-          \ %}\n    {% set battery_split = battery_type.split('x') %}\n    {% if battery_split\
-          \ | length > 1 %}\n      {% set battery_type = battery_split[-1] | trim\
-          \ %}\n      {% set battery_count = battery_split[0] | int(1) %}\n    {%\
-          \ else %}\n      {% set battery_count = 1 %}\n    {% endif %}\n    {% if\
-          \ battery_type not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
+          \ ignorecase=False) -%}\n    {% set battery_raw = states[entity_id].state\
+          \ %}\n    \n    {# Support both \xD7 and x as multipliers #}\n    {% if\
+          \ \"\xD7\" in battery_raw %}\n        {% set battery_split = battery_raw.split(\"\
+          \xD7\") %}\n    {% elif \"x\" in battery_raw %}\n        {% set battery_split\
+          \ = battery_raw.split(\"x\") %}\n    {% else %}\n        {% set battery_split\
+          \ = [battery_raw] %}\n    {% endif %}\n    \n    {% if battery_split | length\
+          \ > 1 %}\n        {% set battery_count = battery_split[0] | trim | int(1)\
+          \ %}\n        {% set battery_type = battery_split[1] | trim %}\n    {% else\
+          \ %}\n        {% set battery_count = 1 %}\n        {% set battery_type =\
+          \ battery_split[0] | trim %}\n    {% endif %}\n    \n    {% if battery_type\
+          \ not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
           \ = dict(ns_batteries.batteries, **{battery_type: battery_count}) %}\n \
-          \     {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
+          \   {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
           \ **{battery_type: ns_batteries.batteries[battery_type] + battery_count})\
           \ %}\n    {% endif %}\n{% endfor %}\n\n| Type | Count |\n| :-- | --: |\n\
           {% for bt in ns_batteries.batteries | dictsort(False, 'value') | reverse\
-          \ -%}\n  | {{ bt[0] }} | {{ [bt][0][1] }} |\n{% endfor %}\n"
+          \ -%}\n  | {{ bt[0] }} | {{ bt[1] }} |\n{% endfor %}\n\n---\n\n**Total**:\
+          \ {{ ns_batteries.batteries.values() | sum }}"
         title: Battery Summary
         type: markdown
       - cards:
@@ -634,22 +640,22 @@ config:
           state_color: false
           type: entities
         - content: "{% set search_term = states('input_text.batterie_suche') %}\n\
-            {% if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011Ger\xE4\
-            te #}\n  {% set devices = states\n     | selectattr('entity_id', 'search',\
-            \ '_battery_plus$')\n     | selectattr('attributes.battery_type_and_quantity',\
-            \ 'defined')\n     | list %}\n\n  {# 2. Mutable container anlegen #}\n\
-            \  {% set ns = namespace(buffer=[]) %}\n\n  {# 3. Matches sammeln als\
-            \ dicts mit numeric lvl #}\n  {% for device in devices %}\n    {% set\
-            \ bt_raw = device.attributes.battery_type_and_quantity | replace('\xD7\
-            ','x') %}\n    {% if search_term in bt_raw %}\n      {% set entry = {\n\
-            \        'lvl': device.state | int,\n        'line': bt_raw ~ ': ' ~ device.name\
-            \ ~ ': ' ~ device.state ~ '%'\n      } %}\n      {% set ns.buffer = ns.buffer\
-            \ + [ entry ] %}\n    {% endif %}\n  {% endfor %}\n\n  {% if ns.buffer\
-            \ | length > 0 %}\n    {# 4. Numeric\u2011sortieren und dann alle lines\
-            \ joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
-            \       | map(attribute='line')\n       | list\n       | join('\\n') }}\n\
-            \  {% else %}\n    Keine Ger\xE4te mit diesem Batterietyp gefunden.\n\
-            \  {% endif %}\n{% else %}\n  Search result\n{% endif %}\n"
+            {% set devices = states\n   | selectattr('entity_id', 'search', '_battery_plus$')\n\
+            \   | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
+            \   | list %}\n\n{% set ns = namespace(buffer=[]) %}\n\n{% for device\
+            \ in devices %}\n  {% set bt_raw = device.attributes.battery_type_and_quantity\
+            \ | replace('\xD7','x') %}\n  {% if search_term == \"\" or search_term\
+            \ in bt_raw %}\n    {% set lvl = device.state | int %}\n    {% set entry\
+            \ = {\n      'type': bt_raw,\n      'lvl': lvl,\n      'line': bt_raw\
+            \ ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%',\n      'sort_key':\
+            \ bt_raw ~ '-' ~ (\"%03d\"|format(lvl))\n    } %}\n    {% set ns.buffer\
+            \ = ns.buffer + [ entry ] %}\n  {% endif %}\n{% endfor %}\n\n{% if ns.buffer\
+            \ | length > 0 %}\n  {% if search_term != \"\" %}\n    {{ ns.buffer\n\
+            \       | sort(attribute='lvl')\n       | map(attribute='line')\n    \
+            \   | list\n       | join('\\n') }}\n  {% else %}\n    {{ ns.buffer\n\
+            \       | sort(attribute='sort_key')\n       | map(attribute='line')\n\
+            \       | list\n       | join('\\n') }}\n  {% endif %}\n{% else %}\n \
+            \ Keine Ger\xE4te gefunden.\n{% endif %}"
           type: markdown
         type: vertical-stack
       type: grid
