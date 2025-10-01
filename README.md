@@ -1,3 +1,6 @@
+[![GitHub release](https://img.shields.io/github/release/Duncan1106/HA-Config?include_prereleases=&sort=semver&color=blue)](https://github.com/Duncan1106/HA-Config/releases/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](#license)
+
 # Welcome !
 
 This is my Home Assistant installation.
