@@ -193,15 +193,16 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_mariadb_graphs
-        fill_container: true
-        layout: vertical
+        features_position: bottom
         primary: '{% set rows = states(''sensor.maria_db_rows'') | int(0) %} {{ ((states(''sensor.maria_db_size'')
           | float(0)) * 1000000) | filesizeformat() }} @ {{ ''{:,.3f}''.format(rows
-          / 1000).replace('','', ''.'') }} Rows'
+          / 1000).replace('','', ''.'') }} Rows @ {{ states(''sensor.db_purges_success_rate'',
+          with_unit=true) }} Purge Success'
         secondary: Maria DB Size
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - align_header: center
@@ -266,6 +267,18 @@ config:
                 points: hover
               type: custom:mini-graph-card
             type: horizontal-stack
+          - cards:
+            - entity: counter.db_purge_success
+              features_position: bottom
+              show_entity_picture: false
+              type: tile
+              vertical: false
+            - entity: counter.db_purge_failure
+              features_position: bottom
+              show_entity_picture: false
+              type: tile
+              vertical: false
+            type: horizontal-stack
           type: vertical-stack
         conditions:
         - entity: input_boolean.show_mariadb_graphs
@@ -274,15 +287,15 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_mqtt_details
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
         primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
           2)}}'
         secondary: MQTT Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - cards:
@@ -307,7 +320,7 @@ config:
                 action: more-info
               type: custom:mushroom-template-card
             type: horizontal-stack
-          - aggregate_func: dif
+          - aggregate_func: diff
             align_header: center
             entities:
             - entity: sensor.mqtt_stats_messages_received
@@ -483,17 +496,19 @@ config:
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
-    - entity: sensor.home_assistant_beta_release_notes
-      tap_action:
-        action: perform-action
-        perform_action: input_button.press
-        target:
-          entity_id: input_button.update_beta_release_notes
-      type: custom:mushroom-entity-card
-    - content: '{{ state_attr("sensor.home_assistant_beta_release_notes","ai_summary")
+    - cards:
+      - entity: sensor.home_assistant_beta_release_notes
+        tap_action:
+          action: perform-action
+          perform_action: input_button.press
+          target:
+            entity_id: input_button.update_beta_release_notes
+        type: custom:mushroom-entity-card
+      - content: '{{ state_attr("sensor.home_assistant_beta_release_notes","ai_summary")
 
-        }}'
-      type: markdown
+          }}'
+        type: markdown
+      type: vertical-stack
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
@@ -598,45 +613,51 @@ config:
               '
         content: "{% set ns_batteries = namespace(batteries={}) %}\n{% for entity_id\
           \ in integration_entities('battery_notes') if entity_id is search('_battery_type$',\
-          \ ignorecase=False) -%}\n    {% set battery_type = states[entity_id].state\
-          \ %}\n    {% set battery_split = battery_type.split('x') %}\n    {% if battery_split\
-          \ | length > 1 %}\n      {% set battery_type = battery_split[-1] | trim\
-          \ %}\n      {% set battery_count = battery_split[0] | int(1) %}\n    {%\
-          \ else %}\n      {% set battery_count = 1 %}\n    {% endif %}\n    {% if\
+          \ ignorecase=False) -%}\n    {% set battery_raw = states[entity_id].state\
+          \ %}\n    \n    {# Support both \xD7 and x as multipliers #}\n    {% if\
+          \ \"\xD7\" in battery_raw %}\n        {% set battery_split = battery_raw.split(\"\
+          \xD7\") %}\n    {% elif \"x\" in battery_raw %}\n        {% set battery_split\
+          \ = battery_raw.split(\"x\") %}\n    {% else %}\n        {% set battery_split\
+          \ = [battery_raw] %}\n    {% endif %}\n    \n    {% if battery_split | length\
+          \ > 1 %}\n        {% set battery_count = battery_split[0] | trim | int(1)\
+          \ %}\n        {% set battery_type = battery_split[1] | trim | upper %}\n\
+          \    {% else %}\n        {% set battery_count = 1 %}\n        {% set battery_type\
+          \ = battery_split[0] | trim | upper %}\n    {% endif %}\n    \n    {% if\
           \ battery_type not in ns_batteries.batteries %}\n        {% set ns_batteries.batteries\
           \ = dict(ns_batteries.batteries, **{battery_type: battery_count}) %}\n \
-          \     {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
+          \   {% else %}\n        {% set ns_batteries.batteries = dict(ns_batteries.batteries,\
           \ **{battery_type: ns_batteries.batteries[battery_type] + battery_count})\
           \ %}\n    {% endif %}\n{% endfor %}\n\n| Type | Count |\n| :-- | --: |\n\
           {% for bt in ns_batteries.batteries | dictsort(False, 'value') | reverse\
-          \ -%}\n  | {{ bt[0] }} | {{ [bt][0][1] }} |\n{% endfor %}\n"
+          \ -%}\n  | {{ bt[0] }} | {{ bt[1] }} |\n{% endfor %}\n\n---\n\n**Total**:\
+          \ {{ ns_batteries.batteries.values() | sum }}"
         title: Battery Summary
         type: markdown
       - cards:
         - entities:
           - entity: input_text.batterie_suche
             icon: mdi:magnify
-            name: Serch by battery type
+            name: Search by battery type
             secondary_info: none
           state_color: false
           type: entities
         - content: "{% set search_term = states('input_text.batterie_suche') %}\n\
-            {% if search_term != \"\" %}\n  {# 1. Alle _battery_plus\u2011Ger\xE4\
-            te #}\n  {% set devices = states\n     | selectattr('entity_id', 'search',\
-            \ '_battery_plus$')\n     | selectattr('attributes.battery_type_and_quantity',\
-            \ 'defined')\n     | list %}\n\n  {# 2. Mutable container anlegen #}\n\
-            \  {% set ns = namespace(buffer=[]) %}\n\n  {# 3. Matches sammeln als\
-            \ dicts mit numeric lvl #}\n  {% for device in devices %}\n    {% set\
-            \ bt_raw = device.attributes.battery_type_and_quantity | replace('\xD7\
-            ','x') %}\n    {% if search_term in bt_raw %}\n      {% set entry = {\n\
-            \        'lvl': device.state | int,\n        'line': bt_raw ~ ': ' ~ device.name\
-            \ ~ ': ' ~ device.state ~ '%'\n      } %}\n      {% set ns.buffer = ns.buffer\
-            \ + [ entry ] %}\n    {% endif %}\n  {% endfor %}\n\n  {% if ns.buffer\
-            \ | length > 0 %}\n    {# 4. Numeric\u2011sortieren und dann alle lines\
-            \ joined ausgeben #}\n    {{ ns.buffer\n       | sort(attribute='lvl')\n\
-            \       | map(attribute='line')\n       | list\n       | join('\\n') }}\n\
-            \  {% else %}\n    Keine Ger\xE4te mit diesem Batterietyp gefunden.\n\
-            \  {% endif %}\n{% else %}\n  Search result\n{% endif %}\n"
+            {% set devices = states\n   | selectattr('entity_id', 'search', '_battery_plus$')\n\
+            \   | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
+            \   | list %}\n\n{% set ns = namespace(buffer=[]) %}\n\n{% for device\
+            \ in devices %}\n  {% set bt_raw = device.attributes.battery_type_and_quantity\
+            \ | replace('\xD7','x') %}\n  {% if search_term == \"\" or search_term|lower\
+            \ in bt_raw|lower %}\n    {% set lvl = device.state | int %}\n    {% set\
+            \ entry = {\n      'type': bt_raw,\n      'lvl': lvl,\n      'line': bt_raw\
+            \ ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%',\n      'sort_key':\
+            \ bt_raw ~ '-' ~ (\"%03d\"|format(lvl))\n    } %}\n    {% set ns.buffer\
+            \ = ns.buffer + [ entry ] %}\n  {% endif %}\n{% endfor %}\n\n{% if ns.buffer\
+            \ | length > 0 %}\n  {% if search_term != \"\" %}\n    {{ ns.buffer\n\
+            \       | sort(attribute='lvl')\n       | map(attribute='line')\n    \
+            \   | list\n       | join('\\n') }}\n  {% else %}\n    {{ ns.buffer\n\
+            \       | sort(attribute='sort_key')\n       | map(attribute='line')\n\
+            \       | list\n       | join('\\n') }}\n  {% endif %}\n{% else %}\n \
+            \ Keine Ger\xE4te gefunden.\n{% endif %}"
           type: markdown
         type: vertical-stack
       type: grid

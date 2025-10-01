@@ -840,6 +840,11 @@ template:
           {% set bkw = states('sensor.bkw_outlet_1_total_daily_energy_cost') | float(0) %}
           {% set gesamt = states('input_number.gesamte_pv_kosten') | float(0) %}
           {{ (gesamt - solar_home - solar_bat - bat_home - solar_grid - bkw) | round(2) }}
+        attributes:
+          daily_change: >
+            {% set before = states('input_number.after_gesamt_pv_kosten') | float(0) %}
+            {% set after = states('sensor.gesamt_kosten_pv_active_moving') | float(0) %}
+            {{ (before - after) | round(2) }}€
 
   - trigger:
       - platform: time_pattern
@@ -971,7 +976,7 @@ template:
             
             {{ beta_scrape.beta_notes_content }}
             
-          agent_id: conversation.chatgpt
+          agent_id: conversation.xai_grok_4_fast_free
     
     sensor:
       - unique_id: home_assistant_beta_release_notes
