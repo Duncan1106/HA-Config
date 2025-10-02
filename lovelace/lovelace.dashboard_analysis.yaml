@@ -13,7 +13,7 @@ config:
         layout: vertical
         primary: '{{ time_since(now() - timedelta(seconds=(states(''sensor.cudy_router_betriebszeit'')
           | int(0))), 2) }}'
-        secondary: Cudy Uptime
+        secondary: 'Cudy Uptime '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -112,7 +112,7 @@ config:
         layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.system_monitor_letzter_start'')),
           2)}}'
-        secondary: Server Uptime
+        secondary: 'Server Uptime '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -166,7 +166,7 @@ config:
         icon: ''
         layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.uptime'')), 2) }}'
-        secondary: Homeassistent Uptime
+        secondary: 'Homeassistent Uptime '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -198,7 +198,7 @@ config:
           | float(0)) * 1000000) | filesizeformat() }} @ {{ ''{:,.3f}''.format(rows
           / 1000).replace('','', ''.'') }} Rows @ {{ states(''sensor.db_purges_success_rate'',
           with_unit=true) }} Purge Success'
-        secondary: Maria DB Size
+        secondary: 'Maria DB Size '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -291,7 +291,7 @@ config:
         icon: ''
         primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
           2)}}'
-        secondary: MQTT Uptime
+        secondary: 'MQTT Uptime '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -482,17 +482,22 @@ config:
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
-    - entity: sensor.tibber_pulse_metrics
-      fill_container: false
+    - color: blue
+      entity: sensor.tibber_pulse_metrics
+      features_position: bottom
       icon: mdi:pulse
-      icon_color: blue
-      layout: vertical
+      icon_tap_action:
+        action: perform-action
+        perform_action: button.press
+        target:
+          entity_id: button.refresh_tibber_node
       multiline_secondary: false
       primary: 'Tibber Pulse Uptime: {{ state_attr(''sensor.tibber_pulse_metrics'',''uptime'')}}'
       secondary: '{{ states(''sensor.tibber_pulse_metrics'', with_unit=True) }}'
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
+      vertical: true
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
@@ -509,6 +514,20 @@ config:
           }}'
         type: markdown
       type: vertical-stack
+    - card_mod:
+        style:
+          ha-markdown:
+            $: "ha-markdown-element:first-of-type hr{\n  border-color: #303030;\n\
+              }\n"
+      content: '<h2> <img src="https://brands.home-assistant.io/watchman/icon.png"
+        alt="WM Logo" width="32" height="32"> Watchman report</h2> <h3>Missing Entities:
+        {{ states.sensor.watchman_missing_entities.state }} </h3> {%- for item in
+        state_attr("sensor.watchman_missing_entities", "entities") %} <hr> <table><tr>
+        <td> <ha-icon icon=''mdi:{%- if item.state=="missing"-%}cloud-alert'' {%-
+        elif item.state=="unavail" -%}cloud-off-outline'' {%- else-%}cloud-question''
+        {%- endif -%} ></ha-icon> {{ item.id }} [{{item.state}}] <a title="{{item.occurrences}}">
+        {{item.occurrences.split(''/'')[-1]}}</a> </td></tr></table> {%- endfor %}'
+      type: markdown
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
