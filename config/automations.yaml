@@ -9221,3 +9221,190 @@
           data:
             tag: wasserenthaertung_salz
   mode: single
+- id: '1759414302396'
+  alias: Daily Agenda
+  description: "  ## \U0001F4C5 Daily Agenda  \n\n  ### \U0001F4CB **Personalized
+    Daily Briefing**  \n\n  This automation generates a daily summary for a smartphone,
+    combining weather\n  forecasts and calendar events, processed through an AI. The
+    message is\n  concise, in German, and personalized per individual or event when\n
+    \ applicable. If AI processing fails, a fallback message lists existing\n  calendar
+    events only.\n\n  ---\n\n  ### ⏰ **Triggers**  \n\n  | Time | Event |\n  |------|-------|\n
+    \ | `08:00:00` | Daily scheduled briefing |\n\n  ---\n\n  ### ✅ **Conditions**
+    \ \n\n  - No additional conditions; the automation runs daily at 08:00.  \n\n
+    \ ---\n\n  ### \U0001F3AF **Workflow / Logic**  \n\n  1. **Fetch Calendar Events**
+    \ \n     - Supports up to three calendars:  \n       - `calendar.looping`  \n
+    \      - `calendar.anniversaries`  \n       - `calendar.apps_by_abfall`  \n     -
+    Fetched in a loop for efficiency, with events for a **duration of 16 hours**.
+    \ \n     - If a calendar has no upcoming events, it is simply skipped in the fallback
+    notification.\n\n  2. **Fetch Weather Forecast**  \n     - Uses `weather.forecast_home`
+    for hourly forecasts.  \n     - Includes condition, temperature, precipitation,
+    UV index, wind speed, and optional daily summary.\n\n  3. **Prepare AI Prompt**
+    \ \n     - Combines calendar events and weather data into a concise prompt.  \n
+    \    - Instructions to AI:  \n       - Provide short, precise messages without
+    Home Assistant internal details.  \n       - Highlight unusual or notable events
+    or weather.  \n       - Include recommendations if weather or temperature requires
+    action (e.g., coat, umbrella).  \n       - Format per individual if events concern
+    multiple people.  \n       - Output in **German**, in a precise, efficient style.\n\n
+    \ 4. **AI Processing**  \n     - Uses `conversation.google_generative_ai` to generate
+    the notification text.  \n     - Retries up to 10 times if the response contains
+    failure phrases like:  \n       - `\"Unable to get response\"`  \n       - `\"Sorry,
+    I had a problem getting a response from Google Generative AI.\"`  \n     - Small
+    5-second delay between retries.\n\n  5. **Send Notification**  \n     - On success:
+    sends AI-generated message to `notify.duncan`.  \n     - On repeated failure:
+    sends a fallback message with only existing calendar events, omitting calendars
+    without upcoming events.\n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n\n
+    \ - **Calendars Used:**  \n    - `calendar.looping`  \n    - `calendar.anniversaries`
+    \ \n    - `calendar.apps_by_abfall`  \n\n  - **Weather Entity:** `weather.forecast_home`
+    \ \n\n  - **AI Agent:** `conversation.google_generative_ai`  \n\n  - **Target
+    Notification:** `notify.duncan`  \n\n  - **Mode:** `single`  \n\n  - **Retries:**
+    Up to 10 attempts for AI response  \n\n  - **Delay Between Retries:** 5 seconds
+    \ \n\n  ---\n\n  ### ⚡ **Notes / Best Practices**  \n\n  - The prompt instructs
+    the AI to avoid generic or trivial information.  \n\n  - Fallback notifications
+    only display events if calendars have events; empty calendars are skipped.  \n\n
+    \ - Messages are tailored per individual if calendar events indicate multiple
+    people.  \n\n  - Weather summary emphasizes unusual conditions or important recommendations.
+    \ \n\n  - The automation can be expanded to include more calendars or different
+    notification channels if desired.\n"
+  triggers:
+  - at: 08:00:00
+    trigger: time
+  actions:
+  - variables:
+      title: '{% set weekdays = {''Monday'':''Montag'',''Tuesday'':''Dienstag'',''Wednesday'':''Mittwoch'',''Thursday'':''Donnerstag'',''Friday'':''Freitag'',''Saturday'':''Samstag'',''Sunday'':''Sonntag''}
+        %} {{ weekdays[now().strftime(''%A'')] }} Agenda und Wetter'
+      weather_entity: weather.forecast_home
+      calendars:
+      - entity: calendar.looping
+      - entity: calendar.anniversaries
+      - entity: calendar.apps_by_abfall
+      calendar_duration:
+        hours: 16
+        minutes: 0
+        seconds: 0
+      agendas: {}
+      prompt: "Please generate text for a notification that will be sent to the users
+        smartphone with helpful information. keep it simple and short but precise.
+        simply provide the notification and nothing else! don't use any Benachrichtigung
+        or something like that just the message! if you like you can format it to
+        make it more readable \n\n- Your answers are not technical, and do not include
+        Home Assistant internal details such as entities in responses.\n- Your messages
+        help the user prepare for their day\n  - use the event name to refer to single
+        persons, provide individual recommendations for each person and seperate them
+        if needed per person.\n  - Making note of unusual weather for the location
+        and time of year (but not mundane details like \"0% chance of precipitation\")
+        also make sure to only tell the condition and temperature and maybe what I
+        should bring when I go outside if the condition or temperature makes it needed.
+        don't tell me to got for a walk or something like that \n  - Anything that
+        may be special or unique, such as celebrating a birthday\nProvide your answer
+        in German and make it precise and efficient as a German would like it. Bitte
+        Duzen nicht Siezen"
+  - alias: Fetch Calendar Events
+    repeat:
+      for_each: '{{ calendars }}'
+      sequence:
+      - action: calendar.get_events
+        target:
+          entity_id: '{{ repeat.item.entity }}'
+        data:
+          duration: '{{ calendar_duration }}'
+        response_variable: fetched
+      - variables:
+          agendas: '{% set fetched_events = fetched[repeat.item.entity][''events'']
+            %} {{ dict(agendas, **{ repeat.item.entity: fetched_events }) }}            '
+  - alias: Fetch Weather Forecast
+    action: weather.get_forecasts
+    data:
+      type: hourly
+    target:
+      entity_id: '{{ weather_entity }}'
+    response_variable: daily_forecast
+  - variables:
+      forecast_entity: "{% if daily_forecast is defined and weather_entity in daily_forecast
+        %}\n  {{ daily_forecast[weather_entity] }}\n{% else %}\n  none\n{% endif %}"
+      forecast: "{% if forecast_entity is defined and forecast_entity.forecast is
+        defined and forecast_entity.forecast | length > 0 %}\n  {{ forecast_entity.forecast[0]
+        }}\n{% else %}\n  none\n{% endif %}"
+      calendar_prompt: "Time: {{ now().strftime(\"%A %B %d %H:%M %p\") }}  {%- if
+        weather_entity is defined %}         \n  {%- set temperature_unit = state_attr(weather_entity,
+        'temperature_unit') -%} \n  {%- if forecast is defined %}\n    Current Weather:
+        {{ forecast.condition if forecast.condition is defined else 'N/A' }}\n    (Temperature:
+        {{ forecast.temperature if forecast.temperature is defined else 'N/A' }}{{
+        temperature_unit if temperature_unit is defined else '' }},\n    Precipitation:
+        {{ forecast.precipitation if forecast.precipitation is defined else 'N/A'
+        }}%,\n    UV Index: {{ forecast.uv_index if forecast.uv_index is defined else
+        'N/A' }},\n    Wind Speed: {{ forecast.wind_speed if forecast.wind_speed is
+        defined else 'N/A' }},\n    Temp Low: {{ forecast.templow if forecast.templow
+        is defined else 'N/A' }})\n  {%- else %}\n    Wetterdaten nicht verfügbar.\n
+        \ {%- endif %}\n  Todays Overall Weather: {{ states(weather_entity) if states(weather_entity)
+        not in ['unknown', 'unavailable'] else 'N/A' }}\n{%- endif %}   {%- for cal
+        in calendars %}\n  Calendar \"{{ state_attr(cal.entity, 'friendly_name') or
+        cal.entity.split('.')[-1] }}\" events for the next {{ calendar_duration.hours
+        }} hours:\n  {% set agenda = agendas[cal.entity] if cal.entity in agendas
+        else [] %}\n  {% if agenda | length > 0 %}\n    {%- for event in agenda %}\n
+        \     - Summary: {{ event.summary if event.summary is defined else 'Unbenannt'
+        }}\n        Start-End: {% if event.start is defined %}{{ event.start }} to
+        {{ event.end if event.end is defined else 'N/A' }}{% else %}All Day{% endif
+        %}\n        {%- if event.description is defined and event.description | trim
+        != '' %}\n          Description: {{ event.description }}\n        {%- endif
+        %}\n        {%- if event.location is defined and event.location | trim !=
+        '' %}\n          Location: {{ event.location }}\n        {%- endif %}\n    {%-
+        endfor %}\n  {% else %}\n    - No upcoming events (Daten nicht verfügbar).\n
+        \ {% endif %}\n{%- endfor %}"
+  - repeat:
+      sequence:
+      - alias: Conversation Agent Notification Text
+        data:
+          text: '{{ calendar_prompt | string }}
+
+
+            {{ prompt }}'
+          agent_id: conversation.google_generative_ai
+        response_variable: agent_gemini
+        action: conversation.process
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      until:
+      - condition: template
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count == 0)\n   or repeat.index >= 10 }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count) > 0 }}"
+      sequence:
+      - variables:
+          fallback_text: "{%- for cal in calendars -%}\n  {%- set agenda = agendas[cal.entity]
+            if cal.entity in agendas else [] -%}\n  {%- if agenda | length > 0 -%}\n
+            \   {{ state_attr(cal.entity, 'friendly_name') or cal.entity.split('.')[-1]
+            }} events:\n    {%- for event in agenda -%}\n      - {{ event.summary
+            if event.summary is defined else 'Unbenannt' }} (Start: {% if event.start
+            is defined %}{{ event.start }} to {{ event.end if event.end is defined
+            else 'N/A' }}{% else %}All Day{% endif %}{%- if event.description is defined
+            and event.description | trim != '' %}, Desc: {{ event.description }}{%
+            endif %}{%- if event.location is defined and event.location | trim !=
+            '' %}, Loc: {{ event.location }}{% endif %})\n    {%- endfor -%}\n  {%-
+            endif -%}\n{%- endfor -%}"
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: '{{ title }}'
+          message: 'Heute konnte leider keine Nachricht generiert werden.
+
+            Events: {{ fallback_text }}
+
+            '
+    default:
+    - alias: Send notification
+      data:
+        title: '{{ title }}'
+        message: '{{ agent_gemini.response.speech.plain.speech }}'
+      action: notify.duncan
+  mode: single
