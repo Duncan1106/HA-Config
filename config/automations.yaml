@@ -1079,7 +1079,8 @@
               '
           action: notify.duncan
       alias: 'Go-eCharger '
-  - if:
+  - alias: Reset EV Messages Counter
+    if:
     - condition: trigger
       id:
       - Day End
@@ -1089,7 +1090,13 @@
       target:
         entity_id: counter.ev_charging_messages
       action: counter.reset
-    alias: Reset EV Messages Counter
+    - action: counter.reset
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - counter.db_purge_failure
+        - counter.db_purge_success
   - alias: Forecast tomorrow
     if:
     - condition: trigger
@@ -7973,7 +7980,7 @@
   - delay:
       hours: 0
       minutes: 0
-      seconds: 15
+      seconds: 10
       milliseconds: 0
   - action: number.set_value
     metadata: {}
@@ -7991,17 +7998,17 @@
   triggers:
   - trigger: time
     at: 00:00:00
-    id: 'Off'
-    enabled: false
+    id: Off_time
+    enabled: true
   - trigger: time
     at: 05:00:00
-    id: 'On'
-    enabled: false
+    id: On_time
+    enabled: true
   - trigger: state
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'off'
-    id: 'On'
+    id: On_dispatch
     for:
       hours: 0
       minutes: 0
@@ -8010,83 +8017,354 @@
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'on'
-    id: 'Off'
+    id: Off_dispatch
   conditions: []
   actions:
   - choose:
     - conditions:
       - condition: trigger
         id:
-        - 'Off'
+        - Off_time
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Dumb
       sequence:
-      - repeat:
+      - alias: Turn Battery Off
+        repeat:
           sequence:
           - action: switch.turn_off
-            metadata: {}
-            data: {}
             target:
               entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 10
-              milliseconds: 0
+            data: {}
+          - delay: 00:00:10
           until:
-          - condition: state
-            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            state: 'off'
-      - action: select.select_option
-        metadata: {}
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'off'
+      - alias: Start EV Charging
+        action: select.select_option
+        target:
+          entity_id: select.go_echarger_270862_frc
         data:
           option: Charge
-        target:
-          entity_id:
-          - select.go_echarger_270862_frc
-        enabled: false
-      alias: 'Turn off at midnight '
+      alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
         id:
-        - 'On'
+        - On_time
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Dumb
       sequence:
+      - action: input_select.select_option
+        metadata: {}
+        data:
+          option: Intelligent
+        target:
+          entity_id: input_select.octopus_night_time
       - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: select.go_echarger_270862_frc
+              state: Don't charge
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
+          - action: select.select_option
             target:
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              entity_id: select.go_echarger_270862_frc
+            data:
+              option: Don't charge
+            alias: Stop EV Charging
           - delay:
               hours: 0
               minutes: 0
-              seconds: 10
+              seconds: 5
               milliseconds: 0
-          until:
-          - condition: state
-            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            state: 'on'
-      - action: select.select_option
-        metadata: {}
-        data:
-          option: Don't charge
-        target:
+        alias: Stop EV Charging with Retrys
+      - wait_for_trigger:
+        - trigger: numeric_state
           entity_id:
-          - select.go_echarger_270862_frc
-        enabled: false
-      - delay:
+          - sensor.go_echarger_270862_nrg_12
+          below: 5
+        - trigger: numeric_state
+          entity_id:
+          - sensor.go_echarger_252682_nrg_12
+          below: 5
+        timeout:
           hours: 0
-          minutes: 0
-          seconds: 30
+          minutes: 1
+          seconds: 0
           milliseconds: 0
-        enabled: false
-      - action: automation.turn_off
-        metadata: {}
-        data:
-          stop_actions: true
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ wait.completed }}'
+        then:
+        - repeat:
+            sequence:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              data: {}
+            - delay: 00:00:10
+            until:
+            - condition: or
+              conditions:
+              - condition: template
+                value_template: '{{ repeat.index > 10 }}'
+              - condition: state
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                state: 'on'
+          alias: Turn Battery On
+        else:
+        - action: notify.duncan
+          data:
+            title: Octopus night recovery
+            message: 'Skipping battery ON: EV still >5 W (wait timed out). Will retry
+              in 1, 3, and 5 minutes.'
+            data:
+              tag: octopus_night_recovery
+        - alias: Retry Battery ON after timeout (1, 3, 5 min)
+          repeat:
+            sequence:
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 1 }}'
+                sequence:
+                - delay: 00:01:00
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 2 }}'
+                sequence:
+                - delay: 00:03:00
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 3 }}'
+                sequence:
+                - delay: 00:05:00
+              alias: 1, 3 or 5 Minute Delay between retries
+            - if:
+              - condition: or
+                conditions:
+                - condition: numeric_state
+                  entity_id: sensor.go_echarger_270862_nrg_12
+                  below: 5
+                - condition: numeric_state
+                  entity_id: sensor.go_echarger_252682_nrg_12
+                  below: 5
+              then:
+              - alias: Turn Battery On (retry)
+                repeat:
+                  sequence:
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                    data: {}
+                  - delay: 00:00:10
+                  until:
+                  - condition: or
+                    conditions:
+                    - condition: template
+                      value_template: '{{ repeat.index > 10 }}'
+                    - condition: state
+                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                      state: 'on'
+              else:
+              - action: notify.duncan
+                data:
+                  title: Octopus night recovery
+                  message: 'Retry {{ repeat.index }}: EV still >5 W; trying next slot
+                    (1/3/5 min).'
+                  data:
+                    tag: octopus_night_recovery
+              alias: Turn Batters on if no EV Power Draw, if not notify about it
+            until:
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                state: 'on'
+              - condition: template
+                value_template: '{{ repeat.index >= 3 }}'
+              alias: Either battery is on or we retried 3 or more times
+      alias: Stop EV Charging, Octopus Dumb Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - Off_dispatch
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Intelligent
+      sequence:
+      - alias: Turn Battery Off
+        repeat:
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            data: {}
+          - delay: 00:00:10
+          until:
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'off'
+      - alias: Start EV Charging
+        action: select.select_option
         target:
-          entity_id: automation.octopus_night_usage_turn_battery_off
-        enabled: false
-      alias: 'Turn on at 5 o''clock '
+          entity_id: select.go_echarger_270862_frc
+        data:
+          option: Charge
+      alias: Start EV Charging, Octopus Intelligent Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - On_dispatch
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Intelligent
+      sequence:
+      - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: select.go_echarger_270862_frc
+              state: Don't charge
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - action: select.select_option
+            target:
+              entity_id: select.go_echarger_270862_frc
+            data:
+              option: Don't charge
+            alias: Stop EV Charging
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+        alias: Stop EV Charging with Retrys
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.go_echarger_270862_nrg_12
+          below: 5
+        - trigger: numeric_state
+          entity_id:
+          - sensor.go_echarger_252682_nrg_12
+          below: 5
+        timeout:
+          hours: 0
+          minutes: 1
+          seconds: 0
+          milliseconds: 0
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ wait.completed }}'
+        then:
+        - repeat:
+            sequence:
+            - action: switch.turn_on
+              target:
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              data: {}
+            - delay: 00:00:10
+            until:
+            - condition: or
+              conditions:
+              - condition: template
+                value_template: '{{ repeat.index > 10 }}'
+              - condition: state
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                state: 'on'
+          alias: Turn Battery On
+        else:
+        - action: notify.duncan
+          data:
+            title: Octopus night recovery
+            message: 'Skipping battery ON: EV still >5 W (wait timed out). Will retry
+              in 1, 3, and 5 minutes.'
+            data:
+              tag: octopus_night_recovery
+        - alias: Retry Battery ON after timeout (1, 3, 5 min)
+          repeat:
+            sequence:
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 1 }}'
+                sequence:
+                - delay: 00:01:00
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 2 }}'
+                sequence:
+                - delay: 00:03:00
+              - conditions:
+                - condition: template
+                  value_template: '{{ repeat.index == 3 }}'
+                sequence:
+                - delay: 00:05:00
+              alias: 1, 3 or 5 Minute Delay between retries
+            - if:
+              - condition: or
+                conditions:
+                - condition: numeric_state
+                  entity_id: sensor.go_echarger_270862_nrg_12
+                  below: 5
+                - condition: numeric_state
+                  entity_id: sensor.go_echarger_252682_nrg_12
+                  below: 5
+              then:
+              - alias: Turn Battery On (retry)
+                repeat:
+                  sequence:
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                    data: {}
+                  - delay: 00:00:10
+                  until:
+                  - condition: or
+                    conditions:
+                    - condition: template
+                      value_template: '{{ repeat.index > 10 }}'
+                    - condition: state
+                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                      state: 'on'
+              else:
+              - action: notify.duncan
+                data:
+                  title: Octopus night recovery
+                  message: 'Retry {{ repeat.index }}: EV still >5 W; trying next slot
+                    (1/3/5 min).'
+                  data:
+                    tag: octopus_night_recovery
+              alias: Turn Batters on if no EV Power Draw, if not notify about it
+            until:
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                state: 'on'
+              - condition: template
+                value_template: '{{ repeat.index >= 3 }}'
+              alias: Either battery is on or we retried 3 or more times
+      alias: Stop EV Charging, Octopus Intelligent Mode
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
