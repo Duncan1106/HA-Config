@@ -7998,17 +7998,17 @@
   triggers:
   - trigger: time
     at: 00:00:00
-    id: 'Off'
+    id: Off_time
     enabled: true
   - trigger: time
     at: 05:00:00
-    id: 'On'
+    id: On_time
     enabled: true
   - trigger: state
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'off'
-    id: 'On'
+    id: On_dispatch
     for:
       hours: 0
       minutes: 0
@@ -8017,83 +8017,132 @@
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'on'
-    id: 'Off'
+    id: Off_dispatch
   conditions: []
   actions:
   - choose:
     - conditions:
       - condition: trigger
         id:
-        - 'Off'
+        - Off_time
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Dumb
       sequence:
-      - repeat:
+      - alias: Turn Battery Off
+        repeat:
           sequence:
           - action: switch.turn_off
-            metadata: {}
-            data: {}
             target:
               entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 10
-              milliseconds: 0
+            data: {}
+          - delay: 00:00:10
           until:
-          - condition: state
-            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'off'
       - action: select.select_option
-        metadata: {}
-        data:
-          option: Charge
         target:
-          entity_id:
-          - select.go_echarger_270862_frc
-        enabled: true
-      alias: 'Turn off at midnight '
+          entity_id: select.go_echarger_270862_frc
+        data:
+          option: Neutral
+        alias: Start EV Charging
+      alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
         id:
-        - 'On'
+        - On_time
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Dumb
       sequence:
       - repeat:
           sequence:
           - action: switch.turn_on
-            metadata: {}
-            data: {}
             target:
               entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 10
-              milliseconds: 0
+            data: {}
+          - delay: 00:00:10
           until:
-          - condition: state
-            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'on'
+        alias: Turn Battery On
       - action: select.select_option
-        metadata: {}
+        target:
+          entity_id: select.go_echarger_270862_frc
         data:
           option: Don't charge
+        alias: Stop EV Charging
+      alias: Stop EV Charging, Octopus Dumb Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - Off_dispatch
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Intelligent
+      sequence:
+      - alias: Turn Battery Off
+        repeat:
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            data: {}
+          - delay: 00:00:10
+          until:
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'off'
+      - action: select.select_option
         target:
-          entity_id:
-          - select.go_echarger_270862_frc
-        enabled: true
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
-          milliseconds: 0
-        enabled: false
-      - action: automation.turn_off
-        metadata: {}
+          entity_id: select.go_echarger_270862_frc
         data:
-          stop_actions: true
+          option: Neutral
+      alias: Start EV Charging, Octopus Intelligent Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - On_dispatch
+      - condition: state
+        entity_id: input_select.octopus_night_time
+        state: Intelligent
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            data: {}
+          - delay: 00:00:10
+          until:
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+            - condition: state
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              state: 'on'
+        alias: Turn Battery On
+      - action: select.select_option
         target:
-          entity_id: automation.octopus_night_usage_turn_battery_off
-        enabled: false
-      alias: 'Turn on at 5 o''clock '
+          entity_id: select.go_echarger_270862_frc
+        data:
+          option: Don't charge
+      alias: Stop EV Charging, Octopus Intelligent Mode
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
