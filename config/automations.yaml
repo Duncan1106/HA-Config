@@ -8068,7 +8068,8 @@
           option: Intelligent
         target:
           entity_id: input_select.octopus_night_time
-      - repeat:
+      - alias: Stop EV Charging with Retrys
+        repeat:
           until:
           - condition: or
             conditions:
@@ -8087,9 +8088,8 @@
           - delay:
               hours: 0
               minutes: 0
-              seconds: 5
-              milliseconds: 0
-        alias: Stop EV Charging with Retrys
+              seconds: 0
+              milliseconds: 500
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -8106,8 +8106,18 @@
           milliseconds: 0
         continue_on_timeout: true
       - if:
-        - condition: template
-          value_template: '{{ wait.completed }}'
+        - condition: or
+          conditions:
+          - condition: template
+            value_template: '{{ wait.completed }}'
+          - condition: and
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              below: 5
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_252682_nrg_12
+              below: 5
         then:
         - repeat:
             sequence:
@@ -8275,8 +8285,13 @@
           milliseconds: 0
         continue_on_timeout: true
       - if:
-        - condition: template
-          value_template: '{{ wait.completed }}'
+        - condition: or
+          conditions:
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            state: 'on'
         then:
         - repeat:
             sequence:
@@ -8966,6 +8981,10 @@
   triggers:
   - trigger: time
     at: '10:00:00'
+    id: 'On'
+  - trigger: sun
+    event: sunrise
+    offset: +01:30:00
     id: 'On'
   - trigger: numeric_state
     entity_id:
