@@ -8009,17 +8009,17 @@
   - trigger: state
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
-    to: 'off'
+    to: 'on'
     id: On_dispatch
+  - trigger: state
+    entity_id:
+    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
+    to: 'off'
+    id: Off_dispatch
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - trigger: state
-    entity_id:
-    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
-    to: 'on'
-    id: Off_dispatch
   conditions: []
   actions:
   - choose:
@@ -8209,12 +8209,12 @@
     - conditions:
       - condition: trigger
         id:
-        - Off_dispatch
+        - On_dispatch
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - alias: Turn Battery Off
+      - alias: Turn Battery Off with retries
         repeat:
           sequence:
           - action: switch.turn_off
@@ -8233,40 +8233,50 @@
       - alias: Start EV Charging
         action: select.select_option
         target:
-          entity_id: select.go_echarger_270862_frc
+          entity_id:
+          - select.go_echarger_270862_frc
+          - select.go_echarger_252682_frc
         data:
           option: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
         id:
-        - On_dispatch
+        - Off_dispatch
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - repeat:
+      - alias: Stop EV Charging with Retrys
+        repeat:
           until:
           - condition: or
             conditions:
-            - condition: state
-              entity_id: select.go_echarger_270862_frc
-              state: Don't charge
+            - condition: and
+              conditions:
+              - condition: state
+                entity_id: select.go_echarger_270862_frc
+                state: Don't charge
+              - condition: state
+                entity_id: select.go_echarger_252682_frc
+                state: Don't charge
+              alias: Both Charger don't allow Charging
             - condition: template
               value_template: '{{ repeat.index > 10 }}'
           sequence:
-          - action: select.select_option
+          - alias: Stop EV Charging
+            action: select.select_option
             target:
-              entity_id: select.go_echarger_270862_frc
+              entity_id:
+              - select.go_echarger_270862_frc
+              - select.go_echarger_252682_frc
             data:
               option: Don't charge
-            alias: Stop EV Charging
           - delay:
               hours: 0
               minutes: 0
               seconds: 5
               milliseconds: 0
-        alias: Stop EV Charging with Retrys
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -8282,20 +8292,18 @@
           seconds: 0
           milliseconds: 0
         continue_on_timeout: true
-      - if:
-        - condition: or
+        alias: Wait for power change below 5W
+      - alias: No EV charger draw -> battery ON | wait longer
+        if:
+        - condition: and
           conditions:
-          - condition: state
-            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            state: 'off'
-          - condition: and
-            conditions:
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_270862_nrg_12
-              below: 5
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_252682_nrg_12
-              below: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            below: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            below: 5
+          alias: No power draw from both chargers
         then:
         - repeat:
             sequence:
@@ -8341,8 +8349,9 @@
                 sequence:
                 - delay: 00:05:00
               alias: 1, 3 or 5 Minute Delay between retries
-            - if:
-              - condition: or
+            - alias: Turn Batters on if no EV Power Draw, if not notify about it
+              if:
+              - condition: and
                 conditions:
                 - condition: numeric_state
                   entity_id: sensor.go_echarger_270862_nrg_12
@@ -8375,7 +8384,6 @@
                     (1/3/5 min).'
                   data:
                     tag: octopus_night_recovery
-              alias: Turn Batters on if no EV Power Draw, if not notify about it
             until:
             - condition: or
               conditions:
