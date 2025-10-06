@@ -4510,13 +4510,13 @@
           entity_id:
           - automation.publish_to_mqtt_grid_export
           - automation.reload_tibber_local_if_unavailable
-          - sensor.kg_temperatur
-          - sensor.eg_temperatur
-          - sensor.og_temperatur
+          - automation.disable_prompt_tone_air_conditioner
           - automation.get_pulsetime
           - automation.save_pulsetime
           - automation.pool_pulsetime_auto_adjust
-          - automation.disable_prompt_tone_air_conditioner
+          - sensor.kg_temperatur
+          - sensor.eg_temperatur
+          - sensor.og_temperatur
           - binary_sensor.inverter_connection
           - sensor.auto_backup_last_success
           - sensor.auto_backup_last_failure
@@ -4672,6 +4672,8 @@
           - sensor.go_echarger_252682_cards_3
           - sensor.go_echarger_270862_cards_3
           - sensor.go_echarger_270862_cards_4
+          - sensor.yearly_go_e_11kw_energy
+          - sensor.yearly_go_e_22kw_energy
           - sensor.bad_thermostat_temperatur
           - sensor.kuche_thermostat_temperatur
           - sensor.duncan_thermostat_temperatur
@@ -6934,205 +6936,6 @@
             tag: home_arrival_enya
   mode: queued
   max: 3
-- id: '1744099492999'
-  alias: Daily Agenda
-  description: "## \U0001F4C5 Daily Agenda  \n\n### \U0001F4CB **Personalized Daily
-    Briefing**  \nThis automation generates a daily summary for a smartphone, combining
-    weather forecasts and calendar events, processed through an AI. The message is
-    concise, in German, and personalized per individual or event when applicable.
-    \ \n\n---\n\n### ⏰ **Triggers**  \n\n| Time | Event |\n|------|-------|\n| `08:00:00`
-    | Daily scheduled briefing |\n\n---\n\n### ✅ **Conditions**  \n- No additional
-    conditions; the automation runs daily at 08:00.  \n\n---\n\n### \U0001F3AF **Workflow
-    / Logic**  \n\n1. **Fetch Calendar Events**  \n   - Supports up to three calendars:
-    \ \n     - `calendar.looping`  \n     - `calendar.anniversaries`  \n     - `calendar.apps_by_abfall`
-    \ \n   - Each calendar fetches events for a **duration of ~16 hours**.  \n   -
-    If a calendar has no upcoming events, a placeholder message is used.  \n\n2. **Fetch
-    Weather Forecast**  \n   - Uses `weather.forecast_home` for hourly forecasts.
-    \ \n   - Includes condition, temperature, precipitation, UV index, and wind speed.
-    \ \n   - Optional: summarize overall day’s weather.  \n\n3. **Prepare AI Prompt**
-    \ \n   - Combines calendar events and weather data into a short, precise prompt.
-    \ \n   - Instructions to AI:  \n     - Provide concise messages only, without
-    Home Assistant internal details.  \n     - Highlight unusual or notable events
-    or weather.  \n     - Include recommendations if weather or temperature requires
-    action (e.g., coat, umbrella).  \n     - Format per individual if events concern
-    multiple people.  \n     - Output in **German**, in a precise, efficient style.
-    \ \n\n4. **AI Processing**  \n   - Uses `conversation.google_generative_ai` to
-    generate notification text.  \n   - Retries up to 10 times if the response contains
-    failure phrases like:  \n     - `\"Unable to get response\"`  \n     - `\"Sorry,
-    I had a problem getting a response from Google Generative AI.\"`  \n   - Small
-    5-second delay between retries.  \n\n5. **Send Notification**  \n   - On success:
-    sends AI-generated message to `notify.duncan`.  \n   - On repeated failure: sends
-    default fallback message indicating failure.  \n\n---\n\n### \U0001F527 **Technical
-    Specs**  \n- **Calendars Used:**  \n  - `calendar.looping`  \n  - `calendar.anniversaries`
-    \ \n  - `calendar.apps_by_abfall`  \n\n- **Weather Entity:** `weather.forecast_home`
-    \ \n- **AI Agent:** `conversation.google_generative_ai`  \n- **Target Notification:**
-    `notify.duncan`  \n- **Mode:** `single`  \n- **Retries:** Up to 10 attempts for
-    AI response  \n- **Delay Between Retries:** 5 seconds  \n\n---\n\n### ⚡ **Notes
-    / Best Practices**  \n- The prompt instructs the AI to avoid generic or trivial
-    information.  \n- Messages are tailored per individual if calendar events indicate
-    multiple people.  \n- Weather summary emphasizes unusual conditions or important
-    recommendations.  \n- The automation can be expanded to include more calendars
-    or different notification channels if desired."
-  triggers:
-  - at: 08:00:00
-    trigger: time
-  actions:
-  - variables:
-      weather_entity: weather.forecast_home
-      calendar_number: three
-      calendar_entity_1: calendar.looping
-      calendar_entity_2: calendar.anniversaries
-      calendar_entity_3: calendar.apps_by_abfall
-      calendar_duration:
-        hours: 15
-        minutes: 59
-        seconds: 0
-      prompt: "Please generate text for a notification that will be sent to the users
-        smartphone with helpful information. keep it simple and short but precise.
-        simply provide the notification and nothing else! don't use any Benachrichtigung
-        or something like that just the message! if you like you can format it to
-        make it more readable \n\n- Your answers are not technical, and do not include
-        Home Assistant internal details such as entities in responses.\n- Your messages
-        help the user prepare for their day\n  - use the event name to refer to single
-        persons, provide individual recommendations for each person and seperate them
-        if needed per person.\n  - Making note of unusual weather for the location
-        and time of year (but not mundane details like \"0% chance of precipitation\")
-        also make sure to only tell the condition and temperature and maybe what I
-        should bring when I go outside if the condition or temperature makes it needed.
-        don't tell me to got for a walk or something like that \n  - Anything that
-        may be special or unique, such as celebrating a birthday\nProvide your answer
-        in German and make it precise and efficient as a German would like it. Bitte
-        Duzen nicht Siezen"
-  - alias: Fetch First Calendar Agenda
-    data:
-      duration:
-        hours: 15
-        minutes: 59
-        seconds: 0
-    target:
-      entity_id: calendar.looping
-    response_variable: agenda_1
-    action: calendar.get_events
-  - if:
-    - condition: template
-      value_template: '{{ (calendar_number == ''two'') or (calendar_number == ''three'')
-        }}'
-    then:
-    - alias: Fetch Second Calendar Agenda
-      data:
-        duration:
-          hours: 15
-          minutes: 59
-          seconds: 0
-      target:
-        entity_id: calendar.anniversaries
-      response_variable: agenda_2
-      action: calendar.get_events
-  - if:
-    - condition: template
-      value_template: '{{ calendar_number == ''three''}}'
-    then:
-    - alias: Fetch Third Calendar Agenda
-      data:
-        duration:
-          hours: 15
-          minutes: 59
-          seconds: 0
-      target:
-        entity_id: calendar.apps_by_abfall
-      response_variable: agenda_3
-      action: calendar.get_events
-  - alias: Fetch Weather Forecast
-    data:
-      type: hourly
-    target:
-      entity_id:
-      - '{{ weather_entity }}'
-    response_variable: daily_forecast
-    action: weather.get_forecasts
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 0
-      milliseconds: 500
-  - variables:
-      forecast_entity: '{{ daily_forecast[weather_entity] }}'
-      forecast: '{{ forecast_entity.forecast[0] }}'
-      calendar_prompt: "\nTime: {{ now().strftime(\"%A %B %d %H:%M %p\") }}  {%- if
-        weather_entity is defined %}         \n  {%- set temperature_unit = state_attr(weather_entity,
-        'temperature_unit') -%} \n  Current Weather : {{ forecast.condition }} (Temperature:
-        {{forecast.temperature }}{{ temperature_unit }}, {{ forecast.precipitation
-        }}% precipitation, UV Index {{forecast.uv_index}}, Wind Speed {{forecast.wind_speed}},
-        Temp Low {{forecast.templow}})\n  Todays Overall Weather: {{ states('sensor.irauen33_weather_summary_0')
-        }} \n{%- endif %} Calendar \"{{ state_attr(calendar_entity_1, 'friendly_name')
-        }}\" events for the next {{ calendar_duration.hours }} hours: {%- set agenda
-        = (agenda_1 | items | first)[1] %} {%- if agenda.events %}\n  {%- for event
-        in agenda.events %}\n  - Summary: {{ event.summary }}\n    Start-End: {% if
-        event.start is defined %}{{ event.start }} to {{ event.end }}{% else %}All
-        Day{% endif %}\n    {%- if event.description is defined %}\n    Description:
-        {{ event.description }}\n    {% endif -%}\n    {%- if event.location is defined
-        %}\n      Location: {{ event.location }}\n    {% endif -%}\n  {%- endfor %}\n{%-
-        else %}\n  - No upcoming events.\n{%- endif %}\n{%- if (calendar_number ==
-        \"two\") or (calendar_number == \"three\") %} Calendar \"{{ state_attr(calendar_entity_2,
-        'friendly_name') }}\" events for the next {{ calendar_duration.hours }} hours:\n
-        \ {%- set agenda = (agenda_2 | items | first)[1] %}\n  {%- if agenda.events
-        %}\n    {%- for event in agenda.events %}\n    - Summary: {{ event.summary
-        }}\n      Start-End: {% if event.start is defined %}{{ event.start }} to {{
-        event.end }}{% else %}All Day{% endif %}\n      {%- if event.description is
-        defined %}\n      Description: {{ event.description }}\n      {% endif -%}\n
-        \     {%- if event.location is defined %}\n        Location: {{ event.location
-        }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n    - No upcoming
-        events.\n  {%- endif %}\n{%- endif %}\n{%- if (calendar_number == \"three\")
-        %} Calendar \"{{ state_attr(calendar_entity_3, 'friendly_name') }}\" events
-        for the next {{ calendar_duration.hours }} hours:\n  {%- set agenda = (agenda_3
-        | items | first)[1] %}\n  {%- if agenda.events %}\n    {%- for event in agenda.events
-        %}\n    - Summary: {{ event.summary }}\n      Start-End: {% if event.start
-        is defined %}{{ event.start }} to {{ event.end }}{% else %}All Day{% endif
-        %}\n      {%- if event.description is defined %}\n      Description: {{ event.description
-        }}\n      {% endif -%}\n      {%- if event.location is defined %}\n        Location:
-        {{ event.location }}\n      {% endif -%}\n    {%- endfor %}\n  {%- else %}\n
-        \   - No upcoming events.\n  {%- endif %}\n{%- endif %}"
-  - repeat:
-      sequence:
-      - alias: Conversation Agent Notification Text
-        data:
-          text: '{{ calendar_prompt }}
-
-
-            {{ prompt }}'
-          agent_id: conversation.google_generative_ai
-        response_variable: agent_gemini
-        action: conversation.process
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 5
-          milliseconds: 0
-      until:
-      - condition: template
-        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count == 0)\n   or repeat.index >= 10 }}"
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count) > 0 }}"
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          title: '{{ now().strftime(''%A'') }} Agenda und Wetter'
-          message: Heute konnte leider keine Nachricht generiert werden.
-    default:
-    - alias: Send notification
-      data:
-        title: '{{ now().strftime(''%A'') }} Agenda'
-        message: '{{ agent_gemini.response.speech.plain.speech }}'
-      action: notify.duncan
 - id: '1744915571531'
   alias: Kinderbad Restore
   description: ''
@@ -7935,27 +7738,22 @@
     adjustments around the true SOC reported by the BMS, keeping values closer to
     reality.  \n\n---\n\n### ⏰ **Triggers**  \n| Condition | Entity/Event | Threshold
     |\n|-----------|--------------|-----------|\n| **Daily Reset** | `sunset` | Exact
-    time |\n| **Midnight Reset** | `00:00:00` | Exact time |\n| **Capacity Update**
-    | `sensor.inverter_battery_corrected_capacity` | Any change |\n| **SOC Full**
-    | `sensor.felicity_ess_soc_avg` | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**
-    \ \n- `sensor.inverter_battery_corrected_capacity` > `number.inverter_battery_capacity`
-    \ \n- `sensor.felicity_ess_soc_avg` > **99%**  \n\n---\n\n### \U0001F3AF **Correction
-    Logic**  \n\n#### **Step 1**  \n- Increase inverter’s capacity value by **+1**
-    \ \n\n#### **Step 2**  \n- Wait **15s**  \n\n#### **Step 3**  \n- Decrease inverter’s
-    capacity value by **-1**  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Target
-    Number Entity:** `number.inverter_battery_capacity`  \n- **Sensors Used:**  \n
-    \ - `sensor.inverter_battery_corrected_capacity`  \n  - `sensor.felicity_ess_soc_avg`
-    \ \n- **Mode:** `single` (no overlap)  \n- **Adjustment Logic:** ±1 step correction
-    with short delay"
+    time |\n| **Midnight Reset** | `00:00:00` | Exact time |\n| **SOC Full** | `sensor.felicity_ess_soc_avg`
+    | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
+    > `number.inverter_battery_capacity`  \n- `sensor.felicity_ess_soc_avg` > **99%**
+    \ \n\n---\n\n### \U0001F3AF **Correction Logic**  \n\n#### **Step 1**  \n- Increase
+    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **15s**  \n\n####
+    **Step 3**  \n- Decrease inverter’s capacity value by **-1**  \n\n---\n\n### \U0001F527
+    **Technical Specs**  \n- **Target Number Entity:** `number.inverter_battery_capacity`
+    \ \n- **Sensors Used:**  \n  - `sensor.inverter_battery_corrected_capacity`  \n
+    \ - `sensor.felicity_ess_soc_avg`  \n- **Mode:** `single` (no overlap)  \n- **Adjustment
+    Logic:** ±1 step correction with short delay"
   triggers:
   - trigger: sun
     event: sunset
     offset: 0
   - trigger: time
     at: 00:00:00
-  - trigger: state
-    entity_id:
-    - sensor.inverter_battery_corrected_capacity
   - trigger: numeric_state
     entity_id:
     - sensor.felicity_ess_soc_avg
@@ -8007,17 +7805,17 @@
   - trigger: state
     entity_id:
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
-    to: 'off'
+    to: 'on'
     id: On_dispatch
+  - trigger: state
+    entity_id:
+    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
+    to: 'off'
+    id: Off_dispatch
     for:
       hours: 0
       minutes: 0
       seconds: 30
-  - trigger: state
-    entity_id:
-    - binary_sensor.octopus_a_10a76963_intelligent_dispatching
-    to: 'on'
-    id: Off_dispatch
   conditions: []
   actions:
   - choose:
@@ -8066,7 +7864,8 @@
           option: Intelligent
         target:
           entity_id: input_select.octopus_night_time
-      - repeat:
+      - alias: Stop EV Charging with Retrys
+        repeat:
           until:
           - condition: or
             conditions:
@@ -8085,9 +7884,8 @@
           - delay:
               hours: 0
               minutes: 0
-              seconds: 5
-              milliseconds: 0
-        alias: Stop EV Charging with Retrys
+              seconds: 0
+              milliseconds: 500
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -8104,8 +7902,16 @@
           milliseconds: 0
         continue_on_timeout: true
       - if:
-        - condition: template
-          value_template: '{{ wait.completed }}'
+        - condition: and
+          conditions:
+          - condition: template
+            value_template: '{{ wait.completed }}'
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            below: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            below: 5
         then:
         - repeat:
             sequence:
@@ -8152,7 +7958,7 @@
                 - delay: 00:05:00
               alias: 1, 3 or 5 Minute Delay between retries
             - if:
-              - condition: or
+              - condition: and
                 conditions:
                 - condition: numeric_state
                   entity_id: sensor.go_echarger_270862_nrg_12
@@ -8199,12 +8005,12 @@
     - conditions:
       - condition: trigger
         id:
-        - Off_dispatch
+        - On_dispatch
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - alias: Turn Battery Off
+      - alias: Turn Battery Off with retries
         repeat:
           sequence:
           - action: switch.turn_off
@@ -8223,40 +8029,50 @@
       - alias: Start EV Charging
         action: select.select_option
         target:
-          entity_id: select.go_echarger_270862_frc
+          entity_id:
+          - select.go_echarger_270862_frc
+          - select.go_echarger_252682_frc
         data:
           option: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
         id:
-        - On_dispatch
+        - Off_dispatch
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - repeat:
+      - alias: Stop EV Charging with Retrys
+        repeat:
           until:
           - condition: or
             conditions:
-            - condition: state
-              entity_id: select.go_echarger_270862_frc
-              state: Don't charge
+            - condition: and
+              conditions:
+              - condition: state
+                entity_id: select.go_echarger_270862_frc
+                state: Don't charge
+              - condition: state
+                entity_id: select.go_echarger_252682_frc
+                state: Don't charge
+              alias: Both Charger don't allow Charging
             - condition: template
               value_template: '{{ repeat.index > 10 }}'
           sequence:
-          - action: select.select_option
+          - alias: Stop EV Charging
+            action: select.select_option
             target:
-              entity_id: select.go_echarger_270862_frc
+              entity_id:
+              - select.go_echarger_270862_frc
+              - select.go_echarger_252682_frc
             data:
               option: Don't charge
-            alias: Stop EV Charging
           - delay:
               hours: 0
               minutes: 0
               seconds: 5
               milliseconds: 0
-        alias: Stop EV Charging with Retrys
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -8272,9 +8088,18 @@
           seconds: 0
           milliseconds: 0
         continue_on_timeout: true
-      - if:
-        - condition: template
-          value_template: '{{ wait.completed }}'
+        alias: Wait for power change below 5W
+      - alias: No EV charger draw -> battery ON | wait longer
+        if:
+        - condition: and
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            below: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            below: 5
+          alias: No power draw from both chargers
         then:
         - repeat:
             sequence:
@@ -8320,8 +8145,9 @@
                 sequence:
                 - delay: 00:05:00
               alias: 1, 3 or 5 Minute Delay between retries
-            - if:
-              - condition: or
+            - alias: Turn Batters on if no EV Power Draw, if not notify about it
+              if:
+              - condition: and
                 conditions:
                 - condition: numeric_state
                   entity_id: sensor.go_echarger_270862_nrg_12
@@ -8354,7 +8180,6 @@
                     (1/3/5 min).'
                   data:
                     tag: octopus_night_recovery
-              alias: Turn Batters on if no EV Power Draw, if not notify about it
             until:
             - condition: or
               conditions:
@@ -8964,6 +8789,10 @@
   triggers:
   - trigger: time
     at: '10:00:00'
+    id: 'On'
+  - trigger: sun
+    event: sunrise
+    offset: +01:30:00
     id: 'On'
   - trigger: numeric_state
     entity_id:
