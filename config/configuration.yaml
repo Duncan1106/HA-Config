@@ -1190,8 +1190,8 @@ sensor:
       User-Agent: Home Assistant REST sensor
 
 multiscrape:
-  - name: TIbber Pulse Metrics
-    resource: !secret tibber_bridge_url
+  - name: Tibber Pulse Metrics
+    resource: !secret tibber_pulse_url
     method: GET
     scan_interval: 900
     headers:
@@ -1201,22 +1201,49 @@ multiscrape:
       - name: 'Refresh Tibber Node'
         unique_id: refresh_tibber_node
     sensor:
-       - unique_id: tibber_pulse metrics
+       - unique_id: tibber_pulse_metrics
          name: Tibber Pulse Metrics
          state_class: measurement
          device_class: voltage
          unit_of_measurement: V
          value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
          attributes:
+           - name: payload
+             value_template: "{{ value_json }}"
            - name: Uptime ms
              value_template: "{{ value_json.node_status.node_uptime_ms | float(0) }}"
            - name: RSSI
              value_template: "{{ value_json.node_status.node_avg_rssi | float(0) }}"
+           - name: LQI
+             value_template: "{{ value_json.node_status.node_avg_lqi | float(0) }}"
            - name: Temperature
              value_template: "{{ value_json.node_status.node_temperature | float(0) }}"
            - name: Uptime
              value_template: >
                 {% set uptime = value_json.node_status.node_uptime_ms | float(0) / 1000 %}
+                {% set boot_time = now() - timedelta(seconds=uptime) %}
+                {{ boot_time | time_since(2) }}
+
+  - name: Tibber Bridge Metrics
+    resource: !secret tibber_bridge_url
+    method: GET
+    scan_interval: 900
+    headers:
+      Content-Type: application/json
+      User-Agent: REST
+    button:
+      - name: 'Refresh Tibber Bridge'
+        unique_id: refresh_tibber_bridge
+    binary_sensor:
+       - unique_id: tibber_bridge_metrics
+         name: Tibber Bridge Metrics
+         value_template: "{{ value_json.pairing_status }}"
+         attributes:
+           - name: payload
+             value_template: "{{ value_json }}"
+           - name: Uptime
+             value_template: >
+                {% set uptime = value_json.up_time | float(0) / 1000 %}
                 {% set boot_time = now() - timedelta(seconds=uptime) %}
                 {{ boot_time | time_since(2) }}
 
