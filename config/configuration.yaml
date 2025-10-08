@@ -1209,7 +1209,7 @@ multiscrape:
          value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
          attributes:
            - name: payload
-             value_template: "{{ value_json }}"
+             value_template: "{{ value_json | to_json }}"
            - name: Uptime ms
              value_template: "{{ value_json.node_status.node_uptime_ms | float(0) }}"
            - name: RSSI
@@ -1238,7 +1238,7 @@ multiscrape:
        - unique_id: tibber_bridge_hours_up
          name: Tibber Bridge Hours Up
          value_template: >
-            {% set uptime_seconds = value_json.up_time | float(0) * 0.02 %}
+            {% set uptime_seconds = value_json.up_time | float(0) * 0.01 %}
             {% set uptime_hours = uptime_seconds / 3600 %}
             {{ uptime_hours | round(2) }}
          state_class: total
@@ -1247,13 +1247,15 @@ multiscrape:
     binary_sensor:
        - unique_id: tibber_bridge_metrics
          name: Tibber Bridge Metrics
-         value_template: "{{ value_json.pairing_status }}"
+         value_template: >
+           {% set status = value_json.pairing_status | lower %}
+           {{ true if status in ['paired', 'online', 'true', '1'] else false }}
          attributes:
            - name: payload
-             value_template: "{{ value_json }}"
+             value_template: "{{ value_json | to_json}}"
            - name: Uptime
              value_template: >
-                {% set uptime = value_json.up_time | float(0) * 0.02 %}
+                {% set uptime = value_json.up_time | float(0) * 0.01 %}
                 {% set boot_time = now() - timedelta(seconds=uptime) %}
                 {{ boot_time | time_since(2) }}
 
