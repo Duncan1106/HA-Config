@@ -9515,3 +9515,104 @@
         message: '{{ agent_gemini.response.speech.plain.speech }}'
       action: notify.duncan
   mode: single
+- id: '1759922754025'
+  alias: DB Purge Entities under 14 days (by labels)
+  description: 'Purge historical data per entity label: retention_1d, retention_2d,
+    retention_3d, retention_7d.
+
+    '
+  triggers:
+  - at: 01:00:00
+    id: 1d
+    trigger: time
+  - at: '13:00:00'
+    id: 1d
+    trigger: time
+  - at: 02:30:00
+    id: 2d
+    trigger: time
+  - at: '14:30:00'
+    id: 2d
+    trigger: time
+  - at: 04:00:00
+    id: 3d
+    trigger: time
+  - at: '16:00:00'
+    id: 3d
+    trigger: time
+  - at: 05:30:00
+    id: 7d
+    trigger: time
+  - at: '17:30:00'
+    id: 7d
+    trigger: time
+  actions:
+  - variables:
+      bucket_1d: '{{ label_entities(''retention_1d'') | list }}'
+      bucket_2d: '{{ label_entities(''retention_2d'') | list }}'
+      bucket_3d: '{{ label_entities(''retention_3d'') | list }}'
+      bucket_7d: '{{ label_entities(''retention_7d'') | list }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''1d'' and bucket_1d | length > 0 }}'
+      sequence:
+      - parallel:
+        - data:
+            threshold_offset: 10000
+            timeout_minutes: 30
+            block_id: 1d
+          action: script.save_counts_and_notify_purge_status
+        - data:
+            entity_id: '{{ bucket_1d }}'
+            keep_days: 1
+          action: recorder.purge_entities
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''2d'' and bucket_2d | length > 0 }}'
+      sequence:
+      - parallel:
+        - data:
+            threshold_offset: 40000
+            timeout_minutes: 30
+            block_id: 2d
+          action: script.save_counts_and_notify_purge_status
+        - data:
+            entity_id: '{{ bucket_2d }}'
+            keep_days: 2
+          action: recorder.purge_entities
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''3d'' and bucket_3d | length > 0 }}'
+      sequence:
+      - parallel:
+        - data:
+            threshold_offset: 75000
+            timeout_minutes: 30
+            block_id: 3d
+          action: script.save_counts_and_notify_purge_status
+        - data:
+            entity_id: '{{ bucket_3d }}'
+            keep_days: 3
+          action: recorder.purge_entities
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''7d'' and bucket_7d | length > 0 }}'
+      sequence:
+      - parallel:
+        - data:
+            threshold_offset: 20000
+            timeout_minutes: 30
+            block_id: 7d
+          action: script.save_counts_and_notify_purge_status
+        - data:
+            entity_id: '{{ bucket_7d }}'
+            keep_days: 7
+          action: recorder.purge_entities
+    default:
+    - data:
+        title: Purge DB
+        message: No entities in bucket for trigger {{ trigger.id }} or empty list.
+      action: persistent_notification.create
+  mode: queued
+  max: 10
