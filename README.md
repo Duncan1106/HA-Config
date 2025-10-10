@@ -1,7 +1,8 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Duncan1106/HA-Config)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 [![stars - HA-Config](https://img.shields.io/github/stars/Duncan1106/HA-Config?style=social)](https://github.com/Duncan1106/HA-Config)
-[![forks - HA-Config](https://img.shields.io/github/forks/Duncan1106/HA-Config?style=social)](https://github.com/Duncan1106/HA-Config)![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Duncan1106/HA-Config)![GitHub commits since latest release](https://img.shields.io/github/commits-since/Duncan1106/HA-Config/latest) ![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/Duncan1106/HA-Config)
+[![forks - HA-Config](https://img.shields.io/github/forks/Duncan1106/HA-Config?style=social)](https://github.com/Duncan1106/HA-Config)![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/Duncan1106/HA-Config)![GitHub commits since latest release](https://img.shields.io/github/commits-since/Duncan1106/HA-Config/latest) ![CodeFactor Grade](https://img.shields.io/codefactor/grade/github/Duncan1106/HA-Config)![GitHub language count](https://img.shields.io/github/languages/count/Duncan1106/HA-Config)
+
 
 
 
