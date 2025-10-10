@@ -1,6 +1,8 @@
 # Loads default set of integrations. Do not remove.
 default_config:
 
+usage_prediction:
+
 recorder:
   purge_keep_days: 10
   commit_interval: 10
@@ -107,7 +109,7 @@ recorder:
       - sensor.cudy_router_betriebszeit
     entity_globs:
       - sensor.dreamebot_d10_plus_*
-      - sensor.d9_max_white_*
+      - sensor.d9_max_gen_2_*
       - sensor.dwd_weather_warnings_*
       - sensor.192_168_2_205_*
       - sensor.*_rssi
@@ -171,15 +173,6 @@ shell_command:
   delete_old_backups_disk: "find /share/USBMEDIABACKUP_Share/Backup/ -name 'DailyBackup*' -type f -mtime +7 -delete"
   delete_old_weekly_backups_disk: "find /share/USBMEDIABACKUP_Share/Backup/ -name 'WeeklyBackup*.tar' -type f -mtime +60 -delete"
   delete_old_monthly_backups_disk: "find /share/USBMEDIABACKUP_Share/Backup/ -name 'MonthlyBackup*.tar' -type f -mtime +180 -delete"
-  nas_shutdown: "ssh -i /config/.ssh/id_ed25519 -o StrictHostKeyChecking=no local_admin@192.168.2.2 'sudo shutdown now'"
-
-switch:
-  - platform: wake_on_lan
-    name: "Ugreen NAS WoL"
-    mac: 6c:1f:f7:76:59:4d
-    host: 192.168.2.2
-    turn_off:
-      action: shell_command.nas_shutdown
 
 notify:
   - platform: group
@@ -949,7 +942,7 @@ template:
             
             {{ beta_scrape.beta_notes_content }}
             
-          agent_id: conversation.deepseek_deepseek_v3_1_free
+          agent_id: conversation.z_ai_glm_4_5_air_free
     
     sensor:
       - unique_id: home_assistant_beta_release_notes
@@ -1188,8 +1181,8 @@ sensor:
       User-Agent: Home Assistant REST sensor
 
 multiscrape:
-  - name: TIbber Pulse Metrics
-    resource: !secret tibber_bridge_url
+  - name: Tibber Pulse Metrics
+    resource: !secret tibber_pulse_url
     method: GET
     scan_interval: 900
     headers:
@@ -1199,22 +1192,51 @@ multiscrape:
       - name: 'Refresh Tibber Node'
         unique_id: refresh_tibber_node
     sensor:
-       - unique_id: tibber_pulse metrics
+       - unique_id: tibber_pulse_metrics
          name: Tibber Pulse Metrics
          state_class: measurement
          device_class: voltage
          unit_of_measurement: V
          value_template: "{{ value_json.node_status.node_battery_voltage | float(0) }}"
          attributes:
+           - name: payload
+             value_template: "{{ value_json | to_json(pretty_print=true) }}"
            - name: Uptime ms
              value_template: "{{ value_json.node_status.node_uptime_ms | float(0) }}"
            - name: RSSI
              value_template: "{{ value_json.node_status.node_avg_rssi | float(0) }}"
+           - name: LQI
+             value_template: "{{ value_json.node_status.node_avg_lqi | float(0) }}"
            - name: Temperature
              value_template: "{{ value_json.node_status.node_temperature | float(0) }}"
            - name: Uptime
              value_template: >
                 {% set uptime = value_json.node_status.node_uptime_ms | float(0) / 1000 %}
+                {% set boot_time = now() - timedelta(seconds=uptime) %}
+                {{ boot_time | time_since(2) }}
+
+  - name: Tibber Bridge Metrics
+    resource: !secret tibber_bridge_url
+    method: GET
+    scan_interval: 900
+    headers:
+      Content-Type: application/json
+      User-Agent: REST
+    button:
+      - name: 'Refresh Tibber Bridge'
+        unique_id: refresh_tibber_bridge
+    binary_sensor:
+       - unique_id: tibber_bridge_metrics
+         name: Tibber Bridge Metrics
+         value_template: >
+           {% set status = value_json.pairing_status | lower %}
+           {{ true if status in ['paired', 'online', 'true', '1'] else false }}
+         attributes:
+           - name: payload
+             value_template: "{{ value_json | to_json(pretty_print=true) }}"
+           - name: Uptime
+             value_template: >
+                {% set uptime = value_json.up_time | float(0) * 0.01 %}
                 {% set boot_time = now() - timedelta(seconds=uptime) %}
                 {{ boot_time | time_since(2) }}
 
