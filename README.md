@@ -1,4 +1,4 @@
-[![GitHub release](https://img.shields.io/github/release/Duncan1106/HA-Config?include_prereleases=&sort=semver&color=blue)](https://github.com/Duncan1106/HA-Config/releases/)
+![GitHub Release](https://img.shields.io/github/v/release/Duncan1106/HA-Config)
 [![License](https://img.shields.io/badge/License-MIT-blue)](#license)
 [![stars - HA-Config](https://img.shields.io/github/stars/Duncan1106/HA-Config?style=social)](https://github.com/Duncan1106/HA-Config)
 [![forks - HA-Config](https://img.shields.io/github/forks/Duncan1106/HA-Config?style=social)](https://github.com/Duncan1106/HA-Config)
