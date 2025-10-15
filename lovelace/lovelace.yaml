@@ -2198,19 +2198,31 @@ config:
         condition: numeric_state
         entity: sensor.daily_mg4_charged_energy
     - entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
-      name: O I D
+      name: Octopus
       show_icon: false
       show_name: true
       show_state: true
       type: entity
-    - content: '{{ as_timestamp(state_attr(''binary_sensor.octopus_a_10a76963_intelligent_dispatching'',''planned_dispatches'')[0].start_time)
-        | timestamp_custom(''%H:%M'') }} - {{ as_timestamp(state_attr(''binary_sensor.octopus_a_10a76963_intelligent_dispatching'',''planned_dispatches'')[0].end_time)
-        | timestamp_custom(''%H:%M'') }}'
-      entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+      visibility:
+      - condition: state
+        entity: input_select.octopus_night_time
+        state: Intelligent
+    - content: "{% set d = state_attr('binary_sensor.octopus_a_10a76963_intelligent_dispatching','planned_dispatches')\
+        \ %} {% if d and (d | count) > 0 %}\n  {{ as_timestamp(d[0]['start_time'])\
+        \ | timestamp_custom('%H:%M') }} - {{ as_timestamp(d[0]['end_time']) | timestamp_custom('%H:%M')\
+        \ }}\n{% else %}\n  --\n{% endif %}"
+      entity: input_select.octopus_night_time
       label: Next Dispatch
       tap_action:
         action: more-info
       type: custom:mushroom-template-badge
+      visibility:
+      - condition: state
+        entity: sensor.octopus_a_10a76963_device_status
+        state: SMART_CONTROL_IN_PROGRESS
+      - condition: state
+        entity: input_select.octopus_night_time
+        state: Intelligent
     cards: []
     dense_section_placement: false
     icon: mdi:ev-plug-type2
