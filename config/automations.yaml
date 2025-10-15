@@ -8596,17 +8596,23 @@
         after: 03:59:00
         before: '22:59:00'
       sequence:
-      - if:
+      - alias: Wait for entitys to become available after HA Start
+        if:
         - condition: trigger
           id:
           - Start
         then:
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 10
-            milliseconds: 0
-        alias: Wait for entitys to become available after HA Start
+        - wait_for_trigger:
+          - trigger: template
+            value_template: "{{ states('switch.garagentor_tasmota') not in ['unknown','unavailable']\n
+              \          and states('switch.sauger_tasmota') not in ['unknown','unavailable']\n
+              \          and states('switch.backofen_tasmota') not in ['unknown','unavailable']
+              }}"
+            for:
+              hours: 0
+              minutes: 1
+              seconds: 0
+          continue_on_timeout: true
       - repeat:
           until:
           - condition: or
