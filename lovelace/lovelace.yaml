@@ -2197,6 +2197,32 @@ config:
       - above: 0
         condition: numeric_state
         entity: sensor.daily_mg4_charged_energy
+    - entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+      name: Octopus
+      show_icon: false
+      show_name: true
+      show_state: true
+      type: entity
+      visibility:
+      - condition: state
+        entity: input_select.octopus_night_time
+        state: Intelligent
+    - content: "{% set d = state_attr('binary_sensor.octopus_a_10a76963_intelligent_dispatching','planned_dispatches')\
+        \ %} {% if d and (d | count) > 0 %}\n  {{ as_timestamp(d[0]['start_time'])\
+        \ | timestamp_custom('%H:%M') }} - {{ as_timestamp(d[0]['end_time']) | timestamp_custom('%H:%M')\
+        \ }}\n{% else %}\n  --\n{% endif %}"
+      entity: input_select.octopus_night_time
+      label: Next Dispatch
+      tap_action:
+        action: more-info
+      type: custom:mushroom-template-badge
+      visibility:
+      - condition: state
+        entity: sensor.octopus_a_10a76963_device_status
+        state: SMART_CONTROL_IN_PROGRESS
+      - condition: state
+        entity: input_select.octopus_night_time
+        state: Intelligent
     cards: []
     dense_section_placement: false
     icon: mdi:ev-plug-type2
@@ -6192,21 +6218,6 @@ config:
           type: custom:mushroom-entity-card
         type: horizontal-stack
       - entities:
-        - entity: sensor.bkw_outlet_1_energy_today
-          name: Energy Today
-          secondary_info: last-changed
-        - entity: sensor.bkw_outlet_1_energy_yesterday
-          name: 'Energy Yesterday '
-          secondary_info: last-changed
-        - entity: sensor.bkw_outlet_1_energy_total
-          name: Lifetime energy output
-          secondary_info: last-changed
-        - entity: sensor.today_money_generated_bkw
-          name: Money today
-          secondary_info: last-changed
-        - entity: sensor.total_money_generated_bkw
-          name: Money lifetime
-          secondary_info: last-changed
         - entity: input_boolean.battery_full
           secondary_info: last-changed
         - entity: binary_sensor.bkw_is_discharging

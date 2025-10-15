@@ -4637,7 +4637,8 @@
   conditions: []
   actions:
   - action: button.press
-    data:
+    data: {}
+    target:
       entity_id: button.esp32_s3_zero_deye8k_restart
   mode: single
 - id: '1736282318739'
@@ -7265,10 +7266,6 @@
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'off'
     id: Off_dispatch
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
   conditions: []
   actions:
   - choose:
@@ -7484,7 +7481,6 @@
         target:
           entity_id:
           - select.go_echarger_270862_frc
-          - select.go_echarger_252682_frc
         data:
           option: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
@@ -7518,7 +7514,6 @@
             target:
               entity_id:
               - select.go_echarger_270862_frc
-              - select.go_echarger_252682_frc
             data:
               option: Don't charge
           - delay:
@@ -8513,6 +8508,9 @@
   - trigger: time
     at: 04:00:00
     id: '4'
+  - trigger: homeassistant
+    event: start
+    id: Start
   conditions: []
   actions:
   - choose:
@@ -8526,9 +8524,13 @@
       sequence:
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.garagentor_tasmota
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.garagentor_tasmota
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_off
             metadata: {}
@@ -8542,9 +8544,13 @@
               milliseconds: 0
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.sauger_tasmota
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.sauger_tasmota
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_off
             metadata: {}
@@ -8558,9 +8564,13 @@
               milliseconds: 0
       - repeat:
           until:
-          - condition: state
-            state: 'off'
-            entity_id: switch.backofen_tasmota
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.backofen_tasmota
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_off
             metadata: {}
@@ -8581,12 +8591,37 @@
       - condition: trigger
         id:
         - '4'
+        - Start
+      - condition: time
+        after: 03:59:00
+        before: '22:59:00'
       sequence:
+      - alias: Wait for entitys to become available after HA Start
+        if:
+        - condition: trigger
+          id:
+          - Start
+        then:
+        - wait_for_trigger:
+          - trigger: template
+            value_template: "        {% set entities = expand(\n          'switch.garagentor_tasmota',\n
+              \         'switch.sauger_tasmota',\n          'switch.backofen_tasmota'\n
+              \       ) %}\n        {{ (entities | selectattr('state','in',['on','off'])
+              | list | length) == (entities | length) }}"
+            for:
+              hours: 0
+              minutes: 1
+              seconds: 0
+          continue_on_timeout: true
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.garagentor_tasmota
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.garagentor_tasmota
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_on
             metadata: {}
@@ -8600,9 +8635,13 @@
               milliseconds: 0
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.sauger_tasmota
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.sauger_tasmota
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_on
             metadata: {}
@@ -8617,9 +8656,13 @@
               milliseconds: 0
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.backofen_tasmota
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.backofen_tasmota
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_on
             metadata: {}
