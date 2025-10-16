@@ -8694,8 +8694,34 @@
   mode: single
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
-  description: Automatically turns the fan on or off based on another fans power consumption—switches
-    on after 0.1 W and off after 0.01 W with a 1‑minute delay, saving energy.
+  description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
+    automation manages the heating room (Heizraum) fan based on the power consumption
+    of another fan. It ensures the fan only runs when necessary, helping save energy
+    by avoiding unnecessary operation.  \n\n---\n\n### ⏰ **Triggers**\n\n| Trigger
+    Entity | Condition | Delay | Trigger ID |\n|----------------|-----------|-------|------------|\n|
+    `sensor.heizraum_lufter_abluft_power` | Above 0.1 W | 1 minute | \"On\" |\n| `sensor.heizraum_lufter_abluft_power`
+    | Below 0.01 W | 1 minute | \"Off\" |\n\n> **Note:** Triggers include a 1-minute
+    delay (`for: 1m`) to prevent flickering or rapid on/off cycling.  \n\n---\n\n###
+    ✅ **Conditions**\n\n- None. The automation reacts directly to the numeric state
+    triggers.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **Fan On Trigger
+    (\"On\")**  \n   - Checks if the trigger ID is \"On\".  \n   - Uses a repeat loop
+    to ensure the fan (`switch.heizraum_lufter`) turns on.  \n   - Repeats every 5
+    seconds until the fan state is `\"on\"`.  \n\n2. **Fan Off Trigger (\"Off\")**
+    \ \n   - Checks if the trigger ID is \"Off\".  \n   - Uses a repeat loop to ensure
+    the fan turns off.  \n   - Repeats every 5 seconds until the fan state is `\"off\"`.
+    \ \n\n> **Rationale:** The repeat loops guarantee the switch successfully changes
+    state even if a transient failure occurs.  \n\n---\n\n### \U0001F527 **Technical
+    Specs**\n\n- **Mode:** `restart` (ensures a new trigger cancels the current action
+    and restarts the automation)  \n- **Target Switch:** `switch.heizraum_lufter`
+    \ \n- **Delay:** 5-second interval in repeat loops to reduce excessive switching
+    and allow for state confirmation.  \n- **Power Thresholds:**  \n  - **On:** >
+    0.1 W  \n  - **Off:** < 0.01 W  \n\n---\n\n### ⚡ **Notes / Best Practices**\n\n-
+    Using numeric state triggers with a `for` delay prevents rapid on/off cycling
+    caused by small power fluctuations.  \n- Repeat loops provide reliability, ensuring
+    the fan state actually matches the desired state.  \n- Mode `restart` is ideal
+    for energy-focused automations, preventing overlapping or conflicting actions.
+    \ \n- Thresholds can be adjusted to match the sensitivity of your fan's power
+    draw."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -8725,9 +8751,13 @@
       sequence:
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.heizraum_lufter
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.heizraum_lufter
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_off
             metadata: {}
@@ -8747,9 +8777,13 @@
       sequence:
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.heizraum_lufter
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.heizraum_lufter
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_on
             metadata: {}
