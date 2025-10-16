@@ -5186,8 +5186,8 @@
     trigger: state
   conditions:
   - condition: template
-    value_template: '{{ now() - state_attr(this.entity_id, ''last_triggered'') > timedelta(minutes=2)
-      }}'
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default(as_datetime(''0''), true)) > timedelta(minutes=2) }}'
   actions:
   - action: number.set_value
     metadata: {}
@@ -8883,12 +8883,12 @@
       - condition: trigger
         id: usage_change
       - condition: template
+        value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
+          | default( as_datetime(''0''), true)) > timedelta(days=1) }}'
+      - condition: template
         value_template: '{{ states(''sensor.wasserenthartung'') | float > 42 }}
 
           '
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) -\n    as_timestamp(state_attr(this.entity_id,
-          'last_triggered') | default(0))) > 86400 }}\n"
       sequence:
       - target:
           entity_id:
