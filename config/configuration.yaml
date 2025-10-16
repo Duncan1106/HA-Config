@@ -882,16 +882,21 @@ template:
       - name: "Grid Power"
         unique_id: grid_power
         state: >
-          {% set local_sensor = 'sensor.tibber_bridge_0100100700ff' %}
-          {% set local_state = states(local_sensor) %}
-          {% set local_available = local_state not in ['unavailable', 'unknown', 'none'] %}
-          {% set local = local_state | float(0) %}
-          {% set smart = states('sensor.smart_meter_mqtt_grid_power') | float(0) %}
-          {{ local if local_available else smart }}
+          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
+          {% if tibber not in ['unavailable', 'unknown'] %}
+            {{ tibber | float(0) }}
+          {% else %}
+            {{ states('sensor.smart_meter_mqtt_grid_power') | float(0) }}
+          {% endif %}
+        availability: >
+          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
+          {% set smart  = states('sensor.smart_meter_mqtt_grid_power') %}
+          {{ tibber not in ['unavailable', 'unknown'] or smart not in ['unavailable', 'unknown'] }}
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
         icon: mdi:transmission-tower
+
 
 
   - triggers:
