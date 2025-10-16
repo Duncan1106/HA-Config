@@ -447,7 +447,7 @@
   - entity_id:
     - sensor.kaffeemaschine_energy_power
     above: 300
-    id: 'Kaffeemaschine '
+    id: Kaffeemaschine
     trigger: numeric_state
   - entity_id:
     - sensor.kuhlschrank_drinnen_energy_power
@@ -485,7 +485,7 @@
     if:
     - condition: trigger
       id:
-      - 'Kaffeemaschine '
+      - Kaffeemaschine
     then:
     - data: {}
       target:
@@ -1213,26 +1213,20 @@
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
-  description: "## \U0001F50B Count Battery Full Automation\n\n### \U0001F4CB **Battery
-    State Monitoring**\n\nThis automation tracks the battery voltage to determine
-    if the battery is full or empty. It updates an `input_boolean` and records the
-    last charged energy to help with energy management and monitoring.\n\n---\n\n###
-    ⏰ **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `sensor.esp32_c3_zero_epever_battery_voltage` | Above 28.3 V | Full |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 24 V | Empty |\n\n> Note: The automation monitors battery voltage in real-time
-    to determine charging state.\n\n---\n\n### ✅ **Conditions**\n\n- **Full Trigger:**
-    Only executes if `input_boolean.battery_full` is currently `off`.\n- **Empty Trigger:**
-    Only executes if `input_boolean.battery_full` is currently `on`.\n\n---\n\n###
-    \U0001F3AF **Actions / Workflow**\n\n1. **Full Trigger**\n   - Turns on `input_boolean.battery_full`.\n
-    \  - Updates `input_number.last_charged_energy_to_bkw_battery` with the current
-    `sensor.charged_energy_to_bkw_battery` value (rounded to 2 decimal places).\n\n2.
-    **Empty Trigger**\n   - Turns off `input_boolean.battery_full`.\n\n---\n\n###
-    \U0001F527 **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**
-    \ \n  - `input_boolean.battery_full`  \n  - `input_number.last_charged_energy_to_bkw_battery`\n-
-    **Monitoring Entities:** Battery voltage sensor.\n\n---\n\n### ⚡ **Notes / Best
-    Practices**\n\n- Keeps battery monitoring and state tracking simple and reliable.\n-
-    Thresholds (28.3V full, 24V empty) can be adjusted based on battery specifications.\n-
-    Integrates seamlessly with other energy management automations, such as BKW Control.\n"
+  description: "  ## \U0001F50B Count Battery Full Automation\n\n  ### \U0001F4CB
+    **Battery State Monitoring**\n  Monitors `sensor.esp32_c3_zero_epever_battery_voltage`
+    to track **battery full/empty states**.  \n  Updates `input_boolean.battery_full`
+    and logs charged energy when full.\n\n  ---\n\n  ### ⏰ **Triggers**\n  - **Full:**
+    Voltage rises above **28.3 V**  \n  - **Empty:** Voltage drops below **24 V**
+    \ \n\n  ---\n\n  ### ✅ **Conditions**\n  - **Full Trigger:** Executes if `battery_full`
+    is **off**.  \n  - **Empty Trigger:** Executes only if `battery_full` is **on**.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions**\n  - **Full:**  \n    - Turn on `input_boolean.battery_full`.
+    \ \n    - Save current charged energy to `input_number.last_charged_energy_to_bkw_battery`.
+    \ \n  - **Empty:**  \n    - Turn off `input_boolean.battery_full`.  \n\n  ---\n\n
+    \ ### \U0001F527 **Specs**\n  - **Mode:** `single`  \n  - **Controlled Entities:**
+    \ \n    - `input_boolean.battery_full`  \n    - `input_number.last_charged_energy_to_bkw_battery`
+    \ \n  - **Monitored Entities:**  \n    - `sensor.esp32_c3_zero_epever_battery_voltage`
+    \ \n    - `sensor.charged_energy_to_bkw_battery`"
   triggers:
   - entity_id:
     - sensor.esp32_c3_zero_epever_battery_voltage
@@ -1248,15 +1242,12 @@
   actions:
   - alias: Full
     if:
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'off'
-        enabled: false
-      - condition: trigger
-        id:
-        - Full
+    - condition: trigger
+      id:
+      - Full
+    - condition: state
+      entity_id: input_boolean.battery_full
+      state: 'off'
     then:
     - target:
         entity_id:
@@ -1274,14 +1265,12 @@
         entity_id: input_number.last_charged_energy_to_bkw_battery
   - alias: Empty
     if:
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'on'
-      - condition: trigger
-        id:
-        - Empty
+    - condition: state
+      entity_id: input_boolean.battery_full
+      state: 'on'
+    - condition: trigger
+      id:
+      - Empty
     then:
     - metadata: {}
       data: {}
@@ -1291,49 +1280,57 @@
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: "## ⚡ BKW Control Automation\n\n### \U0001F4CB **Optimized Outlet Control
-    for Solar & Battery System**\n\nThis automation manages the BKW outlet based on
-    solar production, battery SoC/voltage, inverter state, sunrise/sunset times, device
-    temperature, and usage. Its primary goals are:\n\n- Optimize charging and discharging
-    to maximize solar self-consumption.\n- Protect battery health by enforcing SoC/voltage
-    thresholds.\n- Ensure nightly shutdown if energy has been used.\n- Increment counters
-    for monitoring energy events.\n\n---\n\n### ⏰ **Triggers**\n\n| Trigger Entity
-    | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `sensor.inverter_pv_power` | Above 2250 W | on day |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 23 V | off night |\n| `sensor.esp32_c3_zero_epever_pv_array_input_power`
-    | Below 200, 175, 125, 75 W | off day |\n| `sensor.inverter_pv_power` | Below
-    2250, 2000 W | off day |\n| Sun | Sunset offset -00:15 | on night |\n| Sun | Sunrise
-    offset +00:15 | off night |\n| `time_pattern` | Every minute | on day |\n| `sensor.bkw_outlet_1_energy_power`
-    | Below 50 W | off night |\n\n> Note: Multiple triggers are used to cover day/night
-    transitions, solar power variations, and battery state.\n\n---\n\n### ✅ **Conditions**\n\n-
-    Complex condition structure ensures:\n  - Outlet only turns on if battery is full
-    or above 95% SOC / 27.75V.\n  - Outlet turns off if PV power drops below thresholds
-    and the outlet is on.\n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **On
-    Day Trigger**\n   - Only executes if:\n     - Inverter state is `FeedIn`.\n     -
-    Battery full or SoC > 80%.\n     - PV power > 2000 W.\n     - Device temperature
-    < 44°C.\n   - Turns on:\n     - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
-    \    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n2. **Off Day Trigger**\n   - During
-    daytime before sunset and after sunrise.\n   - Turns off BKW outlet if PV power
-    or device conditions drop.\n\n3. **On Night Trigger**\n   - Executes if battery
-    is full at sunset.\n   - Turns on the outlet and increments `counter.battery_full`.\n
-    \  - Calibrates utility meters for charged/discharged energy.\n   - Waits for
-    load to rise above 10 W (30s timeout), otherwise notifies.\n\n4. **Off Night Trigger**\n
-    \  - Executes between 00:00–09:00 if energy was used (`sensor.bkw_outlet_1_energy_today
-    > 0.001`).\n   - Repeats turning off BKW outlet until confirmed off.\n   - Resets
-    `input_boolean.battery_full`.\n   - Increments `counter.battery_empty` if discharged
-    energy > 0.\n   - Updates `input_number.last_discharged_energy_from_bkw_battery`.\n
-    \  - Calibrates utility meter for discharged energy.\n   - Adds a short delay
-    to ensure stability.\n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Mode:**
-    `queued` (max 15 concurrent)\n- **Devices Controlled:**  \n  - `switch.bkw_outlet_1_bkw_outlet_1`
-    \ \n  - `switch.esp32_c3_zero_epever_manual_control_the_load`\n- **Monitoring
-    Entities:**  \n  - Solar inverter, battery voltage, battery SoC, PV array input
-    power, outlet energy, device temperature.\n- **Counters:** `battery_full`, `battery_empty`\n-
-    **Utility Meters:** Charged/discharged energy tracked and calibrated nightly.\n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- Designed for battery protection and efficient
-    solar self-consumption.\n- Nighttime actions ensure energy isn't wasted while
-    maintaining monitoring.\n- Queued mode ensures multiple triggers can be processed
-    without overlap.\n- Thresholds for PV power, battery SOC/voltage, and temperature
-    can be tuned for system optimization.\n"
+  description: "  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Optimized Outlet
+    Control for Solar & Battery System**\n\n  This automation manages the BKW outlet
+    based on solar production, battery\n  state-of-charge (SoC) and voltage, inverter
+    state, sunrise/sunset times, \n  device temperature, and energy usage. Its primary
+    goals are:\n\n  - Optimize charging and discharging to maximize solar self-consumption.\n
+    \ - Protect battery health by enforcing SoC/voltage thresholds.\n  - Ensure nightly
+    shutdown if energy has been used.\n  - Increment counters for monitoring energy
+    events.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition / Threshold
+    | Trigger ID |\n  |----------------|-----------------------|------------|\n  |
+    `sensor.inverter_pv_power` | Above 2250 W | on day |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below 23 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
+    | Below 200 / 175 / 125 / 75 W | off day |\n  | `sensor.inverter_pv_power` | Below
+    2250 / 2000 W | off day |\n  | Sun | Sunset offset -00:15 | on night |\n  | Sun
+    | Sunrise offset +00:15 | off night |\n  | `time_pattern` | Every minute | on
+    day |\n  | `sensor.bkw_outlet_1_energy_power` | Below 50 W | off night |\n\n  >
+    Note: Multiple `off day` and `off night` triggers are defined, each with\n  the
+    same ID, to cover a wide range of solar, battery, and night-time states.\n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  - The automation requires **one of the following**:\n
+    \   - Battery is full (`input_boolean.battery_full = on`), OR\n      Battery SoC
+    ≥ 95% / Voltage ≥ 27.75 V.\n    - OR inverter PV power has dropped < 2001 W **while
+    the outlet is on**.\n\n  This ensures:\n  - Outlets only turn on under safe/high
+    battery conditions.\n  - Outlets turn off when PV is weak but still active.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **On Day Trigger**\n
+    \    - Executes if:\n       - Trigger ID = `on day`\n       - Inverter state =
+    `FeedIn`\n       - Battery marked full (`input_boolean.battery_full = on`)\n       -
+    Battery SoC ≥ 80%\n       - PV power > 2000 W\n       - Device temperature < 44°C\n
+    \    - Turns on:\n       - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
+    \      - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  2. **Off Day Trigger**\n     -
+    Executes if Trigger ID = `off day` during daytime \n       (between sunrise+15
+    and sunset-15).\n     - Turns off the BKW outlet when PV power/array input drops.\n\n
+    \ 3. **On Night Trigger**\n     - Executes if Trigger ID = `on night` and battery
+    is full.\n     - Turns on the load + BKW outlet.\n     - Increments `counter.battery_full`.\n
+    \    - Resets utility meters for charged/discharged energy.\n     - Waits up to
+    30s for load > 10W.  \n       - If not reached, sends notification.\n\n  4. **Off
+    Night Trigger**\n     - Executes if Trigger ID = `off night`, \n       time between
+    00:00–09:00, \n       and energy consumption > 0.001 kWh.\n     - Repeats `turn_off`
+    until outlet is confirmed off.\n     - Resets `input_boolean.battery_full`.\n
+    \    - If discharged energy > 0:\n       - Increments `counter.battery_empty`\n
+    \      - Updates `input_number.last_discharged_energy_from_bkw_battery`\n       -
+    Resets discharged energy utility meter\n     - Adds small delays for stability.\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `queued` (max 15
+    concurrent)\n  - **Devices Controlled:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n
+    \   - `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored Entities:**\n
+    \   - PV power, PV array input power, battery voltage & SoC,\n      inverter state,
+    outlet energy, device temperature.\n  - **Counters:** \n    - `counter.battery_full`\n
+    \   - `counter.battery_empty`\n  - **Utility Meters:** \n    - Charged/discharged
+    energy recalibrated nightly.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n
+    \ - Battery must be explicitly marked full (`battery_full = on`) **and**\n    SoC
+    ≥ 80% before daytime activation.\n  - Nighttime activation checks full battery
+    state at sunset.\n  - Multiple `off day` triggers ensure reliability in varying
+    solar output."
   triggers:
   - entity_id:
     - sensor.inverter_pv_power
