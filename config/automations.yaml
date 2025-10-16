@@ -3839,11 +3839,8 @@
     entity_id: select.duncan_lichtschalter_operation_mode_right
     state: decoupled
   - condition: template
-    value_template: '
-
-
-      {{ now() - state_attr(''automation.aqara_h1_eu_decoupled_switch_right'', ''last_triggered'')
-      | default( as_datetime(''0''), true) > timedelta(seconds=10) }}'
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default( as_datetime(''0''), true)) > timedelta(seconds=10) }}'
   actions:
   - action: switch.toggle
     metadata: {}
@@ -3979,21 +3976,64 @@
   mode: single
 - id: '1731148293801'
   alias: Automatic Backup Management
-  description: Schedules and manages backups at hourly, daily, weekly, monthly, and
-    yearly intervals, with retention rules and descriptive backup names.
+  description: "  ## ⚡ Automatic Backup Management\n\n  ### \U0001F4CB **Purpose**\n
+    \ This automation schedules and manages Home Assistant backups at multiple\n  intervals:
+    hourly, daily, weekly, monthly, and yearly.  \n  It applies retention rules, descriptive
+    backup names, and selectively\n  includes/excludes folders and addons to optimize
+    storage and restore workflows.\n\n  The automation ensures your Home Assistant
+    system is regularly backed up\n  without manual intervention while keeping old
+    backups according to defined\n  retention periods.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type        | Time / Interval | Trigger ID  |\n  |--------------------|----------------|------------|\n
+    \ | Daily backup        | 02:30:00       | daily      |\n  | Hourly backup       |
+    Every 4 hours  | hourly     |\n\n  > **Note:** Hourly backups occur every N hours
+    as defined by the `hours` pattern,  \n  daily backups are always scheduled at
+    2:30 AM.  \n\n  ---\n\n  ### ✅ **Conditions**\n  - None. Backup creation depends
+    solely on the triggers and enabled intervals.  \n\n  ---\n\n  ### \U0001F3AF **Actions
+    / Workflow**\n  **1. Yearly Backup**\n  - Trigger: Daily backup, only on Jan 1
+    if `enable_yearly` is true.  \n  - Retention: Unlimited (`keep_days: null`).  \n
+    \ - Includes: `config` folder.  \n  - Excludes: `media` folder, certain addons
+    (e.g., InfluxDB).  \n  - Alias in actions: `\"Creating Yearly Backup\"`.\n\n  **2.
+    Monthly Backup**\n  - Trigger: Daily backup, first day of month if `enable_monthly`
+    is true.  \n  - Retention: 365 days.  \n  - Includes/excludes: same as yearly
+    backup.  \n  - Alias: `\"Creating Monthly Backup\"`.\n\n  **3. Weekly Backup**\n
+    \ - Trigger: Daily backup, Monday if `enable_weekly` is true.  \n  - Retention:
+    ~30 days.  \n  - Alias: `\"Creating Weekly Backup\"`.\n\n  **4. Daily Backup**\n
+    \ - Trigger: Daily backup if `enable_daily` is true.  \n  - Retention: 7 days.
+    \ \n  - Alias: `\"Creating Daily Backup\"`.\n\n  **5. Hourly Backup**\n  - Trigger:
+    Every 4 hours if `enable_hourly` is true.  \n  - Retention: 1 day.  \n  - Creates
+    partial backups excluding media, share, ssl, addons, and database to reduce storage
+    usage.  \n  - Alias: `\"Creating Hourly Partial Backup\"`.\n\n  **General Notes
+    on Workflow**\n  - Each backup action generates a descriptive name:\n    - `HourlyBackup:
+    Monday, 3:04 PM, January 2, 2006`\n    - `DailyBackup: Monday, January 2, 2006`\n
+    \   - `Weekly/Monthly/YearlyBackup: Monday, January 2, 2006`\n  - Conditional
+    logic checks whether to use “full backup action” or predefined backup steps.\n
+    \ - Retention is managed per backup type.\n\n  ---\n\n  ### \U0001F527 **Technical
+    Specs**\n  - **Mode:** `single` (prevents overlapping backup processes)  \n  -
+    **Backup Storage Path:** `/share/USBMEDIABACKUP_Share/Backup/`  \n  - **Variables:**\n
+    \   - `password`: backup password  \n    - `enable_hourly`, `enable_daily`, `enable_weekly`,
+    `enable_monthly`, `enable_yearly`  \n    - `use_action_hourly`: whether to use
+    defined hourly backup actions  \n  - **Included Folders:** `config`  \n  - **Excluded
+    Folders:** `media`, `share`, `ssl`, `addons`, `model_cache`  \n  - **Addon Exclusions:**
+    e.g., InfluxDB (`a0d7b954_influxdb`)  \n\n  ---\n\n  ### ⚡ **Best Practices /
+    Notes**\n  - Use descriptive names for each backup type for easy identification.
+    \ \n  - Customize included/excluded folders per your needs.  \n  - Ensure `enable_*`
+    variables reflect the desired backup frequency.  \n  - Partial hourly backups
+    save space while still providing frequent restore points.  \n  - Can be extended
+    for additional backup targets or intervals as needed."
   triggers:
   - id: daily
     at: 02:30:00
     trigger: time
   - id: hourly
     enabled: true
-    hours: /3
+    hours: /4
     trigger: time_pattern
   conditions: []
   actions:
   - if:
     - condition: trigger
       id: daily
+      alias: Daily, Weekly, Monthly and Yearly Backup
     then:
     - choose:
       - conditions:
@@ -4053,6 +4093,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Yearly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_monthly }}'
@@ -4107,6 +4148,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Monthly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_weekly }}'
@@ -4161,6 +4203,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Weekly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_daily }}'
@@ -4213,6 +4256,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Daily Backup
     else:
     - variables:
         backup_type: hourly
@@ -5120,9 +5164,8 @@
     entity_id: select.duncan_lichtschalter_operation_mode_left
     state: decoupled
   - condition: template
-    value_template: '{{ now() - state_attr(''automation.aqara_h1_eu_decoupled_switch_left'',
-      ''last_triggered'') | default( as_datetime(''0''), true) > timedelta(seconds=10)
-      }}'
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default( as_datetime(''0''), true)) > timedelta(seconds=10) }}'
   actions:
   - action: switch.toggle
     metadata: {}
@@ -5143,8 +5186,8 @@
     trigger: state
   conditions:
   - condition: template
-    value_template: '{{ now() - state_attr(this.entity_id, ''last_triggered'') > timedelta(minutes=2)
-      }}'
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default(as_datetime(''0''), true)) > timedelta(minutes=2) }}'
   actions:
   - action: number.set_value
     metadata: {}
@@ -6154,13 +6197,13 @@
     **MQTT Publish Mapping**  \n\n| Topic | Sensor / Payload |\n|-------|-----------------|\n|
     `grid/power` | `sensor.grid_power` |\n| `grid/solar` | `sensor.solar_power_total`
     |\n| `grid/battery` | `sensor.battery_discharge` |\n| `grid/soc` | `sensor.felicity_ess_soc_avg`
-    |\n\n> **Note:** `grid/solar` now reflects **total solar production**. If you
-    want net solar (after battery charging and pool consumption), subtract `sensor.battery_charge`
-    and `sensor.pool_power` inside the payload.  \n\n---\n\n### \U0001F527 **Technical
-    Specs**  \n- **Sensors Used:** `sensor.grid_power`, `sensor.solar_power_total`,
-    `sensor.battery_discharge`, `sensor.felicity_ess_soc_avg`  \n- **Mode:** `parallel`
-    (max 10 concurrent)  \n- **Efficiency:** Only runs when chargers or desk strip
-    are powered  \n- **Throttle:** Runs at most every 5 seconds to prevent MQTT flooding"
+    |\n\n> **Note:** `grid/solar`  reflects **net solar production**. If you want
+    net solar (after battery charging), subtract `sensor.battery_charge` inside the
+    payload.  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Sensors Used:**
+    `sensor.grid_power`, `sensor.solar_power_total`, `sensor.battery_discharge`, `sensor.felicity_ess_soc_avg`
+    \ \n- **Mode:** `parallel` (max 10 concurrent)  \n- **Efficiency:** Only runs
+    when chargers or desk strip are powered  \n- **Throttle:** Runs at most every
+    5 seconds to prevent MQTT flooding"
   triggers:
   - trigger: state
     entity_id:
@@ -6181,8 +6224,8 @@
       entity_id: switch.schreibtisch_links_power_strip_l3
       state: 'on'
   - condition: template
-    value_template: "{{ this.attributes.last_triggered is not defined or\n   now()
-      - this.attributes.last_triggered >= timedelta(seconds=5) }}"
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default( as_datetime(''0''), true)) >= timedelta(seconds=5) }}'
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -6196,7 +6239,7 @@
       evaluate_payload: false
       topic: grid/solar
       payload: '{{ states(''sensor.solar_power_total'') | float(0) - states(''sensor.battery_charge'')
-        | float(0) - states(''sensor.pool_power'') | float(0) }}'
+        | float(0) }}'
   - action: mqtt.publish
     metadata: {}
     data:
@@ -6952,8 +6995,27 @@
   mode: single
 - id: '1749115504854'
   alias: Adjust Addon Status based on AnkerMake M5C Usage
-  description: Starts or stops the Ankerctl addon based on the state of the AnkerMake
-    M5C switch
+  description: "## ⚡ Adjust Addon Status based on AnkerMake M5C Usage\n\n### \U0001F4CB
+    **Purpose**\n\nThis automation manages the Ankerctl Home Assistant addon based
+    on the usage of the AnkerMake M5C 3D printer.  \nIt ensures the addon runs only
+    when the printer is active, reducing unnecessary resource usage.\n\n---\n\n###
+    ⏰ **Triggers**\n\n| Trigger Entity       | State Change | Trigger ID |\n|---------------------|--------------|------------|\n|
+    `switch.ankermake_1` | `→ on`   | \"ON\"       |\n| `switch.ankermake_1` | `→
+    off`   | \"OFF\"      |\n\n> **Note:** The triggers monitor the printer's main
+    switch, starting or stopping the addon accordingly.  \n\n---\n\n### ✅ **Conditions**\n\n-
+    None. The automation acts directly on the switch triggers.  \n\n---\n\n### \U0001F3AF
+    **Actions / Workflow**\n\n1. **Printer Turned On (\"ON\")**  \n   - Triggered
+    when `switch.ankermake_1` changes to `\"on\"`.  \n   - Action: Starts the `cff83567_ankerctl`
+    addon.  \n\n2. **Printer Turned Off (\"OFF\")**  \n   - Triggered when `switch.ankermake_1`
+    changes to `\"off\"`.  \n   - Action: Stops the `cff83567_ankerctl` addon.  \n\n>
+    **Rationale:** Keeps the addon running only when needed, preventing unnecessary
+    load on Home Assistant.  \n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Addon
+    Target:** `cff83567_ankerctl`  \n- **Mode:** `single` (ensures only one instance
+    runs at a time; prevents overlapping addon start/stop commands)  \n\n---\n\n###
+    ⚡ **Notes / Best Practices**\n\n- This approach is ideal for addons tied to specific
+    hardware usage.  \n- Ensures efficient resource management on your Home Assistant
+    system.  \n- Can be extended to other devices by duplicating triggers and adjusting
+    the addon target."
   triggers:
   - trigger: state
     entity_id:
@@ -6977,6 +7039,7 @@
         metadata: {}
         data:
           addon: cff83567_ankerctl
+      alias: Start Ankerctl Addon When Printer Turned On
     - conditions:
       - condition: trigger
         id:
@@ -6986,6 +7049,7 @@
         metadata: {}
         data:
           addon: cff83567_ankerctl
+      alias: Stop Ankerctl Addon When Printer Turned Off
   mode: single
 - id: '1749622712645'
   alias: Tablet Battery Status Alerts
@@ -8152,9 +8216,8 @@
       {{ (trigger.from_state.state | float(0)) - (trigger.to_state.state | float(400))
       > 2 }}'
   - condition: template
-    value_template: '{{ now() - state_attr(''automation.notify_mama_fahrt_los_von_arbeit'',
-      ''last_triggered'') | default( as_datetime(''0''), true) > timedelta(minutes=30)
-      }}'
+    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
+      default( as_datetime(''0''), true)) > timedelta(minutes=45) }}'
   - condition: time
     after: 08:00:00
   actions:
@@ -8696,8 +8759,34 @@
   mode: single
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
-  description: Automatically turns the fan on or off based on another fans power consumption—switches
-    on after 0.1 W and off after 0.01 W with a 1‑minute delay, saving energy.
+  description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
+    automation manages the heating room (Heizraum) fan based on the power consumption
+    of another fan. It ensures the fan only runs when necessary, helping save energy
+    by avoiding unnecessary operation.  \n\n---\n\n### ⏰ **Triggers**\n\n| Trigger
+    Entity | Condition | Delay | Trigger ID |\n|----------------|-----------|-------|------------|\n|
+    `sensor.heizraum_lufter_abluft_power` | Above 0.1 W | 1 minute | \"On\" |\n| `sensor.heizraum_lufter_abluft_power`
+    | Below 0.01 W | 1 minute | \"Off\" |\n\n> **Note:** Triggers include a 1-minute
+    delay (`for: 1m`) to prevent flickering or rapid on/off cycling.  \n\n---\n\n###
+    ✅ **Conditions**\n\n- None. The automation reacts directly to the numeric state
+    triggers.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **Fan On Trigger
+    (\"On\")**  \n   - Checks if the trigger ID is \"On\".  \n   - Uses a repeat loop
+    to ensure the fan (`switch.heizraum_lufter`) turns on.  \n   - Repeats every 5
+    seconds until the fan state is `\"on\"`.  \n\n2. **Fan Off Trigger (\"Off\")**
+    \ \n   - Checks if the trigger ID is \"Off\".  \n   - Uses a repeat loop to ensure
+    the fan turns off.  \n   - Repeats every 5 seconds until the fan state is `\"off\"`.
+    \ \n\n> **Rationale:** The repeat loops guarantee the switch successfully changes
+    state even if a transient failure occurs.  \n\n---\n\n### \U0001F527 **Technical
+    Specs**\n\n- **Mode:** `restart` (ensures a new trigger cancels the current action
+    and restarts the automation)  \n- **Target Switch:** `switch.heizraum_lufter`
+    \ \n- **Delay:** 5-second interval in repeat loops to reduce excessive switching
+    and allow for state confirmation.  \n- **Power Thresholds:**  \n  - **On:** >
+    0.1 W  \n  - **Off:** < 0.01 W  \n\n---\n\n### ⚡ **Notes / Best Practices**\n\n-
+    Using numeric state triggers with a `for` delay prevents rapid on/off cycling
+    caused by small power fluctuations.  \n- Repeat loops provide reliability, ensuring
+    the fan state actually matches the desired state.  \n- Mode `restart` is ideal
+    for energy-focused automations, preventing overlapping or conflicting actions.
+    \ \n- Thresholds can be adjusted to match the sensitivity of your fan's power
+    draw."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -8727,9 +8816,13 @@
       sequence:
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.heizraum_lufter
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.heizraum_lufter
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_off
             metadata: {}
@@ -8749,9 +8842,13 @@
       sequence:
       - repeat:
           until:
-          - condition: state
-            entity_id: switch.heizraum_lufter
-            state: 'on'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.heizraum_lufter
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
           sequence:
           - action: switch.turn_on
             metadata: {}
@@ -8786,12 +8883,12 @@
       - condition: trigger
         id: usage_change
       - condition: template
+        value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
+          | default( as_datetime(''0''), true)) > timedelta(days=1) }}'
+      - condition: template
         value_template: '{{ states(''sensor.wasserenthartung'') | float > 42 }}
 
           '
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) -\n    as_timestamp(state_attr(this.entity_id,
-          'last_triggered') | default(0))) > 86400 }}\n"
       sequence:
       - target:
           entity_id:
