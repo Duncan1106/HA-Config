@@ -6331,8 +6331,23 @@
   mode: single
 - id: '1741093435280'
   alias: Set Herd CT Clamp Update Frequency at Startup and every Hour
-  description: Ensures the Herd CT clamp reports its current at a consistent 15-second
-    interval.
+  description: "## ⚡ Herd CT Clamp Update Frequency Control\n\n### \U0001F4CB Purpose\nKeeps
+    the Herd CT clamp sensor (`number.herd_ct_klemme_zigbee_update_frequency`) configured
+    to a **20-second update interval**, ensuring reliable and consistent reporting
+    of current measurements.\n\n---\n\n### ⏱ Triggers\n- **Home Assistant startup**
+    → sets frequency after system boots.\n- **Every hour** → re-applies frequency
+    setting for robustness (e.g., if device resets).\n- **Entity state change** →
+    immediately re-applies the correct frequency if the value is modified manually
+    or by other automations.\n\n---\n\n### ✅ Conditions\n- No global conditions, runs
+    unconditionally.\n\n---\n\n### \U0001F3AF Actions\n- Waits **5 seconds** after
+    trigger to ensure the entity is initialized and ready.  \n- Calls `number.set_value`
+    on `number.herd_ct_klemme_zigbee_update_frequency` to enforce the configured interval
+    (value: `20` → corresponds to 20s updates).\n\n---\n\n### \U0001F527 Technical
+    Notes\n- Mode: `single` → prevents overlapping executions.  \n- The **hourly trigger**
+    ensures long-term stability even if the device silently resets its reporting interval.
+    \ \n- The **entity state trigger** catches accidental or external changes to the
+    setting.  \n- Delay ensures that HA startup doesn’t fail if the entity is still
+    initializing."
   triggers:
   - trigger: homeassistant
     event: start
@@ -6348,13 +6363,12 @@
       minutes: 0
       seconds: 5
       milliseconds: 0
-  - device_id: 3198731e8b90e56a55763e5862d1e728
-    domain: number
-    entity_id: 8dac2d1e77f626770b9dd54c98445f49
-    type: set_value
-    metadata:
-      secondary: false
-    value: 20
+  - action: number.set_value
+    metadata: {}
+    data:
+      value: '20'
+    target:
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
   mode: single
 - id: '1741102167233'
   alias: Publish Energy Data to MQTT
