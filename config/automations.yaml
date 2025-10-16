@@ -561,8 +561,21 @@
       time: '10:30:00'
 - id: '1705389061375'
   alias: Homeassistent Start & Stop
-  description: Notifies when Home Assistant starts or stops, restarts backup add-ons,
-    and locates devices on startup.
+  description: "## \U0001F504 Home Assistant Start & Stop Automation\n\n### \U0001F4CB
+    Purpose\nMonitors Home Assistant startup and shutdown events, sends notifications,
+    \nrestarts backup add-ons, and locates iCloud devices to ensure the system \nand
+    critical backups are always operational.\n\n---\n\n### ⏱ Triggers\n- `homeassistant.start`:
+    Fires when Home Assistant starts.\n- `homeassistant.shutdown`: Fires when Home
+    Assistant stops.\n\n---\n\n### ✅ Conditions\n- None. Actions execute unconditionally
+    based on the trigger.\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### Startup
+    Actions\n- Notify user that Home Assistant is online including the local IP and
+    port.\n- Restart key backup add-ons:\n  - `hassio_onedrive_backup`\n  - `hassio_google_drive_backup`\n-
+    Wait 1 minute.\n- Locate iCloud devices sequentially with 15-second delay between
+    devices.\n\n#### Shutdown Actions\n- Notify user that Home Assistant is down.\n-
+    Include uptime duration in notification using `sensor.uptime`.\n\n---\n\n### \U0001F527
+    Technical Specs\n- Mode: `single` to prevent overlapping execution.\n- Notifications
+    use icon: `mdi:restart`.\n- iCloud device identifiers:\n  - `3675fe049f5a257fe6eebb6533252e74`\n
+    \ - `e146d7ea7dd792848fa6d8090a91ff6c`"
   triggers:
   - event: start
     id: Start
@@ -757,8 +770,26 @@
       cycle_counter_helper: counter.spulmaschine
 - id: '1708932016459'
   alias: Update System Metrics Sensors
-  description: Updates system metrics sensors every 5 minutes by refreshing data,
-    every 2 hours by reloading AnkerMake if running, and every 3 hours (placeholder).
+  description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
+    the update of system metrics and device states at different intervals:\n\n- Every
+    **5 minutes**: Forces a data refresh for system metrics sensors.\n- Every **2
+    hours**: Reloads AnkerMake controller if it is running.\n- Every **3 hours**:
+    Placeholder for future scheduled updates.\n\n---\n\n### ⏱ Triggers\n- **5-minute
+    interval**: `time_pattern` trigger every 5 minutes (`minutes: /5`).\n- **2-hour
+    interval**: `time_pattern` trigger every 2 hours (`hours: /2`).\n- **3-hour interval**:
+    `time_pattern` trigger every 3 hours (`hours: /3`), currently enabled but no actions
+    defined.\n\n---\n\n### ✅ Conditions\n- None globally; each action block checks
+    the corresponding trigger ID to ensure correct execution.\n- For the 2-hour action,
+    also checks that `binary_sensor.ankerctl_lauft` is \"on\" before reloading the
+    AnkerMake controller.\n\n---\n\n### \U0001F3AF Actions\n- **5-minute trigger (`5m`)**:\n
+    \   - Turns on `switch.wvgzzze2zpe005371_force_data_refresh` to refresh system
+    metrics.\n- **2-hour trigger (`2h`)**:\n    - If AnkerMake is running (`binary_sensor.ankerctl_lauft`
+    == \"on\"), presses `button.ankermake_m5c_reload_ankerctl` to reload the controller.\n-
+    **3-hour trigger (`3h`)**:\n    - Currently empty; reserved for future use.\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `queued` with `max: 10` to handle overlapping
+    triggers safely.\n- Individual action blocks are conditionally executed based
+    on the trigger ID.\n- Designed to minimize unnecessary actions while keeping devices
+    and sensors up-to-date."
   triggers:
   - minutes: /5
     id: 5m
@@ -2826,7 +2857,16 @@
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Speed test CLI Addon
-  description: ''
+  description: "## ⚡ Hourly Internet Speedtest Automation\n\n### \U0001F4CB Purpose\nRuns
+    the **Speedtest CLI Add-on** every hour to monitor internet connection performance.
+    This helps track latency, download, and upload speeds over time for diagnostics
+    and monitoring purposes.\n\n---\n\n### ⏱ Trigger\n- Every hour using a time pattern
+    (`hours: /1`).\n\n---\n\n### ✅ Conditions\n- None; the automation runs unconditionally
+    every hour.\n\n---\n\n### \U0001F3AF Actions / Workflow\n- Executes the script
+    with ID `script.1707895746671`, which triggers the Speedtest CLI add-on to perform
+    a speed test.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` ensures
+    that a new test won’t start if the previous one is still running.\n- Can be extended
+    to log results or send notifications if thresholds are exceeded."
   triggers:
   - hours: /1
     trigger: time_pattern
@@ -4777,8 +4817,16 @@
   mode: single
 - id: '1735498655841'
   alias: Update Boiler Remaining Time Timer
-  description: Updates the sensor displaying the remaining time of the boiler on-demand
-    timer.
+  description: "## \U0001F525 Boiler Remaining Time Update Automation\n\n### \U0001F4CB
+    Purpose\nKeeps the sensor `sensor.boiler_remaining_time` up-to-date by refreshing
+    it while the on-demand boiler timer is active. Ensures real-time display of remaining
+    boiler operation time.\n\n---\n\n### ⏱ Trigger\n- Every 2 seconds via a `time_pattern`
+    trigger (`seconds: /2`).\n\n---\n\n### ✅ Conditions\n- Only runs when the `timer.boiler_on_demand`
+    is **active**, preventing unnecessary updates when the boiler is off.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- Calls `homeassistant.update_entity` on `sensor.boiler_remaining_time`
+    to refresh the remaining time display.\n\n---\n\n### \U0001F527 Technical Notes\n-
+    Mode: `single` ensures no overlapping updates.\n- High-frequency trigger (every
+    2s) provides near-real-time monitoring but may slightly increase system load."
   triggers:
   - trigger: time_pattern
     seconds: /2
@@ -6754,8 +6802,18 @@
   max: 3
 - id: '1747074473799'
   alias: Restart Add-ons at 01:00 daily
-  description: Restarts a series of add-ons (repocket, earnapp, earnfm, packetstream,
-    pawns, traffmonetizer) with short delays between restarts to recover after updates.
+  description: "## \U0001F504 Daily Add-on Restart Automation\n\n### \U0001F4CB Purpose\nThis
+    automation restarts a set of Home Assistant add-ons daily at **01:00 AM**. \nIts
+    goal is to ensure the add-ons (repocket, earnapp, earnfm, packetstream, pawns,
+    traffmonetizer) are refreshed, which helps recover from updates or minor issues.\n\n---\n\n###
+    ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n### ✅ Conditions\n- No additional
+    conditions; the restart occurs every day.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1.
+    Restart `repocket` add-on\n2. Wait 5 seconds\n3. Restart `earnapp` add-on\n4.
+    Wait 5 seconds\n5. Restart `earnfm` add-on\n6. Wait 5 seconds\n7. Restart `packetstream`
+    add-on\n8. Wait 5 seconds\n9. Restart `pawns` add-on\n10. Wait 5 seconds\n11.
+    Restart `traffmonetizer` add-on\n\n---\n\n### \U0001F527 Technical Notes\n- Mode:
+    `single` (prevents overlapping runs if the automation triggers again unexpectedly).\n-
+    Uses short delays between add-on restarts to avoid potential conflicts or overload."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -7870,8 +7928,18 @@
   mode: queued
 - id: '1750928722036'
   alias: Reboot Host System on 1st of the Month
-  description: Reboots the Home Assistant host system on the first day of every month,
-    with a pre-notification one hour prior.
+  description: "## \U0001F504 Monthly Host Reboot Automation\n\n### \U0001F4CB Purpose\nAutomatically
+    reboots the Home Assistant host system on the **first day of every month**,\nproviding
+    an advance notification one hour prior to the reboot for awareness.\n\n---\n\n###
+    ⏱ Triggers\n- `12:00:00` → Sends pre-notification one hour before reboot.\n- `13:00:00`
+    → Executes the actual host system reboot.\n\n---\n\n### ✅ Conditions\n- Only triggers
+    when the current day is the **1st of the month**.\n  ```jinja\n  {{ now().day
+    == 1 }}\n  ```\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### 12:00 Notification\n-
+    Send a notification to user that the host system will reboot at 13:00.\n\n####
+    13:00 Reboot\n- Notify user that the host system is now rebooting.\n- Trigger
+    `hassio.host_reboot` to reboot the Home Assistant host.\n\n---\n\n### \U0001F527
+    Technical Specs\n- Mode: `choose` structure based on which trigger fired.\n- Notifications
+    use plain text for clarity."
   triggers:
   - at: '13:00:00'
     trigger: time
@@ -8277,8 +8345,19 @@
   mode: single
 - id: '1752180300729'
   alias: 'Alert: SMART Status Problem'
-  description: Notifies if the HDD SMART status reports a problem, indicating potential
-    drive failure.
+  description: "## \U0001F4BE SMART Drive Status Alert Automation\n\n### \U0001F4CB
+    Purpose\nMonitors the health of your storage devices (HDDs and SSDs) via SMART
+    status.\nSends an immediate notification if any monitored drive reports a potential\nproblem,
+    allowing timely intervention before data loss occurs.\n\n---\n\n### ⏰ Triggers\n-
+    State change of `binary_sensor.sata_ssd_status` to `on`\n- State change of `binary_sensor.nvme_ssd_status`
+    to `on`\n\n---\n\n### ✅ Conditions\n- None. Alerts are sent unconditionally upon
+    trigger.\n\n---\n\n### \U0001F3AF Actions / Workflow\n- Sends a high-priority
+    notification via `notify.duncan`\n- Notification includes:\n  - Drive friendly
+    name from the triggered entity\n  - Clear warning about potential data loss\n
+    \ - Suggestion to back up data and check the drive immediately\n- Notification
+    metadata includes `tag: hdd_alert`, `priority: high`, and `ttl: 0`\n\n---\n\n###
+    \U0001F527 Technical Specs\n- Mode: `single` to prevent overlapping alerts\n-
+    Works for multiple drives with identical logic"
   triggers:
   - entity_id:
     - binary_sensor.sata_ssd_status
@@ -8320,7 +8399,18 @@
   mode: single
 - id: '1753221152708'
   alias: Restart Frigate at 1 o'clock
-  description: ''
+  description: "## \U0001F504 Frigate Daily Restart Automation\n\n### \U0001F4CB Purpose\nThis
+    automation ensures that the Frigate add-on is either started or restarted every
+    day at **01:00 AM** depending on its current state. This guarantees that Frigate
+    is running properly and prevents issues from prolonged uptime or unexpected crashes.\n\n---\n\n###
+    ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n### ✅ Conditions\n- No additional
+    conditions; the automation handles both \"not running\" and \"already running\"
+    states.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1. **Check if Frigate is
+    running** using `binary_sensor.frigate_full_access_aktiv`.\n2. **If Frigate is
+    not running** (sensor empty):\n   - Start the Frigate add-on.\n3. **If Frigate
+    is running** (sensor `on`):\n   - Restart the Frigate add-on to refresh its service.\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` prevents overlapping execution.\n-
+    Uses `choose` statements to differentiate between the add-on states and act accordingly."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -8681,10 +8771,17 @@
   max: 10
 - id: '1755587220350'
   alias: GitHub Exporter addon start every hour
-  description: Starts the git-exporter addon every hour.
+  description: "## ⏱ GitHub Exporter Add-on Scheduler\n\n### \U0001F4CB Purpose\nEnsures
+    the `git-exporter` Home Assistant add-on runs consistently every hour\nto export
+    and update GitHub repository data automatically.\n\n---\n\n### ⏰ Trigger\n- Fires
+    on a repeating hourly schedule (`time_pattern` with `/1` hour).\n\n---\n\n###
+    ✅ Conditions\n- None. The add-on starts unconditionally every hour.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- Starts the `git-exporter` add-on via `hassio.addon_start`\n-
+    Add-on identifier: `68413af6_git-exporter`\n\n---\n\n### \U0001F527 Technical
+    Specs\n- Mode: `single` to prevent overlapping executions."
   triggers:
   - trigger: time_pattern
-    hours: /2
+    hours: /1
   conditions: []
   actions:
   - action: hassio.addon_start
