@@ -1742,10 +1742,21 @@
   mode: single
 - id: '1712941263468'
   alias: Save Pool Pulse Time
-  description: This automation saves the current pulse time of the pool pump when
-    it is in operation and triggers an MQTT message. It updates the input number representing
-    the actual pulse time value based on the received MQTT payload, provided the pump
-    has been on for at least 5 minutes.
+  description: "## \U0001F4BE Save Pool Pulse Time\n\n### \U0001F4CB Purpose\nSaves
+    the current pulse time of the pool pump while it is running and updates\nHome
+    Assistant with the latest value. Ensures accurate tracking of the\nremaining runtime
+    and publishes an MQTT message for integration with Tasmota\ndevices.\n\n---\n\n###
+    ⏰ Triggers\n| Trigger Type | Details                                     |\n|--------------|--------------------------------------------|\n|
+    MQTT Message | Topic: `stat/tasmota_837238/RESULT`       |\n\n---\n\n### ✅ Conditions\n-
+    Only process if `PulseTime1` exists in the MQTT payload.\n- Pool pump must have
+    been running for at least 5 minutes.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    Extracts `Remaining` value from `PulseTime1` in the MQTT payload.\n- If remaining
+    time < 112, divides by 10 and rounds to nearest integer.\n- If remaining time
+    ≥ 112, subtracts 100 to get actual pulse time.\n- Updates `input_number.pulseTimeActualValue`
+    with the calculated value.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:**
+    `single` to process each MQTT update individually.\n- Uses template logic to handle
+    different Tasmota payload formats.\n- Keeps input number synced with real-time
+    pump runtime."
   triggers:
   - id: frommqtt
     topic: stat/tasmota_837238/RESULT
@@ -1773,8 +1784,25 @@
   mode: single
 - id: '1713031049792'
   alias: Get Pool PulseTime
-  description: Periodically retrieves the pool pump's pulse time, ensuring it is operational,
-    while avoiding downtime during specific conditions.
+  description: "  ## \U0001F30A Get Pool PulseTime\n\n  ### \U0001F4CB **Purpose**\n
+    \ Periodically retrieves the current pulse time from the pool pump to ensure\n
+    \ it is operational. This prevents missed updates while avoiding unnecessary\n
+    \ actions when the pump is off or unavailable.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type        | Interval / Event | Notes |\n  |-------------------|-----------------|-------|\n
+    \ | Periodic Timer     | Every 10 seconds | Checks pulse time regularly |\n  |
+    Home Assistant Start | Event `start`    | Ensures initial value retrieval on HA
+    startup |\n\n  ---\n\n  ### ✅ **Conditions**\n  - Only runs during daytime (after
+    sunrise, before sunset).  \n  - Skips execution if the pool pump (`switch.pool_pumpe`)
+    is OFF for more\n    than 5 minutes or currently unavailable.\n\n  ---\n\n  ###
+    \U0001F3AF **Actions / Workflow**\n  - Publishes an MQTT request to retrieve the
+    current pulse time:  \n    - **Topic:** `cmnd/tasmota_837238/pulsetime1`  \n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:** `single` (prevents
+    overlapping requests)  \n  - Ensures regular polling without interfering with
+    pump downtime.\n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Use alongside
+    automations that adjust pulse time to maintain consistent\n    pump operation.
+    \ \n  - Adjust interval (`/10` seconds) based on system responsiveness and\n    network
+    load.  \n  - MQTT topics must match the Tasmota device configuration for proper\n
+    \   communication."
   triggers:
   - seconds: /10
     trigger: time_pattern
@@ -1972,8 +2000,46 @@
   max: 10
 - id: '1716307846138'
   alias: Pool Runtime Control
-  description: Controls the runtime of the pool and extends it if the weather is nice,
-    based on the solar power available.
+  description: "## \U0001F31E Pool Runtime Control\n\n### \U0001F4CB Purpose\nControls
+    the daily runtime of the pool pump, dynamically adjusting runtime\nbased on weather
+    conditions, solar power availability, and pool temperature\ntrends. The automation
+    ensures efficient use of solar energy while\nmaintaining optimal pool operation.\n\n---\n\n###
+    ⏰ Triggers\n| Trigger Type                     | Details / Thresholds                          |\n|----------------------------------|----------------------------------------------|\n|
+    Time Pattern                      | 09:00–11:00 every 2 minutes (Early Start)
+    \  |\n| Time Pattern                      | 11:00–12:00 (Force Start)                    |\n|
+    Numeric State                     | `input_number.pulsetimeactualvalue` < 250/150
+    |\n| Pool Pump State                   | Off → On / On → Off                           |\n|
+    Time Pattern                      | 20:00+ (Force Stop)                           |\n\n---\n\n###
+    ✅ Conditions\n- Early Start: 09:30–10:59 with sufficient solar or grid export.\n-
+    Force Start: 10:59–12:00 if pump is off.\n- Extend: Pulse time below 410, PV power
+    > 1200, and extend counter < 15.\n- Stop / Stopped: Various time and state-based
+    conditions.\n- All conditions ensure the pump only runs when beneficial.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n**1. Early Start**\n- Checks solar conditions,
+    PV forecast, and azimuth angle.\n- Turns off `pool_pulsetime_auto_adjust` automation
+    temporarily.\n- Opens main solar valve, sets pulse time to 8h, turns on pump.\n-
+    Records start temperature and notifies potential night temperature loss.\n- Re-enables
+    `pool_pulsetime_auto_adjust`.\n\n**2. Force Start**\n- Triggered if pump is off
+    during 11:00–12:00 window.\n- Sets pulse time to 6h, opens solar valve, turns
+    on pump.\n- Records start temperature and notifies temperature loss.\n- Re-enables
+    pulse time auto-adjust.\n\n**3. Extend**\n- Triggered when pulse time is low but
+    solar conditions allow extension.\n- Increments pulse time by 6 minutes per check.\n-
+    Saves stop temperature before extending if first increment.\n- Updates counter
+    to limit maximum extensions.\n- Notifies temperature changes caused by extensions.\n\n**4.
+    Stopped**\n- Triggered when pump turns off.\n- Ensures solar valves are closed,
+    records stop temperature.\n- Notifies temperature change caused by extensions
+    if any.\n- Marks pool as stopped.\n\n**5. Force Stop**\n- Triggered at 20:00 or
+    when explicitly stopped.\n- Records stop temperature, turns off pump and valves,
+    resets counter.\n- Notifies temperature difference between start and stop.\n-
+    Clears stop flag.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:** `queued`
+    with `max: 50` to prevent lost triggers.\n- Monitored Entities: pool pump switch,
+    solar valve switches, pulse time inputs, PV power, solar forecast, pool temperature
+    sensors, trend sensor, and stop flag.\n- Integrates with MQTT to set Tasmota pulse
+    times dynamically.\n- Interacts with `pool_pulsetime_auto_adjust` automation to
+    prevent conflicts.\n\n---\n\n### ⚡ Best Practices / Notes\n- Adjust pulse time
+    thresholds and solar power conditions to match local climate and pool setup.\n-
+    Ensure all sensors and valves report accurate states to avoid unintended runtime.\n-
+    Extend logic uses a counter to prevent excessive prolonging of pump operation.\n-
+    Notifications help track temperature changes and pool runtime efficiency."
   triggers:
   - hours: '9'
     minutes: /2
@@ -2017,22 +2083,15 @@
       - condition: time
         after: 09:30:00
         before: '10:59:00'
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
-    - condition: and
+    - alias: Force Start Condition
+      condition: and
       conditions:
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
       - condition: time
         after: '10:59:59'
         before: '12:00:00'
-      alias: Force Start Condition
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
     - alias: 'Extend Condition '
       condition: numeric_state
       entity_id: input_number.pulsetimeactualvalue
@@ -2064,11 +2123,9 @@
         - condition: numeric_state
           entity_id: sensor.grid_export
           above: 2000
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
       - condition: numeric_state
         entity_id: sensor.sun_solar_azimuth
         above: 95
@@ -2093,10 +2150,11 @@
         topic: cmnd/tasmota_837238/pulsetime1
         payload: '28895'
       action: mqtt.publish
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 5
@@ -2134,11 +2192,9 @@
       - condition: trigger
         id:
         - Force Start
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
     then:
     - action: automation.turn_off
       metadata: {}
@@ -2157,10 +2213,11 @@
         topic: cmnd/tasmota_837238/pulsetime1
         payload: '21695'
       action: mqtt.publish
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 5
@@ -2207,11 +2264,9 @@
       - condition: numeric_state
         entity_id: input_number.pulsetimeactualvalue
         below: 410
-      - condition: device
-        type: is_on
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'on'
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'off'
@@ -2278,11 +2333,9 @@
         - condition: trigger
           id:
           - Extend
-        - condition: device
-          type: is_on
-          device_id: 7f4653a91cd2ef69cb48aa494a983be8
-          entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-          domain: switch
+        - condition: state
+          entity_id: switch.pool_pumpe
+          state: 'on'
       then:
       - alias: Notify about temperature change caused by extend
         if:
@@ -2549,11 +2602,42 @@
   max: 10
 - id: '1717951712000'
   alias: Pool Heating Control for Optimal Temperature
-  description: This automation manages the solar heating of the pool based on temperature
-    and solar conditions. It activates and deactivates heating as needed to maintain
-    an optimal pool temperature, ensuring energy efficiency and comfort. Steps include
-    monitoring solar power, tracking time conditions, and assessing temperature thresholds
-    for heating on/off actions.
+  description: "  ## ☀️ Pool Heating Control for Optimal Temperature\n\n  ### \U0001F4CB
+    **Purpose**\n  Automatically manages the solar heating of the pool to maintain
+    an optimal\n  temperature while maximizing energy efficiency. The automation evaluates\n
+    \ current pool temperature, solar conditions, and time triggers to decide\n  when
+    to turn the solar heating valves on or off.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type             | Details / Thresholds                         |\n
+    \ |--------------------------|---------------------------------------------|\n
+    \ | Solar Azimuth            | Between 95° and 100°                        |\n
+    \ | Scheduled Time Checks    | 11:00 – 16:00 at hourly intervals          |\n
+    \ | Pool Temperature Input   | Changes in `input_number.pool_temp_start`   |\n
+    \ | Actual Pool Temperature  | Changes crossing `input_number.pool_heating_stop`
+    |\n\n  ---\n\n  ### ✅ **Conditions**\n  - No global conditions; logic is handled
+    in action-level checks.  \n  - Heating only activates when pool temperature is
+    below thresholds.  \n  - Solar or power conditions (cloud coverage, solar radiation,
+    total solar power) must indicate heating is beneficial.\n\n  ---\n\n  ### \U0001F3AF
+    **Actions / Workflow**\n  **1. Solar Heating ON**\n  - Activated by time triggers
+    or solar azimuth during the day.  \n  - Conditions to start:\n      - Pool temp
+    below stop threshold.\n      - Start temp not too hot (>28.5 °C).  \n      - Adequate
+    solar power, low cloud coverage, or sufficient radiation.  \n  - Steps:\n      -
+    If first trigger of the day, open main solar valve.  \n      - Turn on smart valve
+    controller.  \n      - Wait for any unavailable states to recover (max 1 minute).
+    \ \n\n  **2. Solar Heating OFF**\n  - Triggered by temperature above stop threshold
+    or poor solar conditions.  \n  - Steps:\n      - Turn off smart valve controller.
+    \ \n\n  **3. Disable Solar Heating if Too Hot**\n  - Triggered if pool start temperature
+    exceeds 28.5 °C.  \n  - Steps:\n      - Turn off smart valve controller and main
+    solar valve.  \n      - Notify user via notification that heating is skipped due
+    to high temperature.  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:**
+    `single` (prevents overlapping operations)  \n  - Valves controlled:  \n      -
+    `switch.pool_ventil_solar` (main solar valve)  \n      - `switch.smart_valve_controller_schalter_1`
+    (smart valve controller)  \n  - Monitored entities: solar azimuth, pool temperature
+    sensors, cloud coverage, solar power, solar radiation, and pool start temperature
+    input.  \n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Adjust temperature
+    thresholds and solar power limits for your climate and pool setup.  \n  - Ensure
+    all valve switches and sensors are correctly configured for reliable automation.
+    \ \n  - Can be extended with additional safety checks, such as maximum daily heating
+    duration or pump runtime limits."
   triggers:
   - entity_id:
     - sensor.sun_solar_azimuth
@@ -2872,9 +2956,27 @@
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
-  description: Adjusts the Pool PulseTime automatically based on changes in the actual
-    value. It turns the switch off, publishes the adjusted pulse time, and turns it
-    back on if the updated value exceeds thresholds or changes from zero.
+  description: "  ## \U0001F30A Auto Pool PulseTime Adjust\n\n  ### \U0001F4CB **Purpose**\n
+    \ Automatically adjusts the pool pump's pulse time based on changes in the\n  actual
+    value (`input_number.pulsetimeactualvalue`).  \n  If the updated pulse time increases
+    significantly or changes from zero, the\n  automation temporarily turns off the
+    pump, publishes the adjusted pulse\n  time via MQTT, and turns the pump back on
+    to safely apply the new setting.\n\n  ---\n\n  ### ⏰ **Triggers**\n  | Trigger
+    Type | Entity | From | To |\n  |-------------|--------|------|----|\n  | PulseTime
+    Change | `input_number.pulsetimeactualvalue` | Any | Any |\n\n  > **Note:** Triggers
+    on any change to the pulse time value.\n\n  ---\n\n  ### ✅ **Conditions**\n  -
+    The pool pump (`switch.pool_pumpe`) must be ON for adjustments to occur.\n\n  ---\n\n
+    \ ### \U0001F3AF **Actions / Workflow**\n  **1. Adjust PulseTime**\n  - If the
+    new pulse time > old pulse time AND (old != 0 OR new > 1000):\n      - Turn off
+    pump  \n      - Wait 5 seconds  \n      - Publish new pulse time via MQTT  \n
+    \     - Wait 5 seconds  \n      - Turn pump back on  \n\n  **2. Handle zero pulse
+    time**\n  - If both old and new pulse times are zero:\n      - Turn off pump\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:** `single` (prevents
+    overlapping adjustments)  \n  - **MQTT Topic:** `cmnd/tasmota_837238/pulsetime1`
+    \ \n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Keep the pump ON before
+    testing the automation.  \n  - 5-second delays prevent abrupt changes and ensure
+    safe updates.  \n  - Significant changes (>1000) trigger adjustments even from
+    zero.  \n  - Action aliases help with clear logs and debugging."
   triggers:
   - entity_id:
     - input_number.pulsetimeactualvalue
@@ -2882,11 +2984,9 @@
     to:
     trigger: state
   conditions:
-  - condition: device
-    type: is_on
-    device_id: 7f4653a91cd2ef69cb48aa494a983be8
-    entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-    domain: switch
+  - condition: state
+    entity_id: switch.pool_pumpe
+    state: 'on'
   actions:
   - if:
     - condition: template
@@ -2894,10 +2994,11 @@
         | int(0)) \n    and \n  ((trigger.from_state.state|int() != 0)\n    or\n  (trigger.to_state.state|int()
         > 1000 ))\n}}"
     then:
-    - type: turn_off
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 0
@@ -2913,10 +3014,11 @@
         minutes: 0
         seconds: 5
         milliseconds: 0
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
   - if:
     - condition: and
       conditions:
@@ -2925,10 +3027,11 @@
       - condition: template
         value_template: '{{ (trigger.from_state.state | int(0)) == 0 }}'
     then:
-    - type: turn_off
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
   mode: single
 - id: '1721345437021'
   alias: AnkerMake 3D Printer Auto Turn Off
@@ -7705,8 +7808,18 @@
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
-  description: Adjusts grow light brightness and color temperature based on sensor
-    readings, ensuring the light entity is available.
+  description: "## \U0001F4A1 Adjust Grow Light Brightness from Sensor\n\n### \U0001F4CB
+    Purpose\nDynamically adjusts the brightness and color temperature of the grow
+    light\nbased on sensor readings, ensuring optimal plant lighting while the light
+    is\navailable.\n\n---\n\n### ⏰ Triggers\n| Trigger Type | Details                          |\n|--------------|---------------------------------|\n|
+    State Change | `sensor.grow_light_temperature` |\n| State Change | `sensor.grow_light_brightness_raw`
+    |\n\n---\n\n### ✅ Conditions\n- Only execute if the grow light entity (`light.regal_big_led_light`)
+    is not\n  `unavailable` or `unknown`.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    Updates light brightness using `sensor.grow_light_brightness_raw`.\n- Updates
+    color temperature using `sensor.grow_light_temperature`.\n- Turns on the light
+    with the updated settings.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:**
+    `queued` to handle multiple state changes in sequence.\n- Uses template conversion
+    to ensure sensor values are integers for Home\n  Assistant."
   triggers:
   - entity_id:
     - sensor.grow_light_temperature
@@ -7913,10 +8026,24 @@
       initial_delay: 1
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
-  description: 'Steuert den Wintergarten-Rolladen automatisch basierend auf dem Sensor
-    inklusive Benachrichtigung mit Grund sowie Statusmeldungen zum manuellen Modus.
-
-    '
+  description: "## \U0001F31E Rollo Sommer Automatisch Steuern (mit Grund und Manueller
+    Modus)\n\n### \U0001F4CB Purpose\nAutomates the summer operation of the Wintergarten
+    (sunroom) roller shutter\nbased on sensor readings, while also handling manual
+    override mode. Provides\nnotifications with the reason for opening/closing and
+    status updates when\nmanual mode is activated or deactivated.\n\n---\n\n### ⏰
+    Triggers\n- Sensor indicates roller should close (`on`) for 10 minutes\n- Sensor
+    indicates roller should open (`off`) for 15 minutes\n- Manual override boolean
+    toggled (`on` or `off`)\n- Sensor attribute `not_raining` changes to `0` for 1
+    minute\n\n---\n\n### ✅ Conditions\n- Only runs during daytime (between sunrise
+    and sunset)\n- Roller must not already be in the desired state (open/closed)\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- **Rollo schließen:** Closes roller and sends
+    notification with reason\n- **Rollo öffnen:** Opens roller and sends notification
+    with reason\n- **Manual Mode Activated:** Sends notification and clears automatic
+    mode alerts\n- **Manual Mode Deactivated:** Sends notification and clears manual
+    mode alerts\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:** `single` (prevents
+    overlapping executions)\n- Uses `cover.open_cover` / `cover.close_cover` to control
+    roller\n- Notifications are tagged (`rollo_close`, `rollo_open`, `rollo_manual`,
+    `rollo_automatic`) for tracking"
   triggers:
   - trigger: state
     id: rollo_close
@@ -8340,9 +8467,22 @@
   mode: single
 - id: '1754293444382'
   alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
-  description: Runs left, Kallax, and right paludarium pumps in a 15-minute on/off
-    cycle during daytime; on pump turn-off, starts a fan cooldown. Includes 1‑minute
-    failsafe time pattern trigger and power strip availability checks.
+  description: "## \U0001F33F Paludarium Pump & Fan Cycle (Daytime, Combined Zones)\n\n###
+    \U0001F4CB Purpose\nAutomates the daytime cycling of left, Kallax, and right paludarium
+    pumps in\n15-minute on/off intervals. After a pump turns off, a fan cooldown is
+    started\nto maintain environmental stability. Includes checks for power strip\navailability
+    and a failsafe 1-minute time pattern trigger.\n\n---\n\n### ⏰ Triggers\n- 1-minute
+    time pattern (failsafe)\n- Pump switches turning `on` or `off` for 15 minutes\n\n---\n\n###
+    ✅ Conditions\n- Only runs during daytime (between sunrise and sunset)\n- Zone-specific
+    power strip must be on to control respective pumps\n\n---\n\n### \U0001F3AF Actions
+    / Workflow\n- **Left, Kallax, Right Zones:**  \n  - If pump has been on for its
+    duration, turn off and start fan cooldown  \n  - If pump has been off for its
+    duration, turn pump back on\n- Uses variables to define pump/fan entities and
+    durations\n- Runs zone sequences in parallel to allow simultaneous management\n\n---\n\n###
+    \U0001F527 Technical Specs\n- **Mode:** `parallel` with a max of 10 to handle
+    multiple concurrent sequences\n- **Pump On/Off Duration:** 14 minutes 55 seconds
+    \ \n- **Fan Duration:** 2 minutes 30 seconds\n- Uses `script.run_fan_for_duration`
+    to manage fan cooldown timing"
   triggers:
   - minutes: /1
     trigger: time_pattern
