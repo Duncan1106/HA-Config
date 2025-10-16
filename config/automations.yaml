@@ -2793,8 +2793,6 @@
       - condition: trigger
         id:
         - 'On'
-        - On 1
-        - On last
       - condition: or
         conditions:
         - condition: numeric_state
@@ -6431,9 +6429,27 @@
   max: 10
 - id: '1742316986881'
   alias: Wall Panel Display Control
-  description: Automatically turns off the wall panel display at night and turns it
-    on at sunrise. If the display is on after midnight, it will automatically turn
-    off after a 30-second delay, ensuring it's not left on during non-use hours.
+  description: "## \U0001F5A5 Wall Panel Display Control Automation\n\n### \U0001F4CB
+    Purpose\nManages the Lenovo Tab P11 wall panel display to optimize usage and reduce
+    unnecessary power consumption:\n\n- Turns **off** the display every night at **23:00**.\n-
+    Turns **on** the display at **sunrise**.\n- If the display is manually or automatically
+    switched on **after 23:00** but before sunrise, it will automatically switch **off
+    after 15 seconds**.\n\n---\n\n### ⏱ Triggers\n- **23:00 time trigger** → forces
+    display off.\n- **Sunrise event** → turns the display back on.\n- **State trigger**
+    on `switch.lenovo_tab_p11_bildschirmschoner` to detect manual/other activations:\n
+    \ - Fires if the screensaver switch changes **to `on` for 15 seconds**.\n\n---\n\n###
+    ✅ Conditions\n- No global conditions.\n- Inside **Bildschirm changed** sequence:\n
+    \ - Ensures the current time is **between 23:00 and sunrise**.\n  - Ensures `switch.lenovo_tab_p11_bildschirm`
+    is still `on` before forcing it off.\n\n---\n\n### \U0001F3AF Actions\n- **Display
+    Off at 23:00 (`Display Off`)**  \n  → Turns off `switch.lenovo_tab_p11_bildschirm`.\n-
+    **Display On at Sunrise (`Display On`)**  \n  → Turns on `switch.lenovo_tab_p11_bildschirm`.\n-
+    **Screen On after Midnight (`Bildschirm changed`)**  \n  → If screensaver is on
+    after 23:00 and before sunrise:\n    - Waits 15 seconds.\n    - Then switches
+    off the display.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` →
+    prevents overlapping executions.  \n- `max_exceeded: silent` → avoids log spam
+    if retriggers happen quickly.  \n- Uses both **time** and **sun events** for robust
+    scheduling.  \n- The delayed off sequence ensures the display won’t stay on unintentionally
+    during the night."
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -6492,9 +6508,9 @@
       - delay:
           hours: 0
           minutes: 0
-          seconds: 30
+          seconds: 15
           milliseconds: 0
-        enabled: false
+        enabled: true
       - action: switch.turn_off
         metadata: {}
         data: {}
@@ -7447,7 +7463,7 @@
     | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
     > `number.inverter_battery_capacity`  \n- `sensor.felicity_ess_soc_avg` > **99%**
     \ \n\n---\n\n### \U0001F3AF **Correction Logic**  \n\n#### **Step 1**  \n- Increase
-    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **15s**  \n\n####
+    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **10s**  \n\n####
     **Step 3**  \n- Decrease inverter’s capacity value by **-1**  \n\n---\n\n### \U0001F527
     **Technical Specs**  \n- **Target Number Entity:** `number.inverter_battery_capacity`
     \ \n- **Sensors Used:**  \n  - `sensor.inverter_battery_corrected_capacity`  \n
@@ -8407,7 +8423,7 @@
     conditions; the automation handles both \"not running\" and \"already running\"
     states.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1. **Check if Frigate is
     running** using `binary_sensor.frigate_full_access_aktiv`.\n2. **If Frigate is
-    not running** (sensor empty):\n   - Start the Frigate add-on.\n3. **If Frigate
+    not running** (sensor `off`):\n   - Start the Frigate add-on.\n3. **If Frigate
     is running** (sensor `on`):\n   - Restart the Frigate add-on to refresh its service.\n\n---\n\n###
     \U0001F527 Technical Notes\n- Mode: `single` prevents overlapping execution.\n-
     Uses `choose` statements to differentiate between the add-on states and act accordingly."
@@ -8418,11 +8434,9 @@
   actions:
   - choose:
     - conditions:
-      - condition: not
-        conditions:
-        - condition: state
-          entity_id: binary_sensor.frigate_full_access_aktiv
-          state: ''
+      - condition: state
+        entity_id: binary_sensor.frigate_full_access_aktiv
+        state: 'off'
       sequence:
       - action: hassio.addon_start
         metadata: {}
