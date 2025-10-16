@@ -3979,21 +3979,64 @@
   mode: single
 - id: '1731148293801'
   alias: Automatic Backup Management
-  description: Schedules and manages backups at hourly, daily, weekly, monthly, and
-    yearly intervals, with retention rules and descriptive backup names.
+  description: "  ## ⚡ Automatic Backup Management\n\n  ### \U0001F4CB **Purpose**\n
+    \ This automation schedules and manages Home Assistant backups at multiple\n  intervals:
+    hourly, daily, weekly, monthly, and yearly.  \n  It applies retention rules, descriptive
+    backup names, and selectively\n  includes/excludes folders and addons to optimize
+    storage and restore workflows.\n\n  The automation ensures your Home Assistant
+    system is regularly backed up\n  without manual intervention while keeping old
+    backups according to defined\n  retention periods.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type        | Time / Interval | Trigger ID  |\n  |--------------------|----------------|------------|\n
+    \ | Daily backup        | 02:30:00       | daily      |\n  | Hourly backup       |
+    Every 4 hours  | hourly     |\n\n  > **Note:** Hourly backups occur every N hours
+    as defined by the `hours` pattern,  \n  daily backups are always scheduled at
+    2:30 AM.  \n\n  ---\n\n  ### ✅ **Conditions**\n  - None. Backup creation depends
+    solely on the triggers and enabled intervals.  \n\n  ---\n\n  ### \U0001F3AF **Actions
+    / Workflow**\n  **1. Yearly Backup**\n  - Trigger: Daily backup, only on Jan 1
+    if `enable_yearly` is true.  \n  - Retention: Unlimited (`keep_days: null`).  \n
+    \ - Includes: `config` folder.  \n  - Excludes: `media` folder, certain addons
+    (e.g., InfluxDB).  \n  - Alias in actions: `\"Creating Yearly Backup\"`.\n\n  **2.
+    Monthly Backup**\n  - Trigger: Daily backup, first day of month if `enable_monthly`
+    is true.  \n  - Retention: 365 days.  \n  - Includes/excludes: same as yearly
+    backup.  \n  - Alias: `\"Creating Monthly Backup\"`.\n\n  **3. Weekly Backup**\n
+    \ - Trigger: Daily backup, Monday if `enable_weekly` is true.  \n  - Retention:
+    ~30 days.  \n  - Alias: `\"Creating Weekly Backup\"`.\n\n  **4. Daily Backup**\n
+    \ - Trigger: Daily backup if `enable_daily` is true.  \n  - Retention: 7 days.
+    \ \n  - Alias: `\"Creating Daily Backup\"`.\n\n  **5. Hourly Backup**\n  - Trigger:
+    Every 4 hours if `enable_hourly` is true.  \n  - Retention: 1 day.  \n  - Creates
+    partial backups excluding media, share, ssl, addons, and database to reduce storage
+    usage.  \n  - Alias: `\"Creating Hourly Partial Backup\"`.\n\n  **General Notes
+    on Workflow**\n  - Each backup action generates a descriptive name:\n    - `HourlyBackup:
+    Monday, 3:04 PM, January 2, 2006`\n    - `DailyBackup: Monday, January 2, 2006`\n
+    \   - `Weekly/Monthly/YearlyBackup: Monday, January 2, 2006`\n  - Conditional
+    logic checks whether to use “full backup action” or predefined backup steps.\n
+    \ - Retention is managed per backup type.\n\n  ---\n\n  ### \U0001F527 **Technical
+    Specs**\n  - **Mode:** `single` (prevents overlapping backup processes)  \n  -
+    **Backup Storage Path:** `/share/USBMEDIABACKUP_Share/Backup/`  \n  - **Variables:**\n
+    \   - `password`: backup password  \n    - `enable_hourly`, `enable_daily`, `enable_weekly`,
+    `enable_monthly`, `enable_yearly`  \n    - `use_action_hourly`: whether to use
+    defined hourly backup actions  \n  - **Included Folders:** `config`  \n  - **Excluded
+    Folders:** `media`, `share`, `ssl`, `addons`, `model_cache`  \n  - **Addon Exclusions:**
+    e.g., InfluxDB (`a0d7b954_influxdb`)  \n\n  ---\n\n  ### ⚡ **Best Practices /
+    Notes**\n  - Use descriptive names for each backup type for easy identification.
+    \ \n  - Customize included/excluded folders per your needs.  \n  - Ensure `enable_*`
+    variables reflect the desired backup frequency.  \n  - Partial hourly backups
+    save space while still providing frequent restore points.  \n  - Can be extended
+    for additional backup targets or intervals as needed."
   triggers:
   - id: daily
     at: 02:30:00
     trigger: time
   - id: hourly
     enabled: true
-    hours: /3
+    hours: /4
     trigger: time_pattern
   conditions: []
   actions:
   - if:
     - condition: trigger
       id: daily
+      alias: Daily, Weekly, Monthly and Yearly Backup
     then:
     - choose:
       - conditions:
@@ -4053,6 +4096,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Yearly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_monthly }}'
@@ -4107,6 +4151,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Monthly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_weekly }}'
@@ -4161,6 +4206,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Weekly Backup
       - conditions:
         - condition: template
           value_template: '{{ enable_daily }}'
@@ -4213,6 +4259,7 @@
               exclude_folders:
               - media
             action: auto_backup.backup
+        alias: Daily Backup
     else:
     - variables:
         backup_type: hourly
@@ -6951,8 +6998,27 @@
   mode: single
 - id: '1749115504854'
   alias: Adjust Addon Status based on AnkerMake M5C Usage
-  description: Starts or stops the Ankerctl addon based on the state of the AnkerMake
-    M5C switch
+  description: "## ⚡ Adjust Addon Status based on AnkerMake M5C Usage\n\n### \U0001F4CB
+    **Purpose**\n\nThis automation manages the Ankerctl Home Assistant addon based
+    on the usage of the AnkerMake M5C 3D printer.  \nIt ensures the addon runs only
+    when the printer is active, reducing unnecessary resource usage.\n\n---\n\n###
+    ⏰ **Triggers**\n\n| Trigger Entity       | State Change | Trigger ID |\n|---------------------|--------------|------------|\n|
+    `switch.ankermake_1` | `→ on`   | \"ON\"       |\n| `switch.ankermake_1` | `→
+    off`   | \"OFF\"      |\n\n> **Note:** The triggers monitor the printer's main
+    switch, starting or stopping the addon accordingly.  \n\n---\n\n### ✅ **Conditions**\n\n-
+    None. The automation acts directly on the switch triggers.  \n\n---\n\n### \U0001F3AF
+    **Actions / Workflow**\n\n1. **Printer Turned On (\"ON\")**  \n   - Triggered
+    when `switch.ankermake_1` changes to `\"on\"`.  \n   - Action: Starts the `cff83567_ankerctl`
+    addon.  \n\n2. **Printer Turned Off (\"OFF\")**  \n   - Triggered when `switch.ankermake_1`
+    changes to `\"off\"`.  \n   - Action: Stops the `cff83567_ankerctl` addon.  \n\n>
+    **Rationale:** Keeps the addon running only when needed, preventing unnecessary
+    load on Home Assistant.  \n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Addon
+    Target:** `cff83567_ankerctl`  \n- **Mode:** `single` (ensures only one instance
+    runs at a time; prevents overlapping addon start/stop commands)  \n\n---\n\n###
+    ⚡ **Notes / Best Practices**\n\n- This approach is ideal for addons tied to specific
+    hardware usage.  \n- Ensures efficient resource management on your Home Assistant
+    system.  \n- Can be extended to other devices by duplicating triggers and adjusting
+    the addon target."
   triggers:
   - trigger: state
     entity_id:
@@ -6976,6 +7042,7 @@
         metadata: {}
         data:
           addon: cff83567_ankerctl
+      alias: Start Ankerctl Addon When Printer Turned On
     - conditions:
       - condition: trigger
         id:
@@ -6985,6 +7052,7 @@
         metadata: {}
         data:
           addon: cff83567_ankerctl
+      alias: Stop Ankerctl Addon When Printer Turned Off
   mode: single
 - id: '1749622712645'
   alias: Tablet Battery Status Alerts
