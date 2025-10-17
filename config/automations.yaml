@@ -5903,9 +5903,42 @@
   max: 3
 - id: '1739967189542'
   alias: Waschmaschine und Trockner Erinnerungen
-  description: This automation sends notifications and plays audio alerts when the
-    washing machine or dryer has completed its cycle. It continuously notifies until
-    the user clears the signal.
+  description: "  ## \U0001F9FA Laundry Reminder Automation\n\n  ### \U0001F4CB **Persistent
+    Cycle Completion Alerts**\n\n  This automation sends **repeated notifications
+    and audio reminders** when the\n  washing machine or dryer has finished a cycle.
+    Notifications continue at\n  regular intervals until the user clears the completion
+    signal.  \n  The goal is to ensure laundry is removed promptly and that “done”
+    states\n  don’t get ignored.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Entity |
+    From → To | Trigger ID |\n  |--------|-----------|------------|\n  | `input_boolean.waschmaschine_fertig`
+    | off → on | Waschmaschine |\n  | `input_boolean.trockner_fertig` | off → on |
+    Trockner |\n  | `input_boolean.waschmaschine_fertig` | on → off | Waschmaschine
+    fertig |\n  | `input_boolean.trockner_fertig` | on → off | Trockner fertig |\n\n
+    \ > Completion flags turning **on** start the reminders.  \n  > Flags turning
+    **off** clear notifications and stop alerts.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
+    \ - No additional conditions.  \n    The automation always responds to the defined
+    triggers.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **Waschmaschine
+    Reminder**\n     - When `Waschmaschine` is triggered (done = on):\n       - Repeats:\n
+    \        - Sends push notification (`notify.familie`) with tag `waschmaschine_fertig`.\n
+    \        - Speaks announcement via TTS: *“Die Waschmaschine ist fertig.”*\n         -
+    Waits 10 minutes, then repeats.\n       - Loop continues until `input_boolean.waschmaschine_fertig
+    = off`.\n       - Clears notification tag once cycle is acknowledged.\n\n  2.
+    **Trockner Reminder**\n     - When `Trockner` is triggered (done = on):\n       -
+    Repeats:\n         - Sends push notification with tag `trockner_fertig`.\n         -
+    Speaks announcement via TTS: *“Der Trockner ist fertig.”*\n         - Waits 10
+    minutes, then repeats.\n       - Loop continues until `input_boolean.trockner_fertig
+    = off`.\n       - Clears notification tag once cycle is acknowledged.\n\n  3.
+    **Clear Notifications**\n     - When either appliance’s `fertig` flag goes from
+    on → off:\n       - Immediately clears any active notifications for that appliance.\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `parallel` (up
+    to 10 concurrent runs).  \n  - **Devices Controlled:**\n    - `notify.familie`
+    (persistent notifications).  \n    - `media_player.lenovo_tab_p11` via `tts.google_ai_tts`.
+    \ \n  - **Monitored Entities:**\n    - `input_boolean.waschmaschine_fertig`  \n
+    \   - `input_boolean.trockner_fertig`  \n  - **Notification Tags:**  \n    - `waschmaschine_fertig`
+    \ \n    - `trockner_fertig`  \n\n  ---\n\n  ### \U0001F514 **Notes**\n\n  - Both
+    appliances repeat their alerts every **10 minutes** until cleared.  \n  - TTS
+    ensures audible feedback in addition to push notifications.  \n  - Notifications
+    are uniquely tagged so they can be updated/cleared without duplicates.  \n  -
+    User acknowledgment (turning the boolean off) is the only way to stop the reminders."
   triggers:
   - trigger: state
     entity_id:
@@ -6205,11 +6238,33 @@
   mode: single
 - id: '1740741927183'
   alias: Turn off Trockner or Waschmaschine fertig using Button
-  description: This automation turns off the completion status for the dryer or washing
-    machine when a button is pressed. It monitors specific button triggers for each
-    appliance and resets their respective status if they are marked as done. It ensures
-    the completion indicator is correctly updated for both appliances, allowing for
-    accurate tracking of laundry tasks.
+  description: "\n  ## \U0001F9FA Laundry Reset Automation\n\n  ### \U0001F4CB **Clear
+    Appliance Completion States via Button Press**\n\n  This automation resets the
+    *completion status* of either the dryer (`input_boolean.trockner_fertig`) or the
+    washing machine (`input_boolean.waschmaschine_fertig`) whenever their assigned
+    button is pressed.  \n  It ensures that once the laundry is removed and the user
+    acknowledges it by pressing the button, the “done” indicator is turned off to
+    keep appliance status tracking accurate.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n
+    \ | Device / Button | Action Type | Appliance | Trigger ID |\n  |-----------------|-------------|-----------|-------------|\n
+    \ | `button_1` | Single / Double Press | Dryer | `Trockner` |\n  | `button_2`
+    | Single / Double Press | Washing Machine | `Waschmaschine` |\n\n  > Each appliance
+    can be reset with **either a single or double press** on its assigned button.\n\n
+    \ ---\n\n  ### ✅ **Conditions**\n\n  - The chosen appliance must currently have
+    its completion flag set:\n    - Dryer → `input_boolean.trockner_fertig = on`\n
+    \   - Washing Machine → `input_boolean.waschmaschine_fertig = on`\n\n  If the
+    appliance is *not* marked as finished, the press does nothing.\n\n  ---\n\n  ###
+    \U0001F3AF **Actions / Workflow**\n\n  1. **Dryer Reset**\n     - Triggered by
+    `Trockner` button.\n     - If `input_boolean.trockner_fertig = on`, turn it off.\n\n
+    \ 2. **Washing Machine Reset**\n     - Triggered by `Waschmaschine` button.\n
+    \    - If `input_boolean.waschmaschine_fertig = on`, turn it off.\n\n  > Both
+    paths ensure the completion indicator is cleared only when appropriate.\n\n  ---\n\n
+    \ ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `single` (no overlapping
+    runs).\n  - **Controlled Entities:**\n    - `input_boolean.trockner_fertig`\n
+    \   - `input_boolean.waschmaschine_fertig`\n  - **Input Device:**  \n    - MQTT
+    button with two mapped sub-buttons (dryer / washer).\n\n  ---\n\n  ### \U0001F4DD
+    **Notes**\n\n  - The automation supports both *single* and *double* presses for
+    convenience.  \n  - Prevents stale “done” states if a cycle has already been cleared.
+    \ \n  - Keeps laundry task tracking consistent across appliances."
   triggers:
   - domain: mqtt
     device_id: 7be1308679cc0cfa3cc595fe650e29ed
