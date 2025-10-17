@@ -447,7 +447,7 @@
   - entity_id:
     - sensor.kaffeemaschine_energy_power
     above: 300
-    id: 'Kaffeemaschine '
+    id: Kaffeemaschine
     trigger: numeric_state
   - entity_id:
     - sensor.kuhlschrank_drinnen_energy_power
@@ -485,7 +485,7 @@
     if:
     - condition: trigger
       id:
-      - 'Kaffeemaschine '
+      - Kaffeemaschine
     then:
     - data: {}
       target:
@@ -561,8 +561,21 @@
       time: '10:30:00'
 - id: '1705389061375'
   alias: Homeassistent Start & Stop
-  description: Notifies when Home Assistant starts or stops, restarts backup add-ons,
-    and locates devices on startup.
+  description: "## \U0001F504 Home Assistant Start & Stop Automation\n\n### \U0001F4CB
+    Purpose\nMonitors Home Assistant startup and shutdown events, sends notifications,
+    \nrestarts backup add-ons, and locates iCloud devices to ensure the system \nand
+    critical backups are always operational.\n\n---\n\n### ⏱ Triggers\n- `homeassistant.start`:
+    Fires when Home Assistant starts.\n- `homeassistant.shutdown`: Fires when Home
+    Assistant stops.\n\n---\n\n### ✅ Conditions\n- None. Actions execute unconditionally
+    based on the trigger.\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### Startup
+    Actions\n- Notify user that Home Assistant is online including the local IP and
+    port.\n- Restart key backup add-ons:\n  - `hassio_onedrive_backup`\n  - `hassio_google_drive_backup`\n-
+    Wait 1 minute.\n- Locate iCloud devices sequentially with 15-second delay between
+    devices.\n\n#### Shutdown Actions\n- Notify user that Home Assistant is down.\n-
+    Include uptime duration in notification using `sensor.uptime`.\n\n---\n\n### \U0001F527
+    Technical Specs\n- Mode: `single` to prevent overlapping execution.\n- Notifications
+    use icon: `mdi:restart`.\n- iCloud device identifiers:\n  - `3675fe049f5a257fe6eebb6533252e74`\n
+    \ - `e146d7ea7dd792848fa6d8090a91ff6c`"
   triggers:
   - event: start
     id: Start
@@ -757,8 +770,26 @@
       cycle_counter_helper: counter.spulmaschine
 - id: '1708932016459'
   alias: Update System Metrics Sensors
-  description: Updates system metrics sensors every 5 minutes by refreshing data,
-    every 2 hours by reloading AnkerMake if running, and every 3 hours (placeholder).
+  description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
+    the update of system metrics and device states at different intervals:\n\n- Every
+    **5 minutes**: Forces a data refresh for system metrics sensors.\n- Every **2
+    hours**: Reloads AnkerMake controller if it is running.\n- Every **3 hours**:
+    Placeholder for future scheduled updates.\n\n---\n\n### ⏱ Triggers\n- **5-minute
+    interval**: `time_pattern` trigger every 5 minutes (`minutes: /5`).\n- **2-hour
+    interval**: `time_pattern` trigger every 2 hours (`hours: /2`).\n- **3-hour interval**:
+    `time_pattern` trigger every 3 hours (`hours: /3`), currently enabled but no actions
+    defined.\n\n---\n\n### ✅ Conditions\n- None globally; each action block checks
+    the corresponding trigger ID to ensure correct execution.\n- For the 2-hour action,
+    also checks that `binary_sensor.ankerctl_lauft` is \"on\" before reloading the
+    AnkerMake controller.\n\n---\n\n### \U0001F3AF Actions\n- **5-minute trigger (`5m`)**:\n
+    \   - Turns on `switch.wvgzzze2zpe005371_force_data_refresh` to refresh system
+    metrics.\n- **2-hour trigger (`2h`)**:\n    - If AnkerMake is running (`binary_sensor.ankerctl_lauft`
+    == \"on\"), presses `button.ankermake_m5c_reload_ankerctl` to reload the controller.\n-
+    **3-hour trigger (`3h`)**:\n    - Currently empty; reserved for future use.\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `queued` with `max: 10` to handle overlapping
+    triggers safely.\n- Individual action blocks are conditionally executed based
+    on the trigger ID.\n- Designed to minimize unnecessary actions while keeping devices
+    and sensors up-to-date."
   triggers:
   - minutes: /5
     id: 5m
@@ -1182,26 +1213,20 @@
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
-  description: "## \U0001F50B Count Battery Full Automation\n\n### \U0001F4CB **Battery
-    State Monitoring**\n\nThis automation tracks the battery voltage to determine
-    if the battery is full or empty. It updates an `input_boolean` and records the
-    last charged energy to help with energy management and monitoring.\n\n---\n\n###
-    ⏰ **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `sensor.esp32_c3_zero_epever_battery_voltage` | Above 28.3 V | Full |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 24 V | Empty |\n\n> Note: The automation monitors battery voltage in real-time
-    to determine charging state.\n\n---\n\n### ✅ **Conditions**\n\n- **Full Trigger:**
-    Only executes if `input_boolean.battery_full` is currently `off`.\n- **Empty Trigger:**
-    Only executes if `input_boolean.battery_full` is currently `on`.\n\n---\n\n###
-    \U0001F3AF **Actions / Workflow**\n\n1. **Full Trigger**\n   - Turns on `input_boolean.battery_full`.\n
-    \  - Updates `input_number.last_charged_energy_to_bkw_battery` with the current
-    `sensor.charged_energy_to_bkw_battery` value (rounded to 2 decimal places).\n\n2.
-    **Empty Trigger**\n   - Turns off `input_boolean.battery_full`.\n\n---\n\n###
-    \U0001F527 **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**
-    \ \n  - `input_boolean.battery_full`  \n  - `input_number.last_charged_energy_to_bkw_battery`\n-
-    **Monitoring Entities:** Battery voltage sensor.\n\n---\n\n### ⚡ **Notes / Best
-    Practices**\n\n- Keeps battery monitoring and state tracking simple and reliable.\n-
-    Thresholds (28.3V full, 24V empty) can be adjusted based on battery specifications.\n-
-    Integrates seamlessly with other energy management automations, such as BKW Control.\n"
+  description: "  ## \U0001F50B Count Battery Full Automation\n\n  ### \U0001F4CB
+    **Battery State Monitoring**\n  Monitors `sensor.esp32_c3_zero_epever_battery_voltage`
+    to track **battery full/empty states**.  \n  Updates `input_boolean.battery_full`
+    and logs charged energy when full.\n\n  ---\n\n  ### ⏰ **Triggers**\n  - **Full:**
+    Voltage rises above **28.3 V**  \n  - **Empty:** Voltage drops below **24 V**
+    \ \n\n  ---\n\n  ### ✅ **Conditions**\n  - **Full Trigger:** Executes if `battery_full`
+    is **off**.  \n  - **Empty Trigger:** Executes only if `battery_full` is **on**.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions**\n  - **Full:**  \n    - Turn on `input_boolean.battery_full`.
+    \ \n    - Save current charged energy to `input_number.last_charged_energy_to_bkw_battery`.
+    \ \n  - **Empty:**  \n    - Turn off `input_boolean.battery_full`.  \n\n  ---\n\n
+    \ ### \U0001F527 **Specs**\n  - **Mode:** `single`  \n  - **Controlled Entities:**
+    \ \n    - `input_boolean.battery_full`  \n    - `input_number.last_charged_energy_to_bkw_battery`
+    \ \n  - **Monitored Entities:**  \n    - `sensor.esp32_c3_zero_epever_battery_voltage`
+    \ \n    - `sensor.charged_energy_to_bkw_battery`"
   triggers:
   - entity_id:
     - sensor.esp32_c3_zero_epever_battery_voltage
@@ -1217,15 +1242,12 @@
   actions:
   - alias: Full
     if:
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'off'
-        enabled: false
-      - condition: trigger
-        id:
-        - Full
+    - condition: trigger
+      id:
+      - Full
+    - condition: state
+      entity_id: input_boolean.battery_full
+      state: 'off'
     then:
     - target:
         entity_id:
@@ -1243,14 +1265,12 @@
         entity_id: input_number.last_charged_energy_to_bkw_battery
   - alias: Empty
     if:
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'on'
-      - condition: trigger
-        id:
-        - Empty
+    - condition: state
+      entity_id: input_boolean.battery_full
+      state: 'on'
+    - condition: trigger
+      id:
+      - Empty
     then:
     - metadata: {}
       data: {}
@@ -1260,49 +1280,57 @@
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: "## ⚡ BKW Control Automation\n\n### \U0001F4CB **Optimized Outlet Control
-    for Solar & Battery System**\n\nThis automation manages the BKW outlet based on
-    solar production, battery SoC/voltage, inverter state, sunrise/sunset times, device
-    temperature, and usage. Its primary goals are:\n\n- Optimize charging and discharging
-    to maximize solar self-consumption.\n- Protect battery health by enforcing SoC/voltage
-    thresholds.\n- Ensure nightly shutdown if energy has been used.\n- Increment counters
-    for monitoring energy events.\n\n---\n\n### ⏰ **Triggers**\n\n| Trigger Entity
-    | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `sensor.inverter_pv_power` | Above 2250 W | on day |\n| `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 23 V | off night |\n| `sensor.esp32_c3_zero_epever_pv_array_input_power`
-    | Below 200, 175, 125, 75 W | off day |\n| `sensor.inverter_pv_power` | Below
-    2250, 2000 W | off day |\n| Sun | Sunset offset -00:15 | on night |\n| Sun | Sunrise
-    offset +00:15 | off night |\n| `time_pattern` | Every minute | on day |\n| `sensor.bkw_outlet_1_energy_power`
-    | Below 50 W | off night |\n\n> Note: Multiple triggers are used to cover day/night
-    transitions, solar power variations, and battery state.\n\n---\n\n### ✅ **Conditions**\n\n-
-    Complex condition structure ensures:\n  - Outlet only turns on if battery is full
-    or above 95% SOC / 27.75V.\n  - Outlet turns off if PV power drops below thresholds
-    and the outlet is on.\n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **On
-    Day Trigger**\n   - Only executes if:\n     - Inverter state is `FeedIn`.\n     -
-    Battery full or SoC > 80%.\n     - PV power > 2000 W.\n     - Device temperature
-    < 44°C.\n   - Turns on:\n     - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
-    \    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n2. **Off Day Trigger**\n   - During
-    daytime before sunset and after sunrise.\n   - Turns off BKW outlet if PV power
-    or device conditions drop.\n\n3. **On Night Trigger**\n   - Executes if battery
-    is full at sunset.\n   - Turns on the outlet and increments `counter.battery_full`.\n
-    \  - Calibrates utility meters for charged/discharged energy.\n   - Waits for
-    load to rise above 10 W (30s timeout), otherwise notifies.\n\n4. **Off Night Trigger**\n
-    \  - Executes between 00:00–09:00 if energy was used (`sensor.bkw_outlet_1_energy_today
-    > 0.001`).\n   - Repeats turning off BKW outlet until confirmed off.\n   - Resets
-    `input_boolean.battery_full`.\n   - Increments `counter.battery_empty` if discharged
-    energy > 0.\n   - Updates `input_number.last_discharged_energy_from_bkw_battery`.\n
-    \  - Calibrates utility meter for discharged energy.\n   - Adds a short delay
-    to ensure stability.\n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Mode:**
-    `queued` (max 15 concurrent)\n- **Devices Controlled:**  \n  - `switch.bkw_outlet_1_bkw_outlet_1`
-    \ \n  - `switch.esp32_c3_zero_epever_manual_control_the_load`\n- **Monitoring
-    Entities:**  \n  - Solar inverter, battery voltage, battery SoC, PV array input
-    power, outlet energy, device temperature.\n- **Counters:** `battery_full`, `battery_empty`\n-
-    **Utility Meters:** Charged/discharged energy tracked and calibrated nightly.\n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- Designed for battery protection and efficient
-    solar self-consumption.\n- Nighttime actions ensure energy isn't wasted while
-    maintaining monitoring.\n- Queued mode ensures multiple triggers can be processed
-    without overlap.\n- Thresholds for PV power, battery SOC/voltage, and temperature
-    can be tuned for system optimization.\n"
+  description: "  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Optimized Outlet
+    Control for Solar & Battery System**\n\n  This automation manages the BKW outlet
+    based on solar production, battery\n  state-of-charge (SoC) and voltage, inverter
+    state, sunrise/sunset times, \n  device temperature, and energy usage. Its primary
+    goals are:\n\n  - Optimize charging and discharging to maximize solar self-consumption.\n
+    \ - Protect battery health by enforcing SoC/voltage thresholds.\n  - Ensure nightly
+    shutdown if energy has been used.\n  - Increment counters for monitoring energy
+    events.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition / Threshold
+    | Trigger ID |\n  |----------------|-----------------------|------------|\n  |
+    `sensor.inverter_pv_power` | Above 2250 W | on day |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below 23 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
+    | Below 200 / 175 / 125 / 75 W | off day |\n  | `sensor.inverter_pv_power` | Below
+    2250 / 2000 W | off day |\n  | Sun | Sunset offset -00:15 | on night |\n  | Sun
+    | Sunrise offset +00:15 | off night |\n  | `time_pattern` | Every minute | on
+    day |\n  | `sensor.bkw_outlet_1_energy_power` | Below 50 W | off night |\n\n  >
+    Note: Multiple `off day` and `off night` triggers are defined, each with\n  the
+    same ID, to cover a wide range of solar, battery, and night-time states.\n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  - The automation requires **one of the following**:\n
+    \   - Battery is full (`input_boolean.battery_full = on`), OR\n      Battery SoC
+    ≥ 95% / Voltage ≥ 27.75 V.\n    - OR inverter PV power has dropped < 2001 W **while
+    the outlet is on**.\n\n  This ensures:\n  - Outlets only turn on under safe/high
+    battery conditions.\n  - Outlets turn off when PV is weak but still active.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **On Day Trigger**\n
+    \    - Executes if:\n       - Trigger ID = `on day`\n       - Inverter state =
+    `FeedIn`\n       - Battery marked full (`input_boolean.battery_full = on`)\n       -
+    Battery SoC ≥ 80%\n       - PV power > 2000 W\n       - Device temperature < 44°C\n
+    \    - Turns on:\n       - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
+    \      - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  2. **Off Day Trigger**\n     -
+    Executes if Trigger ID = `off day` during daytime \n       (between sunrise+15
+    and sunset-15).\n     - Turns off the BKW outlet when PV power/array input drops.\n\n
+    \ 3. **On Night Trigger**\n     - Executes if Trigger ID = `on night` and battery
+    is full.\n     - Turns on the load + BKW outlet.\n     - Increments `counter.battery_full`.\n
+    \    - Resets utility meters for charged/discharged energy.\n     - Waits up to
+    30s for load > 10W.  \n       - If not reached, sends notification.\n\n  4. **Off
+    Night Trigger**\n     - Executes if Trigger ID = `off night`, \n       time between
+    00:00–09:00, \n       and energy consumption > 0.001 kWh.\n     - Repeats `turn_off`
+    until outlet is confirmed off.\n     - Resets `input_boolean.battery_full`.\n
+    \    - If discharged energy > 0:\n       - Increments `counter.battery_empty`\n
+    \      - Updates `input_number.last_discharged_energy_from_bkw_battery`\n       -
+    Resets discharged energy utility meter\n     - Adds small delays for stability.\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `queued` (max 15
+    concurrent)\n  - **Devices Controlled:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n
+    \   - `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored Entities:**\n
+    \   - PV power, PV array input power, battery voltage & SoC,\n      inverter state,
+    outlet energy, device temperature.\n  - **Counters:** \n    - `counter.battery_full`\n
+    \   - `counter.battery_empty`\n  - **Utility Meters:** \n    - Charged/discharged
+    energy recalibrated nightly.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n
+    \ - Battery must be explicitly marked full (`battery_full = on`) **and**\n    SoC
+    ≥ 80% before daytime activation.\n  - Nighttime activation checks full battery
+    state at sunset.\n  - Multiple `off day` triggers ensure reliability in varying
+    solar output."
   triggers:
   - entity_id:
     - sensor.inverter_pv_power
@@ -1742,10 +1770,21 @@
   mode: single
 - id: '1712941263468'
   alias: Save Pool Pulse Time
-  description: This automation saves the current pulse time of the pool pump when
-    it is in operation and triggers an MQTT message. It updates the input number representing
-    the actual pulse time value based on the received MQTT payload, provided the pump
-    has been on for at least 5 minutes.
+  description: "## \U0001F4BE Save Pool Pulse Time\n\n### \U0001F4CB Purpose\nSaves
+    the current pulse time of the pool pump while it is running and updates\nHome
+    Assistant with the latest value. Ensures accurate tracking of the\nremaining runtime
+    and publishes an MQTT message for integration with Tasmota\ndevices.\n\n---\n\n###
+    ⏰ Triggers\n| Trigger Type | Details                                     |\n|--------------|--------------------------------------------|\n|
+    MQTT Message | Topic: `stat/tasmota_837238/RESULT`       |\n\n---\n\n### ✅ Conditions\n-
+    Only process if `PulseTime1` exists in the MQTT payload.\n- Pool pump must have
+    been running for at least 5 minutes.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    Extracts `Remaining` value from `PulseTime1` in the MQTT payload.\n- If remaining
+    time < 112, divides by 10 and rounds to nearest integer.\n- If remaining time
+    ≥ 112, subtracts 100 to get actual pulse time.\n- Updates `input_number.pulseTimeActualValue`
+    with the calculated value.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:**
+    `single` to process each MQTT update individually.\n- Uses template logic to handle
+    different Tasmota payload formats.\n- Keeps input number synced with real-time
+    pump runtime."
   triggers:
   - id: frommqtt
     topic: stat/tasmota_837238/RESULT
@@ -1773,8 +1812,25 @@
   mode: single
 - id: '1713031049792'
   alias: Get Pool PulseTime
-  description: Periodically retrieves the pool pump's pulse time, ensuring it is operational,
-    while avoiding downtime during specific conditions.
+  description: "  ## \U0001F30A Get Pool PulseTime\n\n  ### \U0001F4CB **Purpose**\n
+    \ Periodically retrieves the current pulse time from the pool pump to ensure\n
+    \ it is operational. This prevents missed updates while avoiding unnecessary\n
+    \ actions when the pump is off or unavailable.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type        | Interval / Event | Notes |\n  |-------------------|-----------------|-------|\n
+    \ | Periodic Timer     | Every 10 seconds | Checks pulse time regularly |\n  |
+    Home Assistant Start | Event `start`    | Ensures initial value retrieval on HA
+    startup |\n\n  ---\n\n  ### ✅ **Conditions**\n  - Only runs during daytime (after
+    sunrise, before sunset).  \n  - Skips execution if the pool pump (`switch.pool_pumpe`)
+    is OFF for more\n    than 5 minutes or currently unavailable.\n\n  ---\n\n  ###
+    \U0001F3AF **Actions / Workflow**\n  - Publishes an MQTT request to retrieve the
+    current pulse time:  \n    - **Topic:** `cmnd/tasmota_837238/pulsetime1`  \n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:** `single` (prevents
+    overlapping requests)  \n  - Ensures regular polling without interfering with
+    pump downtime.\n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Use alongside
+    automations that adjust pulse time to maintain consistent\n    pump operation.
+    \ \n  - Adjust interval (`/10` seconds) based on system responsiveness and\n    network
+    load.  \n  - MQTT topics must match the Tasmota device configuration for proper\n
+    \   communication."
   triggers:
   - seconds: /10
     trigger: time_pattern
@@ -1806,9 +1862,21 @@
   mode: single
 - id: '1714554450926'
   alias: Terrarium Humidifier Empty Detection
-  description: Monitors the power consumption of the terrarium humidifier to detect
-    when its water tank is empty and sends a notification. Also tracks the number
-    of times it was used.
+  description: "## \U0001F4A7 Terrarium Humidifier Empty Detection\n\n### \U0001F4CB
+    Purpose\nMonitors the power usage of the terrarium humidifier to detect when the
+    water\ntank is empty. Sends notifications to alert about empty water and tracks
+    the\nusage count for the humidifier.\n\n---\n\n### ⏰ Triggers\n- Terrarium humidifier
+    switch (`switch.terrarium_tasmota3`) turns on\n\n---\n\n### ✅ Conditions\n- Only
+    acts if the humidifier is currently switched on (`switch.terrarium_tasmota3`)\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n**When Humidifier is ON:**\n- Waits up to 1 minute
+    for power consumption to exceed 95 W\n- If power remains below 95 W, sends notifications:\n
+    \ - Alert that water tank is empty\n  - Usage counter of the humidifier\n- Resets
+    the usage counter\n\n**When Humidifier is OFF:**\n- Waits up to 1 minute for power
+    consumption to exceed 20 W for at least 5 s\n- If power remains below 20 W, sends
+    the same notifications and resets counter\n\n---\n\n### \U0001F527 Technical Specs\n-
+    Uses `wait_for_trigger` for power thresholds\n- Notifications are sent via `notify.duncan`\n-
+    Counter `counter.luftbefeuchter` tracks number of times humidifier was used\n-
+    **Mode:** `single` (prevents overlapping executions)"
   triggers:
   - trigger: state
     entity_id:
@@ -1972,8 +2040,46 @@
   max: 10
 - id: '1716307846138'
   alias: Pool Runtime Control
-  description: Controls the runtime of the pool and extends it if the weather is nice,
-    based on the solar power available.
+  description: "## \U0001F31E Pool Runtime Control\n\n### \U0001F4CB Purpose\nControls
+    the daily runtime of the pool pump, dynamically adjusting runtime\nbased on weather
+    conditions, solar power availability, and pool temperature\ntrends. The automation
+    ensures efficient use of solar energy while\nmaintaining optimal pool operation.\n\n---\n\n###
+    ⏰ Triggers\n| Trigger Type                     | Details / Thresholds                          |\n|----------------------------------|----------------------------------------------|\n|
+    Time Pattern                      | 09:00–11:00 every 2 minutes (Early Start)
+    \  |\n| Time Pattern                      | 11:00–12:00 (Force Start)                    |\n|
+    Numeric State                     | `input_number.pulsetimeactualvalue` < 250/150
+    |\n| Pool Pump State                   | Off → On / On → Off                           |\n|
+    Time Pattern                      | 20:00+ (Force Stop)                           |\n\n---\n\n###
+    ✅ Conditions\n- Early Start: 09:30–10:59 with sufficient solar or grid export.\n-
+    Force Start: 10:59–12:00 if pump is off.\n- Extend: Pulse time below 410, PV power
+    > 1200, and extend counter < 15.\n- Stop / Stopped: Various time and state-based
+    conditions.\n- All conditions ensure the pump only runs when beneficial.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n**1. Early Start**\n- Checks solar conditions,
+    PV forecast, and azimuth angle.\n- Turns off `pool_pulsetime_auto_adjust` automation
+    temporarily.\n- Opens main solar valve, sets pulse time to 8h, turns on pump.\n-
+    Records start temperature and notifies potential night temperature loss.\n- Re-enables
+    `pool_pulsetime_auto_adjust`.\n\n**2. Force Start**\n- Triggered if pump is off
+    during 11:00–12:00 window.\n- Sets pulse time to 6h, opens solar valve, turns
+    on pump.\n- Records start temperature and notifies temperature loss.\n- Re-enables
+    pulse time auto-adjust.\n\n**3. Extend**\n- Triggered when pulse time is low but
+    solar conditions allow extension.\n- Increments pulse time by 6 minutes per check.\n-
+    Saves stop temperature before extending if first increment.\n- Updates counter
+    to limit maximum extensions.\n- Notifies temperature changes caused by extensions.\n\n**4.
+    Stopped**\n- Triggered when pump turns off.\n- Ensures solar valves are closed,
+    records stop temperature.\n- Notifies temperature change caused by extensions
+    if any.\n- Marks pool as stopped.\n\n**5. Force Stop**\n- Triggered at 20:00 or
+    when explicitly stopped.\n- Records stop temperature, turns off pump and valves,
+    resets counter.\n- Notifies temperature difference between start and stop.\n-
+    Clears stop flag.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:** `queued`
+    with `max: 50` to prevent lost triggers.\n- Monitored Entities: pool pump switch,
+    solar valve switches, pulse time inputs, PV power, solar forecast, pool temperature
+    sensors, trend sensor, and stop flag.\n- Integrates with MQTT to set Tasmota pulse
+    times dynamically.\n- Interacts with `pool_pulsetime_auto_adjust` automation to
+    prevent conflicts.\n\n---\n\n### ⚡ Best Practices / Notes\n- Adjust pulse time
+    thresholds and solar power conditions to match local climate and pool setup.\n-
+    Ensure all sensors and valves report accurate states to avoid unintended runtime.\n-
+    Extend logic uses a counter to prevent excessive prolonging of pump operation.\n-
+    Notifications help track temperature changes and pool runtime efficiency."
   triggers:
   - hours: '9'
     minutes: /2
@@ -2017,22 +2123,15 @@
       - condition: time
         after: 09:30:00
         before: '10:59:00'
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
-    - condition: and
+    - alias: Force Start Condition
+      condition: and
       conditions:
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
       - condition: time
         after: '10:59:59'
         before: '12:00:00'
-      alias: Force Start Condition
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
     - alias: 'Extend Condition '
       condition: numeric_state
       entity_id: input_number.pulsetimeactualvalue
@@ -2064,11 +2163,9 @@
         - condition: numeric_state
           entity_id: sensor.grid_export
           above: 2000
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
       - condition: numeric_state
         entity_id: sensor.sun_solar_azimuth
         above: 95
@@ -2093,10 +2190,11 @@
         topic: cmnd/tasmota_837238/pulsetime1
         payload: '28895'
       action: mqtt.publish
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 5
@@ -2134,11 +2232,9 @@
       - condition: trigger
         id:
         - Force Start
-      - condition: device
-        type: is_off
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
     then:
     - action: automation.turn_off
       metadata: {}
@@ -2157,10 +2253,11 @@
         topic: cmnd/tasmota_837238/pulsetime1
         payload: '21695'
       action: mqtt.publish
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 5
@@ -2207,11 +2304,9 @@
       - condition: numeric_state
         entity_id: input_number.pulsetimeactualvalue
         below: 410
-      - condition: device
-        type: is_on
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'on'
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'off'
@@ -2278,11 +2373,9 @@
         - condition: trigger
           id:
           - Extend
-        - condition: device
-          type: is_on
-          device_id: 7f4653a91cd2ef69cb48aa494a983be8
-          entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-          domain: switch
+        - condition: state
+          entity_id: switch.pool_pumpe
+          state: 'on'
       then:
       - alias: Notify about temperature change caused by extend
         if:
@@ -2467,9 +2560,23 @@
   mode: single
 - id: '1716929359492'
   alias: Terrarium Climate Control
-  description: Manages the terrarium's heat lamp and humidifier based on time, sunlight
-    conditions, and humidifier sensor status, ensuring an optimal environment during
-    the day.
+  description: "## \U0001F321️ Terrarium Climate Control Automation\n\n### \U0001F4CB
+    Purpose\nManages the terrarium environment by controlling the heat lamp and humidifier\nbased
+    on time, sunlight, and sensor readings to maintain optimal daytime\nconditions.\n\n---\n\n###
+    ⏰ Triggers\n- Every minute (time pattern) to check general daytime conditions\n-
+    Humidifier sensor (`binary_sensor.luftbefeuchter_on_windows`) turns on\n- Sunrise
+    plus 30 minutes offset\n- Sunset minus 30 minutes offset\n\n---\n\n### ✅ Conditions\n-
+    Only operates during daytime (between sunrise and sunset)\n- Automation respects
+    the terrarium master switch (`input_boolean.terrarium_on`)\n\n---\n\n### \U0001F3AF
+    Actions / Workflow\n**Daytime Heat Lamp Control:**\n- Runs `script.warmelampe`
+    every minute during daytime if terrarium is on\n\n**Humidifier Control:**\n- Runs
+    `script.luftbefeuchter` when humidifier sensor triggers and terrarium is on\n\n**Sunrise
+    Routine:**\n- Activates `script.terra_sunrise` 30 minutes after sunrise\n\n**Sunset
+    Routine:**\n- Activates `script.terra_sunset` 30 minutes before sunset\n\n---\n\n###
+    \U0001F527 Technical Specs\n- Mode: `parallel` with max 10 to allow multiple overlapping
+    triggers\n- Uses `choose` blocks to separate daytime, sunrise, sunset, and sensor-based
+    actions\n- Integrates both scheduled time checks and sensor events for robust
+    control"
   triggers:
   - minutes: /1
     id: '1'
@@ -2549,11 +2656,42 @@
   max: 10
 - id: '1717951712000'
   alias: Pool Heating Control for Optimal Temperature
-  description: This automation manages the solar heating of the pool based on temperature
-    and solar conditions. It activates and deactivates heating as needed to maintain
-    an optimal pool temperature, ensuring energy efficiency and comfort. Steps include
-    monitoring solar power, tracking time conditions, and assessing temperature thresholds
-    for heating on/off actions.
+  description: "  ## ☀️ Pool Heating Control for Optimal Temperature\n\n  ### \U0001F4CB
+    **Purpose**\n  Automatically manages the solar heating of the pool to maintain
+    an optimal\n  temperature while maximizing energy efficiency. The automation evaluates\n
+    \ current pool temperature, solar conditions, and time triggers to decide\n  when
+    to turn the solar heating valves on or off.\n\n  ---\n\n  ### ⏰ **Triggers**\n
+    \ | Trigger Type             | Details / Thresholds                         |\n
+    \ |--------------------------|---------------------------------------------|\n
+    \ | Solar Azimuth            | Between 95° and 100°                        |\n
+    \ | Scheduled Time Checks    | 11:00 – 16:00 at hourly intervals          |\n
+    \ | Pool Temperature Input   | Changes in `input_number.pool_temp_start`   |\n
+    \ | Actual Pool Temperature  | Changes crossing `input_number.pool_heating_stop`
+    |\n\n  ---\n\n  ### ✅ **Conditions**\n  - No global conditions; logic is handled
+    in action-level checks.  \n  - Heating only activates when pool temperature is
+    below thresholds.  \n  - Solar or power conditions (cloud coverage, solar radiation,
+    total solar power) must indicate heating is beneficial.\n\n  ---\n\n  ### \U0001F3AF
+    **Actions / Workflow**\n  **1. Solar Heating ON**\n  - Activated by time triggers
+    or solar azimuth during the day.  \n  - Conditions to start:\n      - Pool temp
+    below stop threshold.\n      - Start temp not too hot (>28.5 °C).  \n      - Adequate
+    solar power, low cloud coverage, or sufficient radiation.  \n  - Steps:\n      -
+    If first trigger of the day, open main solar valve.  \n      - Turn on smart valve
+    controller.  \n      - Wait for any unavailable states to recover (max 1 minute).
+    \ \n\n  **2. Solar Heating OFF**\n  - Triggered by temperature above stop threshold
+    or poor solar conditions.  \n  - Steps:\n      - Turn off smart valve controller.
+    \ \n\n  **3. Disable Solar Heating if Too Hot**\n  - Triggered if pool start temperature
+    exceeds 28.5 °C.  \n  - Steps:\n      - Turn off smart valve controller and main
+    solar valve.  \n      - Notify user via notification that heating is skipped due
+    to high temperature.  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:**
+    `single` (prevents overlapping operations)  \n  - Valves controlled:  \n      -
+    `switch.pool_ventil_solar` (main solar valve)  \n      - `switch.smart_valve_controller_schalter_1`
+    (smart valve controller)  \n  - Monitored entities: solar azimuth, pool temperature
+    sensors, cloud coverage, solar power, solar radiation, and pool start temperature
+    input.  \n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Adjust temperature
+    thresholds and solar power limits for your climate and pool setup.  \n  - Ensure
+    all valve switches and sensors are correctly configured for reliable automation.
+    \ \n  - Can be extended with additional safety checks, such as maximum daily heating
+    duration or pump runtime limits."
   triggers:
   - entity_id:
     - sensor.sun_solar_azimuth
@@ -2652,8 +2790,6 @@
       - condition: trigger
         id:
         - 'On'
-        - On 1
-        - On last
       - condition: or
         conditions:
         - condition: numeric_state
@@ -2716,7 +2852,16 @@
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Speed test CLI Addon
-  description: ''
+  description: "## ⚡ Hourly Internet Speedtest Automation\n\n### \U0001F4CB Purpose\nRuns
+    the **Speedtest CLI Add-on** every hour to monitor internet connection performance.
+    This helps track latency, download, and upload speeds over time for diagnostics
+    and monitoring purposes.\n\n---\n\n### ⏱ Trigger\n- Every hour using a time pattern
+    (`hours: /1`).\n\n---\n\n### ✅ Conditions\n- None; the automation runs unconditionally
+    every hour.\n\n---\n\n### \U0001F3AF Actions / Workflow\n- Executes the script
+    with ID `script.1707895746671`, which triggers the Speedtest CLI add-on to perform
+    a speed test.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` ensures
+    that a new test won’t start if the previous one is still running.\n- Can be extended
+    to log results or send notifications if thresholds are exceeded."
   triggers:
   - hours: /1
     trigger: time_pattern
@@ -2872,9 +3017,27 @@
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
-  description: Adjusts the Pool PulseTime automatically based on changes in the actual
-    value. It turns the switch off, publishes the adjusted pulse time, and turns it
-    back on if the updated value exceeds thresholds or changes from zero.
+  description: "  ## \U0001F30A Auto Pool PulseTime Adjust\n\n  ### \U0001F4CB **Purpose**\n
+    \ Automatically adjusts the pool pump's pulse time based on changes in the\n  actual
+    value (`input_number.pulsetimeactualvalue`).  \n  If the updated pulse time increases
+    significantly or changes from zero, the\n  automation temporarily turns off the
+    pump, publishes the adjusted pulse\n  time via MQTT, and turns the pump back on
+    to safely apply the new setting.\n\n  ---\n\n  ### ⏰ **Triggers**\n  | Trigger
+    Type | Entity | From | To |\n  |-------------|--------|------|----|\n  | PulseTime
+    Change | `input_number.pulsetimeactualvalue` | Any | Any |\n\n  > **Note:** Triggers
+    on any change to the pulse time value.\n\n  ---\n\n  ### ✅ **Conditions**\n  -
+    The pool pump (`switch.pool_pumpe`) must be ON for adjustments to occur.\n\n  ---\n\n
+    \ ### \U0001F3AF **Actions / Workflow**\n  **1. Adjust PulseTime**\n  - If the
+    new pulse time > old pulse time AND (old != 0 OR new > 1000):\n      - Turn off
+    pump  \n      - Wait 5 seconds  \n      - Publish new pulse time via MQTT  \n
+    \     - Wait 5 seconds  \n      - Turn pump back on  \n\n  **2. Handle zero pulse
+    time**\n  - If both old and new pulse times are zero:\n      - Turn off pump\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:** `single` (prevents
+    overlapping adjustments)  \n  - **MQTT Topic:** `cmnd/tasmota_837238/pulsetime1`
+    \ \n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Keep the pump ON before
+    testing the automation.  \n  - 5-second delays prevent abrupt changes and ensure
+    safe updates.  \n  - Significant changes (>1000) trigger adjustments even from
+    zero.  \n  - Action aliases help with clear logs and debugging."
   triggers:
   - entity_id:
     - input_number.pulsetimeactualvalue
@@ -2882,11 +3045,9 @@
     to:
     trigger: state
   conditions:
-  - condition: device
-    type: is_on
-    device_id: 7f4653a91cd2ef69cb48aa494a983be8
-    entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-    domain: switch
+  - condition: state
+    entity_id: switch.pool_pumpe
+    state: 'on'
   actions:
   - if:
     - condition: template
@@ -2894,10 +3055,11 @@
         | int(0)) \n    and \n  ((trigger.from_state.state|int() != 0)\n    or\n  (trigger.to_state.state|int()
         > 1000 ))\n}}"
     then:
-    - type: turn_off
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
     - delay:
         hours: 0
         minutes: 0
@@ -2913,10 +3075,11 @@
         minutes: 0
         seconds: 5
         milliseconds: 0
-    - type: turn_on
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
   - if:
     - condition: and
       conditions:
@@ -2925,10 +3088,11 @@
       - condition: template
         value_template: '{{ (trigger.from_state.state | int(0)) == 0 }}'
     then:
-    - type: turn_off
-      device_id: 7f4653a91cd2ef69cb48aa494a983be8
-      entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-      domain: switch
+    - action: switch.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: switch.pool_pumpe
   mode: single
 - id: '1721345437021'
   alias: AnkerMake 3D Printer Auto Turn Off
@@ -4648,8 +4812,16 @@
   mode: single
 - id: '1735498655841'
   alias: Update Boiler Remaining Time Timer
-  description: Updates the sensor displaying the remaining time of the boiler on-demand
-    timer.
+  description: "## \U0001F525 Boiler Remaining Time Update Automation\n\n### \U0001F4CB
+    Purpose\nKeeps the sensor `sensor.boiler_remaining_time` up-to-date by refreshing
+    it while the on-demand boiler timer is active. Ensures real-time display of remaining
+    boiler operation time.\n\n---\n\n### ⏱ Trigger\n- Every 2 seconds via a `time_pattern`
+    trigger (`seconds: /2`).\n\n---\n\n### ✅ Conditions\n- Only runs when the `timer.boiler_on_demand`
+    is **active**, preventing unnecessary updates when the boiler is off.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- Calls `homeassistant.update_entity` on `sensor.boiler_remaining_time`
+    to refresh the remaining time display.\n\n---\n\n### \U0001F527 Technical Notes\n-
+    Mode: `single` ensures no overlapping updates.\n- High-frequency trigger (every
+    2s) provides near-real-time monitoring but may slightly increase system load."
   triggers:
   - trigger: time_pattern
     seconds: /2
@@ -5731,9 +5903,42 @@
   max: 3
 - id: '1739967189542'
   alias: Waschmaschine und Trockner Erinnerungen
-  description: This automation sends notifications and plays audio alerts when the
-    washing machine or dryer has completed its cycle. It continuously notifies until
-    the user clears the signal.
+  description: "  ## \U0001F9FA Laundry Reminder Automation\n\n  ### \U0001F4CB **Persistent
+    Cycle Completion Alerts**\n\n  This automation sends **repeated notifications
+    and audio reminders** when the\n  washing machine or dryer has finished a cycle.
+    Notifications continue at\n  regular intervals until the user clears the completion
+    signal.  \n  The goal is to ensure laundry is removed promptly and that “done”
+    states\n  don’t get ignored.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Entity |
+    From → To | Trigger ID |\n  |--------|-----------|------------|\n  | `input_boolean.waschmaschine_fertig`
+    | off → on | Waschmaschine |\n  | `input_boolean.trockner_fertig` | off → on |
+    Trockner |\n  | `input_boolean.waschmaschine_fertig` | on → off | Waschmaschine
+    fertig |\n  | `input_boolean.trockner_fertig` | on → off | Trockner fertig |\n\n
+    \ > Completion flags turning **on** start the reminders.  \n  > Flags turning
+    **off** clear notifications and stop alerts.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
+    \ - No additional conditions.  \n    The automation always responds to the defined
+    triggers.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **Waschmaschine
+    Reminder**\n     - When `Waschmaschine` is triggered (done = on):\n       - Repeats:\n
+    \        - Sends push notification (`notify.familie`) with tag `waschmaschine_fertig`.\n
+    \        - Speaks announcement via TTS: *“Die Waschmaschine ist fertig.”*\n         -
+    Waits 10 minutes, then repeats.\n       - Loop continues until `input_boolean.waschmaschine_fertig
+    = off`.\n       - Clears notification tag once cycle is acknowledged.\n\n  2.
+    **Trockner Reminder**\n     - When `Trockner` is triggered (done = on):\n       -
+    Repeats:\n         - Sends push notification with tag `trockner_fertig`.\n         -
+    Speaks announcement via TTS: *“Der Trockner ist fertig.”*\n         - Waits 10
+    minutes, then repeats.\n       - Loop continues until `input_boolean.trockner_fertig
+    = off`.\n       - Clears notification tag once cycle is acknowledged.\n\n  3.
+    **Clear Notifications**\n     - When either appliance’s `fertig` flag goes from
+    on → off:\n       - Immediately clears any active notifications for that appliance.\n\n
+    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `parallel` (up
+    to 10 concurrent runs).  \n  - **Devices Controlled:**\n    - `notify.familie`
+    (persistent notifications).  \n    - `media_player.lenovo_tab_p11` via `tts.google_ai_tts`.
+    \ \n  - **Monitored Entities:**\n    - `input_boolean.waschmaschine_fertig`  \n
+    \   - `input_boolean.trockner_fertig`  \n  - **Notification Tags:**  \n    - `waschmaschine_fertig`
+    \ \n    - `trockner_fertig`  \n\n  ---\n\n  ### \U0001F514 **Notes**\n\n  - Both
+    appliances repeat their alerts every **10 minutes** until cleared.  \n  - TTS
+    ensures audible feedback in addition to push notifications.  \n  - Notifications
+    are uniquely tagged so they can be updated/cleared without duplicates.  \n  -
+    User acknowledgment (turning the boolean off) is the only way to stop the reminders."
   triggers:
   - trigger: state
     entity_id:
@@ -6033,11 +6238,33 @@
   mode: single
 - id: '1740741927183'
   alias: Turn off Trockner or Waschmaschine fertig using Button
-  description: This automation turns off the completion status for the dryer or washing
-    machine when a button is pressed. It monitors specific button triggers for each
-    appliance and resets their respective status if they are marked as done. It ensures
-    the completion indicator is correctly updated for both appliances, allowing for
-    accurate tracking of laundry tasks.
+  description: "\n  ## \U0001F9FA Laundry Reset Automation\n\n  ### \U0001F4CB **Clear
+    Appliance Completion States via Button Press**\n\n  This automation resets the
+    *completion status* of either the dryer (`input_boolean.trockner_fertig`) or the
+    washing machine (`input_boolean.waschmaschine_fertig`) whenever their assigned
+    button is pressed.  \n  It ensures that once the laundry is removed and the user
+    acknowledges it by pressing the button, the “done” indicator is turned off to
+    keep appliance status tracking accurate.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n
+    \ | Device / Button | Action Type | Appliance | Trigger ID |\n  |-----------------|-------------|-----------|-------------|\n
+    \ | `button_1` | Single / Double Press | Dryer | `Trockner` |\n  | `button_2`
+    | Single / Double Press | Washing Machine | `Waschmaschine` |\n\n  > Each appliance
+    can be reset with **either a single or double press** on its assigned button.\n\n
+    \ ---\n\n  ### ✅ **Conditions**\n\n  - The chosen appliance must currently have
+    its completion flag set:\n    - Dryer → `input_boolean.trockner_fertig = on`\n
+    \   - Washing Machine → `input_boolean.waschmaschine_fertig = on`\n\n  If the
+    appliance is *not* marked as finished, the press does nothing.\n\n  ---\n\n  ###
+    \U0001F3AF **Actions / Workflow**\n\n  1. **Dryer Reset**\n     - Triggered by
+    `Trockner` button.\n     - If `input_boolean.trockner_fertig = on`, turn it off.\n\n
+    \ 2. **Washing Machine Reset**\n     - Triggered by `Waschmaschine` button.\n
+    \    - If `input_boolean.waschmaschine_fertig = on`, turn it off.\n\n  > Both
+    paths ensure the completion indicator is cleared only when appropriate.\n\n  ---\n\n
+    \ ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `single` (no overlapping
+    runs).\n  - **Controlled Entities:**\n    - `input_boolean.trockner_fertig`\n
+    \   - `input_boolean.waschmaschine_fertig`\n  - **Input Device:**  \n    - MQTT
+    button with two mapped sub-buttons (dryer / washer).\n\n  ---\n\n  ### \U0001F4DD
+    **Notes**\n\n  - The automation supports both *single* and *double* presses for
+    convenience.  \n  - Prevents stale “done” states if a cycle has already been cleared.
+    \ \n  - Keeps laundry task tracking consistent across appliances."
   triggers:
   - domain: mqtt
     device_id: 7be1308679cc0cfa3cc595fe650e29ed
@@ -6156,8 +6383,23 @@
   mode: single
 - id: '1741093435280'
   alias: Set Herd CT Clamp Update Frequency at Startup and every Hour
-  description: Ensures the Herd CT clamp reports its current at a consistent 15-second
-    interval.
+  description: "## ⚡ Herd CT Clamp Update Frequency Control\n\n### \U0001F4CB Purpose\nKeeps
+    the Herd CT clamp sensor (`number.herd_ct_klemme_zigbee_update_frequency`) configured
+    to a **20-second update interval**, ensuring reliable and consistent reporting
+    of current measurements.\n\n---\n\n### ⏱ Triggers\n- **Home Assistant startup**
+    → sets frequency after system boots.\n- **Every hour** → re-applies frequency
+    setting for robustness (e.g., if device resets).\n- **Entity state change** →
+    immediately re-applies the correct frequency if the value is modified manually
+    or by other automations.\n\n---\n\n### ✅ Conditions\n- No global conditions, runs
+    unconditionally.\n\n---\n\n### \U0001F3AF Actions\n- Waits **5 seconds** after
+    trigger to ensure the entity is initialized and ready.  \n- Calls `number.set_value`
+    on `number.herd_ct_klemme_zigbee_update_frequency` to enforce the configured interval
+    (value: `20` → corresponds to 20s updates).\n\n---\n\n### \U0001F527 Technical
+    Notes\n- Mode: `single` → prevents overlapping executions.  \n- The **hourly trigger**
+    ensures long-term stability even if the device silently resets its reporting interval.
+    \ \n- The **entity state trigger** catches accidental or external changes to the
+    setting.  \n- Delay ensures that HA startup doesn’t fail if the entity is still
+    initializing."
   triggers:
   - trigger: homeassistant
     event: start
@@ -6173,13 +6415,12 @@
       minutes: 0
       seconds: 5
       milliseconds: 0
-  - device_id: 3198731e8b90e56a55763e5862d1e728
-    domain: number
-    entity_id: 8dac2d1e77f626770b9dd54c98445f49
-    type: set_value
-    metadata:
-      secondary: false
-    value: 20
+  - action: number.set_value
+    metadata: {}
+    data:
+      value: '20'
+    target:
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
   mode: single
 - id: '1741102167233'
   alias: Publish Energy Data to MQTT
@@ -6254,9 +6495,27 @@
   max: 10
 - id: '1742316986881'
   alias: Wall Panel Display Control
-  description: Automatically turns off the wall panel display at night and turns it
-    on at sunrise. If the display is on after midnight, it will automatically turn
-    off after a 30-second delay, ensuring it's not left on during non-use hours.
+  description: "## \U0001F5A5 Wall Panel Display Control Automation\n\n### \U0001F4CB
+    Purpose\nManages the Lenovo Tab P11 wall panel display to optimize usage and reduce
+    unnecessary power consumption:\n\n- Turns **off** the display every night at **23:00**.\n-
+    Turns **on** the display at **sunrise**.\n- If the display is manually or automatically
+    switched on **after 23:00** but before sunrise, it will automatically switch **off
+    after 15 seconds**.\n\n---\n\n### ⏱ Triggers\n- **23:00 time trigger** → forces
+    display off.\n- **Sunrise event** → turns the display back on.\n- **State trigger**
+    on `switch.lenovo_tab_p11_bildschirmschoner` to detect manual/other activations:\n
+    \ - Fires if the screensaver switch changes **to `on` for 15 seconds**.\n\n---\n\n###
+    ✅ Conditions\n- No global conditions.\n- Inside **Bildschirm changed** sequence:\n
+    \ - Ensures the current time is **between 23:00 and sunrise**.\n  - Ensures `switch.lenovo_tab_p11_bildschirm`
+    is still `on` before forcing it off.\n\n---\n\n### \U0001F3AF Actions\n- **Display
+    Off at 23:00 (`Display Off`)**  \n  → Turns off `switch.lenovo_tab_p11_bildschirm`.\n-
+    **Display On at Sunrise (`Display On`)**  \n  → Turns on `switch.lenovo_tab_p11_bildschirm`.\n-
+    **Screen On after Midnight (`Bildschirm changed`)**  \n  → If screensaver is on
+    after 23:00 and before sunrise:\n    - Waits 15 seconds.\n    - Then switches
+    off the display.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` →
+    prevents overlapping executions.  \n- `max_exceeded: silent` → avoids log spam
+    if retriggers happen quickly.  \n- Uses both **time** and **sun events** for robust
+    scheduling.  \n- The delayed off sequence ensures the display won’t stay on unintentionally
+    during the night."
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -6315,9 +6574,9 @@
       - delay:
           hours: 0
           minutes: 0
-          seconds: 30
+          seconds: 15
           milliseconds: 0
-        enabled: false
+        enabled: true
       - action: switch.turn_off
         metadata: {}
         data: {}
@@ -6625,8 +6884,18 @@
   max: 3
 - id: '1747074473799'
   alias: Restart Add-ons at 01:00 daily
-  description: Restarts a series of add-ons (repocket, earnapp, earnfm, packetstream,
-    pawns, traffmonetizer) with short delays between restarts to recover after updates.
+  description: "## \U0001F504 Daily Add-on Restart Automation\n\n### \U0001F4CB Purpose\nThis
+    automation restarts a set of Home Assistant add-ons daily at **01:00 AM**. \nIts
+    goal is to ensure the add-ons (repocket, earnapp, earnfm, packetstream, pawns,
+    traffmonetizer) are refreshed, which helps recover from updates or minor issues.\n\n---\n\n###
+    ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n### ✅ Conditions\n- No additional
+    conditions; the restart occurs every day.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1.
+    Restart `repocket` add-on\n2. Wait 5 seconds\n3. Restart `earnapp` add-on\n4.
+    Wait 5 seconds\n5. Restart `earnfm` add-on\n6. Wait 5 seconds\n7. Restart `packetstream`
+    add-on\n8. Wait 5 seconds\n9. Restart `pawns` add-on\n10. Wait 5 seconds\n11.
+    Restart `traffmonetizer` add-on\n\n---\n\n### \U0001F527 Technical Notes\n- Mode:
+    `single` (prevents overlapping runs if the automation triggers again unexpectedly).\n-
+    Uses short delays between add-on restarts to avoid potential conflicts or overload."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -7260,7 +7529,7 @@
     | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
     > `number.inverter_battery_capacity`  \n- `sensor.felicity_ess_soc_avg` > **99%**
     \ \n\n---\n\n### \U0001F3AF **Correction Logic**  \n\n#### **Step 1**  \n- Increase
-    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **15s**  \n\n####
+    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **10s**  \n\n####
     **Step 3**  \n- Decrease inverter’s capacity value by **-1**  \n\n---\n\n### \U0001F527
     **Technical Specs**  \n- **Target Number Entity:** `number.inverter_battery_capacity`
     \ \n- **Sensors Used:**  \n  - `sensor.inverter_battery_corrected_capacity`  \n
@@ -7705,8 +7974,18 @@
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
-  description: Adjusts grow light brightness and color temperature based on sensor
-    readings, ensuring the light entity is available.
+  description: "## \U0001F4A1 Adjust Grow Light Brightness from Sensor\n\n### \U0001F4CB
+    Purpose\nDynamically adjusts the brightness and color temperature of the grow
+    light\nbased on sensor readings, ensuring optimal plant lighting while the light
+    is\navailable.\n\n---\n\n### ⏰ Triggers\n| Trigger Type | Details                          |\n|--------------|---------------------------------|\n|
+    State Change | `sensor.grow_light_temperature` |\n| State Change | `sensor.grow_light_brightness_raw`
+    |\n\n---\n\n### ✅ Conditions\n- Only execute if the grow light entity (`light.regal_big_led_light`)
+    is not\n  `unavailable` or `unknown`.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    Updates light brightness using `sensor.grow_light_brightness_raw`.\n- Updates
+    color temperature using `sensor.grow_light_temperature`.\n- Turns on the light
+    with the updated settings.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:**
+    `queued` to handle multiple state changes in sequence.\n- Uses template conversion
+    to ensure sensor values are integers for Home\n  Assistant."
   triggers:
   - entity_id:
     - sensor.grow_light_temperature
@@ -7731,8 +8010,18 @@
   mode: queued
 - id: '1750928722036'
   alias: Reboot Host System on 1st of the Month
-  description: Reboots the Home Assistant host system on the first day of every month,
-    with a pre-notification one hour prior.
+  description: "## \U0001F504 Monthly Host Reboot Automation\n\n### \U0001F4CB Purpose\nAutomatically
+    reboots the Home Assistant host system on the **first day of every month**,\nproviding
+    an advance notification one hour prior to the reboot for awareness.\n\n---\n\n###
+    ⏱ Triggers\n- `12:00:00` → Sends pre-notification one hour before reboot.\n- `13:00:00`
+    → Executes the actual host system reboot.\n\n---\n\n### ✅ Conditions\n- Only triggers
+    when the current day is the **1st of the month**.\n  ```jinja\n  {{ now().day
+    == 1 }}\n  ```\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### 12:00 Notification\n-
+    Send a notification to user that the host system will reboot at 13:00.\n\n####
+    13:00 Reboot\n- Notify user that the host system is now rebooting.\n- Trigger
+    `hassio.host_reboot` to reboot the Home Assistant host.\n\n---\n\n### \U0001F527
+    Technical Specs\n- Mode: `choose` structure based on which trigger fired.\n- Notifications
+    use plain text for clarity."
   triggers:
   - at: '13:00:00'
     trigger: time
@@ -7913,10 +8202,24 @@
       initial_delay: 1
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
-  description: 'Steuert den Wintergarten-Rolladen automatisch basierend auf dem Sensor
-    inklusive Benachrichtigung mit Grund sowie Statusmeldungen zum manuellen Modus.
-
-    '
+  description: "## \U0001F31E Rollo Sommer Automatisch Steuern (mit Grund und Manueller
+    Modus)\n\n### \U0001F4CB Purpose\nAutomates the summer operation of the Wintergarten
+    (sunroom) roller shutter\nbased on sensor readings, while also handling manual
+    override mode. Provides\nnotifications with the reason for opening/closing and
+    status updates when\nmanual mode is activated or deactivated.\n\n---\n\n### ⏰
+    Triggers\n- Sensor indicates roller should close (`on`) for 10 minutes\n- Sensor
+    indicates roller should open (`off`) for 15 minutes\n- Manual override boolean
+    toggled (`on` or `off`)\n- Sensor attribute `not_raining` changes to `0` for 1
+    minute\n\n---\n\n### ✅ Conditions\n- Only runs during daytime (between sunrise
+    and sunset)\n- Roller must not already be in the desired state (open/closed)\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- **Rollo schließen:** Closes roller and sends
+    notification with reason\n- **Rollo öffnen:** Opens roller and sends notification
+    with reason\n- **Manual Mode Activated:** Sends notification and clears automatic
+    mode alerts\n- **Manual Mode Deactivated:** Sends notification and clears manual
+    mode alerts\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:** `single` (prevents
+    overlapping executions)\n- Uses `cover.open_cover` / `cover.close_cover` to control
+    roller\n- Notifications are tagged (`rollo_close`, `rollo_open`, `rollo_manual`,
+    `rollo_automatic`) for tracking"
   triggers:
   - trigger: state
     id: rollo_close
@@ -8124,8 +8427,19 @@
   mode: single
 - id: '1752180300729'
   alias: 'Alert: SMART Status Problem'
-  description: Notifies if the HDD SMART status reports a problem, indicating potential
-    drive failure.
+  description: "## \U0001F4BE SMART Drive Status Alert Automation\n\n### \U0001F4CB
+    Purpose\nMonitors the health of your storage devices (HDDs and SSDs) via SMART
+    status.\nSends an immediate notification if any monitored drive reports a potential\nproblem,
+    allowing timely intervention before data loss occurs.\n\n---\n\n### ⏰ Triggers\n-
+    State change of `binary_sensor.sata_ssd_status` to `on`\n- State change of `binary_sensor.nvme_ssd_status`
+    to `on`\n\n---\n\n### ✅ Conditions\n- None. Alerts are sent unconditionally upon
+    trigger.\n\n---\n\n### \U0001F3AF Actions / Workflow\n- Sends a high-priority
+    notification via `notify.duncan`\n- Notification includes:\n  - Drive friendly
+    name from the triggered entity\n  - Clear warning about potential data loss\n
+    \ - Suggestion to back up data and check the drive immediately\n- Notification
+    metadata includes `tag: hdd_alert`, `priority: high`, and `ttl: 0`\n\n---\n\n###
+    \U0001F527 Technical Specs\n- Mode: `single` to prevent overlapping alerts\n-
+    Works for multiple drives with identical logic"
   triggers:
   - entity_id:
     - binary_sensor.sata_ssd_status
@@ -8167,7 +8481,18 @@
   mode: single
 - id: '1753221152708'
   alias: Restart Frigate at 1 o'clock
-  description: ''
+  description: "## \U0001F504 Frigate Daily Restart Automation\n\n### \U0001F4CB Purpose\nThis
+    automation ensures that the Frigate add-on is either started or restarted every
+    day at **01:00 AM** depending on its current state. This guarantees that Frigate
+    is running properly and prevents issues from prolonged uptime or unexpected crashes.\n\n---\n\n###
+    ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n### ✅ Conditions\n- No additional
+    conditions; the automation handles both \"not running\" and \"already running\"
+    states.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1. **Check if Frigate is
+    running** using `binary_sensor.frigate_full_access_aktiv`.\n2. **If Frigate is
+    not running** (sensor `off`):\n   - Start the Frigate add-on.\n3. **If Frigate
+    is running** (sensor `on`):\n   - Restart the Frigate add-on to refresh its service.\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` prevents overlapping execution.\n-
+    Uses `choose` statements to differentiate between the add-on states and act accordingly."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -8175,11 +8500,9 @@
   actions:
   - choose:
     - conditions:
-      - condition: not
-        conditions:
-        - condition: state
-          entity_id: binary_sensor.frigate_full_access_aktiv
-          state: ''
+      - condition: state
+        entity_id: binary_sensor.frigate_full_access_aktiv
+        state: 'off'
       sequence:
       - action: hassio.addon_start
         metadata: {}
@@ -8340,9 +8663,22 @@
   mode: single
 - id: '1754293444382'
   alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
-  description: Runs left, Kallax, and right paludarium pumps in a 15-minute on/off
-    cycle during daytime; on pump turn-off, starts a fan cooldown. Includes 1‑minute
-    failsafe time pattern trigger and power strip availability checks.
+  description: "## \U0001F33F Paludarium Pump & Fan Cycle (Daytime, Combined Zones)\n\n###
+    \U0001F4CB Purpose\nAutomates the daytime cycling of left, Kallax, and right paludarium
+    pumps in\n15-minute on/off intervals. After a pump turns off, a fan cooldown is
+    started\nto maintain environmental stability. Includes checks for power strip\navailability
+    and a failsafe 1-minute time pattern trigger.\n\n---\n\n### ⏰ Triggers\n- 1-minute
+    time pattern (failsafe)\n- Pump switches turning `on` or `off` for 15 minutes\n\n---\n\n###
+    ✅ Conditions\n- Only runs during daytime (between sunrise and sunset)\n- Zone-specific
+    power strip must be on to control respective pumps\n\n---\n\n### \U0001F3AF Actions
+    / Workflow\n- **Left, Kallax, Right Zones:**  \n  - If pump has been on for its
+    duration, turn off and start fan cooldown  \n  - If pump has been off for its
+    duration, turn pump back on\n- Uses variables to define pump/fan entities and
+    durations\n- Runs zone sequences in parallel to allow simultaneous management\n\n---\n\n###
+    \U0001F527 Technical Specs\n- **Mode:** `parallel` with a max of 10 to handle
+    multiple concurrent sequences\n- **Pump On/Off Duration:** 14 minutes 55 seconds
+    \ \n- **Fan Duration:** 2 minutes 30 seconds\n- Uses `script.run_fan_for_duration`
+    to manage fan cooldown timing"
   triggers:
   - minutes: /1
     trigger: time_pattern
@@ -8515,10 +8851,17 @@
   max: 10
 - id: '1755587220350'
   alias: GitHub Exporter addon start every hour
-  description: Starts the git-exporter addon every hour.
+  description: "## ⏱ GitHub Exporter Add-on Scheduler\n\n### \U0001F4CB Purpose\nEnsures
+    the `git-exporter` Home Assistant add-on runs consistently every hour\nto export
+    and update GitHub repository data automatically.\n\n---\n\n### ⏰ Trigger\n- Fires
+    on a repeating hourly schedule (`time_pattern` with `/1` hour).\n\n---\n\n###
+    ✅ Conditions\n- None. The add-on starts unconditionally every hour.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n- Starts the `git-exporter` add-on via `hassio.addon_start`\n-
+    Add-on identifier: `68413af6_git-exporter`\n\n---\n\n### \U0001F527 Technical
+    Specs\n- Mode: `single` to prevent overlapping executions."
   triggers:
   - trigger: time_pattern
-    hours: /2
+    hours: /1
   conditions: []
   actions:
   - action: hassio.addon_start
