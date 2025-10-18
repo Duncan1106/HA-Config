@@ -117,16 +117,32 @@ modbus_controller:
     update_interval: 2s
 
 number:
+  # - platform: modbus_controller
+  #   modbus_controller_id: epever
+  #   id: backlight_time
+  #   address: 0x9063
+  #   name: "Backlight time"
+  #   register_type: holding
+  #   unit_of_measurement: "s"
+  #   value_type: U_WORD  
+  #   entity_category: config
+  #   disabled_by_default: True
+
   - platform: modbus_controller
     modbus_controller_id: epever
-    id: backlight_time
+    id: lcd_backlight_time
+    name: "LCD Backlight Time"
     address: 0x9063
-    name: "Backlight time"
+    value_type: U_WORD
     register_type: holding
+    min_value: 0
+    max_value: 20
+    step: 1
     unit_of_measurement: "s"
-    value_type: U_WORD  
+    device_class: duration
     entity_category: config
-    disabled_by_default: True
+    mode: BOX
+    disabled_by_default: true
 
   ## BATTERY PARAMS
   - platform: modbus_controller
@@ -189,17 +205,6 @@ number:
     skip_updates: 50
     entity_category: config
     disabled_by_default: True
-
-  # - platform: modbus_controller
-  #   modbus_controller_id: epever
-  #   id: battery_type
-  #   address: 0x9000
-  #   name: "Battery Type"
-  #   register_type: holding
-  #   value_type: U_WORD
-  #   # skip_updates: 50
-  #   entity_category: config
-  #   disabled_by_default: True
 
   # Disconnects
   - platform: modbus_controller
@@ -462,6 +467,46 @@ sensor:
       - or:
         - delta: 5%
         - throttle: 120s
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: rated_load_current
+    name: "Rated Load Current"
+    address: 0x300E
+    register_type: read
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    lambda: |-
+      return x / 100.0;
+    entity_category: diagnostic
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: rated_charging_current
+    name: "Rated Charging Current"
+    address: 0x3005
+    register_type: read
+    value_type: U_WORD
+    unit_of_measurement: "A"
+    accuracy_decimals: 2
+    lambda: |-
+      // The register reports current * 100, so scale it down
+      return x / 100.0;
+    entity_category: diagnostic
+
+  # - platform: modbus_controller
+  #   modbus_controller_id: epever
+  #   id: battery_real_rated_voltage
+  #   name: "Battery Real Rated Voltage"
+  #   address: 0x311D
+  #   register_type: read
+  #   value_type: U_WORD
+  #   unit_of_measurement: "V"
+  #   lambda: |-
+  #     // The register reports voltage * 100
+  #     return x / 100.0;
+  #   entity_category: diagnostic
 
   ## LOAD DATA
   - platform: modbus_controller
@@ -910,14 +955,15 @@ binary_sensor:
           then: 
             button.press: restart_btn
 
-  - platform: modbus_controller
-    modbus_controller_id: epever
-    id: charging_input_volt_failure
-    name: "Charging Input Volt Failure"
-    register_type: read
-    address: 0x3201
-    bitmask: 0xC000
-    entity_category: "diagnostic"
+  # - platform: modbus_controller
+  #   modbus_controller_id: epever
+  #   id: over_temperature
+  #   name: "Controller Over Temperature"
+  #   address: 0x2000
+  #   register_type: read
+  #   bitmask: 0x0001   # Only the LSB (bit 0) matters here
+  #   device_class: heat
+  #   entity_category: diagnostic
 
 select:
   - platform: modbus_controller
@@ -936,18 +982,31 @@ select:
     id: battery_type_select
     name: "Battery Type"
     address: 0x9000
-    register_type: holding
     value_type: U_WORD
-    skip_updates: 50
     entity_category: config
     disabled_by_default: true
     optionsmap:
-      "User defined": 0
+      "User": 0
       "Sealed": 1
       "GEL": 2
       "Flooded": 3
-      "4": 4
-      "5": 5
+      "LFP4S": 4
+      "LFP8S": 5
+      "LCNM3S": 8
+      "LCNM6S": 9
+      "LCNM7S": 10
+
+  - platform: modbus_controller
+    modbus_controller_id: epever
+    id: battery_rated_voltage
+    name: "Battery Rated Voltage"
+    address: 0x311D
+    value_type: U_WORD
+    entity_category: config
+    disabled_by_default: true
+    optionsmap:
+      "12V": 1200
+      "24V": 2400
 
 switch:
   - platform: modbus_controller
@@ -1025,43 +1084,45 @@ text_sensor:
 
   - platform: modbus_controller
     modbus_controller_id: epever
-    id: Battery_status_volt_text
-    bitmask: 7
+    id: battery_status_text
     register_type: read
     address: 0x3200
     raw_encode: HEXBYTES
-    name: Battery status voltage
+    name: "Battery Status"
     entity_category: "diagnostic"
     lambda: |-
       uint16_t value = modbus_controller::word_from_hex_str(x, 0);
-      switch (value) {
-        case 0: return std::string("Normal");
-        case 1: return std::string("Overvolt");
-        case 2: return std::string("Undervolt");
-        case 3: return std::string("Overdischarge");
-        case 4: return std::string("Fault");
-        default: return std::string("Unknown");
-      }
-      return x;
+      std::string status;
 
-  - platform: modbus_controller
-    modbus_controller_id: epever
-    id: Battery_status_temp
-    name: "Battery status temerature"
-    address: 0x3200
-    register_type: read
-    raw_encode: HEXBYTES
-    bitmask: 0x38  #(Bits 4-7)
-    entity_category: "diagnostic"
-    lambda: |-
-      uint16_t value = modbus_controller::word_from_hex_str(x, 0);
-      switch (value) {
-        case 0: return std::string("Normal");
-        case 1: return std::string("Over Temperature");
-        case 2: return std::string("Under Temperature");
-        default: return std::string("Unknown");
+      // D15: Wrong identification
+      if (value & (1 << 15)) status += "Wrong rated voltage; ";
+
+      // D8: Battery internal resistance
+      if (value & (1 << 8)) status += "Internal resistance abnormal; ";
+
+      // D7-D4: Temperature
+      uint8_t temp = (value >> 4) & 0x0F;
+      switch (temp) {
+        case 0: status += "Temperature normal; "; break;
+        case 1: status += "Temperature over warning; "; break;
+        case 2: status += "Temperature under warning; "; break;
       }
-      return x;
+
+      // D3-D0: Voltage / discharge
+      uint8_t volt = value & 0x0F;
+      switch (volt) {
+        case 0: status += "Voltage normal; "; break;
+        case 1: status += "Over voltage; "; break;
+        case 2: status += "Under voltage; "; break;
+        case 3: status += "Over discharge; "; break;
+        case 4: status += "Fault; "; break;
+      }
+
+      if (status.empty()) return std::string("Unknown");
+
+      // Trim last "; "
+      if (status.size() >= 2) status.erase(status.size() - 2);
+      return status;
 
   - platform: modbus_controller
     modbus_controller_id: epever
