@@ -7586,7 +7586,7 @@
     id: Off_time
     enabled: true
   - trigger: time
-    at: 05:00:00
+    at: 04:59:00
     id: On_time
     enabled: true
   - trigger: state
@@ -7605,7 +7605,7 @@
     id: car_full
     for:
       hours: 0
-      minutes: 5
+      minutes: 10
       seconds: 0
     above: 98.5
   - trigger: numeric_state
@@ -7707,11 +7707,28 @@
           option: Intelligent
         target:
           entity_id: input_select.octopus_night_time
-      - if:
+      - alias: If Car is connected to 11kW Charger then stop charging
+        if:
         - condition: state
           entity_id: binary_sensor.go_echarger_270862_car
           state: 'on'
         then:
+        - alias: wait for power to go down after car_full trigger
+          if:
+          - condition: trigger
+            id:
+            - car_full
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_270862_nrg_12
+              below: 10
+            timeout:
+              hours: 0
+              minutes: 30
+              seconds: 0
+              milliseconds: 0
         - alias: Stop EV Charging with Retrys (11kW)
           repeat:
             until:
@@ -7735,12 +7752,28 @@
                 minutes: 0
                 seconds: 0
                 milliseconds: 500
-        alias: If Car is connected to 11kW Charger then stop charging
-      - if:
+      - alias: If Car is connected to 22kW Charger then stop charging
+        if:
         - condition: state
           entity_id: binary_sensor.go_echarger_252682_car
           state: 'on'
         then:
+        - alias: wait for power to go down after car_full trigger
+          if:
+          - condition: trigger
+            id:
+            - car_full
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_252682_nrg_12
+              below: 10
+            timeout:
+              hours: 0
+              minutes: 30
+              seconds: 0
+              milliseconds: 0
         - alias: Stop EV Charging with Retrys (22kW)
           repeat:
             until:
@@ -7764,7 +7797,6 @@
                 minutes: 0
                 seconds: 0
                 milliseconds: 500
-        alias: If Car is connected to 22kW Charger then stop charging
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
