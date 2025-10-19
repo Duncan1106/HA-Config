@@ -2915,105 +2915,78 @@
               }}
           message: clear_notification
 - id: '1721083497910'
-  alias: Fan for BkW AC Inverter
-  description: "## \U0001F32C️ Fan for BKW AC Inverter Automation\n\n### \U0001F4CB
-    **Purpose**\n\nThis automation manages a cooling fan for the BKW AC inverter.
-    It ensures the inverter stays within safe operating temperatures by turning the
-    fan on when the inverter heats up and off when it cools down.\n\n---\n\n### ⏰
-    **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `switch.bkw_outlet_1_bkw_outlet_1` | Turns off | Off |\n| `switch.bkw_outlet_1_bkw_outlet_1`
-    | Turns on | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above
-    15°C | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Below 10°C |
-    Off |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above 25°C | On |\n|
-    `sensor.esp32_c3_zero_epever_device_temperature` | Above 30°C | On |\n\n> Note:
-    Multiple temperature thresholds are used to ensure proactive and reactive cooling
-    depending on the inverter’s load.\n\n---\n\n### ✅ **Conditions**\n\n- No global
-    conditions. Trigger-specific checks ensure the fan only turns on when needed.\n\n---\n\n###
-    \U0001F3AF **Actions / Workflow**\n\n1. **On Conditions**\n   - Activates the
-    fan (`switch.gartenhaus_usb_switch_zigbee_l2`) if:\n     - The inverter is on
-    and the temperature is above 15°C, or\n     - The temperature exceeds 25°C regardless
-    of inverter state.\n\n2. **Off Conditions**\n   - Deactivates the fan when the
-    inverter is turned off or the temperature drops below 10°C.\n\n---\n\n### \U0001F527
-    **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**  \n
-    \ - `switch.gartenhaus_usb_switch_zigbee_l2` (fan)  \n- **Monitoring Entities:**
-    \ \n  - Inverter power switch  \n  - Inverter temperature sensor\n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- Ensures inverter longevity by preventing overheating.
-    \ \n- Temperature thresholds can be fine-tuned depending on ambient conditions
-    and fan efficiency.  \n- Simple logic keeps the automation lightweight and responsive.\n"
+  alias: Fan for BKW AC Inverter
+  description: "## \U0001F32C️ Fan Control for BKW Inverter\n\nThis automation controls
+    the cooling fan for the inverter using a virtual\nlogic (documented here instead
+    of code). The fan simply mirrors whether\n\"cooling is needed\" based on the following
+    conditions:\n\n### \U0001F4CB **Cooling Logic**\n\nThe fan turns **ON** if:\n-
+    Inverter is **ON** and inverter temperature > 15 °C, OR\n- Inverter temperature
+    > 25 °C (regardless of inverter state), OR\n- Inverter is more than 5 °C hotter
+    than the outdoor ambient temperature.\n\nThe fan turns **OFF** otherwise:\n- Inverter
+    is **OFF** and temperature below thresholds, OR\n- Temperature difference (delta)
+    drops back below 5 °C.\n\n### \U0001F3AF **Automation Workflow**\n- If conditions
+    indicate cooling needed → fan ON.\n- Otherwise → fan OFF.\n\n### \U0001F527 **Technical
+    Specs**\n- Mode: `single`\n- Controlled entity: `switch.gartenhaus_usb_switch_zigbee_l2`
+    (fan)\n- Monitoring entities:\n  - `switch.bkw_outlet_1_bkw_outlet_1` (inverter
+    power)\n  - `sensor.esp32_c3_zero_epever_device_temperature` (inverter temp)\n
+    \ - `sensor.gw1100a_outdoor_temperature` (ambient temp)\n\n### \U0001F527 **Retry
+    Mechanism**\nBecause the fan is controlled by a ZigBee switch, the automation
+    retries up to\n**10 times** if the switch does not reach the desired state. This
+    ensures\nreliability in case of missed ZigBee packets.\n\n### ⚡ **Notes**\n- Adaptive
+    delta logic keeps the fan efficient across seasons.\n- Hysteresis (different ON/OFF
+    thresholds) can be added if needed."
   triggers:
   - trigger: state
     entity_id:
-    - switch.bkw_outlet_1_bkw_outlet_1
-    to: 'off'
-    id: 'Off'
-  - trigger: state
-    entity_id:
-    - switch.bkw_outlet_1_bkw_outlet_1
-    to: 'on'
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    id: 'Off'
-    below: 10
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 15
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 25
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 30
-    id: 'On'
-  conditions: []
+    - binary_sensor.epever_cooling_needed
   actions:
-  - alias: 'On'
-    if:
-    - condition: or
-      conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - 'On'
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_device_temperature
-          above: 15
-        - condition: state
-          entity_id: switch.bkw_outlet_1_bkw_outlet_1
-          state: 'on'
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - 'On'
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_device_temperature
-          above: 25
-    then:
-    - action: switch.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.gartenhaus_usb_switch_zigbee_l2
-  - alias: 'Off'
-    if:
-    - condition: trigger
-      id:
-      - 'Off'
-    then:
-    - action: switch.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.epever_cooling_needed
+        state: 'on'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.epever_cooling_needed
+        state: 'off'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
