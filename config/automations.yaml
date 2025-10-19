@@ -7582,11 +7582,11 @@
   description: ''
   triggers:
   - trigger: time
-    at: 00:00:00
+    at: 00:01:00
     id: Off_time
     enabled: true
   - trigger: time
-    at: 05:00:00
+    at: 04:59:00
     id: On_time
     enabled: true
   - trigger: state
@@ -7599,6 +7599,33 @@
     - binary_sensor.octopus_a_10a76963_intelligent_dispatching
     to: 'off'
     id: Off_dispatch
+  - trigger: numeric_state
+    entity_id:
+    - sensor.renault_zoe_batterie
+    id: car_full
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    above: 98.5
+  - trigger: numeric_state
+    entity_id:
+    - sensor.wvgzzze2zpe005371_battery_level
+    id: car_full
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    above: 99
+  - trigger: numeric_state
+    entity_id:
+    - sensor.lsjwh4097rn105299_soc
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    above: 99.9
+    id: car_full
   conditions: []
   actions:
   - choose:
@@ -7629,14 +7656,47 @@
       - alias: Start EV Charging
         action: select.select_option
         target:
-          entity_id: select.go_echarger_270862_frc
+          entity_id:
+          - select.go_echarger_270862_frc
+          - select.go_echarger_252682_frc
         data:
           option: Charge
+      - alias: Allow Charging for 11kW Go-eCharger if any Car is connected
+        if:
+        - condition: not
+          conditions:
+          - condition: state
+            entity_id: sensor.go_e_11kw_car
+            state: No card selected
+        then:
+        - alias: Start EV Charging (11kW)
+          action: select.select_option
+          target:
+            entity_id:
+            - select.go_echarger_270862_frc
+          data:
+            option: Charge
+      - alias: Allow Charging for 22kW Go-eCharger if any Car is connected
+        if:
+        - condition: not
+          conditions:
+          - condition: state
+            entity_id: sensor.go_e_22kw_car
+            state: No card selected
+        then:
+        - alias: Start EV Charging (22kW)
+          action: select.select_option
+          target:
+            entity_id:
+            - select.go_echarger_252682_frc
+          data:
+            option: Charge
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
         id:
         - On_time
+        - car_full
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
@@ -7647,28 +7707,96 @@
           option: Intelligent
         target:
           entity_id: input_select.octopus_night_time
-      - alias: Stop EV Charging with Retrys
-        repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: select.go_echarger_270862_frc
-              state: Don't charge
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: select.select_option
-            target:
-              entity_id: select.go_echarger_270862_frc
-            data:
-              option: Don't charge
-            alias: Stop EV Charging
-          - delay:
+      - alias: If Car is connected to 11kW Charger then stop charging
+        if:
+        - condition: state
+          entity_id: binary_sensor.go_echarger_270862_car
+          state: 'on'
+        then:
+        - alias: wait for power to go down after car_full trigger
+          if:
+          - condition: trigger
+            id:
+            - car_full
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_270862_nrg_12
+              below: 10
+            timeout:
               hours: 0
-              minutes: 0
+              minutes: 30
               seconds: 0
-              milliseconds: 500
+              milliseconds: 0
+        - alias: Stop EV Charging with Retrys (11kW)
+          repeat:
+            until:
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: select.go_echarger_270862_frc
+                state: Don't charge
+              - condition: template
+                value_template: '{{ repeat.index > 10 }}'
+            sequence:
+            - alias: Stop EV Charging
+              action: select.select_option
+              target:
+                entity_id:
+                - select.go_echarger_270862_frc
+              data:
+                option: Don't charge
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 0
+                milliseconds: 500
+      - alias: If Car is connected to 22kW Charger then stop charging
+        if:
+        - condition: state
+          entity_id: binary_sensor.go_echarger_252682_car
+          state: 'on'
+        then:
+        - alias: wait for power to go down after car_full trigger
+          if:
+          - condition: trigger
+            id:
+            - car_full
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_252682_nrg_12
+              below: 10
+            timeout:
+              hours: 0
+              minutes: 30
+              seconds: 0
+              milliseconds: 0
+        - alias: Stop EV Charging with Retrys (22kW)
+          repeat:
+            until:
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: select.go_echarger_252682_frc
+                state: Don't charge
+              - condition: template
+                value_template: '{{ repeat.index > 10 }}'
+            sequence:
+            - alias: Stop EV Charging
+              action: select.select_option
+              target:
+                entity_id:
+                - select.go_echarger_252682_frc
+              data:
+                option: Don't charge
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 0
+                milliseconds: 500
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -7847,6 +7975,7 @@
             target:
               entity_id:
               - select.go_echarger_270862_frc
+              - select.go_echarger_252682_frc
             data:
               option: Don't charge
           - delay:
@@ -8200,6 +8329,9 @@
       update_sub_label: true
       silence_timer: 30
       initial_delay: 1
+      labels:
+      - cat
+      - person
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
   description: "## \U0001F31E Rollo Sommer Automatisch Steuern (mit Grund und Manueller
