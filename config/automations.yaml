@@ -6136,10 +6136,10 @@
       entity_id:
       - switch.schreibtisch_rechts_power_strip_l2
       - switch.schreibtisch_rechts_power_strip_l3
-      - switch.kallax_plant_light_zigbee
       - switch.schreibtisch_rechts_power_strip_l5
       - switch.schreibtisch_links_power_strip_l1
       - switch.schreibtisch_links_power_strip_l4
+      - switch.kallax_plant_light_zigbee_l3
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Non necessary services
@@ -9801,4 +9801,55 @@
     data: {}
     target:
       entity_id: input_boolean.trockner_fertig
+  mode: single
+- id: '1760998194743'
+  alias: Bett Powerbank Ladezeit
+  description: "## \U0001F50B Bett Powerbank Ladezeit  \n\nAutomatisiert das **Laden
+    der Bett-Powerbank** abhängig von **Sonnenaufgang/-untergang**,  \nwenn die Powerbank
+    im **Low-Power-Modus** ist und die heutige **PV-Prognose**  \nüber **15 kWh**
+    liegt.  \n\n### \U0001F4CB Logik  \n- **\U0001F305 Sonnenaufgang:** Steckdose
+    **einschalten**, damit die Powerbank tagsüber geladen wird.  \n- **\U0001F307
+    Sonnenuntergang:** Steckdose **ausschalten**, um nachts keinen unnötigen Verbrauch
+    zu haben.  \n\n\U0001F527 Bedingungen:  \n- `input_boolean.bett_powerbank_low_power`
+    = **on**  \n- `sensor.solcast_pv_forecast_prognose_heute` > **15 kWh**\n"
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Sunrise
+  - trigger: sun
+    event: sunset
+    offset: 0
+    id: Sunset
+  conditions:
+  - condition: state
+    entity_id: input_boolean.bett_powerbank_low_power
+    state: 'on'
+  - condition: numeric_state
+    entity_id: sensor.solcast_pv_forecast_prognose_heute
+    above: 15
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunrise
+      sequence:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.bett_power_strip_l2
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunset
+      sequence:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.bett_power_strip_l2
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: "\U0001F307 Bett Powerbank"
+          message: Steckdose ausgeschaltet. Bitte prüfen, ob die Powerbank weiterhin
+            im Low-Power-Modus verbleibt.
   mode: single
