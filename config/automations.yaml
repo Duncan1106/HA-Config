@@ -8527,33 +8527,39 @@
   mode: single
 - id: '1751548094070'
   alias: Poco F7 Request Location with Retry and Final Notification
-  description: This automation ensures accurate location tracking for Duncan by repeatedly
-    requesting location updates from his Poco F7 when he is not home or his location
-    is unknown/unavailable. If updates fail after multiple attempts, it sends a notification
-    to manually update the location.
+  description: "## \U0001F4CD Poco F7 Location Update & Reliability System  \n\n###
+    \U0001F50D **Purpose**   Ensures Duncan’s **current location** remains accurate\nand
+    up-to-date by periodically requesting location updates from his **Poco\nF7**.
+    \  Designed to handle cases when the device fails to report location or\ngoes
+    into an **unknown/unavailable** state.  \n\n### ⚙️ **How It Works**   - **Triggers**
+    when Home Assistant starts, when\nDuncan leaves home,  \n  or every **10 minutes**
+    while he’s not in bed and his location is unknown/unavailable.  \n- **Retries
+    up to 10 times**, sending repeated location update requests\n  to the **Poco F7**
+    every 2 minutes until the location becomes valid.  \n- If all retries fail, a
+    **final notification** prompts a **manual update**\nfrom Duncan.  \n\n### \U0001F9E9
+    **Automation Logic Overview**   - \U0001F552 Trigger: HA start / Location lost\n/
+    10-minute interval (if awake)   - ✅ Condition: Location must be `not_home`,\n`unavailable`,
+    or `unknown`   - \U0001F501 Action 1: Retry up to 10x every 2 min →\nrequest phone
+    location update   - \U0001F4F1 Action 2: If still unresolved → send\nmanual update
+    reminder notification  \n\n--- **Status:** Smart reliability layer for accurate
+    person tracking  \n**Mode:** Single instance — prevents overlap  \n"
   triggers:
-  - event: start
-    trigger: homeassistant
-  - entity_id: person.duncan
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: person.duncan
     to:
-    - not_home
     - unavailable
     - unknown
-    trigger: state
+  - trigger: time_pattern
+    minutes: /10
   conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: person.duncan
-      state: not_home
-    - condition: state
-      entity_id: person.duncan
-      state: unavailable
-    - condition: state
-      entity_id: person.duncan
-      state: unknown
+  - condition: state
+    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    state: 'off'
   actions:
-  - repeat:
+  - alias: "\U0001F501 Repeated Location Requests"
+    repeat:
       until:
       - condition: or
         conditions:
@@ -8561,9 +8567,6 @@
           conditions:
           - condition: or
             conditions:
-            - condition: state
-              entity_id: person.duncan
-              state: not_home
             - condition: state
               entity_id: person.duncan
               state: unavailable
@@ -8577,30 +8580,30 @@
         data:
           message: request_location_update
       - delay:
-          hours: 0
           minutes: 2
-          seconds: 0
-          milliseconds: 0
-  - if:
-    - condition: or
+  - alias: "\U0001F4F1 Final Manual Update Notification"
+    choose:
+    - alias: Check if Location Still Unknown
       conditions:
-      - condition: state
-        entity_id: person.duncan
-        state: not_home
-      - condition: state
-        entity_id: person.duncan
-        state: unavailable
-      - condition: state
-        entity_id: person.duncan
-        state: unknown
-    then:
-    - action: notify.mobile_app_poco_f7
-      data:
-        title: Location update failed
-        message: 'Please open the Home Assistant app on your Poco F7 to update your
-          location manually.
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: person.duncan
+          state: not_home
+        - condition: state
+          entity_id: person.duncan
+          state: unavailable
+        - condition: state
+          entity_id: person.duncan
+          state: unknown
+      sequence:
+      - action: notify.mobile_app_poco_f7
+        data:
+          title: Location update failed
+          message: 'Please open the Home Assistant app on your Poco F7 to update your
+            location manually.
 
-          '
+            '
   mode: single
 - id: '1752180300729'
   alias: 'Alert: SMART Status Problem'
