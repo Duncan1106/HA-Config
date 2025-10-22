@@ -7000,43 +7000,47 @@
 - id: '1748530213618'
   alias: Allergie und Aufgaben Benachrichtigung
   description: "## \U0001F33F Allergie und Aufgaben Benachrichtigung  \n\n### \U0001F4CB
-    **Daily Allergy & Task Reminder**  \nThis automation generates a daily notification
-    that combines:  \n1. **Pollen information** for relevant allergens (Grass, Roggen,
-    Hausstaubmilben, etc.).  \n2. **A random to-do task** from your personal task
-    list (`todo.to_do_duncan`).  \n3. **A short, precise AI-generated message** with
-    instructions or advice, in German.  \n\nThe goal is to provide a concise, actionable
-    morning summary.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Time | Event |\n|------|-------|\n|
-    `08:05:00` | Daily scheduled reminder |\n\n---\n\n### ✅ **Conditions**  \n- None;
-    runs automatically at the scheduled time.  \n\n---\n\n### \U0001F3AF **Workflow
-    / Logic**  \n\n1. **Fetch To-Do Task**  \n   - Pulls tasks with status `needs_action`
-    from `todo.to_do_duncan`.  \n   - Selects a random task to include in the notification.
-    \ \n\n2. **Prepare AI Prompts**  \n   - **Pollen Prompt:** Includes today’s sensor
-    values for key allergens.  \n     - Focused only on the **recommended medication
-    amount** (base + additional) without explanation.  \n     - Keeps dosage conservative.
-    \ \n     - Output format: `base amount: additional amount`.  \n   - **To-Do Prompt:**
-    Includes the randomly selected task with helpful instructions, but keeps the task
-    text unaltered.  \n   - **General Prompt:** Ensures AI output is concise, simple,
-    precise, and limited to 300 tokens, in German.  \n\n3. **AI Processing**  \n   -
-    Uses `conversation.google_generative_ai` to generate notification text.  \n   -
-    Retries up to **10 times** if AI response contains failure phrases like:  \n     -
-    `\"Unable to get response\"`  \n     - `\"Sorry, I had a problem getting a response
-    from Google Generative AI.\"`  \n     - `\"The message got blocked due to content
-    violations\"`  \n   - Includes a **5-second delay** between retries.  \n\n4. **Send
-    Notification**  \n   - **On success:** sends AI-generated message to `notify.duncan`.
-    \ \n   - **On repeated failure:** sends fallback message indicating the notification
-    could not be generated.  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **To-Do
-    Entity:** `todo.to_do_duncan`  \n- **Pollen Sensors Used:**  \n  - `sensor.pollenflug_graeser_111`
-    \ \n  - `sensor.pollenflug_roggen_111`  \n  - `sensor.pollenflug_ambrosia_111`
-    \ \n  - `sensor.pollenflug_beifuss_111`  \n  - `sensor.pollenflug_hasel_111`  \n
-    \ - `sensor.pollenflug_esche_111`  \n- **AI Agent:** `conversation.google_generative_ai`
-    \ \n- **Target Notification:** `notify.duncan`  \n- **Mode:** `single`  \n- **Retries:**
-    Up to 10 attempts for AI response  \n- **Delay Between Retries:** 5 seconds  \n-
-    **Token Limit:** 300 tokens max for AI message  \n\n---\n\n### ⚡ **Notes / Best
-    Practices**  \n- The notification strictly separates allergy dosage recommendations
-    from task instructions.  \n- Pollen information is minimized; the focus is on
-    actionable recommendations.  \n- Task text remains **unaltered**, only helpful
-    instructions are appended.  \n- The AI-generated message is designed for brevity
-    and clarity in German, without Home Assistant internal details."
+    **Daily Allergy & Task Reminder with AI Fallback System**  \n\nThis automation
+    generates a **daily morning notification** combining:  \n1. **Pollen information**
+    (Grass, Roggen, Hausstaubmilben, etc.)  \n2. **A random to-do task** from `todo.to_do_duncan`
+    \ \n3. **A short AI-generated German message** with practical advice and medication
+    hints  \n\nThe automation now includes an **enhanced dual-agent retry system**
+    to maximize reliability of the AI output.  \n\n---\n\n### ⏰ **Triggers**  \n\n|
+    Time | Event |\n|------|-------|\n| `08:05:00` | Daily scheduled reminder |\n\n---\n\n###
+    ✅ **Conditions**  \n- None; runs automatically every morning.  \n\n---\n\n###
+    \U0001F3AF **Workflow / Logic**  \n\n1. **Fetch To-Do Task**  \n   - Retrieves
+    all tasks with status `needs_action` from `todo.to_do_duncan`.  \n   - Randomly
+    selects one task to include in the notification.  \n\n2. **Prepare Prompts**  \n
+    \  - **Pollen Prompt:** Uses today’s values from all relevant pollen sensors,
+    focusing only on dosage recommendation in the format  \n     `base amount: additional
+    amount`.  \n     - Keeps dosage conservative.  \n     - No explanations, causes,
+    or air-quality text.  \n   - **To-Do Prompt:** Embeds the random task *unaltered*
+    and adds practical, helpful suggestions for completing it today.  \n   - **Main
+    Prompt:** Instructs the AI to produce a short, clean, readable message (in **German**,
+    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `conversation.google_generative_ai`.
+    \ \n   - Retries up to **10 times**, but waits **only when a failure occurs**.
+    \ \n   - Recognizes failure phrases such as:  \n     - `\"Unable to get response\"`
+    \ \n     - `\"Sorry, I had a problem getting a response from Google Generative
+    AI.\"`  \n     - `\"The message got blocked due to content violations\"`  \n\n4.
+    **AI Fallback (Secondary Agent)**  \n   - If the primary agent fails after retries,
+    switches to  \n     `conversation.google_ai_conversation_2_5_flash`.  \n   - Applies
+    the same conditional retry logic and 5s delay on failed attempts.  \n   \n5. **Send
+    Notification**  \n   - **Success:** Sends the generated message to `notify.duncan`,
+    with title including today’s weekday.  \n   - **Failure (after all retries):**
+    Sends a fallback message  \n     *“Heute konnte leider keine Nachricht generiert
+    werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do Entity:**
+    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_generative_ai`
+    \ \n- **Fallback AI Agent:** `conversation.google_ai_conversation_2_5_flash`  \n-
+    **Notification Target:** `notify.duncan`  \n- **Retries:** Up to 10 per agent
+    \ \n- **Retry Delay:** 5 seconds  \n- **AI Token Limit:** 300 tokens  \n- **Pollen
+    Sensors:**  \n  - `sensor.pollenflug_graeser_111`  \n  - `sensor.pollenflug_roggen_111`
+    \ \n  - `sensor.pollenflug_ambrosia_111`  \n  - `sensor.pollenflug_beifuss_111`
+    \ \n  - `sensor.pollenflug_hasel_111`  \n  - `sensor.pollenflug_esche_111`  \n\n---\n\n###
+    ⚡ **Notes & Best Practices**  \n- Task text is **never altered or translated**,
+    only supplemented.  \n- Medication recommendation stays on the conservative side.
+    \ \n- The system prioritizes **robustness** — automatic retry + fallback agent
+    ensure high success rate.  \n- The final message is always **concise, actionable,
+    and in natural German**, formatted cleanly for mobile reading.\n"
   triggers:
   - trigger: time
     at: 08:05:00
@@ -7061,10 +7065,10 @@
         details such as entities in responses.
 
         Provide your answer in German and make it precise and efficient as a German
-        would like it. Bitte Duzen nicht Siezen limit your answer to at most 300 tokens.
+        would like it. Bitte Duzen nicht Siezen limit your answer to at most 255 tokens.
         keep it simple and short. rember it is a notification so no ''notification:''
         or something like that.  Simply the text of it and not more. limit yourself
-        to 300 Tokens! not one more!'
+        to 255 words! not one more!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
         are the today sensor values of these pollen and any other Gräser: {{ states(''sensor.pollenflug_graeser_111'')
         }}   Roggen: {{ states(''sensor.pollenflug_roggen_111'') }}  Ambrosia: {{
@@ -7109,11 +7113,20 @@
           agent_id: conversation.google_generative_ai
         response_variable: agent_gemini
         action: conversation.process
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 5
-          milliseconds: 0
+      - alias: Wait only if failed
+        if:
+        - condition: template
+          value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
+            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
+            | select('in', agent_gemini.response.speech.plain.speech) | list | count
+            > 0) }}"
+        then:
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
       until:
       - condition: template
         value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
@@ -7121,6 +7134,48 @@
           message got blocked due to content violations\"\n] %}\n{{ (bad_phrases |
           select('in', agent_gemini.response.speech.plain.speech) | list | count ==
           0)\n   or repeat.index >= 10 }}"
+  - if:
+    - condition: template
+      value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+        I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+        (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) | list
+        | count) > 0 }}"
+    then:
+    - repeat:
+        sequence:
+        - alias: Conversation Agent Notification Text
+          data:
+            text: '{{ pollen_prompt }}
+
+
+              {{ todo_prompt }}
+
+
+              {{ prompt }}'
+            agent_id: conversation.google_ai_conversation_2_5_flash
+          response_variable: agent_gemini
+          action: conversation.process
+        - alias: Wait only if failed
+          if:
+          - condition: template
+            value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+              \ \"Sorry, I had a problem getting a response from Google Generative
+              AI.\",\n  \"The message got blocked due to content violations\"\n] %}\n{{
+              (bad_phrases | select('in', agent_gemini.response.speech.plain.speech)
+              | list | count > 0) }}"
+          then:
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+        until:
+        - condition: template
+          value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
+            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
+            | select('in', agent_gemini.response.speech.plain.speech) | list | count
+            == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
