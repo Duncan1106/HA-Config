@@ -1290,7 +1290,7 @@
     events.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition / Threshold
     | Trigger ID |\n  |----------------|-----------------------|------------|\n  |
     `sensor.inverter_pv_power` | Above 2250 W | on day |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 23 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
+    | Below 24.2 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
     | Below 200 / 175 / 125 / 75 W | off day |\n  | `sensor.inverter_pv_power` | Below
     2250 / 2000 W | off day |\n  | Sun | Sunset offset -00:15 | on night |\n  | Sun
     | Sunrise offset +00:15 | off night |\n  | `time_pattern` | Every minute | on
@@ -1340,7 +1340,7 @@
   - entity_id:
     - sensor.esp32_c3_zero_epever_battery_voltage
     id: off night
-    below: 23
+    below: 24.2
     trigger: numeric_state
   - entity_id:
     - sensor.esp32_c3_zero_epever_pv_array_input_power
@@ -1543,9 +1543,13 @@
             seconds: 5
             milliseconds: 0
         until:
-        - condition: state
-          entity_id: switch.bkw_outlet_1_bkw_outlet_1
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: switch.bkw_outlet_1_bkw_outlet_1
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
     - metadata: {}
       data: {}
       target:
