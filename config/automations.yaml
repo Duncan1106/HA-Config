@@ -9828,14 +9828,44 @@
   max: 10
 - id: '1760873847404'
   alias: Auto Waschmaschine Fertig
-  description: Automatically turns on the 'Waschmaschine fertig' input boolean when
-    the washer has been running for less than 16.5 hours.
+  description: "## \U0001F9FA Auto Waschmaschine Fertig\n\n### ⚙️ **Purpose**  \nThis
+    automation automatically turns on the `input_boolean.waschmaschine_fertig` when
+    the washing machine has **finished its cycle**.  \nIt detects this by monitoring
+    how long the washer has been drawing power during the **last 20 minutes** and
+    reacts when that duration drops below a defined threshold.  \n\n---\n\n### \U0001F9E9
+    **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.waschmaschine_lauft_seit`
+    measures how many minutes within the **last 20 minutes** the washing machine has
+    consumed power.  \n   - As long as the machine is actively running, this value
+    stays high (close to 20).  \n   - Once the washing stops, the value gradually
+    decreases as power draw ceases.  \n\n2. **Trigger Condition**  \n   - The automation
+    triggers when `sensor.waschmaschine_lauft_seit` falls **below 16.8 minutes**,
+    meaning the machine has not been using power for at least a few minutes.  \n\n3.
+    **Safety Condition**  \n   - It only runs if `input_boolean.waschmaschine_fertig`
+    is currently **off**, avoiding repeated triggers or duplicate notifications.  \n\n4.
+    **Action**  \n   - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
+    \ \n   - This can then be used by other automations (e.g., phone notifications,
+    LED indicators, or voice announcements).  \n\n---\n\n### \U0001F4CA **Technical
+    Summary**  \n\n| Component | Description |\n|------------|-------------|\n| **Trigger**
+    | `numeric_state` → `sensor.waschmaschine_lauft_seit` < `16.8` |\n| **Condition**
+    | `input_boolean.waschmaschine_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
+    → `input_boolean.waschmaschine_fertig` |\n| **Tracking Window** | Last 20 minutes
+    of power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
+    \ \n- The **16.8-minute threshold** is calibrated for a 20-minute sliding window
+    — adjust if your sensor reports in larger or smaller intervals.  \n- This automation
+    assumes the washer stops drawing noticeable power at the end of a cycle.  \n-
+    To complete the loop, create a **companion reset automation** that turns `input_boolean.waschmaschine_fertig`
+    back **off** when the machine starts drawing power again.  \n- Ideal for linking
+    with smart notifications, lights, or audio feedback to inform you when the laundry
+    is done.\n"
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.waschmaschine_lauft_seit
     below: 16.8
-  conditions: []
+  conditions:
+  - condition: state
+    entity_id: input_boolean.waschmaschine_fertig
+    state: 'off'
   actions:
   - action: input_boolean.turn_on
     metadata: {}
@@ -9845,14 +9875,43 @@
   mode: single
 - id: '1760874193253'
   alias: Auto Trockner Fertig
-  description: Turns on the 'Trockner Fertig' input boolean when the dryer has been
-    running for less than 19 minutes.
+  description: "## \U0001F506 Trockner Fertig Automatik  \n\n### ⚙️ **Purpose**  \nThis
+    automation automatically activates the `input_boolean.trockner_fertig` when the
+    dryer has **finished its cycle**.  \nIt uses the runtime sensor to detect when
+    the dryer stops drawing power within a **20-minute observation window**.  \n\n---\n\n###
+    \U0001F9E9 **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.trockner_lauft_seit`
+    measures how many minutes within the **last 20 minutes** the dryer has been consuming
+    power.  \n   - While the dryer is active, the value remains close to 20 minutes.
+    \ \n   - After the cycle ends, the power usage stops, and this value gradually
+    decreases.  \n\n2. **Trigger Condition**  \n   - The automation triggers once
+    `sensor.trockner_lauft_seit` falls **below 19.75 minutes**, indicating the dryer
+    has not used power for a short while — signaling the end of a drying cycle.  \n\n3.
+    **Safety Condition**  \n   - Only runs if `input_boolean.trockner_fertig` is currently
+    **off**, ensuring it only activates once per cycle and doesn’t re-trigger unnecessarily.
+    \ \n\n4. **Action**  \n   - Turns **on** the boolean `input_boolean.trockner_fertig`.
+    \ \n   - This boolean can be used in companion automations to send notifications,
+    flash LEDs, or announce via TTS that the drying is done.  \n\n---\n\n### \U0001F4CA
+    **Technical Summary**  \n\n| Component | Description |\n|------------|-------------|\n|
+    **Trigger** | `numeric_state` → `sensor.trockner_lauft_seit` < `19.75` |\n| **Condition**
+    | `input_boolean.trockner_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
+    → `input_boolean.trockner_fertig` |\n| **Tracking Window** | Last 20 minutes of
+    power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
+    \ \n- The **19.75-minute threshold** is optimized for a 20-minute rolling window
+    — fine-tune it based on how your sensor updates.  \n- This setup assumes the dryer
+    stops drawing significant power once finished.  \n- For completeness, pair it
+    with a **reset automation** that turns `input_boolean.trockner_fertig` back **off**
+    when a new cycle begins (e.g., when runtime exceeds 2–3 minutes again).  \n- Useful
+    for smart notifications, visual indicators, or spoken alerts when the dryer cycle
+    is complete.\n"
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.trockner_lauft_seit
     below: 19.75
-  conditions: []
+  conditions:
+  - condition: state
+    entity_id: input_boolean.trockner_fertig
+    state: 'off'
   actions:
   - action: input_boolean.turn_on
     metadata: {}
