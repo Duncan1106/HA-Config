@@ -1281,115 +1281,113 @@
 - id: '1711468239502'
   alias: BKw Control
   description: "  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Optimized Outlet
-    Control for Solar & Battery System**\n\n  This automation manages the BKW outlet
-    based on solar production, battery\n  state-of-charge (SoC) and voltage, inverter
-    state, sunrise/sunset times, \n  device temperature, and energy usage. Its primary
-    goals are:\n\n  - Optimize charging and discharging to maximize solar self-consumption.\n
-    \ - Protect battery health by enforcing SoC/voltage thresholds.\n  - Ensure nightly
-    shutdown if energy has been used.\n  - Increment counters for monitoring energy
-    events.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition / Threshold
-    | Trigger ID |\n  |----------------|-----------------------|------------|\n  |
-    `sensor.inverter_pv_power` | Above 2250 W | on day |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 23 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
-    | Below 200 / 175 / 125 / 75 W | off day |\n  | `sensor.inverter_pv_power` | Below
-    2250 / 2000 W | off day |\n  | Sun | Sunset offset -00:15 | on night |\n  | Sun
-    | Sunrise offset +00:15 | off night |\n  | `time_pattern` | Every minute | on
-    day |\n  | `sensor.bkw_outlet_1_energy_power` | Below 50 W | off night |\n\n  >
-    Note: Multiple `off day` and `off night` triggers are defined, each with\n  the
-    same ID, to cover a wide range of solar, battery, and night-time states.\n\n  ---\n\n
-    \ ### ✅ **Conditions**\n\n  - The automation requires **one of the following**:\n
-    \   - Battery is full (`input_boolean.battery_full = on`), OR\n      Battery SoC
-    ≥ 95% / Voltage ≥ 27.75 V.\n    - OR inverter PV power has dropped < 2001 W **while
-    the outlet is on**.\n\n  This ensures:\n  - Outlets only turn on under safe/high
-    battery conditions.\n  - Outlets turn off when PV is weak but still active.\n\n
-    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **On Day Trigger**\n
-    \    - Executes if:\n       - Trigger ID = `on day`\n       - Inverter state =
-    `FeedIn`\n       - Battery marked full (`input_boolean.battery_full = on`)\n       -
-    Battery SoC ≥ 80%\n       - PV power > 2000 W\n       - Device temperature < 44°C\n
-    \    - Turns on:\n       - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
-    \      - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  2. **Off Day Trigger**\n     -
-    Executes if Trigger ID = `off day` during daytime \n       (between sunrise+15
-    and sunset-15).\n     - Turns off the BKW outlet when PV power/array input drops.\n\n
-    \ 3. **On Night Trigger**\n     - Executes if Trigger ID = `on night` and battery
-    is full.\n     - Turns on the load + BKW outlet.\n     - Increments `counter.battery_full`.\n
-    \    - Resets utility meters for charged/discharged energy.\n     - Waits up to
-    30s for load > 10W.  \n       - If not reached, sends notification.\n\n  4. **Off
-    Night Trigger**\n     - Executes if Trigger ID = `off night`, \n       time between
-    00:00–09:00, \n       and energy consumption > 0.001 kWh.\n     - Repeats `turn_off`
-    until outlet is confirmed off.\n     - Resets `input_boolean.battery_full`.\n
-    \    - If discharged energy > 0:\n       - Increments `counter.battery_empty`\n
-    \      - Updates `input_number.last_discharged_energy_from_bkw_battery`\n       -
-    Resets discharged energy utility meter\n     - Adds small delays for stability.\n\n
-    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `queued` (max 15
-    concurrent)\n  - **Devices Controlled:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n
-    \   - `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored Entities:**\n
-    \   - PV power, PV array input power, battery voltage & SoC,\n      inverter state,
-    outlet energy, device temperature.\n  - **Counters:** \n    - `counter.battery_full`\n
-    \   - `counter.battery_empty`\n  - **Utility Meters:** \n    - Charged/discharged
-    energy recalibrated nightly.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n
-    \ - Battery must be explicitly marked full (`battery_full = on`) **and**\n    SoC
-    ≥ 80% before daytime activation.\n  - Nighttime activation checks full battery
-    state at sunset.\n  - Multiple `off day` triggers ensure reliability in varying
-    solar output."
+    Control for Solar & Battery System**\n\n  Dynamically manages the **BKW outlet**
+    and **Epever load output** based on **solar production, inverter mode, battery
+    state, and day/night cycle**.  \n  Designed to **maximize solar self-consumption**,
+    **protect battery health**, and **automate nightly discharge** when the system
+    is full.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity / Event | Threshold
+    / Condition | Trigger ID |\n  |------------------------|-----------------------|-------------|\n
+    \ | `template` | Inverter = *FeedIn*, PV > 2000 W, SoC ≥ 80 %, Battery Full, Temp
+    < 44 °C | `on day` |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power` |
+    Below **200 / 175 / 125 / 75 W** | `off day` |\n  | `sensor.inverter_pv_power`
+    | Below **2250 / 2000 W** | `off day` |\n  | `sunset -00:15` | Night start | `on
+    night` |\n  | `sunrise +00:15` | End of night | `off night` |\n  | `sensor.bkw_outlet_1_energy_power`
+    | Below **50 W** | `off night` |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below **24.2 V** | `off night` |\n\n  > Multiple `off day` / `off night` triggers
+    enhance stability under fluctuating conditions.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
+    \ At least one of:\n  - Battery marked full (`input_boolean.battery_full = on`)\n
+    \ - Battery voltage ≥ 27.75 V\n  - PV < 2001 W **and** BKW outlet already on\n\n
+    \ Ensures outlets only stay active when solar or battery levels are safe.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### ☀️ **On Day Trigger**\n
+    \ - Triggered when inverter feeds in, PV > 2000 W, SoC ≥ 80 %, battery full, and
+    temperature < 44 °C.\n  - **Action:** Turns **on**  \n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    \ \n    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  #### \U0001F324️ **Off Day Trigger**\n
+    \ - Triggered by any PV or solar input drop below thresholds (200–2250 W) during
+    daytime.\n  - **Action:** Turns **off** only `switch.bkw_outlet_1_bkw_outlet_1`
+    \ \n    *(Epever load remains on for stability.)*\n\n  #### \U0001F319 **On Night
+    Trigger**\n  - Runs shortly before sunset if the battery is full.\n  - **Actions:**\n
+    \   1. Turns **on** both BKW outlet and Epever load.  \n    2. Increments `counter.battery_full`.
+    \ \n    3. Resets charged & discharged energy meters.  \n    4. Waits up to **30
+    s** for load > 10 W, else notifies via `notify.duncan`.\n\n  #### \U0001F312 **Off
+    Night Trigger**\n  - Runs between 00:00–09:00 if battery voltage low or power
+    < 50 W.\n  - **Actions:**\n    1. Sends repeated `turn_off` to BKW outlet and
+    load output until both off (max 10×)(seperatly).  \n    2. Turns **off** `input_boolean.battery_full`.
+    \ \n    3. If discharged energy > 0 kWh:  \n       - Increments `counter.battery_empty`.
+    \ \n       - Stores last discharged energy.  \n       - Resets energy meter.\n\n
+    \ ---\n\n  ### ⚙️ **Technical Specs**\n\n  - **Mode:** `queued` (max 15)\n  -
+    **Controlled:** BKW outlet, Epever load output\n  - **Monitored:** PV power, battery
+    voltage, SoC, inverter state, outlet power, temperature\n  - **Counters:** `battery_full`,
+    `battery_empty`\n  - **Energy Sensors:** `charged_energy_to_bkw_battery`, `discharged_energy_from_bkw_battery`\n\n
+    \ ---\n\n  ### \U0001F4A1 **Notes**\n  - Battery must be flagged full before daytime
+    or nighttime activation.  \n  - Multiple off triggers prevent stuck-on states.
+    \ \n  - Off-night loop guarantees shutdown under MQTT lag."
   triggers:
-  - entity_id:
-    - sensor.inverter_pv_power
+  - trigger: template
+    value_template: "    {{\n      is_state('sensor.scb_inverter_state', 'FeedIn')\n
+      \     and is_state('input_boolean.battery_full', 'on')\n      and states('sensor.esp32_c3_zero_epever_battery_soc')|float(0)
+      >= 80\n      and states('sensor.inverter_pv_power')|float(0) > 2000\n      and
+      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n    }}"
     id: on day
-    above: 2250
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_battery_voltage
-    id: off night
-    below: 23
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 200
-    id: off day
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 175
-    id: off day
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 125
-    id: off day
-    trigger: numeric_state
+    alias: On Day
   - entity_id:
     - sensor.esp32_c3_zero_epever_pv_array_input_power
     below: 75
     id: off day
     trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 125
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 175
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 200
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
   - entity_id:
     - sensor.inverter_pv_power
     id: off day
     below: 2250
     trigger: numeric_state
+    alias: Off Day PV Power
   - entity_id:
     - sensor.inverter_pv_power
     id: off day
     below: 2000
     trigger: numeric_state
-  - event: sunrise
-    offset: +00:15:00
-    id: off night
-    trigger: sun
-    enabled: true
+    alias: Off Day PV Power
   - event: sunset
     offset: -00:15:00
     id: on night
     trigger: sun
-  - id: on day
-    enabled: true
-    trigger: time_pattern
-    minutes: '*'
+    alias: On Night sunset
   - trigger: numeric_state
     entity_id:
     - sensor.bkw_outlet_1_energy_power
     below: 50
     id: off night
+    alias: Off Night Power output
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_voltage
+    id: off night
+    below: 24.2
+    trigger: numeric_state
+    alias: Off Night Battery
+  - event: sunrise
+    offset: +00:15:00
+    id: off night
+    trigger: sun
+    enabled: true
+    alias: Off Night sunrise
   conditions:
   - condition: or
     conditions:
@@ -1398,14 +1396,9 @@
       - condition: state
         entity_id: input_boolean.battery_full
         state: 'on'
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_battery_soc
-          above: 95
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_battery_voltage
-          above: 27.75
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_zero_epever_battery_voltage
+        above: 27.75
     - condition: and
       conditions:
       - condition: numeric_state
@@ -1417,26 +1410,9 @@
   actions:
   - alias: on day
     if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - on day
-      - condition: state
-        entity_id: sensor.scb_inverter_state
-        state: FeedIn
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'on'
-      - condition: numeric_state
-        entity_id: sensor.esp32_c3_zero_epever_battery_soc
-        above: 80
-      - condition: numeric_state
-        entity_id: sensor.inverter_pv_power
-        above: 2000
-      - condition: numeric_state
-        entity_id: sensor.esp32_c3_zero_epever_device_temperature
-        below: 44
+    - condition: trigger
+      id:
+      - on day
     then:
     - metadata: {}
       data: {}
@@ -1529,7 +1505,7 @@
         after: 00:00:00
         before: 09:00:00
     then:
-    - alias: Repeat off cmd until OFF
+    - alias: 'Plug: Repeat off cmd until OFF'
       repeat:
         sequence:
         - action: switch.turn_off
@@ -1543,9 +1519,35 @@
             seconds: 5
             milliseconds: 0
         until:
-        - condition: state
-          entity_id: switch.bkw_outlet_1_bkw_outlet_1
-          state: 'off'
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: switch.bkw_outlet_1_bkw_outlet_1
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
+    - alias: 'Output: Repeat off cmd until OFF'
+      repeat:
+        sequence:
+        - action: switch.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id:
+            - switch.esp32_c3_zero_epever_manual_control_the_load
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
     - metadata: {}
       data: {}
       target:
@@ -1581,11 +1583,6 @@
           value: '0.0'
         target:
           entity_id: sensor.discharged_energy_from_bkw_battery
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 5
-        milliseconds: 0
   mode: queued
   max: 15
 - id: '1712568670640'
@@ -2915,105 +2912,78 @@
               }}
           message: clear_notification
 - id: '1721083497910'
-  alias: Fan for BkW AC Inverter
-  description: "## \U0001F32C️ Fan for BKW AC Inverter Automation\n\n### \U0001F4CB
-    **Purpose**\n\nThis automation manages a cooling fan for the BKW AC inverter.
-    It ensures the inverter stays within safe operating temperatures by turning the
-    fan on when the inverter heats up and off when it cools down.\n\n---\n\n### ⏰
-    **Triggers**\n\n| Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `switch.bkw_outlet_1_bkw_outlet_1` | Turns off | Off |\n| `switch.bkw_outlet_1_bkw_outlet_1`
-    | Turns on | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above
-    15°C | On |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Below 10°C |
-    Off |\n| `sensor.esp32_c3_zero_epever_device_temperature` | Above 25°C | On |\n|
-    `sensor.esp32_c3_zero_epever_device_temperature` | Above 30°C | On |\n\n> Note:
-    Multiple temperature thresholds are used to ensure proactive and reactive cooling
-    depending on the inverter’s load.\n\n---\n\n### ✅ **Conditions**\n\n- No global
-    conditions. Trigger-specific checks ensure the fan only turns on when needed.\n\n---\n\n###
-    \U0001F3AF **Actions / Workflow**\n\n1. **On Conditions**\n   - Activates the
-    fan (`switch.gartenhaus_usb_switch_zigbee_l2`) if:\n     - The inverter is on
-    and the temperature is above 15°C, or\n     - The temperature exceeds 25°C regardless
-    of inverter state.\n\n2. **Off Conditions**\n   - Deactivates the fan when the
-    inverter is turned off or the temperature drops below 10°C.\n\n---\n\n### \U0001F527
-    **Technical Specs**\n\n- **Mode:** `single`  \n- **Entities Controlled:**  \n
-    \ - `switch.gartenhaus_usb_switch_zigbee_l2` (fan)  \n- **Monitoring Entities:**
-    \ \n  - Inverter power switch  \n  - Inverter temperature sensor\n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- Ensures inverter longevity by preventing overheating.
-    \ \n- Temperature thresholds can be fine-tuned depending on ambient conditions
-    and fan efficiency.  \n- Simple logic keeps the automation lightweight and responsive.\n"
+  alias: Fan for BKW AC Inverter
+  description: "## \U0001F32C️ Fan Control for BKW Inverter\n\nThis automation controls
+    the cooling fan for the inverter using a virtual\nlogic (documented here instead
+    of code). The fan simply mirrors whether\n\"cooling is needed\" based on the following
+    conditions:\n\n### \U0001F4CB **Cooling Logic**\n\nThe fan turns **ON** if:\n-
+    Inverter is **ON** and inverter temperature > 15 °C, OR\n- Inverter temperature
+    > 25 °C (regardless of inverter state), OR\n- Inverter is more than 5 °C hotter
+    than the outdoor ambient temperature.\n\nThe fan turns **OFF** otherwise:\n- Inverter
+    is **OFF** and temperature below thresholds, OR\n- Temperature difference (delta)
+    drops back below 5 °C.\n\n### \U0001F3AF **Automation Workflow**\n- If conditions
+    indicate cooling needed → fan ON.\n- Otherwise → fan OFF.\n\n### \U0001F527 **Technical
+    Specs**\n- Mode: `single`\n- Controlled entity: `switch.gartenhaus_usb_switch_zigbee_l2`
+    (fan)\n- Monitoring entities:\n  - `switch.bkw_outlet_1_bkw_outlet_1` (inverter
+    power)\n  - `sensor.esp32_c3_zero_epever_device_temperature` (inverter temp)\n
+    \ - `sensor.gw1100a_outdoor_temperature` (ambient temp)\n\n### \U0001F527 **Retry
+    Mechanism**\nBecause the fan is controlled by a ZigBee switch, the automation
+    retries up to\n**10 times** if the switch does not reach the desired state. This
+    ensures\nreliability in case of missed ZigBee packets.\n\n### ⚡ **Notes**\n- Adaptive
+    delta logic keeps the fan efficient across seasons.\n- Hysteresis (different ON/OFF
+    thresholds) can be added if needed."
   triggers:
   - trigger: state
     entity_id:
-    - switch.bkw_outlet_1_bkw_outlet_1
-    to: 'off'
-    id: 'Off'
-  - trigger: state
-    entity_id:
-    - switch.bkw_outlet_1_bkw_outlet_1
-    to: 'on'
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 15
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    id: 'Off'
-    below: 10
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 25
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.esp32_c3_zero_epever_device_temperature
-    above: 30
-    id: 'On'
-  conditions: []
+    - binary_sensor.epever_cooling_needed
   actions:
-  - alias: 'On'
-    if:
-    - condition: or
-      conditions:
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - 'On'
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_device_temperature
-          above: 15
-        - condition: state
-          entity_id: switch.bkw_outlet_1_bkw_outlet_1
-          state: 'on'
-      - condition: and
-        conditions:
-        - condition: trigger
-          id:
-          - 'On'
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_device_temperature
-          above: 25
-    then:
-    - action: switch.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.gartenhaus_usb_switch_zigbee_l2
-  - alias: 'Off'
-    if:
-    - condition: trigger
-      id:
-      - 'Off'
-    then:
-    - action: switch.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.epever_cooling_needed
+        state: 'on'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.epever_cooling_needed
+        state: 'off'
+      sequence:
+      - repeat:
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 0
+              milliseconds: 500
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
@@ -3797,33 +3767,40 @@
   mode: single
 - id: '1728376825897'
   alias: Bad Nachtlicht Motion
-  description: "## \U0001F6BB Bad Nachtlicht Motion  \n\n### \U0001F4CB **Smart Bathroom
-    Night Light Control**  \nAutomatically manages the bathroom night light based
-    on **motion** and **ambient light levels**.  \n- Turns **on** when it’s dark and
-    motion is detected.  \n- Turns **off** when motion stops or brightness rises.
-    \ \n- If motion stops in the dark, it dims the light instead of fully shutting
-    off (visual night cue).  \n\n---\n\n### ⏰ **Triggers**  \n| Condition | Entity
-    | Threshold/State |\n|-----------|--------|-----------------|\n| **Low Light**
-    | `sensor.bad_nachtlicht_illuminance` | Below **9 lux** |\n| **Motion Detected**
-    | `binary_sensor.kinderbad_bewegung` | **on** |\n| **Motion Cleared (short)**
-    | `binary_sensor.kinderbad_bewegung` | **off** for 30s |\n| **Motion Cleared (long)**
-    | `binary_sensor.kinderbad_bewegung` | **off** for 1m |\n| **Brightness High**
-    | `sensor.bad_nachtlicht_illuminance` | Above **25 lux** |\n| **Brightness Very
-    High** | `sensor.bad_nachtlicht_illuminance` | Above **50 lux** |\n\n---\n\n###
-    ✅ **Conditions**  \n- Light only turns **on** if:  \n  - `sensor.bad_nachtlicht_illuminance`
-    < **20 lux**  \n  - `binary_sensor.kinderbad_bewegung` is **on**  \n  - Light
-    is **off** OR brightness < **10%**  \n\n---\n\n### \U0001F3AF **Actions**  \n\n####
-    **\U0001F4A1 On Action**  \n- Turn on `light.bad_nachtlicht`  \n- Brightness:
-    **100%**  \n- Color Temp: **2400K**  \n- Smooth transition: **1s**  \n\n---\n\n####
-    **\U0001F319 Off Action (after motion stops)**  \n- Wait **30s** after motion
-    clears  \n- If brightness > **10 lux** → turn light **off** (retries until confirmed)
-    \ \n- Else (still dark) → set light to **dim 9 brightness** for soft glow  \n\n---\n\n####
-    **⚡ Immediate Off Action**  \n- If ambient light rises above **25–50 lux**  \n-
-    Immediately turn `light.bad_nachtlicht` **off** (retries until confirmed)  \n\n---\n\n###
-    \U0001F527 **Technical Specs**  \n- **Target Light:** `light.bad_nachtlicht`  \n-
-    **Sensors Used:**  \n  - `sensor.bad_nachtlicht_illuminance`  \n  - `binary_sensor.kinderbad_bewegung`
-    \ \n- **Mode:** `restart` (new motion cancels pending off-timers)  \n- **Failsafes:**
-    Repeats actions until final state is confirmed"
+  description: "  ## \U0001F6BB Bad Nachtlicht Motion  \n\n  ### \U0001F4CB **Smart
+    Bathroom Night Light Control**  \n\n  This automation manages the bathroom night
+    light intelligently, balancing\n  comfort and energy saving.  \n\n  - **Turns
+    on** when it’s dark (<20 lux) and motion is detected.  \n  - **Turns off** if
+    ambient light becomes bright (>25–50 lux).  \n  - **Turns off after motion clears**
+    (30s wait), but adapts based on brightness:  \n    - If brightness is above **10
+    lux** → switch light **off** with a smooth\n      **3s fade** (with retries).
+    \ \n    - If it’s still dark → keep a **soft glow** at brightness 9 with a **3s\n
+    \     fade** (with retries).  \n  - **Retries ensure reliability**: repeated on/off
+    commands until the final\n    state is confirmed.  \n  - **Restart mode**: new
+    motion cancels pending off-timers.  \n\n  ---\n\n  ### ⏰ **Triggers**  \n\n  |
+    Condition                  | Entity                             | Threshold/State
+    |\n  |----------------------------|------------------------------------|-----------------|\n
+    \ | **Low Light**              | `sensor.bad_nachtlicht_illuminance` | Below **9
+    lux** |\n  | **Motion Detected**        | `binary_sensor.kinderbad_bewegung` |
+    **on**          |\n  | **Motion Cleared (short)** | `binary_sensor.kinderbad_bewegung`
+    | **off** for 30s |\n  | **Motion Cleared (long)**  | `binary_sensor.kinderbad_bewegung`
+    | **off** for 1m  |\n  | **Brightness High**        | `sensor.bad_nachtlicht_illuminance`
+    | Above **25 lux** |\n  | **Brightness Very High**   | `sensor.bad_nachtlicht_illuminance`
+    | Above **50 lux** |\n\n  ---\n\n  ### ✅ **Conditions**  \n\n  Light only turns
+    **on** if:  \n  - `sensor.bad_nachtlicht_illuminance` < **20 lux**  \n  - `binary_sensor.kinderbad_bewegung`
+    is **on**  \n  - Light is **off** OR brightness < **10%**  \n\n  ---\n\n  ###
+    \U0001F3AF **Actions**  \n\n  #### **\U0001F4A1 On Action**  \n  - Turn on `light.bad_nachtlicht`
+    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **0.5s
+    smooth fade**  \n\n  ---\n\n  #### **\U0001F319 Off Action (after motion clears)**
+    \ \n  - Wait **30s** after motion clears  \n  - If brightness > **15 lux** → turn
+    light **off** with a **0.5s fade**\n    (with retries)  \n  - Else (still dark)
+    → set light to **brightness 9** with a **0.5s fade**\n    (with retries)  \n\n
+    \ ---\n\n  #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50
+    lux**  \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n
+    \   (with retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target
+    Light:** `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
+    \ \n    - `binary_sensor.kinderbad_bewegung`  \n  - **Mode:** `restart`  \n  -
+    **Failsafes:** all on/off/dim actions repeat until confirmed"
   triggers:
   - entity_id:
     - sensor.bad_nachtlicht_illuminance
@@ -3899,8 +3876,8 @@
       metadata: {}
       data:
         brightness_pct: 100
-        transition: 1
         color_temp_kelvin: 2400
+        transition: 0.5
       target:
         entity_id: light.bad_nachtlicht
   - alias: Off after time x
@@ -3917,13 +3894,14 @@
     - if:
       - condition: numeric_state
         entity_id: sensor.bad_nachtlicht_illuminance
-        above: 10
+        above: 15
       then:
       - repeat:
           sequence:
           - action: light.turn_off
             metadata: {}
-            data: {}
+            data:
+              transition: 3
             target:
               entity_id: light.bad_nachtlicht
           - delay:
@@ -3932,16 +3910,20 @@
               seconds: 0
               milliseconds: 500
           until:
-          - condition: state
-            entity_id: light.bad_nachtlicht
-            state: 'off'
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: light.bad_nachtlicht
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
       else:
       - repeat:
           sequence:
           - action: light.turn_on
             metadata: {}
             data:
-              transition: 1
+              transition: 3
               color_temp_kelvin: 2400
               brightness: 9
             target:
@@ -3952,9 +3934,13 @@
               seconds: 0
               milliseconds: 500
           until:
-          - condition: template
-            value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
-              == 9 }}'
+          - condition: or
+            conditions:
+            - condition: template
+              value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
+                == 9 }}'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
     enabled: true
   - alias: Off immediately
     if:
@@ -6147,10 +6133,10 @@
       entity_id:
       - switch.schreibtisch_rechts_power_strip_l2
       - switch.schreibtisch_rechts_power_strip_l3
-      - switch.kallax_plant_light_zigbee
       - switch.schreibtisch_rechts_power_strip_l5
       - switch.schreibtisch_links_power_strip_l1
       - switch.schreibtisch_links_power_strip_l4
+      - switch.kallax_plant_light_zigbee_l3
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Non necessary services
@@ -7011,43 +6997,47 @@
 - id: '1748530213618'
   alias: Allergie und Aufgaben Benachrichtigung
   description: "## \U0001F33F Allergie und Aufgaben Benachrichtigung  \n\n### \U0001F4CB
-    **Daily Allergy & Task Reminder**  \nThis automation generates a daily notification
-    that combines:  \n1. **Pollen information** for relevant allergens (Grass, Roggen,
-    Hausstaubmilben, etc.).  \n2. **A random to-do task** from your personal task
-    list (`todo.to_do_duncan`).  \n3. **A short, precise AI-generated message** with
-    instructions or advice, in German.  \n\nThe goal is to provide a concise, actionable
-    morning summary.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Time | Event |\n|------|-------|\n|
-    `08:05:00` | Daily scheduled reminder |\n\n---\n\n### ✅ **Conditions**  \n- None;
-    runs automatically at the scheduled time.  \n\n---\n\n### \U0001F3AF **Workflow
-    / Logic**  \n\n1. **Fetch To-Do Task**  \n   - Pulls tasks with status `needs_action`
-    from `todo.to_do_duncan`.  \n   - Selects a random task to include in the notification.
-    \ \n\n2. **Prepare AI Prompts**  \n   - **Pollen Prompt:** Includes today’s sensor
-    values for key allergens.  \n     - Focused only on the **recommended medication
-    amount** (base + additional) without explanation.  \n     - Keeps dosage conservative.
-    \ \n     - Output format: `base amount: additional amount`.  \n   - **To-Do Prompt:**
-    Includes the randomly selected task with helpful instructions, but keeps the task
-    text unaltered.  \n   - **General Prompt:** Ensures AI output is concise, simple,
-    precise, and limited to 300 tokens, in German.  \n\n3. **AI Processing**  \n   -
-    Uses `conversation.google_generative_ai` to generate notification text.  \n   -
-    Retries up to **10 times** if AI response contains failure phrases like:  \n     -
-    `\"Unable to get response\"`  \n     - `\"Sorry, I had a problem getting a response
-    from Google Generative AI.\"`  \n     - `\"The message got blocked due to content
-    violations\"`  \n   - Includes a **5-second delay** between retries.  \n\n4. **Send
-    Notification**  \n   - **On success:** sends AI-generated message to `notify.duncan`.
-    \ \n   - **On repeated failure:** sends fallback message indicating the notification
-    could not be generated.  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **To-Do
-    Entity:** `todo.to_do_duncan`  \n- **Pollen Sensors Used:**  \n  - `sensor.pollenflug_graeser_111`
-    \ \n  - `sensor.pollenflug_roggen_111`  \n  - `sensor.pollenflug_ambrosia_111`
-    \ \n  - `sensor.pollenflug_beifuss_111`  \n  - `sensor.pollenflug_hasel_111`  \n
-    \ - `sensor.pollenflug_esche_111`  \n- **AI Agent:** `conversation.google_generative_ai`
-    \ \n- **Target Notification:** `notify.duncan`  \n- **Mode:** `single`  \n- **Retries:**
-    Up to 10 attempts for AI response  \n- **Delay Between Retries:** 5 seconds  \n-
-    **Token Limit:** 300 tokens max for AI message  \n\n---\n\n### ⚡ **Notes / Best
-    Practices**  \n- The notification strictly separates allergy dosage recommendations
-    from task instructions.  \n- Pollen information is minimized; the focus is on
-    actionable recommendations.  \n- Task text remains **unaltered**, only helpful
-    instructions are appended.  \n- The AI-generated message is designed for brevity
-    and clarity in German, without Home Assistant internal details."
+    **Daily Allergy & Task Reminder with AI Fallback System**  \n\nThis automation
+    generates a **daily morning notification** combining:  \n1. **Pollen information**
+    (Grass, Roggen, Hausstaubmilben, etc.)  \n2. **A random to-do task** from `todo.to_do_duncan`
+    \ \n3. **A short AI-generated German message** with practical advice and medication
+    hints  \n\nThe automation now includes an **enhanced dual-agent retry system**
+    to maximize reliability of the AI output.  \n\n---\n\n### ⏰ **Triggers**  \n\n|
+    Time | Event |\n|------|-------|\n| `08:05:00` | Daily scheduled reminder |\n\n---\n\n###
+    ✅ **Conditions**  \n- None; runs automatically every morning.  \n\n---\n\n###
+    \U0001F3AF **Workflow / Logic**  \n\n1. **Fetch To-Do Task**  \n   - Retrieves
+    all tasks with status `needs_action` from `todo.to_do_duncan`.  \n   - Randomly
+    selects one task to include in the notification.  \n\n2. **Prepare Prompts**  \n
+    \  - **Pollen Prompt:** Uses today’s values from all relevant pollen sensors,
+    focusing only on dosage recommendation in the format  \n     `base amount: additional
+    amount`.  \n     - Keeps dosage conservative.  \n     - No explanations, causes,
+    or air-quality text.  \n   - **To-Do Prompt:** Embeds the random task *unaltered*
+    and adds practical, helpful suggestions for completing it today.  \n   - **Main
+    Prompt:** Instructs the AI to produce a short, clean, readable message (in **German**,
+    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `conversation.google_generative_ai`.
+    \ \n   - Retries up to **10 times**, but waits **only when a failure occurs**.
+    \ \n   - Recognizes failure phrases such as:  \n     - `\"Unable to get response\"`
+    \ \n     - `\"Sorry, I had a problem getting a response from Google Generative
+    AI.\"`  \n     - `\"The message got blocked due to content violations\"`  \n\n4.
+    **AI Fallback (Secondary Agent)**  \n   - If the primary agent fails after retries,
+    switches to  \n     `conversation.google_ai_conversation_2_5_flash`.  \n   - Applies
+    the same conditional retry logic and 5s delay on failed attempts.  \n   \n5. **Send
+    Notification**  \n   - **Success:** Sends the generated message to `notify.duncan`,
+    with title including today’s weekday.  \n   - **Failure (after all retries):**
+    Sends a fallback message  \n     *“Heute konnte leider keine Nachricht generiert
+    werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do Entity:**
+    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_generative_ai`
+    \ \n- **Fallback AI Agent:** `conversation.google_ai_conversation_2_5_flash`  \n-
+    **Notification Target:** `notify.duncan`  \n- **Retries:** Up to 10 per agent
+    \ \n- **Retry Delay:** 5 seconds  \n- **AI Token Limit:** 300 tokens  \n- **Pollen
+    Sensors:**  \n  - `sensor.pollenflug_graeser_111`  \n  - `sensor.pollenflug_roggen_111`
+    \ \n  - `sensor.pollenflug_ambrosia_111`  \n  - `sensor.pollenflug_beifuss_111`
+    \ \n  - `sensor.pollenflug_hasel_111`  \n  - `sensor.pollenflug_esche_111`  \n\n---\n\n###
+    ⚡ **Notes & Best Practices**  \n- Task text is **never altered or translated**,
+    only supplemented.  \n- Medication recommendation stays on the conservative side.
+    \ \n- The system prioritizes **robustness** — automatic retry + fallback agent
+    ensure high success rate.  \n- The final message is always **concise, actionable,
+    and in natural German**, formatted cleanly for mobile reading.\n"
   triggers:
   - trigger: time
     at: 08:05:00
@@ -7072,10 +7062,10 @@
         details such as entities in responses.
 
         Provide your answer in German and make it precise and efficient as a German
-        would like it. Bitte Duzen nicht Siezen limit your answer to at most 300 tokens.
+        would like it. Bitte Duzen nicht Siezen limit your answer to at most 255 tokens.
         keep it simple and short. rember it is a notification so no ''notification:''
         or something like that.  Simply the text of it and not more. limit yourself
-        to 300 Tokens! not one more!'
+        to 255 words! not one more!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
         are the today sensor values of these pollen and any other Gräser: {{ states(''sensor.pollenflug_graeser_111'')
         }}   Roggen: {{ states(''sensor.pollenflug_roggen_111'') }}  Ambrosia: {{
@@ -7120,11 +7110,20 @@
           agent_id: conversation.google_generative_ai
         response_variable: agent_gemini
         action: conversation.process
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 5
-          milliseconds: 0
+      - alias: Wait only if failed
+        if:
+        - condition: template
+          value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
+            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
+            | select('in', agent_gemini.response.speech.plain.speech) | list | count
+            > 0) }}"
+        then:
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
       until:
       - condition: template
         value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
@@ -7132,6 +7131,48 @@
           message got blocked due to content violations\"\n] %}\n{{ (bad_phrases |
           select('in', agent_gemini.response.speech.plain.speech) | list | count ==
           0)\n   or repeat.index >= 10 }}"
+  - if:
+    - condition: template
+      value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
+        I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
+        (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) | list
+        | count) > 0 }}"
+    then:
+    - repeat:
+        sequence:
+        - alias: Conversation Agent Notification Text
+          data:
+            text: '{{ pollen_prompt }}
+
+
+              {{ todo_prompt }}
+
+
+              {{ prompt }}'
+            agent_id: conversation.google_ai_conversation_2_5_flash
+          response_variable: agent_gemini
+          action: conversation.process
+        - alias: Wait only if failed
+          if:
+          - condition: template
+            value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+              \ \"Sorry, I had a problem getting a response from Google Generative
+              AI.\",\n  \"The message got blocked due to content violations\"\n] %}\n{{
+              (bad_phrases | select('in', agent_gemini.response.speech.plain.speech)
+              | list | count > 0) }}"
+          then:
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+        until:
+        - condition: template
+          value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
+            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
+            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
+            | select('in', agent_gemini.response.speech.plain.speech) | list | count
+            == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
@@ -7579,15 +7620,64 @@
   mode: single
 - id: '1750196437853'
   alias: Octopus night usage, turn battery off
-  description: ''
+  description: "  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV & Battery
+    Management during Night Tariffs**\n\n  This automation manages **battery charging,
+    EV charging, and Octopus tariff\n  usage** during night hours. It handles both
+    \"Dumb\" and \"Intelligent\" modes,\n  including:\n\n  - Turning the battery off
+    or on based on time, EV connection, and car state-of-charge.\n  - Starting or
+    stopping EV charging on Go-eCharger units (11kW and 22kW) with retries.\n  - Ensuring
+    battery usage is optimized for night-time tariffs while avoiding\n    conflicts
+    with EV charging.\n  - Sending notifications to alert if battery cannot safely
+    be turned on.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Type /
+    Condition | Trigger ID |\n  |----------------|-----------------|------------|\n
+    \ | Time | 00:01:00 | Off_time |\n  | Time | 04:59:00 | On_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
+    | State → on | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
+    | State → off | Off_dispatch |\n  | `sensor.renault_zoe_batterie` | Above 98.5%
+    for 15 min | car_full |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
+    99% for 5 min | car_full |\n  | `sensor.lsjwh4097rn105299_soc` | Above 99.9% for
+    5 min | car_full |\n\n  > Triggers include both scheduled night times and state
+    changes for intelligent\n  dispatch or full EV batteries.\n\n  ---\n\n  ### ✅
+    **Conditions**\n\n  - Automation reacts differently based on the selected **Octopus
+    night mode**:\n    - `Dumb` → follow strict time-based schedule and battery/EV
+    constraints.\n    - `Intelligent` → follow Octopus dispatch signals to start/stop
+    battery\n      or EV charging dynamically.\n  - Time of day constraints: 00:00
+    – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣ Dumb
+    Mode: Night Battery & EV Management\n\n  - **Off_time Trigger (00:01)**:\n    -
+    Turns battery switch off with retries until confirmed.\n    - Starts EV charging
+    for connected cars (11kW/22kW Go-eChargers) using\n      `select_option` entities.\n
+    \   - Skips chargers with no connected cars.\n  - **On_time or car_full Trigger
+    (04:59 / car fully charged)**:\n    - Switches Octopus night mode back to `Intelligent`.\n
+    \   - Stops EV charging if EV is connected, waiting for power draw to drop\n      below
+    5W.\n    - Turns battery back on if no EV power draw is detected.\n    - Retries
+    up to 3 times (1, 3, 5 minutes) if EV still drawing power.\n    - Sends notification
+    to Duncan if battery could not safely be turned on.\n\n  #### 2️⃣ Intelligent
+    Mode: Night Battery Controlled by Octopus Dispatch\n\n  - **On_dispatch Trigger**:\n
+    \   - Turns battery off with retries until confirmed.\n    - Starts EV charging
+    on 11kW Go-eCharger if needed.\n  - **Off_dispatch Trigger**:\n    - Stops EV
+    charging with retries until confirmed.\n    - Waits for EV power draw to drop
+    below 5W before turning battery back on.\n    - Uses repeated retries if necessary,
+    with notifications for failures.\n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n\n
+    \ - **Mode:** `single`  \n  - **Battery Controlled:** `switch.esp32_s3_zero_deye8k_time_of_use`
+    \ \n  - **EV Chargers Controlled:**  \n    - `select.go_echarger_270862_frc` (11kW)
+    \ \n    - `select.go_echarger_252682_frc` (22kW)  \n  - **Monitored Entities:**
+    \ \n    - Octopus dispatch sensor  \n    - EV chargers' power sensors  \n    -
+    EV battery SOC sensors  \n  - **Retry Logic:** Repeated attempts up to 10 times
+    for battery switch or EV charger state confirmation.  \n  - **Notifications:**
+    Alerts sent via `notify.duncan` if battery cannot be safely turned on due to EV
+    load.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n  - Dumb mode prioritizes
+    **scheduled night tariff optimization**.\n  - Intelligent mode respects **Octopus
+    dispatch signals** for energy savings.\n  - Battery is only turned on if **no
+    EV is drawing power >5W**.\n  - Retry mechanism ensures reliability while avoiding
+    EV conflicts.\n  - Notifications allow monitoring and manual intervention if automatic
+    control fails."
   triggers:
   - trigger: time
     at: 00:01:00
-    id: Off_time
     enabled: true
+    id: On_time
   - trigger: time
     at: 04:59:00
-    id: On_time
+    id: Off_time
     enabled: true
   - trigger: state
     entity_id:
@@ -7632,10 +7722,13 @@
     - conditions:
       - condition: trigger
         id:
-        - Off_time
+        - On_time
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
+      - condition: time
+        after: 00:00:00
+        before: 05:00:00
       sequence:
       - alias: Turn Battery Off
         repeat:
@@ -7661,6 +7754,7 @@
           - select.go_echarger_252682_frc
         data:
           option: Charge
+        enabled: false
       - alias: Allow Charging for 11kW Go-eCharger if any Car is connected
         if:
         - condition: not
@@ -7695,11 +7789,14 @@
     - conditions:
       - condition: trigger
         id:
-        - On_time
         - car_full
+        - Off_time
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
+      - condition: time
+        after: 00:00:00
+        before: 05:00:00
       sequence:
       - action: input_select.select_option
         metadata: {}
@@ -8482,33 +8579,39 @@
   mode: single
 - id: '1751548094070'
   alias: Poco F7 Request Location with Retry and Final Notification
-  description: This automation ensures accurate location tracking for Duncan by repeatedly
-    requesting location updates from his Poco F7 when he is not home or his location
-    is unknown/unavailable. If updates fail after multiple attempts, it sends a notification
-    to manually update the location.
+  description: "## \U0001F4CD Poco F7 Location Update & Reliability System  \n\n###
+    \U0001F50D **Purpose**   Ensures Duncan’s **current location** remains accurate\nand
+    up-to-date by periodically requesting location updates from his **Poco\nF7**.
+    \  Designed to handle cases when the device fails to report location or\ngoes
+    into an **unknown/unavailable** state.  \n\n### ⚙️ **How It Works**   - **Triggers**
+    when Home Assistant starts, when\nDuncan leaves home,  \n  or every **10 minutes**
+    while he’s not in bed and his location is unknown/unavailable.  \n- **Retries
+    up to 10 times**, sending repeated location update requests\n  to the **Poco F7**
+    every 2 minutes until the location becomes valid.  \n- If all retries fail, a
+    **final notification** prompts a **manual update**\nfrom Duncan.  \n\n### \U0001F9E9
+    **Automation Logic Overview**   - \U0001F552 Trigger: HA start / Location lost\n/
+    10-minute interval (if awake)   - ✅ Condition: Location must be `not_home`,\n`unavailable`,
+    or `unknown`   - \U0001F501 Action 1: Retry up to 10x every 2 min →\nrequest phone
+    location update   - \U0001F4F1 Action 2: If still unresolved → send\nmanual update
+    reminder notification  \n\n--- **Status:** Smart reliability layer for accurate
+    person tracking  \n**Mode:** Single instance — prevents overlap  \n"
   triggers:
-  - event: start
-    trigger: homeassistant
-  - entity_id: person.duncan
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: person.duncan
     to:
-    - not_home
     - unavailable
     - unknown
-    trigger: state
+  - trigger: time_pattern
+    minutes: /10
   conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: person.duncan
-      state: not_home
-    - condition: state
-      entity_id: person.duncan
-      state: unavailable
-    - condition: state
-      entity_id: person.duncan
-      state: unknown
+  - condition: state
+    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    state: 'off'
   actions:
-  - repeat:
+  - alias: "\U0001F501 Repeated Location Requests"
+    repeat:
       until:
       - condition: or
         conditions:
@@ -8516,9 +8619,6 @@
           conditions:
           - condition: or
             conditions:
-            - condition: state
-              entity_id: person.duncan
-              state: not_home
             - condition: state
               entity_id: person.duncan
               state: unavailable
@@ -8532,30 +8632,30 @@
         data:
           message: request_location_update
       - delay:
-          hours: 0
           minutes: 2
-          seconds: 0
-          milliseconds: 0
-  - if:
-    - condition: or
+  - alias: "\U0001F4F1 Final Manual Update Notification"
+    choose:
+    - alias: Check if Location Still Unknown
       conditions:
-      - condition: state
-        entity_id: person.duncan
-        state: not_home
-      - condition: state
-        entity_id: person.duncan
-        state: unavailable
-      - condition: state
-        entity_id: person.duncan
-        state: unknown
-    then:
-    - action: notify.mobile_app_poco_f7
-      data:
-        title: Location update failed
-        message: 'Please open the Home Assistant app on your Poco F7 to update your
-          location manually.
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: person.duncan
+          state: not_home
+        - condition: state
+          entity_id: person.duncan
+          state: unavailable
+        - condition: state
+          entity_id: person.duncan
+          state: unknown
+      sequence:
+      - action: notify.mobile_app_poco_f7
+        data:
+          title: Location update failed
+          message: 'Please open the Home Assistant app on your Poco F7 to update your
+            location manually.
 
-          '
+            '
   mode: single
 - id: '1752180300729'
   alias: 'Alert: SMART Status Problem'
@@ -9723,3 +9823,246 @@
         message: No entities in bucket for trigger {{ trigger.id }} or empty list.
   mode: queued
   max: 10
+- id: '1760873847404'
+  alias: Auto Waschmaschine Fertig
+  description: "## \U0001F9FA Auto Waschmaschine Fertig\n\n### ⚙️ **Purpose**  \nThis
+    automation automatically turns on the `input_boolean.waschmaschine_fertig` when
+    the washing machine has **finished its cycle**.  \nIt detects this by monitoring
+    how long the washer has been drawing power during the **last 20 minutes** and
+    reacts when that duration drops below a defined threshold.  \n\n---\n\n### \U0001F9E9
+    **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.waschmaschine_lauft_seit`
+    measures how many minutes within the **last 20 minutes** the washing machine has
+    consumed power.  \n   - As long as the machine is actively running, this value
+    stays high (close to 20).  \n   - Once the washing stops, the value gradually
+    decreases as power draw ceases.  \n\n2. **Trigger Condition**  \n   - The automation
+    triggers when `sensor.waschmaschine_lauft_seit` falls **below 16.8 minutes**,
+    meaning the machine has not been using power for at least a few minutes.  \n\n3.
+    **Safety Condition**  \n   - It only runs if `input_boolean.waschmaschine_fertig`
+    is currently **off**, avoiding repeated triggers or duplicate notifications.  \n\n4.
+    **Action**  \n   - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
+    \ \n   - This can then be used by other automations (e.g., phone notifications,
+    LED indicators, or voice announcements).  \n\n---\n\n### \U0001F4CA **Technical
+    Summary**  \n\n| Component | Description |\n|------------|-------------|\n| **Trigger**
+    | `numeric_state` → `sensor.waschmaschine_lauft_seit` < `16.8` |\n| **Condition**
+    | `input_boolean.waschmaschine_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
+    → `input_boolean.waschmaschine_fertig` |\n| **Tracking Window** | Last 20 minutes
+    of power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
+    \ \n- The **16.8-minute threshold** is calibrated for a 20-minute sliding window
+    — adjust if your sensor reports in larger or smaller intervals.  \n- This automation
+    assumes the washer stops drawing noticeable power at the end of a cycle.  \n-
+    To complete the loop, create a **companion reset automation** that turns `input_boolean.waschmaschine_fertig`
+    back **off** when the machine starts drawing power again.  \n- Ideal for linking
+    with smart notifications, lights, or audio feedback to inform you when the laundry
+    is done.\n"
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.waschmaschine_lauft_seit
+    below: 16.8
+  conditions:
+  - condition: state
+    entity_id: input_boolean.waschmaschine_fertig
+    state: 'off'
+  actions:
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.waschmaschine_fertig
+  mode: single
+- id: '1760874193253'
+  alias: Auto Trockner Fertig
+  description: "## \U0001F506 Trockner Fertig Automatik  \n\n### ⚙️ **Purpose**  \nThis
+    automation automatically activates the `input_boolean.trockner_fertig` when the
+    dryer has **finished its cycle**.  \nIt uses the runtime sensor to detect when
+    the dryer stops drawing power within a **20-minute observation window**.  \n\n---\n\n###
+    \U0001F9E9 **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.trockner_lauft_seit`
+    measures how many minutes within the **last 20 minutes** the dryer has been consuming
+    power.  \n   - While the dryer is active, the value remains close to 20 minutes.
+    \ \n   - After the cycle ends, the power usage stops, and this value gradually
+    decreases.  \n\n2. **Trigger Condition**  \n   - The automation triggers once
+    `sensor.trockner_lauft_seit` falls **below 19.75 minutes**, indicating the dryer
+    has not used power for a short while — signaling the end of a drying cycle.  \n\n3.
+    **Safety Condition**  \n   - Only runs if `input_boolean.trockner_fertig` is currently
+    **off**, ensuring it only activates once per cycle and doesn’t re-trigger unnecessarily.
+    \ \n\n4. **Action**  \n   - Turns **on** the boolean `input_boolean.trockner_fertig`.
+    \ \n   - This boolean can be used in companion automations to send notifications,
+    flash LEDs, or announce via TTS that the drying is done.  \n\n---\n\n### \U0001F4CA
+    **Technical Summary**  \n\n| Component | Description |\n|------------|-------------|\n|
+    **Trigger** | `numeric_state` → `sensor.trockner_lauft_seit` < `19.75` |\n| **Condition**
+    | `input_boolean.trockner_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
+    → `input_boolean.trockner_fertig` |\n| **Tracking Window** | Last 20 minutes of
+    power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
+    \ \n- The **19.75-minute threshold** is optimized for a 20-minute rolling window
+    — fine-tune it based on how your sensor updates.  \n- This setup assumes the dryer
+    stops drawing significant power once finished.  \n- For completeness, pair it
+    with a **reset automation** that turns `input_boolean.trockner_fertig` back **off**
+    when a new cycle begins (e.g., when runtime exceeds 2–3 minutes again).  \n- Useful
+    for smart notifications, visual indicators, or spoken alerts when the dryer cycle
+    is complete.\n"
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.trockner_lauft_seit
+    below: 19.75
+  conditions:
+  - condition: state
+    entity_id: input_boolean.trockner_fertig
+    state: 'off'
+  actions:
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.trockner_fertig
+  mode: single
+- id: '1760998194743'
+  alias: Bett Powerbank Ladezeit
+  description: "## \U0001F50B Bett Powerbank Ladezeit  \n\nAutomatisiert das **Laden
+    der Bett-Powerbank** abhängig von **Sonnenaufgang/-untergang**,  \nwenn die Powerbank
+    im **Low-Power-Modus** ist und die heutige **PV-Prognose**  \nüber **15 kWh**
+    liegt.  \n\n### \U0001F4CB Logik  \n- **\U0001F305 Sonnenaufgang:** Steckdose
+    **einschalten**, damit die Powerbank tagsüber geladen wird.  \n- **\U0001F307
+    Sonnenuntergang:** Steckdose **ausschalten**, um nachts keinen unnötigen Verbrauch
+    zu haben.  \n\n\U0001F527 Bedingungen:  \n- `input_boolean.bett_powerbank_low_power`
+    = **on**  \n- `sensor.solcast_pv_forecast_prognose_heute` > **15 kWh**\n"
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Sunrise
+  - trigger: sun
+    event: sunset
+    offset: 0
+    id: Sunset
+  conditions:
+  - condition: state
+    entity_id: input_boolean.bett_powerbank_low_power
+    state: 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunrise
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 15
+      sequence:
+      - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.bett_power_strip_l2
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.bett_power_strip_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+        alias: Turn on until on or triggered 10x
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunset
+      sequence:
+      - alias: Turn off until off or triggered 10x
+        repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.bett_power_strip_l2
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.bett_power_strip_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: "\U0001F307 Bett Powerbank"
+          message: Steckdose ausgeschaltet. Bitte prüfen, ob die Powerbank weiterhin
+            im Low-Power-Modus verbleibt.
+  mode: single
+- id: '1761086236371'
+  alias: Tibber Pulse Bridge Auto Restart
+  description: "## ⚙️ Tibber Pulse Bridge Auto Restart\n\n### \U0001F9ED **Purpose**\nEnsures
+    reliable operation of the **Tibber Pulse Bridge** by automatically\nrestarting
+    it every **second day at 12:00**, or when its **uptime** exceeds\n3 days. This
+    prevents MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n-
+    **\U0001F551 Time Trigger:** Executes exactly at `02:00:00` every night.  \n-
+    **\U0001F4C8 Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n
+    \ reports `uptime_days > 3.0`, providing a safety fallback.\n\n### \U0001F9E0
+    **Execution Conditions**\nThe automation only runs when:\n- The **current day
+    is even** (`now().day % 2 == 0`), ensuring a consistent\n  48-hour restart cycle.
+    \ \n- The **uptime** is above **1.5 days**, preventing unnecessary restarts.\n\n###
+    \U0001F680 **Action Flow**\n1. **Publish MQTT Reset Command**  \n   Sends `reset`
+    to topic `tibber/in` to trigger the bridge restart.\n2. **Delay (15s)**  \n   Waits
+    for the restart to begin and the device to disconnect.\n3. **Force Metric Refresh**
+    \ \n   Calls `button.refresh_tibber_bridge` to request fresh telemetry.\n4. **Verification
+    Delay (60s)**  \n   Allows the bridge time to reconnect and update its uptime
+    attribute.\n5. **Validation & Notification**  \n   If the bridge **has not reset**
+    (`uptime_days > 0.5`) or is\n   **unavailable**, sends a notification via `notify.duncan`\n
+    \  to flag a manual check.\n\n### \U0001F512 **Execution Mode**\n- `mode: single`
+    — prevents overlapping restarts, ensuring clean execution.\n"
+  triggers:
+  - trigger: time
+    at: '12:00:00'
+  - trigger: numeric_state
+    entity_id: binary_sensor.tibber_bridge_metrics
+    attribute: uptime_days
+    above: 3
+  conditions:
+  - condition: template
+    value_template: '{{ now().day % 2 == 0 }}'
+  - condition: numeric_state
+    entity_id: binary_sensor.tibber_bridge_metrics
+    attribute: uptime_days
+    above: 1.5
+  actions:
+  - action: mqtt.publish
+    data:
+      topic: tibber/in
+      payload: reset
+  - delay:
+      seconds: 15
+  - action: button.press
+    target:
+      entity_id: button.refresh_tibber_bridge
+  - delay:
+      seconds: 60
+  - choose:
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: binary_sensor.tibber_bridge_metrics
+          attribute: uptime_days
+          above: 0.5
+        - condition: state
+          entity_id: binary_sensor.tibber_bridge_metrics
+          state: unavailable
+      sequence:
+      - action: notify.duncan
+        data:
+          title: ⚠️ Tibber Bridge Restart Check Failed
+          message: 'The Tibber Pulse Bridge did not reset properly or is still offline.
+            Please verify its power and MQTT connection.
+
+            '
+  mode: single
