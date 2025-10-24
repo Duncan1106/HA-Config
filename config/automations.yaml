@@ -1281,115 +1281,113 @@
 - id: '1711468239502'
   alias: BKw Control
   description: "  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Optimized Outlet
-    Control for Solar & Battery System**\n\n  This automation manages the BKW outlet
-    based on solar production, battery\n  state-of-charge (SoC) and voltage, inverter
-    state, sunrise/sunset times, \n  device temperature, and energy usage. Its primary
-    goals are:\n\n  - Optimize charging and discharging to maximize solar self-consumption.\n
-    \ - Protect battery health by enforcing SoC/voltage thresholds.\n  - Ensure nightly
-    shutdown if energy has been used.\n  - Increment counters for monitoring energy
-    events.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition / Threshold
-    | Trigger ID |\n  |----------------|-----------------------|------------|\n  |
-    `sensor.inverter_pv_power` | Above 2250 W | on day |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below 24.2 V | off night |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power`
-    | Below 200 / 175 / 125 / 75 W | off day |\n  | `sensor.inverter_pv_power` | Below
-    2250 / 2000 W | off day |\n  | Sun | Sunset offset -00:15 | on night |\n  | Sun
-    | Sunrise offset +00:15 | off night |\n  | `time_pattern` | Every minute | on
-    day |\n  | `sensor.bkw_outlet_1_energy_power` | Below 50 W | off night |\n\n  >
-    Note: Multiple `off day` and `off night` triggers are defined, each with\n  the
-    same ID, to cover a wide range of solar, battery, and night-time states.\n\n  ---\n\n
-    \ ### ✅ **Conditions**\n\n  - The automation requires **one of the following**:\n
-    \   - Battery is full (`input_boolean.battery_full = on`), OR\n      Battery SoC
-    ≥ 95% / Voltage ≥ 27.75 V.\n    - OR inverter PV power has dropped < 2001 W **while
-    the outlet is on**.\n\n  This ensures:\n  - Outlets only turn on under safe/high
-    battery conditions.\n  - Outlets turn off when PV is weak but still active.\n\n
-    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **On Day Trigger**\n
-    \    - Executes if:\n       - Trigger ID = `on day`\n       - Inverter state =
-    `FeedIn`\n       - Battery marked full (`input_boolean.battery_full = on`)\n       -
-    Battery SoC ≥ 80%\n       - PV power > 2000 W\n       - Device temperature < 44°C\n
-    \    - Turns on:\n       - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
-    \      - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  2. **Off Day Trigger**\n     -
-    Executes if Trigger ID = `off day` during daytime \n       (between sunrise+15
-    and sunset-15).\n     - Turns off the BKW outlet when PV power/array input drops.\n\n
-    \ 3. **On Night Trigger**\n     - Executes if Trigger ID = `on night` and battery
-    is full.\n     - Turns on the load + BKW outlet.\n     - Increments `counter.battery_full`.\n
-    \    - Resets utility meters for charged/discharged energy.\n     - Waits up to
-    30s for load > 10W.  \n       - If not reached, sends notification.\n\n  4. **Off
-    Night Trigger**\n     - Executes if Trigger ID = `off night`, \n       time between
-    00:00–09:00, \n       and energy consumption > 0.001 kWh.\n     - Repeats `turn_off`
-    until outlet is confirmed off.\n     - Resets `input_boolean.battery_full`.\n
-    \    - If discharged energy > 0:\n       - Increments `counter.battery_empty`\n
-    \      - Updates `input_number.last_discharged_energy_from_bkw_battery`\n       -
-    Resets discharged energy utility meter\n     - Adds small delays for stability.\n\n
-    \ ---\n\n  ### \U0001F527 **Technical Specs**\n\n  - **Mode:** `queued` (max 15
-    concurrent)\n  - **Devices Controlled:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n
-    \   - `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored Entities:**\n
-    \   - PV power, PV array input power, battery voltage & SoC,\n      inverter state,
-    outlet energy, device temperature.\n  - **Counters:** \n    - `counter.battery_full`\n
-    \   - `counter.battery_empty`\n  - **Utility Meters:** \n    - Charged/discharged
-    energy recalibrated nightly.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n
-    \ - Battery must be explicitly marked full (`battery_full = on`) **and**\n    SoC
-    ≥ 80% before daytime activation.\n  - Nighttime activation checks full battery
-    state at sunset.\n  - Multiple `off day` triggers ensure reliability in varying
-    solar output."
+    Control for Solar & Battery System**\n\n  Dynamically manages the **BKW outlet**
+    and **Epever load output** based on **solar production, inverter mode, battery
+    state, and day/night cycle**.  \n  Designed to **maximize solar self-consumption**,
+    **protect battery health**, and **automate nightly discharge** when the system
+    is full.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity / Event | Threshold
+    / Condition | Trigger ID |\n  |------------------------|-----------------------|-------------|\n
+    \ | `template` | Inverter = *FeedIn*, PV > 2000 W, SoC ≥ 80 %, Battery Full, Temp
+    < 44 °C | `on day` |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power` |
+    Below **200 / 175 / 125 / 75 W** | `off day` |\n  | `sensor.inverter_pv_power`
+    | Below **2250 / 2000 W** | `off day` |\n  | `sunset -00:15` | Night start | `on
+    night` |\n  | `sunrise +00:15` | End of night | `off night` |\n  | `sensor.bkw_outlet_1_energy_power`
+    | Below **50 W** | `off night` |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
+    | Below **24.2 V** | `off night` |\n\n  > Multiple `off day` / `off night` triggers
+    enhance stability under fluctuating conditions.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
+    \ At least one of:\n  - Battery marked full (`input_boolean.battery_full = on`)\n
+    \ - Battery voltage ≥ 27.75 V\n  - PV < 2001 W **and** BKW outlet already on\n\n
+    \ Ensures outlets only stay active when solar or battery levels are safe.\n\n
+    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### ☀️ **On Day Trigger**\n
+    \ - Triggered when inverter feeds in, PV > 2000 W, SoC ≥ 80 %, battery full, and
+    temperature < 44 °C.\n  - **Action:** Turns **on**  \n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    \ \n    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  #### \U0001F324️ **Off Day Trigger**\n
+    \ - Triggered by any PV or solar input drop below thresholds (200–2250 W) during
+    daytime.\n  - **Action:** Turns **off** only `switch.bkw_outlet_1_bkw_outlet_1`
+    \ \n    *(Epever load remains on for stability.)*\n\n  #### \U0001F319 **On Night
+    Trigger**\n  - Runs shortly before sunset if the battery is full.\n  - **Actions:**\n
+    \   1. Turns **on** both BKW outlet and Epever load.  \n    2. Increments `counter.battery_full`.
+    \ \n    3. Resets charged & discharged energy meters.  \n    4. Waits up to **30
+    s** for load > 10 W, else notifies via `notify.duncan`.\n\n  #### \U0001F312 **Off
+    Night Trigger**\n  - Runs between 00:00–09:00 if battery voltage low or power
+    < 50 W.\n  - **Actions:**\n    1. Sends repeated `turn_off` to BKW outlet and
+    load output until both off (max 10×)(seperatly).  \n    2. Turns **off** `input_boolean.battery_full`.
+    \ \n    3. If discharged energy > 0 kWh:  \n       - Increments `counter.battery_empty`.
+    \ \n       - Stores last discharged energy.  \n       - Resets energy meter.\n\n
+    \ ---\n\n  ### ⚙️ **Technical Specs**\n\n  - **Mode:** `queued` (max 15)\n  -
+    **Controlled:** BKW outlet, Epever load output\n  - **Monitored:** PV power, battery
+    voltage, SoC, inverter state, outlet power, temperature\n  - **Counters:** `battery_full`,
+    `battery_empty`\n  - **Energy Sensors:** `charged_energy_to_bkw_battery`, `discharged_energy_from_bkw_battery`\n\n
+    \ ---\n\n  ### \U0001F4A1 **Notes**\n  - Battery must be flagged full before daytime
+    or nighttime activation.  \n  - Multiple off triggers prevent stuck-on states.
+    \ \n  - Off-night loop guarantees shutdown under MQTT lag."
   triggers:
-  - entity_id:
-    - sensor.inverter_pv_power
+  - trigger: template
+    value_template: "    {{\n      is_state('sensor.scb_inverter_state', 'FeedIn')\n
+      \     and is_state('input_boolean.battery_full', 'on')\n      and states('sensor.esp32_c3_zero_epever_battery_soc')|float(0)
+      >= 80\n      and states('sensor.inverter_pv_power')|float(0) > 2000\n      and
+      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n    }}"
     id: on day
-    above: 2250
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_battery_voltage
-    id: off night
-    below: 24.2
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 200
-    id: off day
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 175
-    id: off day
-    trigger: numeric_state
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 125
-    id: off day
-    trigger: numeric_state
+    alias: On Day
   - entity_id:
     - sensor.esp32_c3_zero_epever_pv_array_input_power
     below: 75
     id: off day
     trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 125
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 175
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_pv_array_input_power
+    below: 200
+    id: off day
+    trigger: numeric_state
+    alias: Off Day Solar Input Power
   - entity_id:
     - sensor.inverter_pv_power
     id: off day
     below: 2250
     trigger: numeric_state
+    alias: Off Day PV Power
   - entity_id:
     - sensor.inverter_pv_power
     id: off day
     below: 2000
     trigger: numeric_state
-  - event: sunrise
-    offset: +00:15:00
-    id: off night
-    trigger: sun
-    enabled: true
+    alias: Off Day PV Power
   - event: sunset
     offset: -00:15:00
     id: on night
     trigger: sun
-  - id: on day
-    enabled: true
-    trigger: time_pattern
-    minutes: '*'
+    alias: On Night sunset
   - trigger: numeric_state
     entity_id:
     - sensor.bkw_outlet_1_energy_power
     below: 50
     id: off night
+    alias: Off Night Power output
+  - entity_id:
+    - sensor.esp32_c3_zero_epever_battery_voltage
+    id: off night
+    below: 24.2
+    trigger: numeric_state
+    alias: Off Night Battery
+  - event: sunrise
+    offset: +00:15:00
+    id: off night
+    trigger: sun
+    enabled: true
+    alias: Off Night sunrise
   conditions:
   - condition: or
     conditions:
@@ -1398,14 +1396,9 @@
       - condition: state
         entity_id: input_boolean.battery_full
         state: 'on'
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_battery_soc
-          above: 95
-        - condition: numeric_state
-          entity_id: sensor.esp32_c3_zero_epever_battery_voltage
-          above: 27.75
+      - condition: numeric_state
+        entity_id: sensor.esp32_c3_zero_epever_battery_voltage
+        above: 27.75
     - condition: and
       conditions:
       - condition: numeric_state
@@ -1417,26 +1410,9 @@
   actions:
   - alias: on day
     if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - on day
-      - condition: state
-        entity_id: sensor.scb_inverter_state
-        state: FeedIn
-      - condition: state
-        entity_id: input_boolean.battery_full
-        state: 'on'
-      - condition: numeric_state
-        entity_id: sensor.esp32_c3_zero_epever_battery_soc
-        above: 80
-      - condition: numeric_state
-        entity_id: sensor.inverter_pv_power
-        above: 2000
-      - condition: numeric_state
-        entity_id: sensor.esp32_c3_zero_epever_device_temperature
-        below: 44
+    - condition: trigger
+      id:
+      - on day
     then:
     - metadata: {}
       data: {}
@@ -1529,7 +1505,7 @@
         after: 00:00:00
         before: 09:00:00
     then:
-    - alias: Repeat off cmd until OFF
+    - alias: 'Plug: Repeat off cmd until OFF'
       repeat:
         sequence:
         - action: switch.turn_off
@@ -1547,6 +1523,28 @@
           conditions:
           - condition: state
             entity_id: switch.bkw_outlet_1_bkw_outlet_1
+            state: 'off'
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
+    - alias: 'Output: Repeat off cmd until OFF'
+      repeat:
+        sequence:
+        - action: switch.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id:
+            - switch.esp32_c3_zero_epever_manual_control_the_load
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 5
+            milliseconds: 0
+        until:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
             state: 'off'
           - condition: template
             value_template: '{{ repeat.index > 10 }}'
@@ -1585,11 +1583,6 @@
           value: '0.0'
         target:
           entity_id: sensor.discharged_energy_from_bkw_battery
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 5
-        milliseconds: 0
   mode: queued
   max: 15
 - id: '1712568670640'
