@@ -9949,17 +9949,49 @@
         entity_id: sensor.solcast_pv_forecast_prognose_heute
         above: 15
       sequence:
-      - action: switch.turn_on
-        target:
-          entity_id: switch.bett_power_strip_l2
+      - repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.bett_power_strip_l2
+              state: 'on'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.bett_power_strip_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+        alias: Turn on until on or triggered 10x
     - conditions:
       - condition: trigger
         id:
         - Sunset
       sequence:
-      - action: switch.turn_off
-        target:
-          entity_id: switch.bett_power_strip_l2
+      - alias: Turn off until off or triggered 10x
+        repeat:
+          until:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: switch.bett_power_strip_l2
+              state: 'off'
+            - condition: template
+              value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.bett_power_strip_l2
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
       - action: notify.duncan
         metadata: {}
         data:
