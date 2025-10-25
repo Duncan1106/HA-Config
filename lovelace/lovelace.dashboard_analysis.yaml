@@ -547,6 +547,73 @@ config:
         {%- endif -%} ></ha-icon> {{ item.id }} [{{item.state}}] <a title="{{item.occurrences}}">
         {{item.occurrences.split(''/'')[-1]}}</a> </td></tr></table> {%- endfor %}'
       type: markdown
+    - apex_config:
+        chart:
+          animations:
+            enabled: true
+          type: bar
+        fill:
+          color: '#1976d2'
+          opacity: 1
+          type: solid
+        plotOptions:
+          bar:
+            columnWidth: 100%
+        tooltip:
+          shared: false
+          x:
+            format: HH:mm
+          y:
+            formatter: 'EVAL:function (val) { return val === 1 ? ''Dispatch Active''
+              : ''Idle''; }
+
+              '
+        yaxis:
+          labels:
+            formatter: 'EVAL:function (val) { return val === 1 ? ''Dispatch'' : '''';
+              }
+
+              '
+      graph_span: 24h
+      header:
+        show: true
+        title: Octopus Intelligent Dispatch Activity
+      now:
+        color: red
+        show: true
+      series:
+      - color: '#FFEB3B'
+        entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+        name: Sensor State
+        show:
+          datalabels: true
+        type: column
+      - color: '#1976d2'
+        data_generator: "const attrs = entity.attributes;\nconst completed = attrs.completed_dispatches\
+          \ || [];\nconst planned = attrs.planned_dispatches || [];\nconst allDispatches\
+          \ = [...completed, ...planned].map(d => ({\n  start: new Date(d.start_time).getTime(),\n\
+          \  end: new Date(d.end_time).getTime()\n}));\n\nconst now = new Date().getTime();\n\
+          const twentyFourHoursAgo = now - 12*60*60*1000;\n\n// Filter to last 12h\
+          \ or future dispatches\nconst relevantDispatches = allDispatches.filter(d\
+          \ => d.end > twentyFourHoursAgo);\n\nif (relevantDispatches.length === 0)\
+          \ return [];\n\n// Graph start/end\nconst startTime = Math.min(...relevantDispatches.map(d\
+          \ => Math.max(d.start, twentyFourHoursAgo)));\nconst endTime = Math.max(...relevantDispatches.map(d\
+          \ => d.end));\n\n// Generate points per dispatch (start=1, end=0)\nconst\
+          \ points = [];\nrelevantDispatches.forEach(d => {\n  // Push start point\n\
+          \  points.push([d.start, 1]);\n  // Push end point\n  points.push([d.end,\
+          \ 0]);\n});\n\n// Sort points by time\npoints.sort((a,b) => a[0]-b[0]);\n\
+          return points;\n"
+        entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+        name: Dispatch Active
+        show:
+          datalabels: false
+        type: column
+      type: custom:apexcharts-card
+      yaxis:
+      - decimals: 0
+        max: 1.1
+        min: 0
+        show: true
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
