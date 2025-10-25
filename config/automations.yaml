@@ -8859,8 +8859,28 @@
   max: 4
 - id: '1754256267209'
   alias: UGREEN NAS Power Management
-  description: Turns on the UGREEN NAS at 10:00 AM daily and turns it off if its power
-    consumption indicates it's off.
+  description: "## \U0001F4BE UGREEN NAS Power Management\n\nAutomates turning the
+    **UGREEN NAS** on and off based on time, sunrise, and power consumption.  \nThe
+    goal is to run the NAS only when needed, save energy, and protect the hardware.\n\n---\n\n###
+    \U0001F4CB Logic\n\n- **\U0001F305 Day start / Sunrise + 1h30:** Turns the NAS
+    on if it is not already running.  \n- **⏰ 10:00 AM:** Daily on trigger as a backup
+    to ensure the NAS is active.  \n  - Both triggers use the **retry logic** (`script.retry_action_with_backoff`)
+    for reliable activation.\n\n- **\U0001F4C9 Automatic Shutdown:** If the NAS power
+    consumption remains below **0.1 W** for more than 1 minute, it will be turned
+    off.  \n  - The **retry logic** ensures the NAS actually powers down.\n\n---\n\n###
+    \U0001F527 Conditions\n\n- No additional conditions.  \n  - NAS turns on at `On`
+    triggers and off at the `Off` trigger.\n\n---\n\n### ⚡ Actions / Workflow\n\n####
+    \U0001F31E **Turn On (On Trigger)**\n- Trigger: `On` (Sunrise +1h30 or 10:00 AM)
+    \ \n- Action: \n  - Turns **on** `switch.ugreen_nas`.\n  - Executes `script.retry_action_with_backoff`
+    (max 10 retries, base delay 5 s, max delay 60 s, simple backoff) for reliable
+    activation.\n\n#### \U0001F319 **Turn Off (Off Trigger)**\n- Trigger: `Off` (NAS
+    power < 0.1 W for ≥ 1 minute)  \n- Action: \n  - Turns **off** `switch.ugreen_nas`.\n
+    \ - Executes `script.retry_action_with_backoff` (max 10 retries, base delay 5
+    s, max delay 60 s, simple backoff) for reliable shutdown.\n\n---\n\n### ⚡ Notes
+    / Best Practices\n\n- Retry logic ensures the NAS is reliably turned on/off even
+    under network delays.  \n- Daily 10:00 AM activation guarantees the NAS is available
+    regardless of sunrise.  \n- Shutdown based on power consumption saves energy and
+    prevents unnecessary continuous operation."
   triggers:
   - trigger: sun
     event: sunrise
@@ -8891,6 +8911,18 @@
         data: {}
         target:
           entity_id: switch.ugreen_nas
+        enabled: false
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          entity_id: switch.ugreen_nas
+          target_state: 'on'
     - conditions:
       - condition: trigger
         id:
@@ -8900,6 +8932,18 @@
         metadata: {}
         data: {}
         target:
+          entity_id: switch.ugreen_nas
+        enabled: false
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          target_state: 'off'
           entity_id: switch.ugreen_nas
   mode: single
 - id: '1754293444382'
@@ -10001,6 +10045,7 @@
           target_state: 'off'
           action_domain: switch
           max_retries: 10
+          base_delay: 5
       - action: notify.duncan
         metadata: {}
         data:
@@ -10027,16 +10072,16 @@
     reliable operation of the **Tibber Pulse Bridge** by automatically\nrestarting
     it every **second day at 12:00**, or when its **uptime** exceeds\n3 days. This
     prevents MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n-
-    **\U0001F551 Time Trigger:** Executes exactly at `12:00:00` every night.  \n-
-    **\U0001F4C8 Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n
-    \ reports `uptime_days > 3.0`, providing a safety fallback.\n\n### \U0001F9E0
-    **Execution Conditions**\nThe automation only runs when:\n- The **current day
-    is even** (`now().day % 2 == 0`), ensuring a consistent\n  48-hour restart cycle.
-    \ \n- The **uptime** is above **1.5 days**, preventing unnecessary restarts.\n\n###
-    \U0001F680 **Action Flow**\n1. **Publish MQTT Reset Command**  \n   Sends `reset`
-    to topic `tibber/in` to trigger the bridge restart.\n2. **Delay (15s)**  \n   Waits
-    for the restart to begin and the device to disconnect.\n3. **Force Metric Refresh**
-    \ \n   Calls `button.refresh_tibber_bridge` to request fresh telemetry.\n4. **Verification
+    **\U0001F551 Time Trigger:** Executes exactly at `12:00:00` every day.  \n- **\U0001F4C8
+    Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n  reports
+    `uptime_days > 3.0`, providing a safety fallback.\n\n### \U0001F9E0 **Execution
+    Conditions**\nThe automation only runs when:\n- The **current day is even** (`now().day
+    % 2 == 0`), ensuring a consistent\n  48-hour restart cycle.  \n- The **uptime**
+    is above **1.5 days**, preventing unnecessary restarts.\n\n### \U0001F680 **Action
+    Flow**\n1. **Publish MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in`
+    to trigger the bridge restart.\n2. **Delay (15s)**  \n   Waits for the restart
+    to begin and the device to disconnect.\n3. **Force Metric Refresh**  \n   Calls
+    `button.refresh_tibber_bridge` to request fresh telemetry.\n4. **Verification
     Delay (60s)**  \n   Allows the bridge time to reconnect and update its uptime
     attribute.\n5. **Validation & Notification**  \n   If the bridge **has not reset**
     (`uptime_days > 0.5`) or is\n   **unavailable**, sends a notification via `notify.duncan`\n
