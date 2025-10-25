@@ -8025,7 +8025,8 @@
             target:
               entity_id: switch.esp32_s3_zero_deye8k_time_of_use
             data: {}
-          - delay: 00:00:10
+          - delay:
+              seconds: '{{ repeat.index }}'
           until:
           - condition: or
             conditions:
@@ -8034,13 +8035,24 @@
             - condition: state
               entity_id: switch.esp32_s3_zero_deye8k_time_of_use
               state: 'off'
-      - alias: Start EV Charging
-        action: select.select_option
-        target:
-          entity_id:
-          - select.go_echarger_270862_frc
-        data:
-          option: Charge
+      - repeat:
+          until:
+          - condition: state
+            entity_id: select.go_echarger_270862_frc
+            state: Charge
+          - condition: template
+            value_template: '{{ repeat.index > 10 }}'
+          sequence:
+          - alias: Start EV Charging
+            action: select.select_option
+            target:
+              entity_id:
+              - select.go_echarger_270862_frc
+            data:
+              option: Charge
+          - delay:
+              seconds: '{{ repeat.index }}'
+        alias: Turn on EV Charging with Retrys
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
@@ -8076,10 +8088,7 @@
             data:
               option: Don't charge
           - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+              seconds: '{{ repeat.index }}'
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
