@@ -1582,11 +1582,12 @@ restart_charging_process:
   description: ''
 retry_action_with_backoff:
   alias: Retry Action with Backoff
-  description: 'Executes a service until the target entity reaches the desired state,
-    using configurable retry count and backoff type (simple, linear, exponential).
+  description: 'Retries a service call until the entity reaches the desired state
+    or max retries are reached, using simple, linear, or exponential backoff. Supports
+    custom action domain and custom action type.
 
     '
-  mode: restart
+  mode: parallel
   fields:
     entity_id:
       name: Entity
@@ -1596,29 +1597,56 @@ retry_action_with_backoff:
         entity: {}
     target_state:
       name: Target State
-      description: The desired target state (e.g., on, off, open, closed).
+      description: The desired state for the entity (e.g., on, off, open, closed,
+        or custom).
       required: true
+      selector:
+        select:
+          options:
+          - label: 'On'
+            value: 'on'
+          - label: 'Off'
+            value: 'off'
+          - label: Open
+            value: open
+          - label: Closed
+            value: closed
+          - label: Custom
+            value: custom
+    custom_target_state:
+      name: Custom Target State
+      description: Specify a custom state if Target State is 'Custom'.
+      required: false
       selector:
         text: {}
     action_domain:
       name: Action Domain
-      description: 'Select the domain for the service call. If left blank, a generic
-        ''homeassistant.<action_type>'' service will be used.
-
-        '
+      description: Domain for the service call (e.g., light, switch). Defaults to
+        'homeassistant'.
       required: false
+      default: homeassistant
       selector:
         select:
           options:
+          - label: Home Assistant (default)
+            value: homeassistant
           - label: Switch
             value: switch
           - label: Light
             value: light
-          - label: Custom (manual service entry)
+          - label: Custom
             value: custom
+    custom_action_domain:
+      name: Custom Action Domain
+      description: Specify a custom domain if 'Custom' is selected above (e.g., cover,
+        climate)
+      required: false
+      selector:
+        text: {}
     action_type:
       name: Action Type
-      description: Select the action type (on/off/toggle) or custom.
+      description: Action to perform (e.g., turn_on, turn_off, toggle, open, close,
+        or custom)
       default: turn_on
       selector:
         select:
@@ -1629,38 +1657,39 @@ retry_action_with_backoff:
             value: turn_off
           - label: Toggle
             value: toggle
-          - label: Custom (manual service entry)
+          - label: Custom
             value: custom
-    custom_action_service:
-      name: Custom Action Service
-      description: 'Used only if Action Type or Domain is ''Custom''. Example: cover.open_cover'
+    custom_action_type:
+      name: Custom Action Type
+      description: Specify a custom action type if 'Custom' is selected above (e.g.,
+        lock, set_temperature)
       required: false
       selector:
         text: {}
     max_retries:
       name: Max Retries
-      description: Maximum number of retry attempts before giving up.
-      default: 5
+      description: Maximum number of attempts.
+      default: 10
       selector:
         number:
           min: 1
-          max: 50
+          max: 20
           mode: box
           step: 1
     base_delay:
       name: Base Delay
-      description: Base delay in seconds for the backoff calculation.
+      description: Base delay in seconds for backoff calculation.
       default: 5
       selector:
         number:
           min: 1
-          max: 600
+          max: 60
           mode: box
           step: 1
           unit_of_measurement: seconds
     backoff_type:
       name: Backoff Type
-      description: The backoff strategy to use between retries.
+      description: Strategy for retry delays (simple, linear, exponential).
       default: simple
       selector:
         select:
@@ -1669,28 +1698,33 @@ retry_action_with_backoff:
           - linear
           - exponential
   variables:
-    current_retry: 0
-    delay: 0
-    action_service: "{% set domain = (action_domain | default('', true)) %} {% if
-      action_type == \"custom\" or domain == \"custom\" %}\n  {{ custom_action_service
-      }}\n{% elif domain == \"\" %}\n  {{ \"homeassistant.\" ~ action_type }}\n{%
-      else %}\n  {{ domain ~ \".\" ~ action_type }}\n{% endif %}\n"
+    effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+      | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
   sequence:
+  - condition: template
+    value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
+    alias: Validate entity exists
   - repeat:
-      while:
+      until:
       - condition: template
-        value_template: "{{ not is_state(entity_id, target_state)\n   and repeat.index
-          <= (max_retries | int) }}\n"
+        value_template: '{{ is_state(entity_id, effective_target_state) or repeat.index
+          > max_retries | int(10) }}
+
+          '
       sequence:
       - data:
           entity_id: '{{ entity_id }}'
-        action: '{{ action_service }}'
-      - variables:
-          delay: "{% set base = base_delay | float(5) %} {% set i = repeat.index |
-            int %} {% set type = backoff_type | lower %} {% if type == \"linear\"
-            %}\n  {{ base * i }}\n{% elif type == \"exponential\" %}\n  {{ base *
-            (2 ** (i - 1)) }}\n{% else %}\n  {{ base }}\n{% endif %}\n"
-      - delay:
-          seconds: '{{ delay }}'
-      - variables:
-          current_retry: '{{ repeat.index }}'
+        action: "{% set act_type = action_type %}\n{% if act_type == 'custom' %}\n
+          \ {% set act_type = custom_action_type | default('') %}\n{% endif %}\n{%
+          set act_domain = action_domain %}\n{% if act_domain == 'custom' %}\n  {%
+          set act_domain = custom_action_domain | default('homeassistant') %}\n{%
+          endif %}\n{{ (act_domain | default('homeassistant')) }}.{{ act_type }}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+          sequence:
+          - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
+            timeout: "{{  (base_delay | float(5)) * (\n  1 if backoff_type == 'simple'
+              else \n  repeat.index if backoff_type == 'linear' else \n  [2**(repeat.index-1)
+              * base_delay | float(5), 60] | min\n) }}\n"
