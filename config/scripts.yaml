@@ -707,6 +707,11 @@ luftbefeuchter:
       data: {}
       target:
         entity_id: switch.terrarium_tasmota3
+    - action: input_boolean.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.luftbefeuchter_aktiv
   - alias: If air dry -> humidifier on
     if:
     - condition: and
@@ -728,6 +733,16 @@ luftbefeuchter:
           | float(0) %}\n  {% set hum2 = states('sensor.t_h_terrarium_humidity') |
           float(0) %}\n  {{ (hum1 <= threshold) or (hum2 <= threshold) }}"
     then:
+    - action: input_boolean.turn_on
+      metadata: {}
+      data: {}
+      target:
+        entity_id: input_boolean.luftbefeuchter_aktiv
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 2
+        milliseconds: 0
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -1580,3 +1595,169 @@ restart_charging_process:
       entity_id: switch.mikrowelle
   alias: Restart Tablet Charging Process
   description: ''
+retry_action_with_backoff:
+  alias: Retry Action with Backoff
+  description: 'Retries a service call until the entity reaches the desired state
+    or max retries are reached, using simple, linear, or exponential backoff. Supports
+    custom action domain and custom action type.
+
+    '
+  mode: parallel
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to monitor and act on.
+      required: true
+      selector:
+        entity: {}
+    target_state:
+      name: Target State
+      description: The desired state for the entity (e.g., on, off, open, closed,
+        or custom).
+      required: true
+      selector:
+        select:
+          options:
+          - label: 'On'
+            value: 'on'
+          - label: 'Off'
+            value: 'off'
+          - label: Open
+            value: open
+          - label: Closed
+            value: closed
+          - label: Custom
+            value: custom
+    custom_target_state:
+      name: Custom Target State
+      description: Specify a custom state if Target State is 'Custom'.
+      required: false
+      selector:
+        text: {}
+    action_domain:
+      name: Action Domain
+      description: Domain for the service call (e.g., light, switch). Defaults to
+        'homeassistant'.
+      required: false
+      default: homeassistant
+      selector:
+        select:
+          options:
+          - label: Home Assistant (default)
+            value: homeassistant
+          - label: Switch
+            value: switch
+          - label: Light
+            value: light
+          - label: Custom
+            value: custom
+    custom_action_domain:
+      name: Custom Action Domain
+      description: Specify a custom domain if 'Custom' is selected above (e.g., cover,
+        climate)
+      required: false
+      selector:
+        text: {}
+    action_type:
+      name: Action Type
+      description: Action to perform (e.g., turn_on, turn_off, toggle, open, close,
+        or custom)
+      default: turn_on
+      selector:
+        select:
+          options:
+          - label: Turn On
+            value: turn_on
+          - label: Turn Off
+            value: turn_off
+          - label: Toggle
+            value: toggle
+          - label: Custom
+            value: custom
+    custom_action_type:
+      name: Custom Action Type
+      description: Specify a custom action type if 'Custom' is selected above (e.g.,
+        lock, set_temperature)
+      required: false
+      selector:
+        text: {}
+    max_retries:
+      name: Max Retries
+      description: Maximum number of attempts.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          mode: box
+          step: 1
+    base_delay:
+      name: Base Delay
+      description: Base delay in seconds for backoff calculation.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+          step: 1
+          unit_of_measurement: seconds
+    max_delay:
+      name: Max Delay
+      description: Maximum delay in seconds for any backoff type.
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 600
+          mode: box
+          step: 1
+          unit_of_measurement: seconds
+    backoff_type:
+      name: Backoff Type
+      description: Strategy for retry delays (simple, linear, exponential).
+      default: simple
+      selector:
+        select:
+          options:
+          - label: Simple
+            value: simple
+          - label: Linear
+            value: linear
+          - label: Exponential
+            value: exponential
+  variables:
+    effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+      | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
+  sequence:
+  - condition: template
+    value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
+    alias: Validate entity exists
+  - repeat:
+      until:
+      - condition: template
+        value_template: '{{ is_state(entity_id, effective_target_state) or repeat.index
+          >= max_retries | int(10) }}
+
+          '
+      sequence:
+      - target:
+          entity_id: '{{ entity_id }}'
+        data: {}
+        action: "{% set act_type = action_type %}\n{% if act_type == 'custom' %}\n
+          \ {% set act_type = custom_action_type | default('') %}\n{% endif %}\n{%
+          set act_domain = action_domain %}\n{% if act_domain == 'custom' %}\n  {%
+          set act_domain = custom_action_domain | default('homeassistant') %}\n{%
+          endif %}\n{{ (act_domain | default('homeassistant')) }}.{{ act_type }}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+          sequence:
+          - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
+            timeout: "{% set bd = base_delay | float(5) %} {% set md = max_delay |
+              float(60) %} {% if backoff_type == 'simple' %}\n  {{ [bd, md] | min
+              }}\n{% elif backoff_type == 'linear' %}\n  {{ [repeat.index * bd, md]
+              | min }}\n{% elif backoff_type == 'exponential' %}\n  {{ [2**(repeat.index-1)
+              * bd, md] | min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}\n"
+  max: 100

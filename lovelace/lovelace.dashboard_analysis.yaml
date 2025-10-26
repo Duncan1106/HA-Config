@@ -547,6 +547,63 @@ config:
         {%- endif -%} ></ha-icon> {{ item.id }} [{{item.state}}] <a title="{{item.occurrences}}">
         {{item.occurrences.split(''/'')[-1]}}</a> </td></tr></table> {%- endfor %}'
       type: markdown
+    - apex_config:
+        chart:
+          animations:
+            enabled: true
+          type: bar
+        fill:
+          color: '#FFEB3B'
+          opacity: 0.8
+          type: solid
+        plotOptions:
+          bar:
+            columnWidth: 100%
+            distributed: false
+        tooltip:
+          shared: false
+          x:
+            formatter: "EVAL:function(val) {\n  const d = new Date(val);\n  return\
+              \ d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});\n}\n"
+          y:
+            formatter: 'EVAL:function(val) { return val === 1 ? ''Active'' : ''Idle'';
+              }
+
+              '
+        xaxis:
+          labels:
+            datetimeFormatter:
+              hour: HH:mm
+              minute: HH:mm
+          type: datetime
+      graph_span: 24h
+      header:
+        show: true
+        title: Octopus Intelligent Dispatch Activity
+      now:
+        color: red
+        show: true
+      series:
+      - color: '#FFEB3B'
+        data_generator: "const attrs = entity.attributes; const completed = attrs.completed_dispatches\
+          \ || []; const planned = attrs.planned_dispatches || []; const allDispatches\
+          \ = [...completed, ...planned];\nconst now = Date.now(); const pastLimit\
+          \ = now - 12*60*60*1000;  // 12h past\nlet points = [];\nallDispatches.forEach(d\
+          \ => {\n  const start = Math.max(new Date(d.start_time).getTime(), pastLimit);\n\
+          \  const end = new Date(d.end_time).getTime();\n  if (end > pastLimit) {\n\
+          \    points.push([start, 1]);\n    points.push([end, 0]);\n  }\n});\npoints.sort((a,\
+          \ b) => a[0] - b[0]); return points;\n"
+        entity: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+        name: Sensor State
+        show:
+          datalabels: false
+        type: column
+      type: custom:apexcharts-card
+      yaxis:
+      - decimals: 0
+        max: 1.1
+        min: 0
+        show: true
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
