@@ -1280,47 +1280,58 @@
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: "  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Optimized Outlet
-    Control for Solar & Battery System**\n\n  Dynamically manages the **BKW outlet**
-    and **Epever load output** based on **solar production, inverter mode, battery
-    state, and day/night cycle**.  \n  Designed to **maximize solar self-consumption**,
-    **protect battery health**, and **automate nightly discharge** when the system
-    is full.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity / Event | Threshold
-    / Condition | Trigger ID |\n  |------------------------|-----------------------|-------------|\n
-    \ | `template` | Inverter = *FeedIn*, PV > 2000 W, SoC ≥ 80 %, Battery Full, Temp
-    < 44 °C | `on day` |\n  | `sensor.esp32_c3_zero_epever_pv_array_input_power` |
-    Below **200 / 175 / 125 / 75 W** | `off day` |\n  | `sensor.inverter_pv_power`
-    | Below **2250 / 2000 W** | `off day` |\n  | `sunset -00:15` | Night start | `on
-    night` |\n  | `sunrise +00:15` | End of night | `off night` |\n  | `sensor.bkw_outlet_1_energy_power`
-    | Below **50 W** | `off night` |\n  | `sensor.esp32_c3_zero_epever_battery_voltage`
-    | Below **24.2 V** | `off night` |\n\n  > Multiple `off day` / `off night` triggers
-    enhance stability under fluctuating conditions.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
-    \ At least one of:\n  - Battery marked full (`input_boolean.battery_full = on`)\n
-    \ - Battery voltage ≥ 27.75 V\n  - PV < 2001 W **and** BKW outlet already on\n\n
-    \ Ensures outlets only stay active when solar or battery levels are safe.\n\n
-    \ ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### ☀️ **On Day Trigger**\n
-    \ - Triggered when inverter feeds in, PV > 2000 W, SoC ≥ 80 %, battery full, and
-    temperature < 44 °C.\n  - **Action:** Turns **on**  \n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
-    \ \n    - `switch.bkw_outlet_1_bkw_outlet_1`\n\n  #### \U0001F324️ **Off Day Trigger**\n
-    \ - Triggered by any PV or solar input drop below thresholds (200–2250 W) during
-    daytime.\n  - **Action:** Turns **off** only `switch.bkw_outlet_1_bkw_outlet_1`
-    \ \n    *(Epever load remains on for stability.)*\n\n  #### \U0001F319 **On Night
-    Trigger**\n  - Runs shortly before sunset if the battery is full.\n  - **Actions:**\n
-    \   1. Turns **on** both BKW outlet and Epever load.  \n    2. Increments `counter.battery_full`.
-    \ \n    3. Resets charged & discharged energy meters.  \n    4. Waits up to **30
-    s** for load > 10 W, else notifies via `notify.duncan`.\n\n  #### \U0001F312 **Off
-    Night Trigger**\n  - Runs between 00:00–09:00 if battery voltage low or power
-    < 50 W.\n  - **Actions:**\n    1. Sends repeated `turn_off` to BKW outlet and
-    load output until both off (max 10×)(seperatly).  \n    2. Turns **off** `input_boolean.battery_full`.
-    \ \n    3. If discharged energy > 0 kWh:  \n       - Increments `counter.battery_empty`.
-    \ \n       - Stores last discharged energy.  \n       - Resets energy meter.\n\n
-    \ ---\n\n  ### ⚙️ **Technical Specs**\n\n  - **Mode:** `queued` (max 15)\n  -
-    **Controlled:** BKW outlet, Epever load output\n  - **Monitored:** PV power, battery
-    voltage, SoC, inverter state, outlet power, temperature\n  - **Counters:** `battery_full`,
-    `battery_empty`\n  - **Energy Sensors:** `charged_energy_to_bkw_battery`, `discharged_energy_from_bkw_battery`\n\n
-    \ ---\n\n  ### \U0001F4A1 **Notes**\n  - Battery must be flagged full before daytime
-    or nighttime activation.  \n  - Multiple off triggers prevent stuck-on states.
-    \ \n  - Off-night loop guarantees shutdown under MQTT lag."
+  description: "\n  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Dynamic Control
+    for Solar & Battery Power Flow**\n\n  This automation manages both the **BKW outlet**
+    and the **Epever load output**  \n  to optimize solar utilization and battery
+    performance.  \n  It responds dynamically to **PV production**, **inverter state**,
+    and **day/night cycles**,  \n  ensuring both stability and energy efficiency.\n\n
+    \ All switch operations are executed using  \n  **`script.retry_action_with_backoff`**,
+    providing up to **10 retry attempts**  \n  with a **linear backoff (1–60 s)**
+    to ensure reliable ZigBee or MQTT communication.\n\n  ---\n\n  ### ⏰ **Trigger
+    Overview**\n\n  | Type | Entity / Condition | ID | Purpose |\n  |------|--------------------|----|----------|\n
+    \ | `template` | Inverter = *FeedIn*, SoC ≥ 80 %, PV > 2000 W, Battery Full, Temp
+    < 44 °C | `on day` | Enable daytime output |\n  | `numeric_state` | PV input <
+    75–200 W (multiple thresholds) | `off day` | Disable outlet under low PV |\n  |
+    `numeric_state` | Inverter PV < 2000–2250 W | `off day` | Backup PV cutoff |\n
+    \ | `sun` | `sunset -00:15` | `on night` | Start night discharge |\n  | `numeric_state`
+    | BKW outlet power < 50 W | `off night` | Stop when no load |\n  | `numeric_state`
+    | Battery voltage < 24.2 V | `off night` | Protect low battery |\n  | `sun` |
+    `sunrise +00:15` | `off night` | End night cycle |\n\n  > Multiple “off” triggers
+    ensure reliability under rapidly changing or unstable PV conditions.\n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  The automation only runs when **safe battery or solar
+    conditions** exist:\n  - `input_boolean.battery_full` = `on`, **or**\n  - `sensor.esp32_c3_zero_epever_battery_voltage`
+    ≥ **27.75 V**, **or**\n  - PV < 2001 W and BKW outlet already on.\n\n  ---\n\n
+    \ ### \U0001F3AF **Actions & Workflow**\n\n  #### ☀️ **On Day Trigger**\n  When
+    inverter feeds in and battery is full:\n  - Turns **on** both:\n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    *(via retry script)*\n    - `switch.bkw_outlet_1_bkw_outlet_1` *(via retry script)*\n
+    \ - Each command uses `script.retry_action_with_backoff` with:\n    - 10 retries
+    \ \n    - Linear backoff 1–60 s  \n    - Target state verification\n\n  #### \U0001F324️
+    **Off Day Trigger**\n  When PV or inverter power falls below thresholds:\n  -
+    Turns **off** `switch.bkw_outlet_1_bkw_outlet_1` *(via retry script)*  \n  - Epever
+    load remains **on** for system consistency.\n\n  #### \U0001F319 **On Night Trigger**\n
+    \ Before sunset, if the battery is full:\n  1. Turns **on** both:\n     - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    *(via retry script)*  \n     - `switch.bkw_outlet_1_bkw_outlet_1` *(via retry
+    script)*\n  2. Increments `counter.battery_full`\n  3. Resets charged & discharged
+    energy meters\n  4. Waits up to **30 s** for load > 10 W  \n     - If no load
+    detected → sends **⚠️ Notification** via `notify.duncan`\n\n  #### \U0001F312
+    **Off Night Trigger**\n  Between 00:00–09:00, if power < 50 W or voltage < 24.2
+    V:\n  1. Turns **off** both:\n     - `switch.bkw_outlet_1_bkw_outlet_1` *(via
+    retry script)*  \n     - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    *(via retry script)*\n  2. Turns **off** `input_boolean.battery_full`\n  3. If
+    discharged energy > 0 kWh:\n     - Increments `counter.battery_empty`\n     -
+    Saves last discharged energy value to `input_number.last_discharged_energy_from_bkw_battery`\n
+    \    - Resets discharged energy meter\n\n  ---\n\n  ### ⚙️ **Technical Overview**\n\n
+    \ - **Mode:** `queued` (max 15)\n  - **Switch Control:** via `script.retry_action_with_backoff`\n
+    \ - **Controlled Entities:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n    -
+    `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored:** PV power,
+    battery voltage, SoC, inverter state, outlet power, temperature\n  - **Counters:**
+    `counter.battery_full`, `counter.battery_empty`\n  - **Energy Meters:**  \n    -
+    `sensor.charged_energy_to_bkw_battery`  \n    - `sensor.discharged_energy_from_bkw_battery`\n\n
+    \ ---\n\n  ### \U0001F4A1 **Notes**\n  - All switch actions use a **robust retry
+    mechanism** to guarantee command delivery.  \n  - Battery must be flagged as full
+    for both day and night activations.  \n  - Multi-trigger design prevents “stuck”
+    or delayed transitions.  \n  - Designed for **maximum solar self-consumption**,
+    **safe discharge cycles**, and **reliable automation recovery**."
   triggers:
   - trigger: template
     value_template: "    {{\n      is_state('sensor.scb_inverter_state', 'FeedIn')\n
@@ -1414,14 +1425,28 @@
       id:
       - on day
     then:
-    - metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.esp32_c3_zero_epever_manual_control_the_load
-        - switch.bkw_outlet_1_bkw_outlet_1
-      enabled: true
-      action: switch.turn_on
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+        target_state: 'on'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.bkw_outlet_1_bkw_outlet_1
+        target_state: 'on'
   - alias: off day
     if:
     - condition: and
@@ -1434,11 +1459,17 @@
         id:
         - off day
     then:
-    - action: switch.turn_off
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
         entity_id: switch.bkw_outlet_1_bkw_outlet_1
+        target_state: 'off'
   - alias: on night
     if:
     - condition: and
@@ -1450,14 +1481,28 @@
         entity_id: input_boolean.battery_full
         state: 'on'
     then:
-    - metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.esp32_c3_zero_epever_manual_control_the_load
-        - switch.bkw_outlet_1_bkw_outlet_1
-      enabled: true
-      action: switch.turn_on
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+        target_state: 'on'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.bkw_outlet_1_bkw_outlet_1
+        target_state: 'on'
     - metadata: {}
       data: {}
       target:
@@ -1505,49 +1550,28 @@
         after: 00:00:00
         before: 09:00:00
     then:
-    - alias: 'Plug: Repeat off cmd until OFF'
-      repeat:
-        sequence:
-        - action: switch.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: switch.bkw_outlet_1_bkw_outlet_1
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 5
-            milliseconds: 0
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: switch.bkw_outlet_1_bkw_outlet_1
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index > 10 }}'
-    - alias: 'Output: Repeat off cmd until OFF'
-      repeat:
-        sequence:
-        - action: switch.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id:
-            - switch.esp32_c3_zero_epever_manual_control_the_load
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 5
-            milliseconds: 0
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index > 10 }}'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.bkw_outlet_1_bkw_outlet_1
+        target_state: 'off'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 1
+        max_delay: 60
+        backoff_type: linear
+        entity_id: switch.esp32_c3_zero_epever_manual_control_the_load
+        target_state: 'off'
     - metadata: {}
       data: {}
       target:
@@ -2886,21 +2910,24 @@
     the cooling fan for the inverter using a virtual\nlogic (documented here instead
     of code). The fan simply mirrors whether\n\"cooling is needed\" based on the following
     conditions:\n\n### \U0001F4CB **Cooling Logic**\n\nThe fan turns **ON** if:\n-
-    Inverter is **ON** and inverter temperature > 15 °C, OR\n- Inverter temperature
-    > 25 °C (regardless of inverter state), OR\n- Inverter is more than 5 °C hotter
-    than the outdoor ambient temperature.\n\nThe fan turns **OFF** otherwise:\n- Inverter
-    is **OFF** and temperature below thresholds, OR\n- Temperature difference (delta)
-    drops back below 5 °C.\n\n### \U0001F3AF **Automation Workflow**\n- If conditions
-    indicate cooling needed → fan ON.\n- Otherwise → fan OFF.\n\n### \U0001F527 **Technical
-    Specs**\n- Mode: `single`\n- Controlled entity: `switch.gartenhaus_usb_switch_zigbee_l2`
-    (fan)\n- Monitoring entities:\n  - `switch.bkw_outlet_1_bkw_outlet_1` (inverter
-    power)\n  - `sensor.esp32_c3_zero_epever_device_temperature` (inverter temp)\n
-    \ - `sensor.gw1100a_outdoor_temperature` (ambient temp)\n\n### \U0001F527 **Retry
-    Mechanism**\nBecause the fan is controlled by a ZigBee switch, the automation
-    retries up to\n**10 times** if the switch does not reach the desired state. This
-    ensures\nreliability in case of missed ZigBee packets.\n\n### ⚡ **Notes**\n- Adaptive
-    delta logic keeps the fan efficient across seasons.\n- Hysteresis (different ON/OFF
-    thresholds) can be added if needed."
+    Inverter is **ON** and MPPT temperature > 15 °C, OR\n- MPPT temperature > 25 °C
+    (regardless of inverter state), OR\n- MPPT is more than 10 °C hotter than the
+    outdoor ambient temperature.\n\nThe fan turns **OFF** otherwise:\n- Inverter is
+    **OFF** and temperature below thresholds, OR\n- Temperature difference (delta)
+    drops back below 10 °C.\n\n### \U0001F3AF **Automation Workflow**\n- Trigger:
+    Any state change of `binary_sensor.epever_cooling_needed`\n- If `cooling_needed`
+    = **on** → turn **ON** the fan  \n- If `cooling_needed` = **off** → turn **OFF**
+    the fan  \n- Both actions use the retry script for reliability.\n\n### \U0001F527
+    **Technical Specs**\n- Mode: `single`\n- Controlled entity: `switch.gartenhaus_usb_switch_zigbee_l2`
+    (fan)\n- Cooling logic source: `binary_sensor.epever_cooling_needed`\n- Retry
+    helper: `script.retry_action_with_backoff`\n\n### \U0001F501 **Retry Mechanism**\nBecause
+    the fan is controlled by a ZigBee switch, each command is retried up\nto **10
+    times** using a **linear backoff** (1–60 seconds) until the target\nstate (`on`
+    or `off`) is confirmed.  \nThis ensures reliable operation even when ZigBee packets
+    are occasionally lost.\n\n### ⚡ **Notes**\n- The temperature logic itself is handled
+    inside the binary sensor.\n- This automation acts as a **reliable executor**,
+    ensuring the fan state\n  always matches the cooling demand.\n- Hysteresis or
+    adaptive deltas can be implemented within the binary sensor if needed.\n"
   triggers:
   - trigger: state
     entity_id:
@@ -2912,47 +2939,33 @@
         entity_id: binary_sensor.epever_cooling_needed
         state: 'on'
       sequence:
-      - repeat:
-          sequence:
-          - action: switch.turn_on
-            target:
-              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          max_delay: 60
+          backoff_type: linear
+          entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          target_state: 'on'
+          base_delay: 1
     - conditions:
       - condition: state
         entity_id: binary_sensor.epever_cooling_needed
         state: 'off'
       sequence:
-      - repeat:
-          sequence:
-          - action: switch.turn_off
-            target:
-              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.gartenhaus_usb_switch_zigbee_l2
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 1
+          max_delay: 60
+          backoff_type: linear
+          entity_id: switch.gartenhaus_usb_switch_zigbee_l2
+          target_state: 'off'
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
