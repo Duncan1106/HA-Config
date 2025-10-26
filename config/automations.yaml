@@ -1892,15 +1892,15 @@
       milliseconds: 0
     continue_on_timeout: false
   - wait_template: '{{ states(''sensor.terrarium_energy_power'')|float(0) > baseline
-      + 10 }}
-
-      '
+      + 10 }}'
     timeout: 00:01:00
     continue_on_timeout: true
+  - variables:
+      current_power: '{{ states(''sensor.terrarium_energy_power'')|float(0) }}'
+      delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
-      value_template: '{{ states(''sensor.terrarium_energy_power'')|float(0) <= baseline
-        + 10 }}'
+      value_template: '{{ delta_power <= 10 }}'
     - condition: state
       entity_id: input_boolean.luftbefeuchter_aktiv
       state: 'on'
@@ -1908,14 +1908,17 @@
     - action: notify.duncan
       data:
         title: "\U0001F4A7 Luftbefeuchter leer"
-        message: 'Wassertank auffüllen – kein Leistungsanstieg erkannt (Δ < 10 W).
-          (Baseline: {{ baseline }} W → Current: {{ states(''sensor.terrarium_energy_power'')|float(0)
+        message: 'Wassertank auffüllen – kein ausreichender Leistungsanstieg erkannt.
+          (Δ = {{ delta_power }} W; Baseline: {{ baseline }} W, Current: {{ current_power
           }} W)'
     - action: notify.duncan
       data:
         title: "\U0001F4CA Luftbefeuchter Counter"
         message: Der Luftbefeuchter war {{ states('counter.luftbefeuchter') }} Mal
           an.
+    - action: counter.reset
+      target:
+        entity_id: counter.luftbefeuchter
     - action: counter.reset
       target:
         entity_id: counter.luftbefeuchter
