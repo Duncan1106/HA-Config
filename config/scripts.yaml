@@ -1743,8 +1743,14 @@ retry_action_with_backoff:
   variables:
     effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
       | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
+    effective_action_domain: "{% set d = action_domain %} {% if d == 'custom' %}\n
+      \ {{ custom_action_domain | default('homeassistant') }}\n{% else %}\n  {{ d
+      }}\n{% endif %}\n"
+    effective_action_type: "{% set t = action_type %} {% if t == 'custom' %}\n  {{
+      custom_action_type | default('') }}\n{% else %}\n  {{ t }}\n{% endif %}\n"
     now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-    friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id }}'
+    friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+      '' '') | replace(''_'', '' '')}}'
     params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
       target={{ effective_target_state }}, retries={{ max_retries }}, base={{ base_delay
       }}s, max={{ max_delay }}s, backoff={{ backoff_type }}
@@ -1767,11 +1773,10 @@ retry_action_with_backoff:
       - target:
           entity_id: '{{ entity_id }}'
         data: {}
-        action: "{% set act_type = action_type %}\n{% if act_type == 'custom' %}\n
-          \ {% set act_type = custom_action_type | default('') %}\n{% endif %}\n{%
-          set act_domain = action_domain %}\n{% if act_domain == 'custom' %}\n  {%
-          set act_domain = custom_action_domain | default('homeassistant') %}\n{%
-          endif %}\n{{ (act_domain | default('homeassistant')) }}.{{ act_type }}\n"
+        action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{ effective_action_type
+          }}
+
+          '
       - choose:
         - conditions:
           - condition: template
