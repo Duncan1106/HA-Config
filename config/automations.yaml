@@ -10049,29 +10049,27 @@
     prevents MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n-
     **\U0001F551 Time Trigger:** Executes exactly at `12:00:00` every day.  \n- **\U0001F4C8
     Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n  reports
-    `uptime_days > 3.0`, providing a safety fallback.\n\n### \U0001F9E0 **Execution
-    Conditions**\nThe automation only runs when:\n- The **current day is even** (`now().day
-    % 2 == 0`), ensuring a consistent\n  48-hour restart cycle.  \n- The **uptime**
-    is above **1.5 days**, preventing unnecessary restarts.\n\n### \U0001F680 **Action
-    Flow**\n1. **Publish MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in`
-    to trigger the bridge restart.\n2. **Delay (15s)**  \n   Waits for the restart
-    to begin and the device to disconnect.\n3. **Force Metric Refresh**  \n   Calls
-    `button.refresh_tibber_bridge` to request fresh telemetry.\n4. **Verification
-    Delay (60s)**  \n   Allows the bridge time to reconnect and update its uptime
-    attribute.\n5. **Validation & Notification**  \n   If the bridge **has not reset**
-    (`uptime_days > 0.5`) or is\n   **unavailable**, sends a notification via `notify.duncan`\n
-    \  to flag a manual check.\n\n### \U0001F512 **Execution Mode**\n- `mode: single`
-    — prevents overlapping restarts, ensuring clean execution.\n"
+    `uptime_days > 2.5`, providing a safety fallback.\n\n### \U0001F9E0 **Execution
+    Conditions**\nThe automation only runs when:\n- The **uptime** is above **1.5
+    days**, preventing unnecessary restarts.\n\n### \U0001F680 **Action Flow**\n1.
+    **Publish MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in` to trigger
+    the bridge restart.\n2. **Delay (15s)**  \n   Waits for the restart to begin and
+    the device to disconnect.\n3. **Force Metric Refresh**  \n   Calls `button.refresh_tibber_bridge`
+    to request fresh telemetry.\n4. **Verification Delay (60s)**  \n   Allows the
+    bridge time to reconnect and update its uptime attribute.\n5. **Validation & Notification**
+    \ \n   If the bridge **has not reset** (`uptime_days > 0.5`) or is\n   **unavailable**,
+    sends a notification via `notify.duncan`\n   to flag a manual check.\n\n### \U0001F512
+    **Execution Mode**\n- `mode: single` — prevents overlapping restarts, ensuring
+    clean execution.\n"
   triggers:
   - trigger: time
     at: '12:00:00'
   - trigger: numeric_state
-    entity_id: binary_sensor.tibber_bridge_metrics
+    entity_id:
+    - binary_sensor.tibber_bridge_metrics
     attribute: uptime_days
-    above: 3
+    above: 2.5
   conditions:
-  - condition: template
-    value_template: '{{ now().day % 2 == 0 }}'
   - condition: numeric_state
     entity_id: binary_sensor.tibber_bridge_metrics
     attribute: uptime_days
