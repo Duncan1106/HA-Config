@@ -4643,27 +4643,116 @@
 - id: '1734198692426'
   alias: Gästeklo Fenster Offen
   description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.gasteklo_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Gästeklo Fenster') }}
-        ist offen seit {{ as_timestamp(now() - timedelta(minutes=15)) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        days: 0
-      notification_color: red
-      repeat_notification: true
-      time_between_repeat_notification:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
+  triggers:
+  - entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      days: 0
+    id: send_notification
+    trigger: state
+  - entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+    trigger: state
+  actions:
+  - variables:
+      notify_services_list: '{{ notify_services_string.split('','') }}'
+      number_of_notify_services: '{{ notify_services_list | count }}'
+      notification_tag: '{{ trigger_entity[-20:] }}-{{ custom_friendly_name[-20:]
+        }}-{{ notify_services_string[-20:] }}'
+      initially_triggered_at: '{{ now() }}'
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      - condition: []
+      sequence:
+      - repeat:
+          sequence:
+          - variables:
+              friendly_name: "{% if custom_friendly_name != '' %}\n  {{ custom_friendly_name
+                }}\n{% else %}\n  {% set expanded_trigger_entity_list = expand(trigger_entity)
+                | selectattr('state', 'eq', issue_state) | map(attribute='name') |
+                join(', ') %}\n  {{ ' & '.join(expanded_trigger_entity_list.rsplit(',
+                ', 1)) }}\n{% endif %}\n"
+          - parallel:
+            - repeat:
+                count: '{{ number_of_notify_services }}'
+                sequence:
+                - data:
+                    message: Das {{ friendly_name | default('Gästeklo Fenster') }}
+                      ist offen seit {{ as_timestamp(states.binary_sensor.gasteklo_fenster_contact.last_changed)
+                      | timestamp_custom('%T', True) }}.
+                    title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
+                    data:
+                      clickAction: /lovelace/ROOM
+                      url: /lovelace/ROOM
+                      tag: '{{ notification_tag }}'
+                      color: red
+                      notification_icon: mdi:{{ notification_icon_warning }}
+                      push:
+                        interruption-level: active
+                      persistent: false
+                      sticky: false
+                  action: '{{ notify_services_list[repeat.index-1] }}'
+            - choose: []
+              default: []
+          - if:
+            - '{{ repeat_notification }}'
+            then:
+            - delay: '{{ time_between_repeat_notification }}'
+          until:
+          - '{{ not repeat_notification }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      - '{{ delete_notification }}'
+      sequence:
+      - parallel:
+        - repeat:
+            count: '{{ number_of_notify_services }}'
+            sequence:
+            - data:
+                message: clear_notification
+                data:
+                  tag: '{{ notification_tag }}'
+              action: '{{ notify_services_list[repeat.index-1] }}'
+        - choose: []
+          default: []
+  mode: restart
+  max_exceeded: silent
+  variables:
+    custom_friendly_name: ''
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    issue_state: 'on'
+    duration_issue_state:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      days: 0
+    condition_send_notification: []
+    delete_notification: true
+    duration_from_issue_state:
+      seconds: 5
+    notify_services_string: notify.duncan
+    notification_click_url: /lovelace/ROOM
+    notification_title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
+    repeat_notification: true
+    time_between_repeat_notification:
+      hours: 1
+      minutes: 0
+      seconds: 0
+      days: 0
+    notification_icon_warning: alert
+    notification_color: red
+    notification_interruption_level: active
+    custom_action_issue_state: []
+    custom_action_from_issue_state: []
 - id: '1734549334887'
   alias: Nightly Battery Energy Charged
   description: ''
@@ -10105,3 +10194,22 @@
 
             '
   mode: single
+- id: '1761731810767'
+  alias: Gasteklo Fenster Offen
+  description: ''
+  use_blueprint:
+    path: Raukze/contact-sensor-left-open-notification.yaml
+    input:
+      trigger_entity: binary_sensor.gasteklo_fenster_contact
+      duration_issue_state:
+        hours: 0
+        minutes: 15
+        seconds: 0
+        days: 0
+      duration_from_issue_state:
+        hours: 1
+        minutes: 0
+        seconds: 5
+        days: 0
+      notify_services_string: notify.duncan
+      repeat_notification: true
