@@ -1726,13 +1726,42 @@ retry_action_with_backoff:
             value: linear
           - label: Exponential
             value: exponential
+    notify_on_failure:
+      name: Notify on Failure
+      description: Send a notification if the target state was not reached after max_retries.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    notify_service:
+      name: Notify Service
+      description: Service to use for failure notifications (e.g., notify.duncan).
+      required: false
+      default: notify.duncan
+      selector:
+        text: {}
   variables:
     effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
       | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
+    effective_action_domain: "{% set d = action_domain %} {% if d == 'custom' %}\n
+      \ {{ custom_action_domain | default('homeassistant') }}\n{% else %}\n  {{ d
+      }}\n{% endif %}\n"
+    effective_action_type: "{% set t = action_type %} {% if t == 'custom' %}\n  {{
+      custom_action_type | default('') }}\n{% else %}\n  {{ t }}\n{% endif %}\n"
+    now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+      '' '') | replace(''_'', '' '')}}'
+    params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
+      target={{ effective_target_state }}, retries={{ max_retries }}, base={{ base_delay
+      }}s, max={{ max_delay }}s, backoff={{ backoff_type }}
+    tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_')) }}
   sequence:
   - condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
     alias: Validate entity exists
+  - condition: template
+    alias: Skip if already in target state
+    value_template: '{{ not is_state(entity_id, effective_target_state) }}'
   - repeat:
       until:
       - condition: template
@@ -1744,11 +1773,10 @@ retry_action_with_backoff:
       - target:
           entity_id: '{{ entity_id }}'
         data: {}
-        action: "{% set act_type = action_type %}\n{% if act_type == 'custom' %}\n
-          \ {% set act_type = custom_action_type | default('') %}\n{% endif %}\n{%
-          set act_domain = action_domain %}\n{% if act_domain == 'custom' %}\n  {%
-          set act_domain = custom_action_domain | default('homeassistant') %}\n{%
-          endif %}\n{{ (act_domain | default('homeassistant')) }}.{{ act_type }}\n"
+        action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{ effective_action_type
+          }}
+
+          '
       - choose:
         - conditions:
           - condition: template
@@ -1760,4 +1788,18 @@ retry_action_with_backoff:
               }}\n{% elif backoff_type == 'linear' %}\n  {{ [repeat.index * bd, md]
               | min }}\n{% elif backoff_type == 'exponential' %}\n  {{ [2**(repeat.index-1)
               * bd, md] | min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}\n"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ notify_on_failure | default(true) }}'
+      - condition: template
+        value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+      sequence:
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Retry failed: {{ friendly }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
+            }}) | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
   max: 100
