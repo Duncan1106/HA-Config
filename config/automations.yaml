@@ -1293,19 +1293,20 @@
     to ensure reliable ZigBee or MQTT communication.\n\n  ---\n\n  ### ⏰ **Trigger
     Overview**\n\n  | Type | Entity / Condition | ID | Purpose |\n  |------|--------------------|----|----------|\n
     \ | `template` | Inverter = *FeedIn*, SoC ≥ 80 %, PV > 2000 W, Battery Full, Temp
-    < 44 °C | `on day` | Enable daytime output |\n  | `numeric_state` | PV input <
-    75–200 W (multiple thresholds) | `off day` | Disable outlet under low PV |\n  |
-    `numeric_state` | Inverter PV < 2000–2250 W | `off day` | Backup PV cutoff |\n
-    \ | `sun` | `sunset -00:15` | `on night` | Start night discharge |\n  | `numeric_state`
-    | BKW outlet power < 50 W | `off night` | Stop when no load |\n  | `numeric_state`
-    | Battery voltage < 24.45 V | `off night` | Protect low battery |\n  | `sun` |
-    `sunrise +00:15` | `off night` | End night cycle |\n\n  > Multiple “off” triggers
-    ensure reliability under rapidly changing or unstable PV conditions.\n\n  ---\n\n
-    \ ### ✅ **Conditions**\n\n  The automation only runs when **safe battery or solar
-    conditions** exist:\n  - `input_boolean.battery_full` = `on`, **or**\n  - `sensor.esp32_c3_zero_epever_battery_voltage`
-    ≥ **27.75 V**, **or**\n  - PV < 2001 W and BKW outlet already on.\n\n  ---\n\n
-    \ ### \U0001F3AF **Actions & Workflow**\n\n  #### ☀️ **On Day Trigger**\n  When
-    inverter feeds in and battery is full:\n  - Turns **on** both:\n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
+    < 44 °C, Outlet Off| `on day` | Enable daytime output |\n  | `numeric_state` |
+    PV input < 75–200 W (multiple thresholds) | `off day` | Disable outlet under low
+    PV |\n  | `numeric_state` | Inverter PV < 2000–2250 W | `off day` | Backup PV
+    cutoff |\n  | `sun` | `sunset -00:15` | `on night` | Start night discharge |\n
+    \ | `numeric_state` | BKW outlet power < 50 W | `off night` | Stop when no load
+    |\n  | `numeric_state` | Battery voltage < 24.45 V | `off night` | Protect low
+    battery |\n  | `sun` | `sunrise +00:15` | `off night` | End night cycle |\n\n
+    \ > Multiple “off” triggers ensure reliability under rapidly changing or unstable
+    PV conditions.\n\n  ---\n\n  ### ✅ **Conditions**\n\n  The automation only runs
+    when **safe battery or solar conditions** exist:\n  - `input_boolean.battery_full`
+    = `on`, **or**\n  - `sensor.esp32_c3_zero_epever_battery_voltage` ≥ **27.75 V**,
+    **or**\n  - PV < 2001 W and BKW outlet already on.\n\n  ---\n\n  ### \U0001F3AF
+    **Actions & Workflow**\n\n  #### ☀️ **On Day Trigger**\n  When inverter feeds
+    in and battery is full:\n  - Turns **on** both:\n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
     *(via retry script)*\n    - `switch.bkw_outlet_1_bkw_outlet_1` *(via retry script)*\n
     \ - Each command uses `script.retry_action_with_backoff` with:\n    - 10 retries
     \ \n    - Linear backoff 1–60 s  \n    - Target state verification\n\n  #### \U0001F324️
@@ -1336,13 +1337,29 @@
     or delayed transitions.  \n  - Designed for **maximum solar self-consumption**,
     **safe discharge cycles**, and **reliable automation recovery**."
   triggers:
-  - trigger: template
+  - alias: On Day
+    trigger: template
     value_template: "    {{\n      is_state('sensor.scb_inverter_state', 'FeedIn')\n
       \     and is_state('input_boolean.battery_full', 'on')\n      and states('sensor.esp32_c3_zero_epever_battery_soc')|float(0)
       >= 80\n      and states('sensor.inverter_pv_power')|float(0) > 2000\n      and
-      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n    }}"
+      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n      and
+      is_state('switch.bkw_outlet_1_bkw_outlet_1','off')\n    }}"
     id: on day
-    alias: On Day
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - alias: Off Day (Unified Template)
+    id: off day
+    trigger: template
+    value_template: "{% set pv_array = states('sensor.esp32_c3_zero_epever_pv_array_input_power')
+      | float(0) %}\n{% set inverter_pv = states('sensor.inverter_pv_power') | float(0)
+      %}\n{% set outlet = states.switch.bkw_outlet_1_bkw_outlet_1 %}\n{% set outlet_on
+      = outlet.state == 'on' %}\n{% set sun_above = is_state('sun.sun','above_horizon')
+      %}\n{% set last_change = as_datetime(outlet.last_changed) %}\n{% set since_last
+      = (now() - last_change).total_seconds() %}\n{{\n  outlet_on\n  and sun_above\n
+      \ and since_last > 60\n  and (\n    pv_array < 200\n    or inverter_pv < 2250\n
+      \ )\n}}"
   - entity_id:
     - sensor.esp32_c3_zero_epever_pv_array_input_power
     below: 75
