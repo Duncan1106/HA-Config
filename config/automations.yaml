@@ -7804,7 +7804,7 @@
             - trigger: numeric_state
               entity_id:
               - sensor.go_echarger_270862_nrg_12
-              below: 10
+              below: 5
             timeout:
               hours: 0
               minutes: 30
@@ -7849,7 +7849,7 @@
             - trigger: numeric_state
               entity_id:
               - sensor.go_echarger_252682_nrg_12
-              below: 10
+              below: 5
             timeout:
               hours: 0
               minutes: 30
@@ -7878,21 +7878,32 @@
                 minutes: 0
                 seconds: 0
                 milliseconds: 500
-      - wait_for_trigger:
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_270862_nrg_12
-          below: 5
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_252682_nrg_12
-          below: 5
-        timeout:
-          hours: 0
-          minutes: 1
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: true
+      - alias: Only wait for power if above threshold
+        if:
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
+        then:
+        - wait_for_trigger:
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_270862_nrg_12
+            below: 5
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_252682_nrg_12
+            below: 5
+          timeout:
+            hours: 0
+            minutes: 1
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
       - if:
         - condition: and
           conditions:
