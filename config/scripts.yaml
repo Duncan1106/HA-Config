@@ -1693,6 +1693,13 @@ retry_action_with_backoff:
       required: false
       selector:
         text: {}
+    service_data:
+      name: Service Data
+      description: 'Optional additional data for the service call (e.g., {"option":
+        "Charge"} for select.select_option). Must be valid YAML/dict format.'
+      required: false
+      selector:
+        text: {}
     max_retries:
       name: Max Retries
       description: Maximum number of attempts.
@@ -1760,6 +1767,10 @@ retry_action_with_backoff:
       }}\n{% endif %}\n"
     effective_action_type: "{% set t = action_type %} {% if t == 'custom' %}\n  {{
       custom_action_type | default('') }}\n{% else %}\n  {{ t }}\n{% endif %}\n"
+    effective_service_data: "{% set data_str = service_data | default('') | string
+      %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if data_str.startswith('{')
+      and data_str.endswith('}') %}\n    {{ data_str }}\n  {% else %}\n    {{ {} }}\n
+      \ {% endif %}\n{% else %}\n  {{ {} }}\n{% endif %}\n"
     now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
       '' '') | replace(''_'', '' '')}}'
@@ -1784,7 +1795,7 @@ retry_action_with_backoff:
       sequence:
       - target:
           entity_id: '{{ entity_id }}'
-        data: {}
+        data: '{{ effective_service_data }}'
         action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{ effective_action_type
           }}
 
