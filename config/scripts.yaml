@@ -1700,6 +1700,12 @@ retry_action_with_backoff:
       required: false
       selector:
         text: {}
+    custom_action:
+      name: Custom Action
+      description: Optional override default action with a custom one.
+      required: false
+      selector:
+        action: {}
     max_retries:
       name: Max Retries
       description: Maximum number of attempts.
@@ -1793,13 +1799,20 @@ retry_action_with_backoff:
 
           '
       sequence:
-      - target:
-          entity_id: '{{ entity_id }}'
-        data: '{{ effective_service_data }}'
-        action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{ effective_action_type
-          }}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ custom_action is defined and custom_action != none
+              }}'
+          sequence: []
+        default:
+        - target:
+            entity_id: '{{ entity_id }}'
+          data: '{{ effective_service_data }}'
+          action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{
+            effective_action_type }}
 
-          '
+            '
       - choose:
         - conditions:
           - condition: template
