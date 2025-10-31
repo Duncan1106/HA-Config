@@ -1782,7 +1782,7 @@ retry_action_with_backoff:
       '' '') | replace(''_'', '' '')}}'
     params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
       target={{ effective_target_state }}, retries={{ max_retries }}, base={{ base_delay
-      }}s, max={{ max_delay }}s, backoff={{ backoff_type }}
+      }}s, max={{ max_delay }}s, backoff={{ backoff_type }}, custom_action={{custom_action}}
     tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_')) }}
   sequence:
   - condition: template
@@ -1804,7 +1804,33 @@ retry_action_with_backoff:
           - condition: template
             value_template: '{{ custom_action is defined and custom_action != none
               }}'
-          sequence: []
+          sequence:
+          - repeat:
+              for_each: '{{ custom_action }}'
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined and repeat.item.data
+                      is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.data is defined }}'
+                  sequence:
+                  - data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                default:
+                - action: '{{ repeat.item.action }}'
         default:
         - target:
             entity_id: '{{ entity_id }}'

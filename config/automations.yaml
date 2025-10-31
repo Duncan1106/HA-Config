@@ -7737,13 +7737,25 @@
             entity_id: sensor.go_e_11kw_car
             state: No card selected
         then:
-        - alias: Start EV Charging (11kW)
-          action: select.select_option
-          target:
-            entity_id:
-            - select.go_echarger_270862_frc
+        - action: script.retry_action_with_backoff
+          metadata: {}
           data:
-            option: Charge
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id: select.go_echarger_270862_frc
+            custom_target_state: Charge
       - alias: Allow Charging for 22kW Go-eCharger if any Car is connected
         if:
         - condition: not
@@ -7752,13 +7764,26 @@
             entity_id: sensor.go_e_22kw_car
             state: No card selected
         then:
-        - alias: Start EV Charging (22kW)
-          action: select.select_option
-          target:
-            entity_id:
-            - select.go_echarger_252682_frc
+        - action: script.retry_action_with_backoff
+          metadata: {}
           data:
-            option: Charge
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id:
+                - select.go_echarger_252682_frc
+            custom_target_state: Charge
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
@@ -7800,29 +7825,26 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
-        - alias: Stop EV Charging with Retrys (11kW)
-          repeat:
-            until:
-            - condition: or
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_270862_frc
-                state: Don't charge
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-            sequence:
-            - alias: Stop EV Charging
-              action: select.select_option
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
               target:
                 entity_id:
                 - select.go_echarger_270862_frc
-              data:
-                option: Don't charge
-            - delay:
-                hours: 0
-                minutes: 0
-                seconds: 0
-                milliseconds: 500
+            custom_target_state: Don't charge
       - alias: If Car is connected to 22kW Charger then stop charging
         if:
         - condition: state
@@ -7845,29 +7867,26 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
-        - alias: Stop EV Charging with Retrys (22kW)
-          repeat:
-            until:
-            - condition: or
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_252682_frc
-                state: Don't charge
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-            sequence:
-            - alias: Stop EV Charging
-              action: select.select_option
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
               target:
                 entity_id:
                 - select.go_echarger_252682_frc
-              data:
-                option: Don't charge
-            - delay:
-                hours: 0
-                minutes: 0
-                seconds: 0
-                milliseconds: 500
+            custom_target_state: Don't charge
       - alias: Only wait for power if above threshold
         if:
         - condition: or
@@ -8011,24 +8030,26 @@
           entity_id: switch.esp32_s3_zero_deye8k_time_of_use
           target_state: 'off'
         alias: Turn Battery Off via retry Script
-      - alias: Turn on EV Charging with Retrys
-        repeat:
-          until:
-          - condition: state
-            entity_id: select.go_echarger_270862_frc
-            state: Charge
-          - condition: template
-            value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - alias: Start EV Charging
-            action: select.select_option
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: select.go_echarger_270862_frc
+          target_state: custom
+          custom_action:
+          - action: select.select_option
+            metadata: {}
+            data:
+              option: Charge
             target:
               entity_id:
               - select.go_echarger_270862_frc
-            data:
-              option: Charge
-          - delay:
-              seconds: '{{ repeat.index | int(1) }}'
+          custom_target_state: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
@@ -8038,33 +8059,26 @@
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - alias: Stop EV Charging with Retrys
-        repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: and
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_270862_frc
-                state: Don't charge
-              - condition: state
-                entity_id: select.go_echarger_252682_frc
-                state: Don't charge
-              alias: Both Charger don't allow Charging
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - alias: Stop EV Charging
-            action: select.select_option
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: select.go_echarger_270862_frc
+          target_state: custom
+          custom_action:
+          - action: select.select_option
+            metadata: {}
+            data:
+              option: Don't charge
             target:
               entity_id:
               - select.go_echarger_270862_frc
-              - select.go_echarger_252682_frc
-            data:
-              option: Don't charge
-          - delay:
-              seconds: '{{ repeat.index |int(1) }}'
+          custom_target_state: Don't charge
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
