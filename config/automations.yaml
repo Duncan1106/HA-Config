@@ -8421,18 +8421,24 @@
   mode: queued
 - id: '1750928722036'
   alias: Reboot Host System on 1st of the Month
-  description: "## \U0001F504 Monthly Host Reboot Automation\n\n### \U0001F4CB Purpose\nAutomatically
-    reboots the Home Assistant host system on the **first day of every month**,\nproviding
-    an advance notification one hour prior to the reboot for awareness.\n\n---\n\n###
-    ⏱ Triggers\n- `12:00:00` → Sends pre-notification one hour before reboot.\n- `13:00:00`
-    → Executes the actual host system reboot.\n\n---\n\n### ✅ Conditions\n- Only triggers
-    when the current day is the **1st of the month**.\n  ```jinja\n  {{ now().day
-    == 1 }}\n  ```\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### 12:00 Notification\n-
-    Send a notification to user that the host system will reboot at 13:00.\n\n####
-    13:00 Reboot\n- Notify user that the host system is now rebooting.\n- Trigger
-    `hassio.host_reboot` to reboot the Home Assistant host.\n\n---\n\n### \U0001F527
-    Technical Specs\n- Mode: `choose` structure based on which trigger fired.\n- Notifications
-    use plain text for clarity."
+  description: "\n  ## \U0001F504 Monthly Host Reboot Automation\n\n  ### \U0001F4CB
+    Purpose\n\n  Automatically reboots the Home Assistant host system on the **first
+    day of\n  every month**, providing an advance notification one hour prior to the
+    reboot\n  for awareness.\n\n  Adds a **safety condition** ensuring the host has
+    been running for **at least\n  10 days** since the last system start, preventing
+    unnecessary reboots after\n  recent restarts.\n\n  ---\n\n  ### ⏱ Triggers\n\n
+    \ - `12:00:00` → Sends pre-notification one hour before reboot.\n\n  - `13:00:00`
+    → Executes the actual host system reboot.\n\n  ---\n\n  ### ✅ Conditions\n\n  -
+    Current day must be the **1st of the month**.\n    ```jinja\n    {{ now().day
+    == 1 }}\n    ```\n\n  - The last system boot must be **10 or more days ago**.\n
+    \   ```jinja\n    {{ (as_timestamp(now()) - as_timestamp(states('sensor.system_monitor_letzter_start')))
+    >= 864000 }}\n    ```\n\n  ---\n\n  ### \U0001F3AF Actions / Workflow\n\n  ####
+    12:00 Notification\n\n  - Send a notification to the user that the host system
+    will reboot at 13:00.\n\n  #### 13:00 Reboot\n\n  - Verify that the system has
+    been up for at least 10 days.\n  - Notify the user that the host system is now
+    rebooting.\n  - Trigger `hassio.host_reboot` to reboot the Home Assistant host.\n\n
+    \ ---\n\n  ### \U0001F527 Technical Specs\n\n  - Mode: `choose` structure based
+    on which trigger fired.\n  - Notifications use plain text for clarity."
   triggers:
   - at: '13:00:00'
     trigger: time
@@ -8458,10 +8464,17 @@
       - condition: trigger
         id:
         - '13'
+      - condition: template
+        value_template: '{{ (as_timestamp(now()) - as_timestamp(states(''sensor.system_monitor_letzter_start'')))
+          >= 864000 }}
+
+          '
+        alias: Last Host Reboot is more than 10 Days ago
       sequence:
       - metadata: {}
         data:
-          message: Rebooting Hostsystem
+          message: ' '
+          title: Rebooting Hostsystem
         action: notify.duncan
       - data: {}
         action: hassio.host_reboot
@@ -10076,6 +10089,15 @@
     entity_id:
     - sensor.waschmaschine_lauft_seit
     below: 16.8
+  - trigger: state
+    entity_id:
+    - binary_sensor.waschmaschine_lauft
+    to: 'off'
+    from: 'on'
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
   conditions:
   - condition: state
     entity_id: input_boolean.waschmaschine_fertig
