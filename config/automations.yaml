@@ -7784,7 +7784,9 @@
                 entity_id:
                 - select.go_echarger_252682_frc
             custom_target_state: Charge
-      - wait_for_trigger:
+      - alias: Wait up to 5 mins for power to rise above 50W, indicating a successful
+          Charging Start
+        wait_for_trigger:
         - trigger: numeric_state
           entity_id:
           - sensor.go_echarger_270862_nrg_12
@@ -7795,8 +7797,7 @@
           minutes: 5
           seconds: 0
           milliseconds: 0
-        alias: Wait up to 5 mins for power to rise above 50W, indicating a successful
-          Charging Start
+        continue_on_timeout: true
       - alias: Fallback if not charging then re-enable Battery
         if:
         - condition: template
@@ -8015,6 +8016,7 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
+            continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
@@ -8057,6 +8059,7 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
+            continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
@@ -8465,8 +8468,8 @@
         id:
         - '13'
       - condition: template
-        value_template: '{{ (as_timestamp(now()) - as_timestamp(states(''sensor.system_monitor_letzter_start'')))
-          >= 864000 }}
+        value_template: '{{ (as_timestamp(now()) - as_timestamp(states(''sensor.system_monitor_letzter_start''))
+          | float(0)) >= 864000 }}
 
           '
         alias: Last Host Reboot is more than 10 Days ago
