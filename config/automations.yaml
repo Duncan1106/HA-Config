@@ -7784,6 +7784,226 @@
                 entity_id:
                 - select.go_echarger_252682_frc
             custom_target_state: Charge
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.go_echarger_270862_nrg_12
+          - sensor.go_echarger_252682_nrg_12
+          above: 50
+        timeout:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - if:
+        - condition: template
+          value_template: '{{ not wait.completed }}'
+        then:
+        - alias: If Car is connected to 22kW Charger then stop charging
+          if:
+          - condition: state
+            entity_id: binary_sensor.go_echarger_252682_car
+            state: 'on'
+          then:
+          - alias: wait for power to go down after car_full trigger
+            if:
+            - condition: trigger
+              id:
+              - car_full
+            then:
+            - wait_for_trigger:
+              - trigger: numeric_state
+                entity_id:
+                - sensor.go_echarger_252682_nrg_12
+                below: 5
+              timeout:
+                hours: 0
+                minutes: 30
+                seconds: 0
+                milliseconds: 0
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: select.go_echarger_252682_frc
+              target_state: custom
+              custom_action:
+              - action: select.select_option
+                metadata: {}
+                data:
+                  option: Don't charge
+                target:
+                  entity_id:
+                  - select.go_echarger_252682_frc
+              custom_target_state: Don't charge
+        - alias: If Car is connected to 11kW Charger then stop charging
+          if:
+          - condition: state
+            entity_id: binary_sensor.go_echarger_270862_car
+            state: 'on'
+          then:
+          - alias: wait for power to go down after car_full trigger
+            if:
+            - condition: trigger
+              id:
+              - car_full
+            then:
+            - wait_for_trigger:
+              - trigger: numeric_state
+                entity_id:
+                - sensor.go_echarger_270862_nrg_12
+                below: 5
+              timeout:
+                hours: 0
+                minutes: 30
+                seconds: 0
+                milliseconds: 0
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: select.go_echarger_270862_frc
+              target_state: custom
+              custom_action:
+              - action: select.select_option
+                metadata: {}
+                data:
+                  option: Don't charge
+                target:
+                  entity_id:
+                  - select.go_echarger_270862_frc
+              custom_target_state: Don't charge
+        - alias: Only wait for power if above threshold
+          if:
+          - condition: or
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              above: 5
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_252682_nrg_12
+              above: 5
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_270862_nrg_12
+              below: 5
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_252682_nrg_12
+              below: 5
+            timeout:
+              hours: 0
+              minutes: 1
+              seconds: 0
+              milliseconds: 0
+            continue_on_timeout: true
+        - if:
+          - condition: and
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              below: 5
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_252682_nrg_12
+              below: 5
+          then:
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              target_state: 'on'
+            alias: Turn Battery On via retry Script
+          else:
+          - action: notify.duncan
+            data:
+              title: Octopus night recovery
+              message: 'Skipping battery ON: EV still >5 W (wait timed out). Will
+                retry in 1, 3, and 5 minutes.'
+              data:
+                tag: octopus_night_recovery
+          - alias: Retry Battery ON after timeout (1, 3, 5 min)
+            repeat:
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 1 }}'
+                  sequence:
+                  - delay: 00:01:00
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 2 }}'
+                  sequence:
+                  - delay: 00:03:00
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 3 }}'
+                  sequence:
+                  - delay: 00:05:00
+                alias: 1, 3 or 5 Minute Delay between retries
+              - alias: Turn Battery on if no EV Power Draw, if not notify about it
+                if:
+                - condition: and
+                  conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.go_echarger_270862_nrg_12
+                    below: 5
+                  - condition: numeric_state
+                    entity_id: sensor.go_echarger_252682_nrg_12
+                    below: 5
+                then:
+                - alias: 'Turn Battery On via retry Script '
+                  action: script.retry_action_with_backoff
+                  metadata: {}
+                  data:
+                    action_domain: switch
+                    action_type: turn_on
+                    max_retries: 10
+                    base_delay: 5
+                    max_delay: 60
+                    backoff_type: simple
+                    notify_on_failure: true
+                    notify_service: notify.duncan
+                    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                    target_state: 'on'
+                else:
+                - action: notify.duncan
+                  data:
+                    title: Octopus night recovery
+                    message: 'Retry {{ repeat.index }}: EV still >5 W; trying next
+                      slot (1/3/5 min).'
+                    data:
+                      tag: octopus_night_recovery
+              until:
+              - condition: or
+                conditions:
+                - condition: state
+                  entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                  state: 'on'
+                - condition: template
+                  value_template: '{{ repeat.index >= 3 }}'
+                alias: Either battery is on or we retried 3 or more times
+        alias: Fallback if not charging then re enable Battery
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
