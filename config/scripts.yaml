@@ -748,6 +748,18 @@ luftbefeuchter:
       data: {}
       target:
         entity_id: switch.terrarium_tasmota3
+    - wait_for_trigger:
+      - trigger: state
+        entity_id:
+        - input_boolean.luftbefeuchter_aktiv
+        from: 'on'
+        to: 'off'
+      timeout:
+        hours: 0
+        minutes: 2
+        seconds: 0
+        milliseconds: 0
+      continue_on_timeout: false
     - metadata: {}
       data: {}
       target:
@@ -1681,6 +1693,19 @@ retry_action_with_backoff:
       required: false
       selector:
         text: {}
+    service_data:
+      name: Service Data
+      description: 'Optional additional data for the service call (e.g., {"option":
+        "Charge"} for select.select_option). Must be valid YAML/dict format.'
+      required: false
+      selector:
+        text: {}
+    custom_action:
+      name: Custom Action
+      description: Optional override default action with a custom one.
+      required: false
+      selector:
+        action: {}
     max_retries:
       name: Max Retries
       description: Maximum number of attempts.
@@ -1748,12 +1773,18 @@ retry_action_with_backoff:
       }}\n{% endif %}\n"
     effective_action_type: "{% set t = action_type %} {% if t == 'custom' %}\n  {{
       custom_action_type | default('') }}\n{% else %}\n  {{ t }}\n{% endif %}\n"
+    effective_service_data: "{% set data_str = service_data | default('') | string
+      %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if data_str.startswith('{')
+      and data_str.endswith('}') %}\n    {{ data_str }}\n  {% else %}\n    {{ {} }}\n
+      \ {% endif %}\n{% else %}\n  {{ {} }}\n{% endif %}\n"
     now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
     friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
       '' '') | replace(''_'', '' '')}}'
-    params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
+    params_line: "action={{ effective_action_domain }}.{{ effective_action_type }},
       target={{ effective_target_state }}, retries={{ max_retries }}, base={{ base_delay
-      }}s, max={{ max_delay }}s, backoff={{ backoff_type }}
+      }}s, max={{ max_delay }}s, backoff={{ backoff_type }},\n {{ \"custom_action=\"
+      + custom_action if custom_action is defined and custom_action != none else \"\"
+      }}"
     tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_')) }}
   sequence:
   - condition: template
@@ -1770,13 +1801,46 @@ retry_action_with_backoff:
 
           '
       sequence:
-      - target:
-          entity_id: '{{ entity_id }}'
-        data: {}
-        action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{ effective_action_type
-          }}
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ custom_action is defined and custom_action != none
+              }}'
+          sequence:
+          - repeat:
+              for_each: '{{ custom_action }}'
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined and repeat.item.data
+                      is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.data is defined }}'
+                  sequence:
+                  - data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                default:
+                - action: '{{ repeat.item.action }}'
+        default:
+        - target:
+            entity_id: '{{ entity_id }}'
+          data: '{{ effective_service_data }}'
+          action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{
+            effective_action_type }}
 
-          '
+            '
       - choose:
         - conditions:
           - condition: template

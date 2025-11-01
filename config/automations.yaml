@@ -1283,102 +1283,91 @@
   mode: single
 - id: '1711468239502'
   alias: BKw Control
-  description: "\n  ## ⚡ BKW Control Automation\n\n  ### \U0001F4CB **Dynamic Control
-    for Solar & Battery Power Flow**\n\n  This automation manages both the **BKW outlet**
-    and the **Epever load output**  \n  to optimize solar utilization and battery
-    performance.  \n  It responds dynamically to **PV production**, **inverter state**,
-    and **day/night cycles**,  \n  ensuring both stability and energy efficiency.\n\n
-    \ All switch operations are executed using  \n  **`script.retry_action_with_backoff`**,
-    providing up to **10 retry attempts**  \n  with a **linear backoff (1–60 s)**
-    to ensure reliable ZigBee or MQTT communication.\n\n  ---\n\n  ### ⏰ **Trigger
-    Overview**\n\n  | Type | Entity / Condition | ID | Purpose |\n  |------|--------------------|----|----------|\n
-    \ | `template` | Inverter = *FeedIn*, SoC ≥ 80 %, PV > 2000 W, Battery Full, Temp
-    < 44 °C | `on day` | Enable daytime output |\n  | `numeric_state` | PV input <
-    75–200 W (multiple thresholds) | `off day` | Disable outlet under low PV |\n  |
-    `numeric_state` | Inverter PV < 2000–2250 W | `off day` | Backup PV cutoff |\n
-    \ | `sun` | `sunset -00:15` | `on night` | Start night discharge |\n  | `numeric_state`
-    | BKW outlet power < 50 W | `off night` | Stop when no load |\n  | `numeric_state`
-    | Battery voltage < 24.45 V | `off night` | Protect low battery |\n  | `sun` |
-    `sunrise +00:15` | `off night` | End night cycle |\n\n  > Multiple “off” triggers
-    ensure reliability under rapidly changing or unstable PV conditions.\n\n  ---\n\n
-    \ ### ✅ **Conditions**\n\n  The automation only runs when **safe battery or solar
-    conditions** exist:\n  - `input_boolean.battery_full` = `on`, **or**\n  - `sensor.esp32_c3_zero_epever_battery_voltage`
-    ≥ **27.75 V**, **or**\n  - PV < 2001 W and BKW outlet already on.\n\n  ---\n\n
-    \ ### \U0001F3AF **Actions & Workflow**\n\n  #### ☀️ **On Day Trigger**\n  When
-    inverter feeds in and battery is full:\n  - Turns **on** both:\n    - `switch.esp32_c3_zero_epever_manual_control_the_load`
-    *(via retry script)*\n    - `switch.bkw_outlet_1_bkw_outlet_1` *(via retry script)*\n
-    \ - Each command uses `script.retry_action_with_backoff` with:\n    - 10 retries
-    \ \n    - Linear backoff 1–60 s  \n    - Target state verification\n\n  #### \U0001F324️
-    **Off Day Trigger**\n  When PV or inverter power falls below thresholds:\n  -
-    Turns **off** `switch.bkw_outlet_1_bkw_outlet_1` *(via retry script)*  \n  - Epever
-    load remains **on** for system consistency.\n\n  #### \U0001F319 **On Night Trigger**\n
-    \ Before sunset, if the battery is full:\n  1. Turns **on** both:\n     - `switch.esp32_c3_zero_epever_manual_control_the_load`
-    *(via retry script)*  \n     - `switch.bkw_outlet_1_bkw_outlet_1` *(via retry
-    script)*\n  2. Increments `counter.battery_full`\n  3. Resets charged & discharged
-    energy meters\n  4. Waits up to **30 s** for load > 10 W  \n     - If no load
-    detected → sends **⚠️ Notification** via `notify.duncan`\n\n  #### \U0001F312
-    **Off Night Trigger**\n  Between 00:00–09:00, if power < 50 W or voltage < 24.45
-    V:\n  1. Turns **off** both:\n     - `switch.bkw_outlet_1_bkw_outlet_1` *(via
-    retry script)*  \n     - `switch.esp32_c3_zero_epever_manual_control_the_load`
-    *(via retry script)*\n  2. Turns **off** `input_boolean.battery_full`\n  3. If
-    discharged energy > 0 kWh:\n     - Increments `counter.battery_empty`\n     -
-    Saves last discharged energy value to `input_number.last_discharged_energy_from_bkw_battery`\n
-    \    - Resets discharged energy meter\n\n  ---\n\n  ### ⚙️ **Technical Overview**\n\n
-    \ - **Mode:** `queued` (max 15)\n  - **Switch Control:** via `script.retry_action_with_backoff`\n
-    \ - **Controlled Entities:**\n    - `switch.bkw_outlet_1_bkw_outlet_1`\n    -
-    `switch.esp32_c3_zero_epever_manual_control_the_load`\n  - **Monitored:** PV power,
-    battery voltage, SoC, inverter state, outlet power, temperature\n  - **Counters:**
-    `counter.battery_full`, `counter.battery_empty`\n  - **Energy Meters:**  \n    -
-    `sensor.charged_energy_to_bkw_battery`  \n    - `sensor.discharged_energy_from_bkw_battery`\n\n
-    \ ---\n\n  ### \U0001F4A1 **Notes**\n  - All switch actions use a **robust retry
-    mechanism** to guarantee command delivery.  \n  - Battery must be flagged as full
-    for both day and night activations.  \n  - Multi-trigger design prevents “stuck”
-    or delayed transitions.  \n  - Designed for **maximum solar self-consumption**,
-    **safe discharge cycles**, and **reliable automation recovery**."
+  description: "## ⚡ BKW Control Automation\n\n### \U0001F4CB **Intelligent Solar
+    & Battery Management**\n\nThis automation dynamically controls both the **BKW
+    outlet** and the **Epever load output**\nto achieve maximum **solar self-consumption**
+    and **battery utilization efficiency**.  \nIt continuously evaluates **PV generation**,
+    **battery SoC**, **inverter operating mode**, and\n**system temperature**, deciding
+    when to enable or disable loads — ensuring a safe and\noptimized power flow between
+    solar, battery, and grid.\n\nAll switching operations are executed through  \n**`script.retry_action_with_backoff`**,
+    providing **up to 10 retries** with **linear delay (1–60 s)**  \nto guarantee
+    reliable command execution even in case of transient ZigBee or MQTT issues.\n\n---\n\n###
+    ⏰ **Trigger Overview**\n\n| Type | Entity / Condition | ID | Purpose |\n|------|--------------------|----|----------|\n|
+    `template` | *See detailed description below* | `on day` | Enable daytime loads
+    under optimal solar/battery conditions |\n| `template` | *See detailed description
+    below* | `off day` | Disable daytime loads when solar generation or inverter output
+    drops |\n| `sun` | `sunset -00:15` | `on night` | Begin night-time discharge routine
+    |\n| `numeric_state` | BKW outlet power < 50 W | `off night` | End discharge when
+    no load remains |\n| `numeric_state` | Battery voltage < 24.45 V | `off night`
+    | Battery safety cutoff |\n| `sun` | `sunrise +00:15` | `off night` | Reset after
+    sunrise |\n\n---\n\n### \U0001F9E9 **Template Triggers Explained**\n\n#### ☀️
+    `on day` — **Daytime Activation**\n**Purpose:**  \nEnables the **BKW outlet**
+    and **Epever load** when solar and battery conditions are ideal,  \nensuring that
+    excess energy is used locally instead of exported to the grid.\n\n**Logic Overview:**\n-
+    Triggered when:\n  - **Inverter mode** = “FeedIn” (solar surplus available)  \n
+    \ - **Battery SoC ≥ 80 %**  \n  - **PV production > 2000 W**  \n  - **Temperature
+    < 44 °C**  \n  - **Battery Full flag active** (`input_boolean.battery_full = on`)
+    \ \n  - **BKW outlet currently off**\n\nOnce all conditions are true, the system
+    safely enables both outputs to maximize\nsolar utilization while avoiding unnecessary
+    grid feed-in.\n\n**Effect:**\n- Turns **on**:\n  - `switch.esp32_c3_zero_epever_manual_control_the_load`\n
+    \ - `switch.bkw_outlet_1_bkw_outlet_1`\n- Uses `script.retry_action_with_backoff`
+    for reliable command execution.\n- Transitions to *“active solar usage”* mode.\n\n---\n\n####
+    \U0001F324️ `off day` — **Daytime Deactivation**\n**Purpose:**  \nDisables the
+    **BKW outlet** when solar generation or inverter output becomes insufficient  \nto
+    maintain stable self-powering, avoiding oscillation and unnecessary battery drain.\n\n**Logic
+    Overview:**\n- Triggered when:\n  - **PV power < 175 W** **or**\n  - **Inverter
+    PV power < 2000 W**  \n- **AND**:\n  - **BKW outlet is currently on**\n  - **Sun
+    is above the horizon**\n\nThis ensures that low or unstable solar production causes
+    a controlled shutdown  \nof the BKW outlet.\n\n**Effect:**\n- Turns **off** `switch.bkw_outlet_1_bkw_outlet_1`\n-
+    Keeps **Epever load active**\n- Uses retry script to ensure safe command execution\n-
+    Prevents power oscillations under transient PV conditions (e.g. cloud cover)\n\n---\n\n###
+    \U0001F319 **Nighttime Operation**\n\n#### \U0001F314 `on night`\n- Triggered
+    **15 minutes before sunset** when `input_boolean.battery_full` = `on`.\n- Enables
+    **both loads**, increments `counter.battery_full`, and resets charge/discharge
+    meters.\n- Waits up to **30 s** for outlet power > 10 W — otherwise notifies `notify.duncan`
+    of a possible issue.\n\n#### \U0001F318 `off night`\n- Deactivates outlet and
+    load if:\n  - Power < 50 W, or\n  - Battery < 24.45 V, or\n  - After sunrise (+15
+    min).\n- Updates counters and energy records accordingly.\n\n---\n\n### ⚙️ **Technical
+    Overview**\n\n- **Mode:** `queued` (max 15)\n- **Execution:** via `script.retry_action_with_backoff`\n-
+    **Template Logic:**  \n  - “On Day” = activation under high PV + full battery
+    \ \n  - “Off Day” = deactivation under low PV or inverter power  \n- **Controlled
+    Entities:**\n  - `switch.bkw_outlet_1_bkw_outlet_1`\n  - `switch.esp32_c3_zero_epever_manual_control_the_load`\n-
+    **Key Inputs:**\n  - `sensor.epever_pv_power`\n  - `sensor.inverter_pv_power`\n
+    \ - `sensor.epever_battery_soc`\n  - `sensor.epever_temperature`\n  - `input_boolean.battery_full`\n
+    \ - `sun.sun`\n- **Safety Mechanisms:**\n  - Retry/backoff on all switch actions\n
+    \ - Power and voltage thresholds for cutoff\n  - Separate night/day operation
+    paths\n\n---\n\n### \U0001F4A1 **Notes**\n- Both **template triggers** replace
+    older numeric thresholds, reducing complexity and improving reliability.  \n-
+    The system adapts dynamically to inverter and PV data, not fixed wattage cutoffs.
+    \ \n- No `last_changed` or manual cooldown logic is used — stability is achieved
+    purely through\n  **conditional evaluation within the template triggers**.  \n-
+    Designed for continuous operation with **safe fallback states** after restarts.\n"
   triggers:
-  - trigger: template
+  - alias: On Day
+    trigger: template
     value_template: "    {{\n      is_state('sensor.scb_inverter_state', 'FeedIn')\n
       \     and is_state('input_boolean.battery_full', 'on')\n      and states('sensor.esp32_c3_zero_epever_battery_soc')|float(0)
       >= 80\n      and states('sensor.inverter_pv_power')|float(0) > 2000\n      and
-      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n    }}"
+      states('sensor.esp32_c3_zero_epever_device_temperature')|float(0) < 44\n      and
+      is_state('switch.bkw_outlet_1_bkw_outlet_1','off')\n    }}"
     id: on day
-    alias: On Day
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 75
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - alias: Off Day (Unified Template)
     id: off day
-    trigger: numeric_state
-    alias: Off Day Solar Input Power
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 125
-    id: off day
-    trigger: numeric_state
-    alias: Off Day Solar Input Power
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 175
-    id: off day
-    trigger: numeric_state
-    alias: Off Day Solar Input Power
-  - entity_id:
-    - sensor.esp32_c3_zero_epever_pv_array_input_power
-    below: 200
-    id: off day
-    trigger: numeric_state
-    alias: Off Day Solar Input Power
-  - entity_id:
-    - sensor.inverter_pv_power
-    id: off day
-    below: 2250
-    trigger: numeric_state
-    alias: Off Day PV Power
-  - entity_id:
-    - sensor.inverter_pv_power
-    id: off day
-    below: 2000
-    trigger: numeric_state
-    alias: Off Day PV Power
+    trigger: template
+    value_template: "      {% set pv_array = states('sensor.esp32_c3_zero_epever_pv_array_input_power')
+      | float(0) %}\n      {% set inverter_pv = states('sensor.inverter_pv_power')
+      | float(0) %}\n      {% set outlet_on = is_state('switch.bkw_outlet_1_bkw_outlet_1','on')
+      %}\n      {% set sun_above = is_state('sun.sun','above_horizon') %}\n      {{\n
+      \       outlet_on\n        and sun_above\n        and (\n          pv_array
+      < 175\n          or inverter_pv < 2000\n        )\n      }}"
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   - event: sunset
     offset: -00:15:00
     id: on night
@@ -1458,6 +1447,7 @@
         before: sunset
         after: sunrise
         after_offset: -00:16:00
+        before_offset: -00:16:00
       - condition: trigger
         id:
         - off day
@@ -1948,6 +1938,17 @@
     - action: counter.reset
       target:
         entity_id: counter.luftbefeuchter
+      enabled: false
+    else:
+    - alias: Not empty → signal success to script by turning the flag OFF
+      if:
+      - condition: state
+        entity_id: input_boolean.luftbefeuchter_aktiv
+        state: 'on'
+      then:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.luftbefeuchter_aktiv
   mode: single
 - id: '1714558482048'
   alias: Notify on Overcurrent Phase
@@ -7614,7 +7615,7 @@
     with EV charging.\n  - Sending notifications to alert if battery cannot safely
     be turned on.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Type /
     Condition | Trigger ID |\n  |----------------|-----------------|------------|\n
-    \ | Time | 00:01:00 | Off_time |\n  | Time | 04:59:00 | On_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
+    \ | Time | 00:01:00 | On_time |\n  | Time | 04:59:00 | Off_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     | State → on | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     | State → off | Off_dispatch |\n  | `sensor.renault_zoe_batterie` | Above 98.5%
     for 15 min | car_full |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
@@ -7626,10 +7627,10 @@
     constraints.\n    - `Intelligent` → follow Octopus dispatch signals to start/stop
     battery\n      or EV charging dynamically.\n  - Time of day constraints: 00:00
     – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣ Dumb
-    Mode: Night Battery & EV Management\n\n  - **Off_time Trigger (00:01)**:\n    -
+    Mode: Night Battery & EV Management\n\n  - **On_time Trigger (00:01)**:\n    -
     Turns battery switch off with retries until confirmed.\n    - Starts EV charging
     for connected cars (11kW/22kW Go-eChargers) using\n      `select_option` entities.\n
-    \   - Skips chargers with no connected cars.\n  - **On_time or car_full Trigger
+    \   - Skips chargers with no connected cars.\n  - **Off_time or car_full Trigger
     (04:59 / car fully charged)**:\n    - Switches Octopus night mode back to `Intelligent`.\n
     \   - Stops EV charging if EV is connected, waiting for power draw to drop\n      below
     5W.\n    - Turns battery back on if no EV power draw is detected.\n    - Retries
@@ -7714,31 +7715,20 @@
         after: 00:00:00
         before: 05:00:00
       sequence:
-      - alias: Turn Battery Off
-        repeat:
-          sequence:
-          - action: switch.turn_off
-            target:
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            data: {}
-          - delay: 00:00:10
-          until:
-          - condition: or
-            conditions:
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-            - condition: state
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-              state: 'off'
-      - alias: Start EV Charging
-        action: select.select_option
-        target:
-          entity_id:
-          - select.go_echarger_270862_frc
-          - select.go_echarger_252682_frc
+      - action: script.retry_action_with_backoff
+        metadata: {}
         data:
-          option: Charge
-        enabled: false
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          target_state: 'off'
+        alias: 'Turn Battery Off via retry Script '
       - alias: Allow Charging for 11kW Go-eCharger if any Car is connected
         if:
         - condition: not
@@ -7747,13 +7737,25 @@
             entity_id: sensor.go_e_11kw_car
             state: No card selected
         then:
-        - alias: Start EV Charging (11kW)
-          action: select.select_option
-          target:
-            entity_id:
-            - select.go_echarger_270862_frc
+        - action: script.retry_action_with_backoff
+          metadata: {}
           data:
-            option: Charge
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id: select.go_echarger_270862_frc
+            custom_target_state: Charge
       - alias: Allow Charging for 22kW Go-eCharger if any Car is connected
         if:
         - condition: not
@@ -7762,13 +7764,26 @@
             entity_id: sensor.go_e_22kw_car
             state: No card selected
         then:
-        - alias: Start EV Charging (22kW)
-          action: select.select_option
-          target:
-            entity_id:
-            - select.go_echarger_252682_frc
+        - action: script.retry_action_with_backoff
+          metadata: {}
           data:
-            option: Charge
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id:
+                - select.go_echarger_252682_frc
+            custom_target_state: Charge
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
@@ -7804,35 +7819,32 @@
             - trigger: numeric_state
               entity_id:
               - sensor.go_echarger_270862_nrg_12
-              below: 10
+              below: 5
             timeout:
               hours: 0
               minutes: 30
               seconds: 0
               milliseconds: 0
-        - alias: Stop EV Charging with Retrys (11kW)
-          repeat:
-            until:
-            - condition: or
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_270862_frc
-                state: Don't charge
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-            sequence:
-            - alias: Stop EV Charging
-              action: select.select_option
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
               target:
                 entity_id:
                 - select.go_echarger_270862_frc
-              data:
-                option: Don't charge
-            - delay:
-                hours: 0
-                minutes: 0
-                seconds: 0
-                milliseconds: 500
+            custom_target_state: Don't charge
       - alias: If Car is connected to 22kW Charger then stop charging
         if:
         - condition: state
@@ -7849,55 +7861,61 @@
             - trigger: numeric_state
               entity_id:
               - sensor.go_echarger_252682_nrg_12
-              below: 10
+              below: 5
             timeout:
               hours: 0
               minutes: 30
               seconds: 0
               milliseconds: 0
-        - alias: Stop EV Charging with Retrys (22kW)
-          repeat:
-            until:
-            - condition: or
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_252682_frc
-                state: Don't charge
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-            sequence:
-            - alias: Stop EV Charging
-              action: select.select_option
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
               target:
                 entity_id:
                 - select.go_echarger_252682_frc
-              data:
-                option: Don't charge
-            - delay:
-                hours: 0
-                minutes: 0
-                seconds: 0
-                milliseconds: 500
-      - wait_for_trigger:
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_270862_nrg_12
-          below: 5
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_252682_nrg_12
-          below: 5
-        timeout:
-          hours: 0
-          minutes: 1
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: true
+            custom_target_state: Don't charge
+      - alias: Only wait for power if above threshold
+        if:
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
+        then:
+        - wait_for_trigger:
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_270862_nrg_12
+            below: 5
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_252682_nrg_12
+            below: 5
+          timeout:
+            hours: 0
+            minutes: 1
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
       - if:
         - condition: and
           conditions:
-          - condition: template
-            value_template: '{{ wait.completed }}'
           - condition: numeric_state
             entity_id: sensor.go_echarger_270862_nrg_12
             below: 5
@@ -7905,22 +7923,20 @@
             entity_id: sensor.go_echarger_252682_nrg_12
             below: 5
         then:
-        - repeat:
-            sequence:
-            - action: switch.turn_on
-              target:
-                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-              data: {}
-            - delay: 00:00:10
-            until:
-            - condition: or
-              conditions:
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-              - condition: state
-                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                state: 'on'
-          alias: Turn Battery On
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            target_state: 'on'
+          alias: Turn Battery On via retry Script
         else:
         - action: notify.duncan
           data:
@@ -7949,7 +7965,8 @@
                 sequence:
                 - delay: 00:05:00
               alias: 1, 3 or 5 Minute Delay between retries
-            - if:
+            - alias: Turn Battery on if no EV Power Draw, if not notify about it
+              if:
               - condition: and
                 conditions:
                 - condition: numeric_state
@@ -7959,22 +7976,20 @@
                   entity_id: sensor.go_echarger_252682_nrg_12
                   below: 5
               then:
-              - alias: Turn Battery On (retry)
-                repeat:
-                  sequence:
-                  - action: switch.turn_on
-                    target:
-                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                    data: {}
-                  - delay: 00:00:10
-                  until:
-                  - condition: or
-                    conditions:
-                    - condition: template
-                      value_template: '{{ repeat.index > 10 }}'
-                    - condition: state
-                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                      state: 'on'
+              - alias: 'Turn Battery On via retry Script '
+                action: script.retry_action_with_backoff
+                metadata: {}
+                data:
+                  action_domain: switch
+                  action_type: turn_on
+                  max_retries: 10
+                  base_delay: 5
+                  max_delay: 60
+                  backoff_type: simple
+                  notify_on_failure: true
+                  notify_service: notify.duncan
+                  entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                  target_state: 'on'
               else:
               - action: notify.duncan
                 data:
@@ -7983,7 +7998,6 @@
                     (1/3/5 min).'
                   data:
                     tag: octopus_night_recovery
-              alias: Turn Batters on if no EV Power Draw, if not notify about it
             until:
             - condition: or
               conditions:
@@ -8002,41 +8016,40 @@
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - alias: Turn Battery Off with retries
-        repeat:
-          sequence:
-          - action: switch.turn_off
-            target:
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-            data: {}
-          - delay:
-              seconds: '{{ repeat.index }}'
-          until:
-          - condition: or
-            conditions:
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-            - condition: state
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-              state: 'off'
-      - repeat:
-          until:
-          - condition: state
-            entity_id: select.go_echarger_270862_frc
-            state: Charge
-          - condition: template
-            value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - alias: Start EV Charging
-            action: select.select_option
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          target_state: 'off'
+        alias: Turn Battery Off via retry Script
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: select.go_echarger_270862_frc
+          target_state: custom
+          custom_action:
+          - action: select.select_option
+            metadata: {}
+            data:
+              option: Charge
             target:
               entity_id:
               - select.go_echarger_270862_frc
-            data:
-              option: Charge
-          - delay:
-              seconds: '{{ repeat.index }}'
-        alias: Turn on EV Charging with Retrys
+          custom_target_state: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
@@ -8046,33 +8059,26 @@
         entity_id: input_select.octopus_night_time
         state: Intelligent
       sequence:
-      - alias: Stop EV Charging with Retrys
-        repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: and
-              conditions:
-              - condition: state
-                entity_id: select.go_echarger_270862_frc
-                state: Don't charge
-              - condition: state
-                entity_id: select.go_echarger_252682_frc
-                state: Don't charge
-              alias: Both Charger don't allow Charging
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - alias: Stop EV Charging
-            action: select.select_option
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: select.go_echarger_270862_frc
+          target_state: custom
+          custom_action:
+          - action: select.select_option
+            metadata: {}
+            data:
+              option: Don't charge
             target:
               entity_id:
               - select.go_echarger_270862_frc
-              - select.go_echarger_252682_frc
-            data:
-              option: Don't charge
-          - delay:
-              seconds: '{{ repeat.index }}'
+          custom_target_state: Don't charge
       - wait_for_trigger:
         - trigger: numeric_state
           entity_id:
@@ -8101,22 +8107,20 @@
             below: 5
           alias: No power draw from both chargers
         then:
-        - repeat:
-            sequence:
-            - action: switch.turn_on
-              target:
-                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-              data: {}
-            - delay: 00:00:10
-            until:
-            - condition: or
-              conditions:
-              - condition: template
-                value_template: '{{ repeat.index > 10 }}'
-              - condition: state
-                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                state: 'on'
-          alias: Turn Battery On
+        - alias: Turn Battery On via retry Script
+          action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+            target_state: 'on'
         else:
         - action: notify.duncan
           data:
@@ -8156,22 +8160,20 @@
                   entity_id: sensor.go_echarger_252682_nrg_12
                   below: 5
               then:
-              - alias: Turn Battery On (retry)
-                repeat:
-                  sequence:
-                  - action: switch.turn_on
-                    target:
-                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                    data: {}
-                  - delay: 00:00:10
-                  until:
-                  - condition: or
-                    conditions:
-                    - condition: template
-                      value_template: '{{ repeat.index > 10 }}'
-                    - condition: state
-                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                      state: 'on'
+              - alias: Turn Battery On via retry Script
+                action: script.retry_action_with_backoff
+                metadata: {}
+                data:
+                  action_domain: switch
+                  action_type: turn_on
+                  max_retries: 10
+                  base_delay: 5
+                  max_delay: 60
+                  backoff_type: simple
+                  notify_on_failure: true
+                  notify_service: notify.duncan
+                  entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                  target_state: 'on'
               else:
               - action: notify.duncan
                 data:
