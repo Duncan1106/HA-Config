@@ -3123,8 +3123,6 @@
       device_id:
       - 990e7401f4719a68ee0021ca37067f72
       - 2a504e345eda14cbe58039ef062f08b5
-      - 3c53675db85802e31029e37e7b7fd3cd
-      - 9914e6e4fe991b11910d0b307255e881
       - 57f6d676ec41388b14998ad815b1c610
   - action: hassio.addon_restart
     metadata: {}
@@ -7701,6 +7699,20 @@
       seconds: 0
     above: 99.9
     id: car_full
+  - trigger: template
+    value_template: "{% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+      %}\n    {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+      %}\n    {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+      if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+      if car_11kw else 0)) %}\n    {% set grid = states('sensor.grid_import') | float(0)
+      %}\n    {% set octopus = is_state('binary_sensor.octopus_a_10a76963_intelligent_dispatching','on')
+      or is_state('input_select.octopus_night_time','Dumb') %}\n    {{ (car_22kw or
+      car_11kw) and octopus and power_goes > 50 and grid < power_goes }}"
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+    id: prevent_battery_discharge
   conditions: []
   actions:
   - choose:
@@ -8385,6 +8397,65 @@
                 value_template: '{{ repeat.index >= 3 }}'
               alias: Either battery is on or we retried 3 or more times
       alias: Stop EV Charging, Octopus Intelligent Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - prevent_battery_discharge
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+          state: 'on'
+        - condition: state
+          entity_id: input_select.octopus_night_time
+          state: Dumb
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          target_state: 'off'
+        alias: 'Turn Battery Off via retry Script '
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 10
+          milliseconds: 0
+      - wait_template: "{% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+          %}\n            {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+          %}\n            {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+          if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+          if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
+          | float(0) %}\n            {{ grid >= power_goes }}"
+        continue_on_timeout: true
+        timeout: '60'
+      - if:
+        - condition: template
+          value_template: "                {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+            %}\n                {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+            %}\n                {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+            if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+            if car_11kw else 0)) %}\n                {% set grid = states('sensor.grid_import')
+            | float(0) %}\n                {{ grid < power_goes }}"
+        then:
+        - action: notify.duncan
+          data:
+            message: "⚠️ EV still pulling from battery after TOU off! Grid: {{ states('sensor.grid_import')
+              }}W Chargers: {{ \n  (states('sensor.go_echarger_252682_nrg_12')|float(0)
+              if is_state('binary_sensor.go_echarger_252682_car','on') else 0) +\n
+              \ (states('sensor.go_echarger_270862_nrg_12')|float(0) if is_state('binary_sensor.go_echarger_270862_car','on')
+              else 0)\n}}W"
+            title: Octopus Battery Guard
+            data:
+              tag: octopus_battery_guard
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
@@ -9393,67 +9464,45 @@
         id:
         - '23'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.garagentor_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.garagentor_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.sauger_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.sauger_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.backofen_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id:
-              - switch.backofen_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.garagentor_tasmota
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.sauger_tasmota
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.backofen_tasmota
+          target_state: 'off'
       alias: Power off at 23
     - conditions:
       - condition: state
@@ -9484,67 +9533,45 @@
               minutes: 1
               seconds: 0
           continue_on_timeout: true
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.garagentor_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.garagentor_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.sauger_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id:
-              - switch.sauger_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.backofen_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.backofen_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.garagentor_tasmota
+          target_state: 'on'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.sauger_tasmota
+          target_state: 'on'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.backofen_tasmota
+          target_state: 'on'
       alias: Power on at 4
     - conditions:
       - condition: state
@@ -9564,7 +9591,8 @@
           seconds: 5
           milliseconds: 0
       alias: Power off all the way
-  mode: single
+  mode: queued
+  max: 3
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
   description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
