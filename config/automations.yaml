@@ -3776,15 +3776,15 @@
     **on** if:  \n  - `sensor.bad_nachtlicht_illuminance` < **20 lux**  \n  - `binary_sensor.kinderbad_bewegung`
     is **on**  \n  - Light is **off** OR brightness < **10%**  \n\n  ---\n\n  ###
     \U0001F3AF **Actions**  \n\n  #### **\U0001F4A1 On Action**  \n  - Turn on `light.bad_nachtlicht`
-    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **0.5s
+    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **2s
     smooth fade**  \n\n  ---\n\n  #### **\U0001F319 Off Action (after motion clears)**
     \ \n  - Wait **30s** after motion clears  \n  - If brightness > **15 lux** → turn
-    light **off** with a **0.5s fade**\n    (with retries)  \n  - Else (still dark)
-    → set light to **brightness 9** with a **0.5s fade**\n    (with retries)  \n\n
-    \ ---\n\n  #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50
-    lux**  \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n
-    \   (with retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target
-    Light:** `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
+    light **off** with a **3s fade**\n    (with retries)  \n  - Else (still dark)
+    → set light to **brightness 9** with a **3s fade**\n    (with retries)  \n\n  ---\n\n
+    \ #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50 lux**
+    \ \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n    (with
+    retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target Light:**
+    `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
     \ \n    - `binary_sensor.kinderbad_bewegung`  \n  - **Mode:** `restart`  \n  -
     **Failsafes:** all on/off/dim actions repeat until confirmed"
   triggers:
@@ -3863,9 +3863,24 @@
       data:
         brightness_pct: 100
         color_temp_kelvin: 2400
-        transition: 0.5
+        transition: 2
       target:
         entity_id: light.bad_nachtlicht
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: light.bad_nachtlicht
+        target_state: 'on'
+        service_data: '{"brightness_pct": "100", "color_temp_kelvin": "2400", "transition":
+          "2"}'
   - alias: Off after time x
     if:
     - condition: trigger
@@ -3934,22 +3949,19 @@
       id:
       - Off immediately
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: light.bad_nachtlicht
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
-        until:
-        - condition: state
-          entity_id: light.bad_nachtlicht
-          state: 'off'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: light.bad_nachtlicht
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch Right
@@ -7616,31 +7628,31 @@
     \ | Time | 00:01:00 | On_time |\n  | Time | 04:59:00 | Off_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     | State → on | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     | State → off | Off_dispatch |\n  | `sensor.renault_zoe_batterie` | Above 98.1%
-    for 15 min | car_full |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
-    99% for 5 min | car_full |\n  | `sensor.lsjwh4097rn105299_soc` | Above 99.9% for
-    5 min | car_full |\n\n  > Triggers include both scheduled night times and state
-    changes for intelligent\n  dispatch or full EV batteries.\n\n  ---\n\n  ### ✅
-    **Conditions**\n\n  - Automation reacts differently based on the selected **Octopus
-    night mode**:\n    - `Dumb` → follow strict time-based schedule and battery/EV
-    constraints.\n    - `Intelligent` → follow Octopus dispatch signals to start/stop
-    battery\n      or EV charging dynamically.\n  - Time of day constraints: 00:00
-    – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣ Dumb
-    Mode: Night Battery & EV Management\n\n  - **On_time Trigger (00:01)**:\n    -
-    Turns battery switch off with retries until confirmed.\n    - Starts EV charging
-    for connected cars (11kW/22kW Go-eChargers) using\n      `select_option` entities.\n
-    \   - Skips chargers with no connected cars.\n  - **Off_time or car_full Trigger
-    (04:59 / car fully charged)**:\n    - Switches Octopus night mode back to `Intelligent`.\n
-    \   - Stops EV charging if EV is connected, waiting for power draw to drop\n      below
-    5W.\n    - Turns battery back on if no EV power draw is detected.\n    - Retries
-    up to 3 times (1, 3, 5 minutes) if EV still drawing power.\n    - Sends notification
-    to Duncan if battery could not safely be turned on.\n\n  #### 2️⃣ Intelligent
-    Mode: Night Battery Controlled by Octopus Dispatch\n\n  - **On_dispatch Trigger**:\n
-    \   - Turns battery off with retries until confirmed.\n    - Starts EV charging
-    on 11kW Go-eCharger if needed.\n  - **Off_dispatch Trigger**:\n    - Stops EV
-    charging with retries until confirmed.\n    - Waits for EV power draw to drop
-    below 5W before turning battery back on.\n    - Uses repeated retries if necessary,
-    with notifications for failures.\n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n\n
-    \ - **Mode:** `single`  \n  - **Battery Controlled:** `switch.esp32_s3_zero_deye8k_time_of_use`
+    for 15 min | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
+    99% for 5 min | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc` | Above 99.9%
+    for 5 min | car_full_mg4 |\n\n  > Triggers include both scheduled night times
+    and state changes for intelligent\n  dispatch or full EV batteries.\n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  - Automation reacts differently based on the selected
+    **Octopus night mode**:\n    - `Dumb` → follow strict time-based schedule and
+    battery/EV constraints.\n    - `Intelligent` → follow Octopus dispatch signals
+    to start/stop battery\n      or EV charging dynamically.\n  - Time of day constraints:
+    00:00 – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣
+    Dumb Mode: Night Battery & EV Management\n\n  - **On_time Trigger (00:01)**:\n
+    \   - Turns battery switch off with retries until confirmed.\n    - Starts EV
+    charging for connected cars (11kW/22kW Go-eChargers) using\n      `select_option`
+    entities.\n    - Skips chargers with no connected cars.\n  - **Off_time or car_full
+    Trigger (04:59 / car fully charged)**:\n    - Switches Octopus night mode back
+    to `Intelligent`.\n    - Stops EV charging if EV is connected, waiting for power
+    draw to drop\n      below 5W.\n    - Turns battery back on if no EV power draw
+    is detected.\n    - Retries up to 3 times (1, 3, 5 minutes) if EV still drawing
+    power.\n    - Sends notification to Duncan if battery could not safely be turned
+    on.\n\n  #### 2️⃣ Intelligent Mode: Night Battery Controlled by Octopus Dispatch\n\n
+    \ - **On_dispatch Trigger**:\n    - Turns battery off with retries until confirmed.\n
+    \   - Starts EV charging on 11kW Go-eCharger if needed.\n  - **Off_dispatch Trigger**:\n
+    \   - Stops EV charging with retries until confirmed.\n    - Waits for EV power
+    draw to drop below 5W before turning battery back on.\n    - Uses repeated retries
+    if necessary, with notifications for failures.\n\n  ---\n\n  ### \U0001F527 **Technical
+    Specs**\n\n  - **Mode:** `single`  \n  - **Battery Controlled:** `switch.esp32_s3_zero_deye8k_time_of_use`
     \ \n  - **EV Chargers Controlled:**  \n    - `select.go_echarger_270862_frc` (11kW)
     \ \n    - `select.go_echarger_252682_frc` (22kW)  \n  - **Monitored Entities:**
     \ \n    - Octopus dispatch sensor  \n    - EV chargers' power sensors  \n    -
@@ -7675,7 +7687,7 @@
   - trigger: numeric_state
     entity_id:
     - sensor.renault_zoe_batterie
-    id: car_full
+    id: car_full_zoe
     for:
       hours: 0
       minutes: 15
@@ -7684,7 +7696,7 @@
   - trigger: numeric_state
     entity_id:
     - sensor.wvgzzze2zpe005371_battery_level
-    id: car_full
+    id: car_full_id4
     for:
       hours: 0
       minutes: 5
@@ -7698,7 +7710,7 @@
       minutes: 5
       seconds: 0
     above: 99.9
-    id: car_full
+    id: car_full_mg4
   - trigger: template
     value_template: "{% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
       %}\n    {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
@@ -7991,8 +8003,10 @@
     - conditions:
       - condition: trigger
         id:
-        - car_full
         - Off_time
+        - car_full_zoe
+        - car_full_id4
+        - car_full_mg4
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
@@ -8016,7 +8030,9 @@
           if:
           - condition: trigger
             id:
-            - car_full
+            - car_full_zoe
+            - car_full_id4
+            - car_full_mg4
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -8059,7 +8075,9 @@
           if:
           - condition: trigger
             id:
-            - car_full
+            - car_full_zoe
+            - car_full_id4
+            - car_full_mg4
           then:
           - wait_for_trigger:
             - trigger: numeric_state
