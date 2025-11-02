@@ -7615,56 +7615,55 @@
   mode: single
 - id: '1750196437853'
   alias: Octopus night usage, turn battery off
-  description: "  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV & Battery
-    Management during Night Tariffs**\n\n  This automation manages **battery charging,
-    EV charging, and Octopus tariff\n  usage** during night hours. It handles both
-    \"Dumb\" and \"Intelligent\" modes,\n  including:\n\n  - Turning the battery off
-    or on based on time, EV connection, and car state-of-charge.\n  - Starting or
-    stopping EV charging on Go-eCharger units (11kW and 22kW) with retries.\n  - Ensuring
-    battery usage is optimized for night-time tariffs while avoiding\n    conflicts
-    with EV charging.\n  - Sending notifications to alert if battery cannot safely
-    be turned on.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Type /
-    Condition | Trigger ID |\n  |----------------|-----------------|------------|\n
-    \ | Time | 00:01:00 | On_time |\n  | Time | 04:59:00 | Off_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
-    | State → on | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
-    | State → off | Off_dispatch |\n  | `sensor.renault_zoe_batterie` | Above 98.1%
-    for 15 min | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
-    99% for 5 min | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc` | Above 99.9%
-    for 5 min | car_full_mg4 |\n\n  > Triggers include both scheduled night times
-    and state changes for intelligent\n  dispatch or full EV batteries.\n\n  ---\n\n
-    \ ### ✅ **Conditions**\n\n  - Automation reacts differently based on the selected
-    **Octopus night mode**:\n    - `Dumb` → follow strict time-based schedule and
-    battery/EV constraints.\n    - `Intelligent` → follow Octopus dispatch signals
-    to start/stop battery\n      or EV charging dynamically.\n  - Time of day constraints:
-    00:00 – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣
-    Dumb Mode: Night Battery & EV Management\n\n  - **On_time Trigger (00:01)**:\n
-    \   - Turns battery switch off with retries until confirmed.\n    - Starts EV
-    charging for connected cars (11kW/22kW Go-eChargers) using\n      `select_option`
-    entities.\n    - Skips chargers with no connected cars.\n  - **Off_time or car_full
-    Trigger (04:59 / car fully charged)**:\n    - Switches Octopus night mode back
-    to `Intelligent`.\n    - Stops EV charging if EV is connected, waiting for power
-    draw to drop\n      below 5W.\n    - Turns battery back on if no EV power draw
-    is detected.\n    - Retries up to 3 times (1, 3, 5 minutes) if EV still drawing
-    power.\n    - Sends notification to Duncan if battery could not safely be turned
-    on.\n\n  #### 2️⃣ Intelligent Mode: Night Battery Controlled by Octopus Dispatch\n\n
-    \ - **On_dispatch Trigger**:\n    - Turns battery off with retries until confirmed.\n
-    \   - Starts EV charging on 11kW Go-eCharger if needed.\n  - **Off_dispatch Trigger**:\n
-    \   - Stops EV charging with retries until confirmed.\n    - Waits for EV power
-    draw to drop below 5W before turning battery back on.\n    - Uses repeated retries
-    if necessary, with notifications for failures.\n\n  ---\n\n  ### \U0001F527 **Technical
-    Specs**\n\n  - **Mode:** `single`  \n  - **Battery Controlled:** `switch.esp32_s3_zero_deye8k_time_of_use`
-    \ \n  - **EV Chargers Controlled:**  \n    - `select.go_echarger_270862_frc` (11kW)
-    \ \n    - `select.go_echarger_252682_frc` (22kW)  \n  - **Monitored Entities:**
-    \ \n    - Octopus dispatch sensor  \n    - EV chargers' power sensors  \n    -
-    EV battery SOC sensors  \n  - **Retry Logic:** Repeated attempts up to 10 times
-    for battery switch or EV charger state confirmation.  \n  - **Notifications:**
-    Alerts sent via `notify.duncan` if battery cannot be safely turned on due to EV
-    load.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n  - Dumb mode prioritizes
-    **scheduled night tariff optimization**.\n  - Intelligent mode respects **Octopus
-    dispatch signals** for energy savings.\n  - Battery is only turned on if **no
-    EV is drawing power >5W**.\n  - Retry mechanism ensures reliability while avoiding
-    EV conflicts.\n  - Notifications allow monitoring and manual intervention if automatic
-    control fails."
+  description: "\n  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV &
+    Battery Management for Octopus Tariffs**\n\n  This automation intelligently manages
+    **battery charging and discharging**, as well as **EV charging behavior**, during
+    **Octopus night tariff periods**. It supports both **Dumb** (time-based) and **Intelligent**
+    (Octopus-controlled) modes to ensure the most efficient and conflict-free use
+    of power.  \n  It also prevents battery discharge if EVs are drawing more than
+    the grid can supply and handles multiple EVs dynamically.\n\n  ---\n\n  ### ⏱
+    **Trigger Overview**\n\n  | Trigger | Description | ID |\n  |----------|--------------|----|\n
+    \ | `00:01` | Begin night cycle (turn battery off, start EV charging) | On_time
+    |\n  | `04:59` | End night cycle (stop EV charging, restore battery) | Off_time
+    |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching` → `on` | Intelligent
+    dispatch begins | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
+    → `off` | Intelligent dispatch ends | Off_dispatch |\n  | `sensor.renault_zoe_batterie
+    > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level
+    > 99% for 5 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
+    > 99.9% for 5 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
+    Prevents battery discharge if EVs draw > grid power | prevent_battery_discharge
+    |\n\n  ---\n\n  ### ✅ **Mode Logic**\n\n  - **Dumb Mode:** Follows a fixed time-based
+    routine for battery and EV control between 00:00 – 05:00.  \n  - **Intelligent
+    Mode:** Reacts dynamically to Octopus dispatch signals for charging and discharging
+    windows.  \n  - **Safety Logic:** Prevents battery from turning on if EVs are
+    drawing significant power, with retry intervals at 1, 3, and 5 minutes.\n\n  ---\n\n
+    \ ### ⚙️ **Action Workflow**\n\n  #### Dumb Mode (Scheduled Control)\n\n  - **Start
+    of Night (00:01):**\n    - Turns off the home battery using retry logic for reliability.\n
+    \   - Starts EV charging if cars are connected to either Go-eCharger (11 kW or
+    22 kW).\n    - Waits for power draw to confirm successful start.\n    - If EV
+    fails to charge, restores the battery and stops charging to prevent energy waste.\n\n
+    \ - **End of Night or EV Fully Charged (04:59 / EV Full):**\n    - Restores mode
+    to *Intelligent*.\n    - Stops EV charging, waiting until power draw drops below
+    5 W.\n    - Turns the battery back on once safe to do so.\n    - If still unsafe,
+    sends a notification and retries at 1, 3, and 5 minute intervals before giving
+    up.\n\n  #### Intelligent Mode (Octopus Dispatch Control)\n\n  - **Dispatch On:**
+    Turns off the battery and starts EV charging as directed by Octopus.\n  - **Dispatch
+    Off:** Stops EV charging, waits for safe discharge levels, then turns battery
+    back on.\n  - Notifications sent if EV load prevents battery activation.\n  -
+    Preventive template ensures battery never discharges while EVs draw more power
+    than the grid can provide.\n\n  ---\n\n  ### \U0001F527 **Technical Details**\n\n
+    \ - **Mode:** `single`\n  - **Battery Switch:** `switch.esp32_s3_zero_deye8k_time_of_use`\n
+    \ - **EV Chargers:**  \n    - `select.go_echarger_270862_frc` (11 kW)  \n    -
+    `select.go_echarger_252682_frc` (22 kW)\n  - **Monitored Sensors:**  \n    - Octopus
+    dispatch  \n    - Charger power sensors  \n    - EV battery SOC sensors  \n  -
+    **Retry System:** Up to 10 attempts for state confirmations (battery or charger)\n
+    \ - **Notifications:** Sent via `notify.duncan` when automation cannot safely
+    restore battery\n\n  ---\n\n  ### ⚡ **Design Notes**\n\n  - Dumb mode ensures
+    maximum use of cheap tariff power overnight.\n  - Intelligent mode yields control
+    to Octopus dispatch for adaptive savings.\n  - Safety logic prevents battery from
+    re-engaging while EVs draw significant power.\n  - Multiple retry layers ensure
+    reliability and reduce manual intervention.\n  - Notifications provide transparency
+    when automation requires attention."
   triggers:
   - trigger: time
     at: 00:01:00
