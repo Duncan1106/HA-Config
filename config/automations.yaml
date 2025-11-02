@@ -8001,12 +8001,56 @@
                 alias: Either battery is on or we retried 3 or more times
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
-      - condition: trigger
-        id:
-        - Off_time
-        - car_full_zoe
-        - car_full_id4
-        - car_full_mg4
+      - alias: Triggered by off time or EV full
+        condition: or
+        conditions:
+        - condition: trigger
+          id:
+          - Off_time
+        - condition: or
+          conditions:
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_zoe
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: Zoe
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: Zoe
+            alias: Zoe full and was charging
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_id4
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: ID.4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: ID.4
+            alias: 'ID4 full and was charging '
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_mg4
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: MG4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: MG4
+            alias: 'MG4 full and was charging '
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
