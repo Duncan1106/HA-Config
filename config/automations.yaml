@@ -10422,3 +10422,79 @@
       data:
         clickAction: '{{ state_attr(''sensor.home_assistant_beta_release_notes'',''beta_url'')}}'
   mode: single
+- id: '1762188975423'
+  alias: Light Control via Retry Script
+  description: "## \U0001F305\U0001F307 Automated Light Control with Retry Support\nAutomatically
+    manages defined entities at **sunrise**, **sunset**, and **20:00**,   using the
+    **Retry Action with Backoff** script to ensure reliable state changes.\n- **Sunrise:**
+    Turns entities **on**   - **Sunset:** Turns entities **off**   - **20:00:** Turns
+    entities **off** only if **the sun has already set**  \n  (i.e. sunset occurred
+    before 20:00)\n"
+  triggers:
+  - trigger: sun
+    event: sunrise
+    id: sunrise
+  - trigger: sun
+    event: sunset
+    id: sunset
+  - trigger: time
+    at: '20:00:00'
+    id: time_20
+  actions:
+  - variables:
+      entities:
+      - switch.rescue_plants
+      - switch.bett_power_strip_l3
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: sunrise
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'on'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+    - conditions:
+      - condition: trigger
+        id: sunset
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+    - conditions:
+      - condition: trigger
+        id: time_20
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+  mode: single
