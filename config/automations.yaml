@@ -3811,14 +3811,6 @@
           value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
             < 10 }}'
     then:
-    - action: light.turn_on
-      metadata: {}
-      data:
-        brightness_pct: 100
-        color_temp_kelvin: 2400
-        transition: 2
-      target:
-        entity_id: light.bad_nachtlicht
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -3850,51 +3842,35 @@
         entity_id: sensor.bad_nachtlicht_illuminance
         above: 15
       then:
-      - repeat:
-          sequence:
-          - action: light.turn_off
-            metadata: {}
-            data:
-              transition: 3
-            target:
-              entity_id: light.bad_nachtlicht
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: light.bad_nachtlicht
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.bad_nachtlicht
       else:
-      - repeat:
-          sequence:
-          - action: light.turn_on
-            metadata: {}
-            data:
-              transition: 3
-              color_temp_kelvin: 2400
-              brightness: 9
-            target:
-              entity_id: light.bad_nachtlicht
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          until:
-          - condition: or
-            conditions:
-            - condition: template
-              value_template: '{{ state_attr(''light.bad_nachtlicht'',''brightness'')|int(0)
-                == 9 }}'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: light.bad_nachtlicht
+          target_state: 'on'
+          service_data: '{"brightness": "9", "color_temp_kelvin": "2400", "transition":
+            "3"}'
     enabled: true
   - alias: Off immediately
     if:
