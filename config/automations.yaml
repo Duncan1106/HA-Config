@@ -8507,19 +8507,28 @@
           - choose:
             - conditions:
               - condition: template
-                value_template: '{{ repeat.index == 1 }}'
-              sequence:
-              - delay: 00:01:00
-            - conditions:
-              - condition: template
                 value_template: '{{ repeat.index == 2 }}'
               sequence:
-              - delay: 00:03:00
+              - delay:
+                  hours: 0
+                  minutes: 1
+                  seconds: 0
+                  milliseconds: 0
             - conditions:
               - condition: template
                 value_template: '{{ repeat.index == 3 }}'
               sequence:
-              - delay: 00:05:00
+              - delay:
+                  hours: 0
+                  minutes: 3
+                  seconds: 0
+                  milliseconds: 0
+            default:
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 1
+                milliseconds: 0
           - if:
             - condition: template
               value_template: "            {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
@@ -8528,13 +8537,13 @@
                 if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
                 if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
                 | float(0) %}\n            {% set battery_discharging = states('sensor.battery_discharge')
-                | float(0) > 50 %}\n            {{ grid >= power_goes or battery_discharging
+                | float(0) > 50 %}\n            {{ grid >= power_goes and battery_discharging
                 }}"
             then:
             - action: notify.duncan
               data:
                 title: Octopus Battery Guard
-                message: "Retry {{ repeat.index|int()|default(0)}}/3: battery {{ states('sensor.battery_discharge')|float(0)|round(0)
+                message: "Retry {{ repeat.index}}/3: battery {{ states('sensor.battery_discharge')|float(0)|round(0)
                   }} W, grid {{ states('sensor.grid_import')|float(0)|round(0) }} W
                   vs EV {{\n                    (\n                      (states('sensor.go_echarger_252682_nrg_12')|float(0)
                   if is_state('binary_sensor.go_echarger_252682_car','on') else 0)
@@ -8548,7 +8557,7 @@
             value_template: '{% set battery_discharging = states(''sensor.battery_discharge'')
               | float(0) > 50 %}
 
-              {{ (not battery_discharging) or (repeat.index >= 3) }}'
+              {{ (battery_discharging) or (repeat.index >= 3) }}'
       alias: Fallback Battery Protection from Discharge to EV
   mode: single
 - id: '1750706221080'
@@ -9517,13 +9526,13 @@
       entity_id: switch.bett_plug_right
   mode: single
 - id: '1757084461870'
-  alias: Turn Off Bett Plug Left Over 55W
+  alias: Turn Off Bett Plug Left Over 65W
   description: ''
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.bett_plug_left_power
-    above: 55
+    above: 65
   conditions: []
   actions:
   - action: switch.turn_off
