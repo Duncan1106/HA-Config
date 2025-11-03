@@ -1781,14 +1781,15 @@ retry_action_with_backoff:
   - condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
     alias: Validate entity exists
-  - condition: template
-    alias: Skip if already in target state
-    value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+  - alias: Skip if already in target state
+    condition: template
+    value_template: '{{ (not is_state(entity_id, effective_target_state)) or (service_data
+      is defined) }}'
   - repeat:
       until:
       - condition: template
-        value_template: '{{ is_state(entity_id, effective_target_state) or repeat.index
-          >= max_retries | int(10) }}
+        value_template: '{{ (is_state(entity_id, effective_target_state) or service_data
+          is defined) or repeat.index >= max_retries | int(10) }}
 
           '
       sequence:
