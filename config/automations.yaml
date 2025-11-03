@@ -655,53 +655,6 @@
         at {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True)
         }}.
       notification_title: The {{ friendly_name | default('Garage') }} was left open
-- id: '1705857100421'
-  alias: Waschmaschine fertig
-  description: ''
-  use_blueprint:
-    path: Blackshome/appliance-notifications.yaml
-    input:
-      power_sensor: sensor.waschmaschine_energy_power
-      include_end_notify: disable_end_notify_options
-      end_notify_device: []
-      end_message_title: Waschmaschine
-      end_message: Waschmaschine ausräumen
-      end_time_delay: 0.745
-      start_appliance_power: 30
-      end_appliance_power: 10
-      include_start_notify: enable_start_notify_options
-      start_notify_device:
-      - 905c163dcc62544838edb078413723b2
-      include_custom_actions:
-      - enable_end_custom_actions
-      start_time_delay: 0.5
-      end_custom_actions:
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.waschmaschine
-        enabled: true
-        action: counter.increment
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.waschmaschine_fertig
-      start_title: 'Waschmaschine '
-      start_message: ' '
-      watchdog_timeframe:
-        hours: 3
-        minutes: 0
-        seconds: 0
-      include_watchdog: enable_watchdog
-      running_dead_zone: 15
-      end_message_kwh: 'Consumption: '
-      end_repeat_count: 1
-      watchdog_title: ⚠️ Waschmaschine ⚠️
-      watchdog_message: Check die Waschmaschine
-      watchdog_notify_device:
-      - 905c163dcc62544838edb078413723b2
-      - 0d88285a82251e06c1a2bfced7afbd00
 - id: '1706024033086'
   alias: 'Waschküche Fenster Offen '
   description: ''
@@ -3123,8 +3076,6 @@
       device_id:
       - 990e7401f4719a68ee0021ca37067f72
       - 2a504e345eda14cbe58039ef062f08b5
-      - 3c53675db85802e31029e37e7b7fd3cd
-      - 9914e6e4fe991b11910d0b307255e881
       - 57f6d676ec41388b14998ad815b1c610
   - action: hassio.addon_restart
     metadata: {}
@@ -3778,15 +3729,15 @@
     **on** if:  \n  - `sensor.bad_nachtlicht_illuminance` < **20 lux**  \n  - `binary_sensor.kinderbad_bewegung`
     is **on**  \n  - Light is **off** OR brightness < **10%**  \n\n  ---\n\n  ###
     \U0001F3AF **Actions**  \n\n  #### **\U0001F4A1 On Action**  \n  - Turn on `light.bad_nachtlicht`
-    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **0.5s
+    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **2s
     smooth fade**  \n\n  ---\n\n  #### **\U0001F319 Off Action (after motion clears)**
     \ \n  - Wait **30s** after motion clears  \n  - If brightness > **15 lux** → turn
-    light **off** with a **0.5s fade**\n    (with retries)  \n  - Else (still dark)
-    → set light to **brightness 9** with a **0.5s fade**\n    (with retries)  \n\n
-    \ ---\n\n  #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50
-    lux**  \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n
-    \   (with retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target
-    Light:** `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
+    light **off** with a **3s fade**\n    (with retries)  \n  - Else (still dark)
+    → set light to **brightness 9** with a **3s fade**\n    (with retries)  \n\n  ---\n\n
+    \ #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50 lux**
+    \ \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n    (with
+    retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target Light:**
+    `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
     \ \n    - `binary_sensor.kinderbad_bewegung`  \n  - **Mode:** `restart`  \n  -
     **Failsafes:** all on/off/dim actions repeat until confirmed"
   triggers:
@@ -3865,9 +3816,24 @@
       data:
         brightness_pct: 100
         color_temp_kelvin: 2400
-        transition: 0.5
+        transition: 2
       target:
         entity_id: light.bad_nachtlicht
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: light.bad_nachtlicht
+        target_state: 'on'
+        service_data: '{"brightness_pct": "100", "color_temp_kelvin": "2400", "transition":
+          "2"}'
   - alias: Off after time x
     if:
     - condition: trigger
@@ -3936,22 +3902,19 @@
       id:
       - Off immediately
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: light.bad_nachtlicht
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 0
-            milliseconds: 500
-        until:
-        - condition: state
-          entity_id: light.bad_nachtlicht
-          state: 'off'
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: light.bad_nachtlicht
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch Right
@@ -7605,56 +7568,55 @@
   mode: single
 - id: '1750196437853'
   alias: Octopus night usage, turn battery off
-  description: "  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV & Battery
-    Management during Night Tariffs**\n\n  This automation manages **battery charging,
-    EV charging, and Octopus tariff\n  usage** during night hours. It handles both
-    \"Dumb\" and \"Intelligent\" modes,\n  including:\n\n  - Turning the battery off
-    or on based on time, EV connection, and car state-of-charge.\n  - Starting or
-    stopping EV charging on Go-eCharger units (11kW and 22kW) with retries.\n  - Ensuring
-    battery usage is optimized for night-time tariffs while avoiding\n    conflicts
-    with EV charging.\n  - Sending notifications to alert if battery cannot safely
-    be turned on.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Trigger Entity | Type /
-    Condition | Trigger ID |\n  |----------------|-----------------|------------|\n
-    \ | Time | 00:01:00 | On_time |\n  | Time | 04:59:00 | Off_time |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
-    | State → on | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
-    | State → off | Off_dispatch |\n  | `sensor.renault_zoe_batterie` | Above 98.5%
-    for 15 min | car_full |\n  | `sensor.wvgzzze2zpe005371_battery_level` | Above
-    99% for 5 min | car_full |\n  | `sensor.lsjwh4097rn105299_soc` | Above 99.9% for
-    5 min | car_full |\n\n  > Triggers include both scheduled night times and state
-    changes for intelligent\n  dispatch or full EV batteries.\n\n  ---\n\n  ### ✅
-    **Conditions**\n\n  - Automation reacts differently based on the selected **Octopus
-    night mode**:\n    - `Dumb` → follow strict time-based schedule and battery/EV
-    constraints.\n    - `Intelligent` → follow Octopus dispatch signals to start/stop
-    battery\n      or EV charging dynamically.\n  - Time of day constraints: 00:00
-    – 05:00.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  #### 1️⃣ Dumb
-    Mode: Night Battery & EV Management\n\n  - **On_time Trigger (00:01)**:\n    -
-    Turns battery switch off with retries until confirmed.\n    - Starts EV charging
-    for connected cars (11kW/22kW Go-eChargers) using\n      `select_option` entities.\n
-    \   - Skips chargers with no connected cars.\n  - **Off_time or car_full Trigger
-    (04:59 / car fully charged)**:\n    - Switches Octopus night mode back to `Intelligent`.\n
-    \   - Stops EV charging if EV is connected, waiting for power draw to drop\n      below
-    5W.\n    - Turns battery back on if no EV power draw is detected.\n    - Retries
-    up to 3 times (1, 3, 5 minutes) if EV still drawing power.\n    - Sends notification
-    to Duncan if battery could not safely be turned on.\n\n  #### 2️⃣ Intelligent
-    Mode: Night Battery Controlled by Octopus Dispatch\n\n  - **On_dispatch Trigger**:\n
-    \   - Turns battery off with retries until confirmed.\n    - Starts EV charging
-    on 11kW Go-eCharger if needed.\n  - **Off_dispatch Trigger**:\n    - Stops EV
-    charging with retries until confirmed.\n    - Waits for EV power draw to drop
-    below 5W before turning battery back on.\n    - Uses repeated retries if necessary,
-    with notifications for failures.\n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n\n
-    \ - **Mode:** `single`  \n  - **Battery Controlled:** `switch.esp32_s3_zero_deye8k_time_of_use`
-    \ \n  - **EV Chargers Controlled:**  \n    - `select.go_echarger_270862_frc` (11kW)
-    \ \n    - `select.go_echarger_252682_frc` (22kW)  \n  - **Monitored Entities:**
-    \ \n    - Octopus dispatch sensor  \n    - EV chargers' power sensors  \n    -
-    EV battery SOC sensors  \n  - **Retry Logic:** Repeated attempts up to 10 times
-    for battery switch or EV charger state confirmation.  \n  - **Notifications:**
-    Alerts sent via `notify.duncan` if battery cannot be safely turned on due to EV
-    load.\n\n  ---\n\n  ### ⚡ **Notes / Best Practices**\n\n  - Dumb mode prioritizes
-    **scheduled night tariff optimization**.\n  - Intelligent mode respects **Octopus
-    dispatch signals** for energy savings.\n  - Battery is only turned on if **no
-    EV is drawing power >5W**.\n  - Retry mechanism ensures reliability while avoiding
-    EV conflicts.\n  - Notifications allow monitoring and manual intervention if automatic
-    control fails."
+  description: "\n  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV &
+    Battery Management for Octopus Tariffs**\n\n  This automation intelligently manages
+    **battery charging and discharging**, as well as **EV charging behavior**, during
+    **Octopus night tariff periods**. It supports both **Dumb** (time-based) and **Intelligent**
+    (Octopus-controlled) modes to ensure the most efficient and conflict-free use
+    of power.  \n  It also prevents battery discharge if EVs are drawing more than
+    the grid can supply and handles multiple EVs dynamically.\n\n  ---\n\n  ### ⏱
+    **Trigger Overview**\n\n  | Trigger | Description | ID |\n  |----------|--------------|----|\n
+    \ | `00:01` | Begin night cycle (turn battery off, start EV charging) | On_time
+    |\n  | `04:59` | End night cycle (stop EV charging, restore battery) | Off_time
+    |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching` → `on` | Intelligent
+    dispatch begins | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
+    → `off` | Intelligent dispatch ends | Off_dispatch |\n  | `sensor.renault_zoe_batterie
+    > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level
+    > 99% for 5 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
+    > 99.9% for 5 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
+    Prevents battery discharge if EVs draw > grid power | prevent_battery_discharge
+    |\n\n  ---\n\n  ### ✅ **Mode Logic**\n\n  - **Dumb Mode:** Follows a fixed time-based
+    routine for battery and EV control between 00:00 – 05:00.  \n  - **Intelligent
+    Mode:** Reacts dynamically to Octopus dispatch signals for charging and discharging
+    windows.  \n  - **Safety Logic:** Prevents battery from turning on if EVs are
+    drawing significant power, with retry intervals at 1, 3, and 5 minutes.\n\n  ---\n\n
+    \ ### ⚙️ **Action Workflow**\n\n  #### Dumb Mode (Scheduled Control)\n\n  - **Start
+    of Night (00:01):**\n    - Turns off the home battery using retry logic for reliability.\n
+    \   - Starts EV charging if cars are connected to either Go-eCharger (11 kW or
+    22 kW).\n    - Waits for power draw to confirm successful start.\n    - If EV
+    fails to charge, restores the battery and stops charging to prevent energy waste.\n\n
+    \ - **End of Night or EV Fully Charged (04:59 / EV Full):**\n    - Restores mode
+    to *Intelligent*.\n    - Stops EV charging, waiting until power draw drops below
+    5 W.\n    - Turns the battery back on once safe to do so.\n    - If still unsafe,
+    sends a notification and retries at 1, 3, and 5 minute intervals before giving
+    up.\n\n  #### Intelligent Mode (Octopus Dispatch Control)\n\n  - **Dispatch On:**
+    Turns off the battery and starts EV charging as directed by Octopus.\n  - **Dispatch
+    Off:** Stops EV charging, waits for safe discharge levels, then turns battery
+    back on.\n  - Notifications sent if EV load prevents battery activation.\n  -
+    Preventive template ensures battery never discharges while EVs draw more power
+    than the grid can provide.\n\n  ---\n\n  ### \U0001F527 **Technical Details**\n\n
+    \ - **Mode:** `single`\n  - **Battery Switch:** `switch.esp32_s3_zero_deye8k_time_of_use`\n
+    \ - **EV Chargers:**  \n    - `select.go_echarger_270862_frc` (11 kW)  \n    -
+    `select.go_echarger_252682_frc` (22 kW)\n  - **Monitored Sensors:**  \n    - Octopus
+    dispatch  \n    - Charger power sensors  \n    - EV battery SOC sensors  \n  -
+    **Retry System:** Up to 10 attempts for state confirmations (battery or charger)\n
+    \ - **Notifications:** Sent via `notify.duncan` when automation cannot safely
+    restore battery\n\n  ---\n\n  ### ⚡ **Design Notes**\n\n  - Dumb mode ensures
+    maximum use of cheap tariff power overnight.\n  - Intelligent mode yields control
+    to Octopus dispatch for adaptive savings.\n  - Safety logic prevents battery from
+    re-engaging while EVs draw significant power.\n  - Multiple retry layers ensure
+    reliability and reduce manual intervention.\n  - Notifications provide transparency
+    when automation requires attention."
   triggers:
   - trigger: time
     at: 00:01:00
@@ -7677,16 +7639,16 @@
   - trigger: numeric_state
     entity_id:
     - sensor.renault_zoe_batterie
-    id: car_full
+    id: car_full_zoe
     for:
       hours: 0
       minutes: 15
       seconds: 0
-    above: 98.5
+    above: 98.1
   - trigger: numeric_state
     entity_id:
     - sensor.wvgzzze2zpe005371_battery_level
-    id: car_full
+    id: car_full_id4
     for:
       hours: 0
       minutes: 5
@@ -7700,7 +7662,23 @@
       minutes: 5
       seconds: 0
     above: 99.9
-    id: car_full
+    id: car_full_mg4
+  - trigger: template
+    value_template: "    {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+      %}\n    {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+      %}\n    {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+      if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+      if car_11kw else 0)) %}\n    {% set grid = states('sensor.grid_import') | float(0)
+      %}\n    {% set octopus = is_state('binary_sensor.octopus_a_10a76963_intelligent_dispatching','on')
+      or is_state('input_select.octopus_night_time','Dumb') %}\n    {% set battery_discharging
+      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {{ (car_22kw or
+      car_11kw) and octopus and power_goes > 50 and grid < power_goes and battery_discharging
+      }}"
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+    id: prevent_battery_discharge
   conditions: []
   actions:
   - choose:
@@ -7784,12 +7762,249 @@
                 entity_id:
                 - select.go_echarger_252682_frc
             custom_target_state: Charge
+      - alias: Wait up to 5 mins for power to rise above 50W, indicating a successful
+          Charging Start
+        wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.go_echarger_270862_nrg_12
+          - sensor.go_echarger_252682_nrg_12
+          above: 50
+        timeout:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+        continue_on_timeout: true
+      - alias: Fallback if not charging then re-enable Battery
+        if:
+        - condition: template
+          value_template: '{{ not wait.completed }}'
+        then:
+        - alias: If Car is connected to 22kW Charger then stop charging
+          if:
+          - condition: state
+            entity_id: binary_sensor.go_echarger_252682_car
+            state: 'on'
+          then:
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: select.go_echarger_252682_frc
+              target_state: custom
+              custom_action:
+              - action: select.select_option
+                metadata: {}
+                data:
+                  option: Don't charge
+                target:
+                  entity_id:
+                  - select.go_echarger_252682_frc
+              custom_target_state: Don't charge
+        - alias: If Car is connected to 11kW Charger then stop charging
+          if:
+          - condition: state
+            entity_id: binary_sensor.go_echarger_270862_car
+            state: 'on'
+          then:
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: select.go_echarger_270862_frc
+              target_state: custom
+              custom_action:
+              - action: select.select_option
+                metadata: {}
+                data:
+                  option: Don't charge
+                target:
+                  entity_id:
+                  - select.go_echarger_270862_frc
+              custom_target_state: Don't charge
+        - alias: Only wait for power if above threshold
+          if:
+          - condition: or
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              above: 5
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_252682_nrg_12
+              above: 5
+          then:
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_270862_nrg_12
+              below: 5
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_252682_nrg_12
+              below: 5
+            timeout:
+              hours: 0
+              minutes: 1
+              seconds: 0
+              milliseconds: 0
+            continue_on_timeout: true
+        - if:
+          - condition: and
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              below: 5
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_252682_nrg_12
+              below: 5
+          then:
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+              target_state: 'on'
+            alias: Turn Battery On via retry Script
+          else:
+          - action: notify.duncan
+            data:
+              title: Octopus night recovery
+              message: 'Skipping battery ON: EV still >5 W (wait timed out). Will
+                retry in 1, 3, and 5 minutes.'
+              data:
+                tag: octopus_night_recovery
+          - alias: Retry Battery ON after timeout (1, 3, 5 min)
+            repeat:
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 1 }}'
+                  sequence:
+                  - delay: 00:01:00
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 2 }}'
+                  sequence:
+                  - delay: 00:03:00
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.index == 3 }}'
+                  sequence:
+                  - delay: 00:05:00
+                alias: 1, 3 or 5 Minute Delay between retries
+              - alias: Turn Battery on if no EV Power Draw, if not notify about it
+                if:
+                - condition: and
+                  conditions:
+                  - condition: numeric_state
+                    entity_id: sensor.go_echarger_270862_nrg_12
+                    below: 5
+                  - condition: numeric_state
+                    entity_id: sensor.go_echarger_252682_nrg_12
+                    below: 5
+                then:
+                - alias: 'Turn Battery On via retry Script '
+                  action: script.retry_action_with_backoff
+                  metadata: {}
+                  data:
+                    action_domain: switch
+                    action_type: turn_on
+                    max_retries: 10
+                    base_delay: 5
+                    max_delay: 60
+                    backoff_type: simple
+                    notify_on_failure: true
+                    notify_service: notify.duncan
+                    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                    target_state: 'on'
+                else:
+                - action: notify.duncan
+                  data:
+                    title: Octopus night recovery
+                    message: 'Retry {{ repeat.index }}: EV still >5 W; trying next
+                      slot (1/3/5 min).'
+                    data:
+                      tag: octopus_night_recovery
+              until:
+              - condition: or
+                conditions:
+                - condition: state
+                  entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                  state: 'on'
+                - condition: template
+                  value_template: '{{ repeat.index >= 3 }}'
+                alias: Either battery is on or we retried 3 or more times
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
-      - condition: trigger
-        id:
-        - car_full
-        - Off_time
+      - alias: Triggered by off time or EV full
+        condition: or
+        conditions:
+        - condition: trigger
+          id:
+          - Off_time
+        - condition: or
+          conditions:
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_zoe
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: Zoe
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: Zoe
+            alias: Zoe full and was charging
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_id4
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: ID.4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: ID.4
+            alias: 'ID4 full and was charging '
+          - condition: and
+            conditions:
+            - condition: trigger
+              id:
+              - car_full_mg4
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: MG4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: MG4
+            alias: 'MG4 full and was charging '
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
@@ -7813,7 +8028,9 @@
           if:
           - condition: trigger
             id:
-            - car_full
+            - car_full_zoe
+            - car_full_id4
+            - car_full_mg4
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -7825,6 +8042,7 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
+            continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
@@ -7855,7 +8073,9 @@
           if:
           - condition: trigger
             id:
-            - car_full
+            - car_full_zoe
+            - car_full_id4
+            - car_full_mg4
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -7867,6 +8087,7 @@
               minutes: 30
               seconds: 0
               milliseconds: 0
+            continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
@@ -8192,6 +8413,105 @@
                 value_template: '{{ repeat.index >= 3 }}'
               alias: Either battery is on or we retried 3 or more times
       alias: Stop EV Charging, Octopus Intelligent Mode
+    - conditions:
+      - condition: trigger
+        id:
+        - prevent_battery_discharge
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.octopus_a_10a76963_intelligent_dispatching
+          state: 'on'
+        - condition: state
+          entity_id: input_select.octopus_night_time
+          state: Dumb
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+          target_state: 'off'
+        alias: 'Turn Battery Off via retry Script '
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 10
+          milliseconds: 0
+      - wait_template: "{% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+          %}\n            {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+          %}\n            {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+          if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+          if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
+          | float(0) %}\n            {% set battery_discharging = states('sensor.battery_discharge')
+          | float(0) > 50 %}\n            {{ grid >= power_goes or not battery_discharging
+          }}"
+        continue_on_timeout: true
+        timeout: 00:01:00
+      - repeat:
+          sequence:
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ repeat.index == 2 }}'
+              sequence:
+              - delay:
+                  hours: 0
+                  minutes: 1
+                  seconds: 0
+                  milliseconds: 0
+            - conditions:
+              - condition: template
+                value_template: '{{ repeat.index == 3 }}'
+              sequence:
+              - delay:
+                  hours: 0
+                  minutes: 3
+                  seconds: 0
+                  milliseconds: 0
+            default:
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 1
+                milliseconds: 0
+          - if:
+            - condition: template
+              value_template: "            {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+                %}\n            {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
+                %}\n            {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
+                if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
+                if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
+                | float(0) %}\n            {% set battery_discharging = states('sensor.battery_discharge')
+                | float(0) > 50 %}\n            {{ grid >= power_goes and battery_discharging
+                }}"
+            then:
+            - action: notify.duncan
+              data:
+                title: Octopus Battery Guard
+                message: "Retry {{ repeat.index}}/3: battery {{ states('sensor.battery_discharge')|float(0)|round(0)
+                  }} W, grid {{ states('sensor.grid_import')|float(0)|round(0) }} W
+                  vs EV {{\n                    (\n                      (states('sensor.go_echarger_252682_nrg_12')|float(0)
+                  if is_state('binary_sensor.go_echarger_252682_car','on') else 0)
+                  +\n                      (states('sensor.go_echarger_270862_nrg_12')|float(0)
+                  if is_state('binary_sensor.go_echarger_270862_car','on') else 0)\n
+                  \                   ) | round(0)\n                  }} W."
+                data:
+                  tag: octopus_battery_guard
+          until:
+          - condition: template
+            value_template: '{% set battery_discharging = states(''sensor.battery_discharge'')
+              | float(0) > 50 %}
+
+              {{ (battery_discharging) or (repeat.index >= 3) }}'
+      alias: Fallback Battery Protection from Discharge to EV
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
@@ -8231,18 +8551,25 @@
   mode: queued
 - id: '1750928722036'
   alias: Reboot Host System on 1st of the Month
-  description: "## \U0001F504 Monthly Host Reboot Automation\n\n### \U0001F4CB Purpose\nAutomatically
-    reboots the Home Assistant host system on the **first day of every month**,\nproviding
-    an advance notification one hour prior to the reboot for awareness.\n\n---\n\n###
-    ⏱ Triggers\n- `12:00:00` → Sends pre-notification one hour before reboot.\n- `13:00:00`
-    → Executes the actual host system reboot.\n\n---\n\n### ✅ Conditions\n- Only triggers
-    when the current day is the **1st of the month**.\n  ```jinja\n  {{ now().day
-    == 1 }}\n  ```\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### 12:00 Notification\n-
-    Send a notification to user that the host system will reboot at 13:00.\n\n####
-    13:00 Reboot\n- Notify user that the host system is now rebooting.\n- Trigger
-    `hassio.host_reboot` to reboot the Home Assistant host.\n\n---\n\n### \U0001F527
-    Technical Specs\n- Mode: `choose` structure based on which trigger fired.\n- Notifications
-    use plain text for clarity."
+  description: "\n  ## \U0001F504 Monthly Host Reboot Automation\n\n  ### \U0001F4CB
+    Purpose\n\n  Automatically reboots the Home Assistant host system on the **first
+    day of\n  every month**, providing an advance notification one hour prior to the
+    reboot\n  for awareness.\n\n  Adds a **safety condition** ensuring the host has
+    been running for **at least\n  10 days** since the last system start, preventing
+    unnecessary reboots after\n  recent restarts.\n\n  ---\n\n  ### ⏱ Triggers\n\n
+    \ - `12:00:00` → Sends pre-notification one hour before reboot.\n\n  - `13:00:00`
+    → Executes the actual host system reboot.\n\n  ---\n\n  ### ✅ Conditions\n\n  -
+    Current day must be the **1st of the month**.\n    ```jinja\n    {{ now().day
+    == 1 }}\n    ```\n\n  - The last system boot must be **10 or more days ago**.\n
+    \   ```jinja\n    {{ (as_timestamp(now()) -\n            (as_timestamp(states('sensor.system_monitor_letzter_start'))
+    |\n            float(0))) >= 864000 }}\n    ```\n\n  ---\n\n  ### \U0001F3AF Actions
+    / Workflow\n\n  #### 12:00 Notification\n\n  - Send a notification to the user
+    that the host system will reboot at 13:00.\n\n  #### 13:00 Reboot\n\n  - Verify
+    that the system has been up for at least 10 days.\n  - Notify the user that the
+    host system is now rebooting.\n  - Trigger `hassio.host_reboot` to reboot the
+    Home Assistant host.\n\n  ---\n\n  ### \U0001F527 Technical Specs\n\n  - Mode:
+    `choose` structure based on which trigger fired.\n  - Notifications use plain
+    text for clarity."
   triggers:
   - at: '13:00:00'
     trigger: time
@@ -8268,10 +8595,17 @@
       - condition: trigger
         id:
         - '13'
+      - condition: template
+        value_template: '{{ (as_timestamp(now()) - (as_timestamp(states(''sensor.system_monitor_letzter_start''))
+          | float(0))) >= 864000 }}
+
+          '
+        alias: Last Host Reboot is more than 10 Days ago
       sequence:
       - metadata: {}
         data:
-          message: Rebooting Hostsystem
+          message: ' '
+          title: Rebooting Hostsystem
         action: notify.duncan
       - data: {}
         action: hassio.host_reboot
@@ -9145,13 +9479,13 @@
       entity_id: switch.bett_plug_right
   mode: single
 - id: '1757084461870'
-  alias: Turn Off Bett Plug Left Over 40W
+  alias: Turn Off Bett Plug Left Over 65W
   description: ''
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.bett_plug_left_power
-    above: 40
+    above: 65
   conditions: []
   actions:
   - action: switch.turn_off
@@ -9187,67 +9521,45 @@
         id:
         - '23'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.garagentor_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.garagentor_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.sauger_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.sauger_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.backofen_tasmota
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id:
-              - switch.backofen_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.garagentor_tasmota
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.sauger_tasmota
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.backofen_tasmota
+          target_state: 'off'
       alias: Power off at 23
     - conditions:
       - condition: state
@@ -9278,67 +9590,45 @@
               minutes: 1
               seconds: 0
           continue_on_timeout: true
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.garagentor_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.garagentor_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.sauger_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id:
-              - switch.sauger_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.backofen_tasmota
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.backofen_tasmota
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.garagentor_tasmota
+          target_state: 'on'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.sauger_tasmota
+          target_state: 'on'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.backofen_tasmota
+          target_state: 'on'
       alias: Power on at 4
     - conditions:
       - condition: state
@@ -9358,7 +9648,8 @@
           seconds: 5
           milliseconds: 0
       alias: Power off all the way
-  mode: single
+  mode: queued
+  max: 3
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
   description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
@@ -9886,6 +10177,15 @@
     entity_id:
     - sensor.waschmaschine_lauft_seit
     below: 16.8
+  - trigger: state
+    entity_id:
+    - binary_sensor.waschmaschine_lauft
+    to: 'off'
+    from: 'on'
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 0
   conditions:
   - condition: state
     entity_id: input_boolean.waschmaschine_fertig
@@ -10121,4 +10421,88 @@
       message: '{{ state_attr(''sensor.home_assistant_beta_release_notes'',''ai_summary'')}}'
       data:
         clickAction: '{{ state_attr(''sensor.home_assistant_beta_release_notes'',''beta_url'')}}'
+  mode: single
+- id: '1762188975423'
+  alias: Plant Light Control via Retry Script
+  description: "  ## \U0001F305\U0001F307 **Plant Light Control with Reliable Retry
+    Logic**\n\n  This automation intelligently manages the **plant grow lights** throughout
+    the\n  day, ensuring dependable operation even if a switch command initially fails.
+    \ \n  It leverages the **Retry Action with Backoff** script to repeatedly attempt\n
+    \ each state change until success, with exponential retry delays for resilience.\n\n
+    \ ### \U0001F553 **Schedule Overview**\n\n  - **\U0001F305 Sunrise:** Turns **all
+    configured lights ON**, providing early light exposure.  \n  - **\U0001F307 Sunset:**
+    Turns **all lights OFF**, simulating natural daylight cycles.  \n  - **\U0001F557
+    20:00:** Turns **lights OFF** *only if the sun has already set*, ensuring\n    no
+    unnecessary evening illumination.\n\n  ### ⚙️ **Reliability Features**\n  Each
+    light entity is processed individually with up to **5 retry attempts**,  \n  using
+    a **5-second exponential backoff** between attempts to guarantee the\n  final
+    desired state is reached.\n\n  ---\n  *Entities managed:*  \n  `switch.rescue_plants`,
+    `switch.bett_power_strip_l3`"
+  triggers:
+  - trigger: sun
+    event: sunrise
+    id: sunrise
+  - trigger: sun
+    event: sunset
+    id: sunset
+  - trigger: time
+    at: '20:00:00'
+    id: time_20
+  actions:
+  - variables:
+      entities:
+      - switch.rescue_plants
+      - switch.bett_power_strip_l3
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: sunrise
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'on'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+    - conditions:
+      - condition: trigger
+        id: sunset
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+    - conditions:
+      - condition: trigger
+        id: time_20
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
+      sequence:
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
   mode: single
