@@ -8528,17 +8528,19 @@
                 if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
                 if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
                 | float(0) %}\n            {% set battery_discharging = states('sensor.battery_discharge')
-                | float(0) > 50 %}\n            {{ grid >= power_goes or not battery_discharging
+                | float(0) > 50 %}\n            {{ grid >= power_goes or battery_discharging
                 }}"
             then:
             - action: notify.duncan
               data:
                 title: Octopus Battery Guard
-                message: 'Retry {{ repeat.index }}/3: battery {{ states(''sensor.battery_discharge'')|float(0)|round(0)
-                  }} W, grid {{ states(''sensor.grid_import'')|float(0)|round(0) }} W
-                  vs EV {{ ev|round(0) }} W.
-
-                  '
+                message: "Retry {{ repeat.index|int()|default(0)}}/3: battery {{ states('sensor.battery_discharge')|float(0)|round(0)
+                  }} W, grid {{ states('sensor.grid_import')|float(0)|round(0) }} W
+                  vs EV {{\n                    (\n                      (states('sensor.go_echarger_252682_nrg_12')|float(0)
+                  if is_state('binary_sensor.go_echarger_252682_car','on') else 0)
+                  +\n                      (states('sensor.go_echarger_270862_nrg_12')|float(0)
+                  if is_state('binary_sensor.go_echarger_270862_car','on') else 0)\n
+                  \                   ) | round(0)\n                  }} W."
                 data:
                   tag: octopus_battery_guard
           until:
@@ -8547,6 +8549,7 @@
               | float(0) > 50 %}
 
               {{ (not battery_discharging) or (repeat.index >= 3) }}'
+      alias: Fallback Battery Protection from Discharge to EV
   mode: single
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
