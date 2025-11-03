@@ -7711,13 +7711,14 @@
     above: 99.9
     id: car_full_mg4
   - trigger: template
-    value_template: "{% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
+    value_template: "    {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
       %}\n    {% set car_11kw = is_state('binary_sensor.go_echarger_270862_car','on')
       %}\n    {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
       if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
       if car_11kw else 0)) %}\n    {% set grid = states('sensor.grid_import') | float(0)
       %}\n    {% set octopus = is_state('binary_sensor.octopus_a_10a76963_intelligent_dispatching','on')
-      or is_state('input_select.octopus_night_time','Dumb') %}\n    {{ (car_22kw or
+      or is_state('input_select.octopus_night_time','Dumb') %}\n    {% set battery_discharging
+      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {{ (car_22kw or
       car_11kw) and octopus and power_goes > 50 and grid < power_goes }}"
     for:
       hours: 0
@@ -8495,10 +8496,11 @@
           %}\n            {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
           if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
           if car_11kw else 0)) %}\n            {% set grid = states('sensor.grid_import')
-          | float(0) %}\n            {{ grid >= power_goes }}"
+          | float(0) %}\n            {% set battery_discharging = states('sensor.battery_discharge')
+          | float(0) > 50 %}\n            {{ grid >= power_goes and not battery_discharging
+          }}"
         continue_on_timeout: true
-        timeout:
-          seconds: 60
+        timeout: 00:01:00
       - if:
         - condition: template
           value_template: "                {% set car_22kw = is_state('binary_sensor.go_echarger_252682_car','on')
@@ -8506,7 +8508,9 @@
             %}\n                {% set power_goes = (((states('sensor.go_echarger_252682_nrg_12')|float(0))
             if car_22kw else 0) + ((states('sensor.go_echarger_270862_nrg_12')|float(0))
             if car_11kw else 0)) %}\n                {% set grid = states('sensor.grid_import')
-            | float(0) %}\n                {{ grid < power_goes }}"
+            | float(0) %}\n                {% set battery_discharging = states('sensor.battery_discharge')
+            | float(0) > 50 %}\n                {{ grid < power_goes and not battery_discharging
+            }}"
         then:
         - action: notify.duncan
           data:
@@ -8514,7 +8518,8 @@
               }}W Chargers: {{ \n  (states('sensor.go_echarger_252682_nrg_12')|float(0)
               if is_state('binary_sensor.go_echarger_252682_car','on') else 0) +\n
               \ (states('sensor.go_echarger_270862_nrg_12')|float(0) if is_state('binary_sensor.go_echarger_270862_car','on')
-              else 0)\n}}W"
+              else 0)\n}}W Battery Discharge: {{states('sensor.battery_discharge')
+              | float(0) }}W"
             title: Octopus Battery Guard
             data:
               tag: octopus_battery_guard
