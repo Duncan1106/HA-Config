@@ -10357,11 +10357,23 @@
     - sensor.home_assistant_beta_release_notes
   conditions:
   - condition: template
-    value_template: "      {% set today = now() %}\n      {% set first_day = today.replace(day=1)
-      %}\n      {% set days_to_wed = (2 - first_day.weekday()) % 7 %}\n      {% set
-      first_wed = first_day + timedelta(days=days_to_wed) %}\n      {% set start_day
-      = first_wed.day - 7 %}\n      {{ today.day >= start_day and today.day <= first_wed.day
-      and today.month == first_wed.month }}"
+    value_template: "{% set test_date = now().replace(tzinfo=None) %}\n\n{# ---- Compute
+      first Wednesday of current month ---- #}\n{% set first_day_current_month = strptime(test_date.year
+      ~ \"-\" ~ \"%02d\"|format(test_date.month) ~ \"-01\", \"%Y-%m-%d\") %}\n{% set
+      days_to_wed_current = (2 - first_day_current_month.weekday()) % 7 %}\n{% set
+      current_month_first_wed = first_day_current_month + timedelta(days=days_to_wed_current)
+      %}\n{% set current_window_start = current_month_first_wed - timedelta(days=7)
+      %}\n{% set current_window_end = current_month_first_wed %}\n\n{# ---- Compute
+      first Wednesday of next month ---- #}\n{% set next_month = test_date.month +
+      1 if test_date.month < 12 else 1 %}\n{% set next_year = test_date.year if test_date.month
+      < 12 else test_date.year + 1 %}\n{% set first_day_next_month = strptime(next_year
+      ~ \"-\" ~ \"%02d\"|format(next_month) ~ \"-01\", \"%Y-%m-%d\") %}\n{% set days_to_wed_next
+      = (2 - first_day_next_month.weekday()) % 7 %}\n{% set next_month_first_wed =
+      first_day_next_month + timedelta(days=days_to_wed_next) %}\n{% set next_window_start
+      = next_month_first_wed - timedelta(days=7) %}\n{% set next_window_end = next_month_first_wed
+      %}\n\n{# ---- Final evaluation ---- #}\n{{ (current_window_start <= test_date
+      <= current_window_end) or\n   (next_window_start <= test_date <= next_window_end)
+      }}"
   actions:
   - action: notify.duncan
     metadata: {}
