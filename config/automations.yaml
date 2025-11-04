@@ -1516,97 +1516,6 @@
           entity_id: sensor.discharged_energy_from_bkw_battery
   mode: queued
   max: 15
-- id: '1712568670640'
-  alias: Update notifications
-  description: Notifies mobile devices about available updates for Home Assistant
-    core, supervisor, add-ons, and integrations daily at noon.
-  use_blueprint:
-    path: mdegat01/update_notifications.yaml
-    input:
-      update_entities:
-      - update.advanced_ssh_web_terminal_update
-      - update.ankerctl_update
-      - update.ankermake_update
-      - update.anylist_update_2
-      - update.anylist_update
-      - update.auto_backup_update
-      - update.battery_notes_update
-      - update.bookstack_update
-      - update.bubble_card_update
-      - update.card_mod_update
-      - update.charger_card_update
-      - update.chrony_update
-      - update.custom_sidebar_update
-      - update.dbstats_update
-      - update.device_tools_update
-      - update.dreame_vacuum_update
-      - update.dwd_pollenflug_update
-      - update.dynamic_energy_cost_update
-      - update.earnapp_update
-      - update.emqx_update
-      - update.esphome_update
-      - update.everything_presence_lite_f1c0d0_everything_presence_lite_firmware
-      - update.everything_presence_zone_configurator_update
-      - update.file_editor_update
-      - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
-      - update.hacs_update
-      - update.home_assistant_core_update
-      - update.home_assistant_google_drive_backup_update
-      - update.home_assistant_operating_system_update
-      - update.home_assistant_supervisor_update
-      - update.honeygain_update_2
-      - update.honeygain_update
-      - update.ics_calendar_icalendar_update
-      - update.jellyfin_nas_update
-      - update.kiosk_mode_update
-      - update.mariadb_update
-      - update.mini_graph_card_update
-      - update.mqtt_explorer_update
-      - update.multiscrape_update
-      - update.mushroom_update
-      - update.network_ups_tools_update
-      - update.onedrive_backup_update
-      - update.packetstream_update
-      - update.pawns_app_update
-      - update.repocket_update
-      - update.samba_nas_update
-      - update.scheduler_card_update
-      - update.scheduler_component_update
-      - update.scrutiny_full_access_update
-      - update.solarman_update
-      - update.solcast_pv_solar_update
-      - update.speedtest_update
-      - update.spook_not_your_homie_update
-      - update.tailscale_update
-      - update.tapo_cameras_control_update
-      - update.tibber_pulse_local_update
-      - update.traffmonetizer_update
-      - update.trashcard_update
-      - update.vehicle_status_card_update
-      - update.vertical_stack_in_card_update
-      - update.volkswagen_we_connect_update
-      - update.waste_collection_schedule_update
-      - update.webrtc_camera_update
-      - update.wundergroundpws_update
-      - update.xiaomi_vacuum_map_card_update
-      - update.zigbee2mqtt_update
-      - update.earnfm_update
-      - update.saic_mqtt_gateway_python_update
-      - update.octopus_energy_germany_update
-      - update.beszel_agent_branch_update
-      - update.beszel_integration_update
-      - update.bodypetscale_update
-      - update.frigate_full_access_update
-      - update.home_assistant_git_exporter_update
-      - update.ugreen_nas_integration_update
-      mobile_app_device: 905c163dcc62544838edb078413723b2
-      run_config_check: false
-      only_after: '11:59:00'
-      only_before: '12:04:00'
-      mobile_app_device_2: 71c7eee3ffe028806cd019f588f47ba1
-      reminder_hours: None
-      changelog_urls: none
-      take_backup: false
 - id: '1712612224089'
   alias: Adjust Person Counter if necessary
   description: ''
@@ -7105,10 +7014,6 @@
       seconds: 0
   conditions: []
   actions:
-  - action: hassio.addon_start
-    metadata: {}
-    data:
-      addon: b3f9bc48_honeygain
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -10236,7 +10141,7 @@
         - Sunrise
       - condition: numeric_state
         entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 15
+        above: 20
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -10357,23 +10262,21 @@
     - sensor.home_assistant_beta_release_notes
   conditions:
   - condition: template
-    value_template: "{% set test_date = now().replace(tzinfo=None) %}\n\n{# ---- Compute
-      first Wednesday of current month ---- #}\n{% set first_day_current_month = strptime(test_date.year
-      ~ \"-\" ~ \"%02d\"|format(test_date.month) ~ \"-01\", \"%Y-%m-%d\") %}\n{% set
-      days_to_wed_current = (2 - first_day_current_month.weekday()) % 7 %}\n{% set
-      current_month_first_wed = first_day_current_month + timedelta(days=days_to_wed_current)
+    value_template: "{% set test_date = now().date() %}\n{% set first_day_current_month
+      = strptime(test_date.year ~ \"-\" ~ \"%02d\"|format(test_date.month) ~ \"-01\",
+      \"%Y-%m-%d\").date() %}\n{% set days_to_wed_current = (2 - first_day_current_month.weekday())
+      % 7 %}\n{% set current_month_first_wed = first_day_current_month + timedelta(days=days_to_wed_current)
       %}\n{% set current_window_start = current_month_first_wed - timedelta(days=7)
-      %}\n{% set current_window_end = current_month_first_wed %}\n\n{# ---- Compute
-      first Wednesday of next month ---- #}\n{% set next_month = test_date.month +
-      1 if test_date.month < 12 else 1 %}\n{% set next_year = test_date.year if test_date.month
-      < 12 else test_date.year + 1 %}\n{% set first_day_next_month = strptime(next_year
-      ~ \"-\" ~ \"%02d\"|format(next_month) ~ \"-01\", \"%Y-%m-%d\") %}\n{% set days_to_wed_next
-      = (2 - first_day_next_month.weekday()) % 7 %}\n{% set next_month_first_wed =
-      first_day_next_month + timedelta(days=days_to_wed_next) %}\n{% set next_window_start
-      = next_month_first_wed - timedelta(days=7) %}\n{% set next_window_end = next_month_first_wed
-      %}\n\n{# ---- Final evaluation ---- #}\n{{ (current_window_start <= test_date
-      <= current_window_end) or\n   (next_window_start <= test_date <= next_window_end)
-      }}"
+      %}\n{% set current_window_end = current_month_first_wed %}\n{% set next_month
+      = test_date.month + 1 if test_date.month < 12 else 1 %}\n{% set next_year =
+      test_date.year if test_date.month < 12 else test_date.year + 1 %}\n{% set first_day_next_month
+      = strptime(next_year ~ \"-\" ~ \"%02d\"|format(next_month) ~ \"-01\", \"%Y-%m-%d\").date()
+      %}\n{% set days_to_wed_next = (2 - first_day_next_month.weekday()) % 7 %}\n{%
+      set next_month_first_wed = first_day_next_month + timedelta(days=days_to_wed_next)
+      %}\n{% set next_window_start = next_month_first_wed - timedelta(days=7) %}\n{%
+      set next_window_end = next_month_first_wed %}\n{% set in_window = (current_window_start
+      <= test_date <= current_window_end) or\n                   (next_window_start
+      <= test_date <= next_window_end) %}\n{{ in_window }}"
   actions:
   - action: notify.duncan
     metadata: {}
