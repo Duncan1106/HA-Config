@@ -493,47 +493,6 @@
       action: counter.increment
   mode: parallel
   max: 10
-- id: '1705100077572'
-  alias: Trockner ist fertig
-  description: ''
-  use_blueprint:
-    path: Blackshome/appliance-notifications.yaml
-    input:
-      power_sensor: sensor.trockner_energy_power
-      include_end_notify: disable_end_notify_options
-      end_notify_device: []
-      end_message_title: 'Trockner '
-      end_message: Trockner ausräumen
-      end_time_delay: 0.5
-      start_appliance_power: 15
-      end_appliance_power: 10
-      include_start_notify: enable_start_notify_options
-      start_notify_device:
-      - 905c163dcc62544838edb078413723b2
-      end_custom_actions:
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.trockner
-        action: counter.increment
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.trockner_fertig
-      start_time_delay: 1
-      start_title: 'Trockner '
-      include_custom_actions:
-      - enable_end_custom_actions
-      start_message: ' '
-      watchdog_timeframe:
-        hours: 3
-        minutes: 0
-        seconds: 0
-      watchdog_message: 'Uh-oh! Time to check the dryer '
-      include_watchdog: enable_watchdog
-      end_notify_data: []
-      start_custom_actions: []
 - id: '1705101110242'
   alias: Notify When Battery Devices Are Offline
   description: This automation sends a notification when specific battery-operated
@@ -10396,7 +10355,13 @@
   - trigger: state
     entity_id:
     - sensor.home_assistant_beta_release_notes
-  conditions: []
+  conditions:
+  - condition: template
+    value_template: "      {% set today = now() %}\n      {% set first_day = today.replace(day=1)
+      %}\n      {% set days_to_wed = (2 - first_day.weekday()) % 7 %}\n      {% set
+      first_wed = first_day + timedelta(days=days_to_wed) %}\n      {% set start_day
+      = first_wed.day - 7 %}\n      {{ today.day >= start_day and today.day <= first_wed.day
+      and today.month == first_wed.month }}"
   actions:
   - action: notify.duncan
     metadata: {}
