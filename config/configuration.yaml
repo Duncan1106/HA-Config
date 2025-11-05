@@ -1106,6 +1106,68 @@ mqtt:
           - "4CEBD618F373"
 
   sensor:
+    - name: "Tibber Node Pulse Battery Voltage"
+      unique_id: tibber_node_battery_voltage
+      state_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      value_template: "{{ value_json.node_status.node_battery_voltage | round(3) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      icon: mdi:battery
+      json_attributes_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      json_attributes_template: >
+        {{ value_json.node_status | combine(value_json.hub_attachments) | tojson }}
+      force_update: true
+      
+    - name: "Tibber Node Bridge Status"
+      unique_id: tibber_bridge_status_sensor
+      state_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      value_template: "{{ value_json.node_status.voltage | float(0) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      json_attributes_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      json_attributes_template: >
+        {% set ns = value_json.node_status %}
+        {% if ns is defined %}
+          {% set uptime = ns.node_uptime_ms | float(0) / 1000 %}
+          {% set boot_time = now() - timedelta(seconds=uptime) %}
+          {% set delta = now() - boot_time %}
+          {% set days = (delta.total_seconds() // 86400) | int %}
+          {% set hours = ((delta.total_seconds() % 86400) // 3600) | int %}
+          {% set minutes = ((delta.total_seconds() % 3600) // 60) | int %}
+          {% set seconds = (delta.total_seconds() % 60) | int %}
+          {% set uptime_human = (
+              (days ~ "d " if days > 0 else "") ~
+              (hours ~ "h " if hours > 0 else "") ~
+              (minutes ~ "m " if minutes > 0 else "") ~
+              (seconds ~ "s" if days == 0 and hours == 0 else "")
+            ) | trim() %}
+          {{
+            dict(
+              voltage = ns.voltage,
+              current = ns.current,
+              power = ns.power,
+              temperature = ns.temperature,
+              uptime_ms = ns.node_uptime_ms,
+              rssi = ns.wifi.rssi if ns.wifi is defined else none,
+              ssid = ns.wifi.ssid if ns.wifi is defined else none,
+              ip = ns.wifi.ip if ns.wifi is defined else none,
+              mac = ns.wifi.mac if ns.wifi is defined else none,
+              bssid = ns.wifi.bssid if ns.wifi is defined else none,
+
+              uptime_human = uptime_human,
+              wifi_quality = (
+                "Excellent" if ns.wifi.rssi | int(-100) > -55 else
+                "Good" if ns.wifi.rssi | int(-100) > -67 else
+                "Fair" if ns.wifi.rssi | int(-100) > -75 else
+                "Weak"
+              ) if ns.wifi is defined else "Unknown"
+            )
+          }}
+        {% else %}
+          {}
+        {% endif %}
+
     - state_topic: fully-single-app/deviceInfo/a9641507-a9641507
       name: Fully Kiosk Device Info
       unique_id: fully_kiosk_device_info
