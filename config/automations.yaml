@@ -1421,28 +1421,33 @@
         entity_id:
         - sensor.charged_energy_to_bkw_battery
         - sensor.discharged_energy_from_bkw_battery
-    - wait_for_trigger:
-      - trigger: numeric_state
-        entity_id:
-        - sensor.bkw_outlet_1_energy_power
-        above: 10
-      timeout:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-      continue_on_timeout: true
     - if:
-      - condition: template
-        value_template: '{{ not wait.completed }}'
+      - condition: numeric_state
+        entity_id: sensor.bkw_outlet_1_energy_power
+        above: 10
       then:
-      - action: notify.duncan
-        data:
-          message: ⚠️ The load did not rise above 10W within 30s after turning on
-            at night.
-          title: BKW Error
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.bkw_outlet_1_energy_power
+          above: 10
+        timeout:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ not wait.completed }}'
+        then:
+        - action: notify.duncan
           data:
-            tag: bkw_night_no_load
+            message: ⚠️ The load did not rise above 10W within 30s after turning on
+              at night.
+            title: BKW Error
+            data:
+              tag: bkw_night_no_load
   - alias: off night
     if:
     - condition: and
