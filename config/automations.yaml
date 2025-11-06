@@ -9500,34 +9500,40 @@
   max: 3
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
-  description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
-    automation manages the heating room (Heizraum) fan based on the power consumption
-    of another fan. It ensures the fan only runs when necessary, helping save energy
-    by avoiding unnecessary operation.  \n\n---\n\n### ⏰ **Triggers**\n\n| Trigger
-    Entity | Condition | Delay | Trigger ID |\n|----------------|-----------|-------|------------|\n|
-    `sensor.heizraum_lufter_abluft_power` | Above 0.1 W | 1 minute | \"On\" |\n| `sensor.heizraum_lufter_abluft_power`
-    | Below 0.01 W | 1 minute | \"Off\" |\n\n> **Note:** Triggers include a 1-minute
-    delay (`for: 1m`) to prevent flickering or rapid on/off cycling.  \n\n---\n\n###
-    ✅ **Conditions**\n\n- None. The automation reacts directly to the numeric state
-    triggers.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **Fan On Trigger
-    (\"On\")**  \n   - Checks if the trigger ID is \"On\".  \n   - Uses a repeat loop
-    to ensure the fan (`switch.heizraum_lufter`) turns on.  \n   - Repeats every 5
-    seconds until the fan state is `\"on\"`.  \n\n2. **Fan Off Trigger (\"Off\")**
-    \ \n   - Checks if the trigger ID is \"Off\".  \n   - Uses a repeat loop to ensure
-    the fan turns off.  \n   - Repeats every 5 seconds until the fan state is `\"off\"`.
-    \ \n\n> **Rationale:** The repeat loops guarantee the switch successfully changes
-    state even if a transient failure occurs.  \n\n---\n\n### \U0001F527 **Technical
-    Specs**\n\n- **Mode:** `restart` (ensures a new trigger cancels the current action
-    and restarts the automation)  \n- **Target Switch:** `switch.heizraum_lufter`
-    \ \n- **Delay:** 5-second interval in repeat loops to reduce excessive switching
-    and allow for state confirmation.  \n- **Power Thresholds:**  \n  - **On:** >
-    0.1 W  \n  - **Off:** < 0.01 W  \n\n---\n\n### ⚡ **Notes / Best Practices**\n\n-
-    Using numeric state triggers with a `for` delay prevents rapid on/off cycling
-    caused by small power fluctuations.  \n- Repeat loops provide reliability, ensuring
-    the fan state actually matches the desired state.  \n- Mode `restart` is ideal
-    for energy-focused automations, preventing overlapping or conflicting actions.
-    \ \n- Thresholds can be adjusted to match the sensitivity of your fan's power
-    draw."
+  description: "  ## \U0001F32C Auto Heizraum Lüfter Automation\n\n  ### \U0001F4CB
+    **Purpose**\n\n  This automation manages the heating room (Heizraum) fan based
+    on the power\n  consumption of another fan. It ensures the fan only runs when
+    necessary,\n  helping save energy by avoiding unnecessary operation.  \n\n  ---\n\n
+    \ ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition | Delay | Trigger ID |\n
+    \ |----------------|-----------|-------|------------|\n  | `sensor.heizraum_lufter_abluft_power`
+    | Above 0.1 W | 1 minute | \"On\" |\n  | `sensor.heizraum_lufter_abluft_power`
+    | Below 0.01 W | 1 minute | \"Off\" |\n\n  > **Note:** Triggers include a 1-minute
+    delay (`for: 1m`) to prevent\n  flickering or rapid on/off cycling.  \n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  - None. The automation reacts directly to the numeric
+    state triggers.  \n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1.
+    **Fan On Trigger (\"On\")**  \n     - Checks if the trigger ID is \"On\".  \n
+    \    - Calls the `retry_action_with_backoff` script to turn on the fan\n       (`switch.heizraum_lufter`).
+    \ \n     - Automatically retries the action up to 10 times with a base delay of
+    5\n       seconds, increasing if needed, until the fan state is `\"on\"`.  \n\n
+    \ 2. **Fan Off Trigger (\"Off\")**  \n     - Checks if the trigger ID is \"Off\".
+    \ \n     - Calls the `retry_action_with_backoff` script to turn off the fan.  \n
+    \    - Automatically retries the action up to 10 times with a base delay of 5\n
+    \      seconds, increasing if needed, until the fan state is `\"off\"`.  \n\n
+    \ > **Rationale:** Using the retry script ensures the switch reliably reaches\n
+    \ the desired state even if transient errors occur, replacing manual repeat\n
+    \ loops. Notifications are sent on failure for awareness.  \n\n  ---\n\n  ###
+    \U0001F527 **Technical Specs**\n\n  - **Mode:** `restart` (ensures a new trigger
+    cancels the current action and\n    restarts the automation)  \n  - **Target Switch:**
+    `switch.heizraum_lufter`  \n  - **Retry Script:** `script.retry_action_with_backoff`
+    \ \n  - **Retry Parameters:**  \n    - Maximum retries: 10  \n    - Base delay:
+    5 seconds  \n    - Maximum delay: 60 seconds  \n    - Backoff type: simple  \n
+    \   - Notify on failure: yes, via `notify.duncan`  \n  - **Power Thresholds:**
+    \ \n    - **On:** > 0.1 W  \n    - **Off:** < 0.01 W  \n\n  ---\n\n  ### ⚡ **Notes
+    / Best Practices**\n\n  - Numeric state triggers with a `for` delay prevent rapid
+    cycling caused\n    by small power fluctuations.  \n  - The retry script guarantees
+    reliability and provides notifications if\n    an action repeatedly fails.  \n
+    \ - Mode `restart` ensures no conflicting actions overlap.  \n  - Thresholds can
+    be adjusted based on the fan's actual power draw."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -9555,52 +9561,38 @@
         id:
         - 'Off'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.heizraum_lufter
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.heizraum_lufter
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.heizraum_lufter
       alias: Fan off
     - conditions:
       - condition: trigger
         id:
         - 'On'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.heizraum_lufter
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.heizraum_lufter
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.heizraum_lufter
       alias: Fan on
   mode: restart
 - id: '1758358981299'
