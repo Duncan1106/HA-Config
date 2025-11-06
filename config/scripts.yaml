@@ -1788,10 +1788,9 @@ retry_action_with_backoff:
   - repeat:
       until:
       - condition: template
-        value_template: '{{ (is_state(entity_id, effective_target_state) or service_data
-          is defined) or repeat.index >= max_retries | int(10) }}
-
-          '
+        value_template: "{{ ((is_state(entity_id, effective_target_state) or service_data
+          is defined) or repeat.index >= max_retries | int(10)) or states(entity_id)
+          is in\n      ['unavailable','unknown'] }}\n"
       sequence:
       - choose:
         - conditions:
@@ -1845,6 +1844,29 @@ retry_action_with_backoff:
               | min }}\n{% elif backoff_type == 'exponential' %}\n  {{ [2**(repeat.index-1)
               * bd, md] | min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}\n"
   - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ states(entity_id) is in\n      ['unavailable','unknown']
+          }}"
+      sequence:
+      - variables:
+          now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+            '' '') | replace(''_'', '' '')}}'
+          params_line: "action={{ effective_action_domain }}.{{ effective_action_type
+            }}, target={{ effective_target_state }}, retries={{ max_retries }}, base={{
+            base_delay }}s, max={{ max_delay }}s, backoff={{ backoff_type }},\n {{
+            \"custom_action=\" + custom_action|string if custom_action is defined
+            and custom_action != none else \"\" }}"
+          tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_'))
+            }}
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Entity: {{ friendly }} - {{states(entity_id)}}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
+            }}) | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
     - conditions:
       - condition: template
         value_template: '{{ notify_on_failure | default(true) }}'
