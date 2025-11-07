@@ -2,15 +2,11 @@
   alias: Auto Desk Light
   description: ''
   triggers:
-  - type: occupied
-    device_id: 561b2fddd9cec3889faf18b8ccf214a0
-    entity_id: 9e2fd849edb418346b78ab27fafb8a79
-    domain: binary_sensor
-    trigger: device
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 5
+  - trigger: state
+    entity_id:
+    - binary_sensor.everything_presence_lite_f1c0d0_zone_1_occupancy
+    to:
+    - 'on'
     id: 'On'
   - trigger: numeric_state
     entity_id:
@@ -58,10 +54,11 @@
           id:
           - 'Off'
       sequence:
-      - type: turn_off
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 203df768618055df4c42748f101b7f2b
-        domain: switch
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.schreibtisch_links_power_strip_l5
       alias: 'Off'
     - conditions:
       - condition: and
@@ -82,10 +79,11 @@
           id:
           - 'On'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 203df768618055df4c42748f101b7f2b
-        domain: switch
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.schreibtisch_links_power_strip_l5
       alias: 'On'
   mode: queued
   max: 10
@@ -1837,7 +1835,28 @@
         - select.go_echarger_252682_frc
         - select.go_echarger_270862_frc
       action: select.select_option
-      enabled: true
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: select.go_echarger_270862_frc
+        target_state: custom
+        custom_action:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Don't charge
+          target:
+            entity_id:
+            - select.go_echarger_270862_frc
+            - select.go_echarger_252682_frc
+        custom_target_state: Don't charge
   mode: parallel
   max: 10
 - id: '1716307846138'
@@ -2919,11 +2938,19 @@
     below: 15
   conditions: []
   actions:
-  - action: switch.turn_off
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.ankermake_1
+      target_state: 'off'
   mode: single
 - id: '1723670137701'
   alias: Reload Dreame Robots After Internet Recovery
@@ -6784,21 +6811,37 @@
         id:
         - Start
       sequence:
-      - action: switch.turn_on
+      - action: script.retry_action_with_backoff
         metadata: {}
-        data: {}
-        target:
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
           entity_id: switch.zirkulationspumpe_zigbee
+          target_state: 'on'
     - conditions:
       - condition: trigger
         id:
         - Stop
       sequence:
-      - action: switch.turn_off
+      - action: script.retry_action_with_backoff
         metadata: {}
-        data: {}
-        target:
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
           entity_id: switch.zirkulationspumpe_zigbee
+          target_state: 'off'
   mode: single
 - id: '1748530213618'
   alias: Allergie und Aufgaben Benachrichtigung
