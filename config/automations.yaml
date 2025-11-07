@@ -5318,27 +5318,19 @@
         id:
         - 'On'
       sequence:
-      - repeat:
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.orangina_lampe_zigbee
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.orangina_lampe_zigbee
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index >= 10 }}'
-            alias: switch is on or we tried 10 times
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.orangina_lampe_zigbee
       alias: 'On'
     - conditions:
       - condition: or
@@ -5374,27 +5366,19 @@
             before: 04:00:00
           alias: After 1 o'clock force off
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.orangina_lampe_zigbee
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index >= 10 }}'
-            alias: switch is off or we tried 10 times
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.orangina_lampe_zigbee
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.orangina_lampe_zigbee
       alias: 'Off'
   mode: queued
   max: 10
@@ -10438,6 +10422,7 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
     - conditions:
       - condition: trigger
         id: sunset
@@ -10456,6 +10441,7 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
     - conditions:
       - condition: trigger
         id: time_20
@@ -10475,6 +10461,7 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
   mode: single
 - id: '1762211918473'
   alias: Ding Dong Frigate Detection Adjustments

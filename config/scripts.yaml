@@ -1372,27 +1372,32 @@ restart_internet:
           below: 0.1
           alias: Not in Time Based Mode
         then:
-        - action: light.turn_off
+        - action: script.retry_action_with_backoff
           metadata: {}
-          data: {}
-          target:
+          data:
+            action_domain: light
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            target_state: 'off'
             entity_id: light.esp32_c3_mini_treppenhaus_licht
-        - repeat:
-            sequence:
-            - action: light.turn_off
-              metadata: {}
-              data: {}
-              target:
-                entity_id: light.ganglicht_zigbee_led
-            - delay:
-                hours: 0
-                minutes: 0
-                seconds: 0
-                milliseconds: 500
-            until:
-            - condition: state
-              entity_id: light.ganglicht_zigbee_led
-              state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: light
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            target_state: 'off'
+            entity_id: light.ganglicht_zigbee_led
   alias: 5 Min Turn Off Ganglicht
   description: ''
   mode: restart
