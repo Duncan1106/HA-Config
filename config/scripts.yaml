@@ -1254,19 +1254,35 @@ wohnzimmer_radio:
   description: ''
 boiler_save_energy_script:
   sequence:
-  - action: switch.turn_on
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_on
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.zirkulationspumpe_zigbee
+      target_state: 'on'
   - delay:
       seconds: "{% if is_state('input_select.smart_home_status', 'Vacation') %}\n
         \ {{ 1.5 * 60 }}\n{% else %}\n  {{ 3 * 60 }}\n{% endif %}\n"
-  - action: switch.turn_off
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.zirkulationspumpe_zigbee
+      target_state: 'off'
   - delay:
       seconds: "{% if is_state('input_select.smart_home_status', 'Vacation') %}\n
         \ {{ 8.5 * 60 }}\n{% else %}\n  {{ 7 * 60}}\n{% endif %}\n"
