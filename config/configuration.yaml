@@ -904,7 +904,6 @@ template:
         icon: mdi:transmission-tower
 
 
-
   - triggers:
       - trigger: homeassistant
         event: start
@@ -950,16 +949,17 @@ template:
             Structure your output in a clear, organized format with headings
             like this:
 
-            **New Features:**   - Feature 1   - Feature 2 ...
+            **New Features:**   \n- Feature 1   \n- Feature 2 ...
 
-            **Breaking Changes:**   - Change 1   - Change 2 ...
+            **Breaking Changes:**   \n- Change 1   \n- Change 2 ...
 
-            **Backward-Incompatible Changes:**   - Change 1   - Change 2 ...
+            **Backward-Incompatible Changes:**   \n- Change 1   \n- Change 2 ...
 
-            **Other Notes:**   - Note 1   - Note 2 ...
+            **Other Notes:**   \n- Note 1   \n- Note 2 ...
 
             Only include points actually mentioned in the release notes. Be
             concise but informative, avoid filler.
+            The summary is intended to be used in a markdown display.
             Only provide the summary and nothing else like heres the summary or any other form of introduction.
 
             Here is the release notes text:   
@@ -1106,6 +1106,85 @@ mqtt:
           - "4CEBD618F373"
 
   sensor:
+    - name: "Tibber Node Pulse Battery Voltage"
+      unique_id: tibber_node_battery_voltage
+      state_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      value_template: "{{ value_json.node_status.node_battery_voltage | float(0) | round(3) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      icon: mdi:battery
+      json_attributes_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      json_attributes_template: >
+        {% set ns = value_json.node_status | default({}) %}
+        {% set ha = value_json.hub_attachments | default({}) %}
+        {% if ns %}
+          {% set uptime_s = (ns.node_uptime_ms | float(0)) / 1000 %}
+          {% set days = (uptime_s // 86400) | int %}
+          {% set hours = ((uptime_s % 86400) // 3600) | int %}
+          {% set minutes = ((uptime_s % 3600) // 60) | int %}
+          {% set seconds = (uptime_s % 60) | int %}
+          {% set uptime_human = (
+              (days ~ "d " if days > 0 else "") ~
+              (hours ~ "h " if hours > 0 else "") ~
+              (minutes ~ "m " if minutes > 0 else "") ~
+              (seconds ~ "s" if days == 0 and hours == 0 else "")
+            ) | trim() %}
+          {% set lqi = ns.node_avg_lqi | float(-1) %}
+          {% set lqi_quality = (
+              "Unknown" if lqi < 0 else
+              "Excellent" if lqi >= 200 else
+              "Good" if lqi >= 175 else
+              "Fair" if lqi >= 150 else
+              "Weak"
+          ) %}
+          {{ (ns | combine(ha) | combine({"uptime_human": uptime_human, "lqi_quality": lqi_quality})) | tojson }}
+        {% else %}
+          "{}"
+        {% endif %}
+      force_update: true
+
+    - name: "Tibber Node Bridge Status"
+      unique_id: "tibber_bridge_status_sensor"
+      state_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      value_template: "{{ value_json.status.vcc | float(0) | round(3) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      json_attributes_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      json_attributes_template: >
+        {% set s = value_json.status | default({}) %}
+        {% set ota = s.ota | default([]) %}
+        {% if s %}
+          {# ---- Human readable uptime ---- #}
+          {% set uptime = s.uptime | float(0) %}
+          {% set days = (uptime // 86400) | int %}
+          {% set hours = ((uptime % 86400) // 3600) | int %}
+          {% set minutes = ((uptime % 3600) // 60) | int %}
+          {% set seconds = (uptime % 60) | int %}
+          {% set uptime_human = (
+              (days ~ "d " if days > 0 else "") ~
+              (hours ~ "h " if hours > 0 else "") ~
+              (minutes ~ "m " if minutes > 0 else "") ~
+              (seconds ~ "s" if days == 0 and hours == 0 else "")
+            ) | trim() %}
+
+          {# ---- WiFi quality ---- #}
+          {% set rssi = s.rssi | int(-100) %}
+          {% set wifi_quality = (
+              "Excellent" if rssi > -55 else
+              "Good" if rssi > -67 else
+              "Fair" if rssi > -75 else
+              "Weak"
+          ) %}
+
+          {# ---- Combine everything ---- #}
+          {{ s | combine({"uptime_human": uptime_human, "wifi_quality": wifi_quality, "ota": ota}) | tojson }}
+        {% else %}
+          "{}"
+        {% endif %}
+      force_update: true
+
     - state_topic: fully-single-app/deviceInfo/a9641507-a9641507
       name: Fully Kiosk Device Info
       unique_id: fully_kiosk_device_info

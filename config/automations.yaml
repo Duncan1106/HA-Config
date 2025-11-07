@@ -493,47 +493,6 @@
       action: counter.increment
   mode: parallel
   max: 10
-- id: '1705100077572'
-  alias: Trockner ist fertig
-  description: ''
-  use_blueprint:
-    path: Blackshome/appliance-notifications.yaml
-    input:
-      power_sensor: sensor.trockner_energy_power
-      include_end_notify: disable_end_notify_options
-      end_notify_device: []
-      end_message_title: 'Trockner '
-      end_message: Trockner ausräumen
-      end_time_delay: 0.5
-      start_appliance_power: 15
-      end_appliance_power: 10
-      include_start_notify: enable_start_notify_options
-      start_notify_device:
-      - 905c163dcc62544838edb078413723b2
-      end_custom_actions:
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.trockner
-        action: counter.increment
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.trockner_fertig
-      start_time_delay: 1
-      start_title: 'Trockner '
-      include_custom_actions:
-      - enable_end_custom_actions
-      start_message: ' '
-      watchdog_timeframe:
-        hours: 3
-        minutes: 0
-        seconds: 0
-      watchdog_message: 'Uh-oh! Time to check the dryer '
-      include_watchdog: enable_watchdog
-      end_notify_data: []
-      start_custom_actions: []
 - id: '1705101110242'
   alias: Notify When Battery Devices Are Offline
   description: This automation sends a notification when specific battery-operated
@@ -1462,28 +1421,34 @@
         entity_id:
         - sensor.charged_energy_to_bkw_battery
         - sensor.discharged_energy_from_bkw_battery
-    - wait_for_trigger:
-      - trigger: numeric_state
-        entity_id:
-        - sensor.bkw_outlet_1_energy_power
-        above: 10
-      timeout:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-      continue_on_timeout: true
     - if:
-      - condition: template
-        value_template: '{{ not wait.completed }}'
+      - condition: numeric_state
+        entity_id: sensor.bkw_outlet_1_energy_power
+        below: 10
       then:
-      - action: notify.duncan
-        data:
-          message: ⚠️ The load did not rise above 10W within 30s after turning on
-            at night.
-          title: BKW Error
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.bkw_outlet_1_energy_power
+          above: 10
+        timeout:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ not wait.completed }}'
+        then:
+        - action: notify.duncan
           data:
-            tag: bkw_night_no_load
+            message: ⚠️ The load did not rise above 10W within 30s after turning on
+              at night.
+            title: BKW Error
+            data:
+              tag: bkw_night_no_load
+      alias: Only wait for power rise if not already above 10W
   - alias: off night
     if:
     - condition: and
@@ -1495,7 +1460,7 @@
         entity_id: sensor.bkw_outlet_1_energy_today
         above: 0.001
       - condition: time
-        after: 00:00:00
+        after: '21:00:00'
         before: 09:00:00
     then:
     - action: script.retry_action_with_backoff
@@ -1557,97 +1522,6 @@
           entity_id: sensor.discharged_energy_from_bkw_battery
   mode: queued
   max: 15
-- id: '1712568670640'
-  alias: Update notifications
-  description: Notifies mobile devices about available updates for Home Assistant
-    core, supervisor, add-ons, and integrations daily at noon.
-  use_blueprint:
-    path: mdegat01/update_notifications.yaml
-    input:
-      update_entities:
-      - update.advanced_ssh_web_terminal_update
-      - update.ankerctl_update
-      - update.ankermake_update
-      - update.anylist_update_2
-      - update.anylist_update
-      - update.auto_backup_update
-      - update.battery_notes_update
-      - update.bookstack_update
-      - update.bubble_card_update
-      - update.card_mod_update
-      - update.charger_card_update
-      - update.chrony_update
-      - update.custom_sidebar_update
-      - update.dbstats_update
-      - update.device_tools_update
-      - update.dreame_vacuum_update
-      - update.dwd_pollenflug_update
-      - update.dynamic_energy_cost_update
-      - update.earnapp_update
-      - update.emqx_update
-      - update.esphome_update
-      - update.everything_presence_lite_f1c0d0_everything_presence_lite_firmware
-      - update.everything_presence_zone_configurator_update
-      - update.file_editor_update
-      - update.go_echarger_integration_for_home_assistant_using_the_mqtt_api_update
-      - update.hacs_update
-      - update.home_assistant_core_update
-      - update.home_assistant_google_drive_backup_update
-      - update.home_assistant_operating_system_update
-      - update.home_assistant_supervisor_update
-      - update.honeygain_update_2
-      - update.honeygain_update
-      - update.ics_calendar_icalendar_update
-      - update.jellyfin_nas_update
-      - update.kiosk_mode_update
-      - update.mariadb_update
-      - update.mini_graph_card_update
-      - update.mqtt_explorer_update
-      - update.multiscrape_update
-      - update.mushroom_update
-      - update.network_ups_tools_update
-      - update.onedrive_backup_update
-      - update.packetstream_update
-      - update.pawns_app_update
-      - update.repocket_update
-      - update.samba_nas_update
-      - update.scheduler_card_update
-      - update.scheduler_component_update
-      - update.scrutiny_full_access_update
-      - update.solarman_update
-      - update.solcast_pv_solar_update
-      - update.speedtest_update
-      - update.spook_not_your_homie_update
-      - update.tailscale_update
-      - update.tapo_cameras_control_update
-      - update.tibber_pulse_local_update
-      - update.traffmonetizer_update
-      - update.trashcard_update
-      - update.vehicle_status_card_update
-      - update.vertical_stack_in_card_update
-      - update.volkswagen_we_connect_update
-      - update.waste_collection_schedule_update
-      - update.webrtc_camera_update
-      - update.wundergroundpws_update
-      - update.xiaomi_vacuum_map_card_update
-      - update.zigbee2mqtt_update
-      - update.earnfm_update
-      - update.saic_mqtt_gateway_python_update
-      - update.octopus_energy_germany_update
-      - update.beszel_agent_branch_update
-      - update.beszel_integration_update
-      - update.bodypetscale_update
-      - update.frigate_full_access_update
-      - update.home_assistant_git_exporter_update
-      - update.ugreen_nas_integration_update
-      mobile_app_device: 905c163dcc62544838edb078413723b2
-      run_config_check: false
-      only_after: '11:59:00'
-      only_before: '12:04:00'
-      mobile_app_device_2: 71c7eee3ffe028806cd019f588f47ba1
-      reminder_hours: None
-      changelog_urls: none
-      take_backup: false
 - id: '1712612224089'
   alias: Adjust Person Counter if necessary
   description: ''
@@ -7146,10 +7020,6 @@
       seconds: 0
   conditions: []
   actions:
-  - action: hassio.addon_start
-    metadata: {}
-    data:
-      addon: b3f9bc48_honeygain
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -9636,34 +9506,40 @@
   max: 3
 - id: '1757687903185'
   alias: Auto Heizraum Lüfter
-  description: "## \U0001F32C Auto Heizraum Lüfter Automation\n\n### \U0001F4CB **Purpose**\n\nThis
-    automation manages the heating room (Heizraum) fan based on the power consumption
-    of another fan. It ensures the fan only runs when necessary, helping save energy
-    by avoiding unnecessary operation.  \n\n---\n\n### ⏰ **Triggers**\n\n| Trigger
-    Entity | Condition | Delay | Trigger ID |\n|----------------|-----------|-------|------------|\n|
-    `sensor.heizraum_lufter_abluft_power` | Above 0.1 W | 1 minute | \"On\" |\n| `sensor.heizraum_lufter_abluft_power`
-    | Below 0.01 W | 1 minute | \"Off\" |\n\n> **Note:** Triggers include a 1-minute
-    delay (`for: 1m`) to prevent flickering or rapid on/off cycling.  \n\n---\n\n###
-    ✅ **Conditions**\n\n- None. The automation reacts directly to the numeric state
-    triggers.  \n\n---\n\n### \U0001F3AF **Actions / Workflow**\n\n1. **Fan On Trigger
-    (\"On\")**  \n   - Checks if the trigger ID is \"On\".  \n   - Uses a repeat loop
-    to ensure the fan (`switch.heizraum_lufter`) turns on.  \n   - Repeats every 5
-    seconds until the fan state is `\"on\"`.  \n\n2. **Fan Off Trigger (\"Off\")**
-    \ \n   - Checks if the trigger ID is \"Off\".  \n   - Uses a repeat loop to ensure
-    the fan turns off.  \n   - Repeats every 5 seconds until the fan state is `\"off\"`.
-    \ \n\n> **Rationale:** The repeat loops guarantee the switch successfully changes
-    state even if a transient failure occurs.  \n\n---\n\n### \U0001F527 **Technical
-    Specs**\n\n- **Mode:** `restart` (ensures a new trigger cancels the current action
-    and restarts the automation)  \n- **Target Switch:** `switch.heizraum_lufter`
-    \ \n- **Delay:** 5-second interval in repeat loops to reduce excessive switching
-    and allow for state confirmation.  \n- **Power Thresholds:**  \n  - **On:** >
-    0.1 W  \n  - **Off:** < 0.01 W  \n\n---\n\n### ⚡ **Notes / Best Practices**\n\n-
-    Using numeric state triggers with a `for` delay prevents rapid on/off cycling
-    caused by small power fluctuations.  \n- Repeat loops provide reliability, ensuring
-    the fan state actually matches the desired state.  \n- Mode `restart` is ideal
-    for energy-focused automations, preventing overlapping or conflicting actions.
-    \ \n- Thresholds can be adjusted to match the sensitivity of your fan's power
-    draw."
+  description: "  ## \U0001F32C Auto Heizraum Lüfter Automation\n\n  ### \U0001F4CB
+    **Purpose**\n\n  This automation manages the heating room (Heizraum) fan based
+    on the power\n  consumption of another fan. It ensures the fan only runs when
+    necessary,\n  helping save energy by avoiding unnecessary operation.  \n\n  ---\n\n
+    \ ### ⏰ **Triggers**\n\n  | Trigger Entity | Condition | Delay | Trigger ID |\n
+    \ |----------------|-----------|-------|------------|\n  | `sensor.heizraum_lufter_abluft_power`
+    | Above 3.0 W | 1 minute | \"On\" |\n  | `sensor.heizraum_lufter_abluft_power`
+    | Below 1.0 W | 1 minute | \"Off\" |\n\n  > **Note:** Triggers include a 1-minute
+    delay (`for: 1m`) to prevent\n  flickering or rapid on/off cycling.  \n\n  ---\n\n
+    \ ### ✅ **Conditions**\n\n  - None. The automation reacts directly to the numeric
+    state triggers.  \n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1.
+    **Fan On Trigger (\"On\")**  \n     - Checks if the trigger ID is \"On\".  \n
+    \    - Calls the `retry_action_with_backoff` script to turn on the fan\n       (`switch.heizraum_lufter_zuluft`).
+    \ \n     - Automatically retries the action up to 10 times with a base delay of
+    5\n       seconds, increasing if needed, until the fan state is `\"on\"`.  \n\n
+    \ 2. **Fan Off Trigger (\"Off\")**  \n     - Checks if the trigger ID is \"Off\".
+    \ \n     - Calls the `retry_action_with_backoff` script to turn off the fan.  \n
+    \    - Automatically retries the action up to 10 times with a base delay of 5\n
+    \      seconds, increasing if needed, until the fan state is `\"off\"`.  \n\n
+    \ > **Rationale:** Using the retry script ensures the switch reliably reaches\n
+    \ the desired state even if transient errors occur, replacing manual repeat\n
+    \ loops. Notifications are sent on failure for awareness.  \n\n  ---\n\n  ###
+    \U0001F527 **Technical Specs**\n\n  - **Mode:** `restart` (ensures a new trigger
+    cancels the current action and\n    restarts the automation)  \n  - **Target Switch:**
+    switch.heizraum_lufter_zuluft  \n  - **Retry Script:** `script.retry_action_with_backoff`
+    \ \n  - **Retry Parameters:**  \n    - Maximum retries: 10  \n    - Base delay:
+    5 seconds  \n    - Maximum delay: 60 seconds  \n    - Backoff type: simple  \n
+    \   - Notify on failure: yes, via `notify.duncan`  \n  - **Power Thresholds:**
+    \ \n    - **On:** > 4.0 W  \n    - **Off:** < 1.0 W  \n\n  ---\n\n  ### ⚡ **Notes
+    / Best Practices**\n\n  - Numeric state triggers with a `for` delay prevent rapid
+    cycling caused\n    by small power fluctuations.  \n  - The retry script guarantees
+    reliability and provides notifications if\n    an action repeatedly fails.  \n
+    \ - Mode `restart` ensures no conflicting actions overlap.  \n  - Thresholds can
+    be adjusted based on the fan's actual power draw."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -9672,7 +9548,7 @@
       hours: 0
       minutes: 1
       seconds: 0
-    below: 0.01
+    below: 1
     id: 'Off'
   - trigger: numeric_state
     entity_id:
@@ -9682,7 +9558,7 @@
       minutes: 1
       seconds: 0
     id: 'On'
-    above: 0.1
+    above: 3
   conditions: []
   actions:
   - choose:
@@ -9691,52 +9567,38 @@
         id:
         - 'Off'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.heizraum_lufter
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.heizraum_lufter
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.heizraum_lufter_zuluft
       alias: Fan off
     - conditions:
       - condition: trigger
         id:
         - 'On'
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.heizraum_lufter
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index > 10 }}'
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.heizraum_lufter
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.heizraum_lufter_zuluft
       alias: Fan on
   mode: restart
 - id: '1758358981299'
@@ -10174,6 +10036,9 @@
   - condition: state
     entity_id: input_boolean.waschmaschine_fertig
     state: 'off'
+  - condition: template
+    value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered') | default(\n
+      \     as_datetime('0'), true)) > timedelta(minutes=20) }}"
   actions:
   - action: input_boolean.turn_on
     metadata: {}
@@ -10233,7 +10098,7 @@
     der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
     \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
     \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
-    wenn die heutige PV-Prognose > 15 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
+    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
     um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
     Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
     an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
@@ -10241,7 +10106,7 @@
     der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
     `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
     ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
-    > 15 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
+    > 20 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
     Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
     Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
     Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
@@ -10277,7 +10142,7 @@
         - Sunrise
       - condition: numeric_state
         entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 15
+        above: 20
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -10332,9 +10197,7 @@
     prevents MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n-
     **\U0001F551 Time Trigger:** Executes exactly at `12:00:00` every day.  \n- **\U0001F4C8
     Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n  reports
-    `uptime_days > 2.5`, providing a safety fallback.\n\n### \U0001F9E0 **Execution
-    Conditions**\nThe automation only runs when:\n- The **uptime** is above **1.5
-    days**, preventing unnecessary restarts.\n\n### \U0001F680 **Action Flow**\n1.
+    `uptime_days > 2.5`, providing a safety fallback.\n\n### \U0001F680 **Action Flow**\n1.
     **Publish MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in` to trigger
     the bridge restart.\n2. **Delay (15s)**  \n   Waits for the restart to begin and
     the device to disconnect.\n3. **Force Metric Refresh**  \n   Calls `button.refresh_tibber_bridge`
@@ -10352,11 +10215,7 @@
     - binary_sensor.tibber_bridge_metrics
     attribute: uptime_days
     above: 2.5
-  conditions:
-  - condition: numeric_state
-    entity_id: binary_sensor.tibber_bridge_metrics
-    attribute: uptime_days
-    above: 1.5
+  conditions: []
   actions:
   - action: mqtt.publish
     data:
@@ -10367,6 +10226,15 @@
   - action: button.press
     target:
       entity_id: button.refresh_tibber_bridge
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: button.press
+    data: {}
+    target:
+      entity_id: button.refresh_tibber_node
   - delay:
       seconds: 60
   - choose:
@@ -10396,7 +10264,23 @@
   - trigger: state
     entity_id:
     - sensor.home_assistant_beta_release_notes
-  conditions: []
+  conditions:
+  - condition: template
+    value_template: "{% set test_date = now().date() %}\n{% set first_day_current_month
+      = strptime(test_date.year ~ \"-\" ~ \"%02d\"|format(test_date.month) ~ \"-01\",
+      \"%Y-%m-%d\").date() %}\n{% set days_to_wed_current = (2 - first_day_current_month.weekday())
+      % 7 %}\n{% set current_month_first_wed = first_day_current_month + timedelta(days=days_to_wed_current)
+      %}\n{% set current_window_start = current_month_first_wed - timedelta(days=7)
+      %}\n{% set current_window_end = current_month_first_wed %}\n{% set next_month
+      = test_date.month + 1 if test_date.month < 12 else 1 %}\n{% set next_year =
+      test_date.year if test_date.month < 12 else test_date.year + 1 %}\n{% set first_day_next_month
+      = strptime(next_year ~ \"-\" ~ \"%02d\"|format(next_month) ~ \"-01\", \"%Y-%m-%d\").date()
+      %}\n{% set days_to_wed_next = (2 - first_day_next_month.weekday()) % 7 %}\n{%
+      set next_month_first_wed = first_day_next_month + timedelta(days=days_to_wed_next)
+      %}\n{% set next_window_start = next_month_first_wed - timedelta(days=7) %}\n{%
+      set next_window_end = next_month_first_wed %}\n{% set in_window = (current_window_start
+      <= test_date <= current_window_end) or\n                   (next_window_start
+      <= test_date <= next_window_end) %}\n{{ in_window }}"
   actions:
   - action: notify.duncan
     metadata: {}
