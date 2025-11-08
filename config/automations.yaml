@@ -1782,7 +1782,7 @@
     - action: counter.reset
       target:
         entity_id: counter.luftbefeuchter
-      enabled: false
+      enabled: true
     else:
     - alias: Not empty → signal success to script by turning the flag OFF
       if:
@@ -3364,16 +3364,32 @@
         below: 0.1
       alias: motion & dark enough & no timed light
     then:
-    - action: light.turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
       data:
-        brightness_pct: '{{ ganglicht_brightness }}'
-      target:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: '{{ light_ganglicht }}'
-    - action: light.turn_off
+        target_state: 'on'
+        service_data: 'brightness_pct: "{{ ganglicht_brightness }}"'
+        action_domain: light
+        action_type: turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
         entity_id: '{{ light_treppenlicht }}'
   - alias: On motion oben
     if:
@@ -3397,6 +3413,21 @@
         brightness_pct: '{{ treppenlicht_brightness }}'
       target:
         entity_id: '{{ light_treppenlicht }}'
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'on'
+        entity_id: '{{ light_treppenlicht }}'
+        service_data: 'brightness_pct: "{{ treppenlicht_brightness }}"'
     - delay: '{{ light_delay }}'
     - action: light.turn_on
       metadata: {}
@@ -3404,6 +3435,21 @@
         brightness_pct: '{{ ganglicht_brightness_oben }}'
       target:
         entity_id: '{{ light_ganglicht }}'
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: '{{ light_ganglicht }}'
+        target_state: 'on'
+        action_domain: light
+        action_type: turn_on
+        service_data: 'brightness_pct: "{{ ganglicht_brightness_oben }}"'
     - sequence:
       - wait_for_trigger:
         - trigger: state
@@ -3526,6 +3572,21 @@
           - condition: template
             value_template: '{{ repeat.index >= 10 }}'
           alias: either light on or we tried 10 times and failed
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: '{{ light_ganglicht }}'
+        target_state: 'on'
+        service_data: 'brightness_pct: "{{ ganglicht_brightness }}"'
+        action_domain: light
+        action_type: turn_on
   - alias: Off Light Sync
     if:
     - condition: trigger
@@ -3572,23 +3633,19 @@
       entity_id: sensor.aqara_p1_illuminance
       above: 79
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: '{{ light_ganglicht }}'
-        - delay: '{{ light_delay }}'
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: light.ganglicht_zigbee_led
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index >= 10 }}'
-          alias: light off or we tried 10 times and failed
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: '{{ light_ganglicht }}'
   - alias: Fix Lamp not turning off completely
     if:
     - condition: trigger
@@ -8969,8 +9026,7 @@
       base_delay: 5
       max_delay: 60
       backoff_type: linear
-      notify_on_failure: true
-      notify_service: notify.duncan
+      notify_on_failure: false
       entity_id: switch.spulmaschine_tasmota
       target_state: 'on'
   mode: single
