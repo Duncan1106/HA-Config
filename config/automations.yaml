@@ -3547,23 +3547,19 @@
       alias: No Motion Detected
       enabled: true
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: '{{ light_ganglicht }}'
-        - delay: '{{ light_delay }}'
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: light.ganglicht_zigbee_led
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index >= 10 }}'
-          alias: light off or we tried 10 times and failed
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: '{{ light_ganglicht }}'
   - alias: 'Off Illumination '
     if:
     - condition: trigger
