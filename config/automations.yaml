@@ -1,17 +1,32 @@
 - id: '1697103571991'
   alias: Auto Desk Light
-  description: ''
+  description: "## \U0001F4A1 **Auto Desk Light Automation**\n### \U0001F3AF **Purpose**\nThis
+    automation intelligently controls the **desk light**, ensuring it only operates
+    when truly needed.   It reacts to **presence**, **ambient light levels**, and
+    **desk activity**, offering both comfort and energy efficiency.  \n---  \n###
+    ⚙️ **How It Works**\n- **Turns ON** the desk light when:\n  - Motion or occupancy
+    is detected near the desk  \n  - The ambient brightness falls **below 200 lx**
+    \ \n  - The desk itself is marked as **active**  \n  - Duncan is **home**  \n
+    \ - Time is between **07:00** and **23:00**  \n\n- **Turns OFF** the desk light
+    when:\n  - The desk has been **inactive for 15 minutes**  \n  - The **presence
+    sensor** reports **no occupancy**  \n  - The light is currently on and no relevant
+    activity persists  \n\n---  \n### \U0001F9E0 **Logic Highlights**\n- Combines
+    **motion**, **light**, and **activity** detection for contextual accuracy.   -
+    Prevents unnecessary lighting by verifying overall **average illuminance**.   -
+    Keeps your workspace illuminated **only when useful**, aligning with natural light
+    and your schedule.  \n---  \n### \U0001F579 **Controlled Entity**\n- `switch.schreibtisch_links_power_strip_l5`
+    → Desk Light Power Switch"
   triggers:
-  - type: occupied
-    device_id: 561b2fddd9cec3889faf18b8ccf214a0
-    entity_id: 9e2fd849edb418346b78ab27fafb8a79
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.everything_presence_lite_f1c0d0_zone_1_occupancy
+    to:
+    - 'on'
+    id: 'On'
     for:
       hours: 0
       minutes: 0
       seconds: 5
-    id: 'On'
   - trigger: numeric_state
     entity_id:
     - sensor.everything_presence_lite_f1c0d0_illuminance
@@ -58,10 +73,11 @@
           id:
           - 'Off'
       sequence:
-      - type: turn_off
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 203df768618055df4c42748f101b7f2b
-        domain: switch
+      - action: switch.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.schreibtisch_links_power_strip_l5
       alias: 'Off'
     - conditions:
       - condition: and
@@ -82,10 +98,11 @@
           id:
           - 'On'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 203df768618055df4c42748f101b7f2b
-        domain: switch
+      - action: switch.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: switch.schreibtisch_links_power_strip_l5
       alias: 'On'
   mode: queued
   max: 10
@@ -1765,7 +1782,7 @@
     - action: counter.reset
       target:
         entity_id: counter.luftbefeuchter
-      enabled: false
+      enabled: true
     else:
     - alias: Not empty → signal success to script by turning the flag OFF
       if:
@@ -1837,7 +1854,47 @@
         - select.go_echarger_252682_frc
         - select.go_echarger_270862_frc
       action: select.select_option
-      enabled: true
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: select.go_echarger_270862_frc
+        target_state: custom
+        custom_action:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Don't charge
+          target:
+            entity_id:
+            - select.go_echarger_270862_frc
+        custom_target_state: Don't charge
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: select.go_echarger_252682_frc
+        target_state: custom
+        custom_action:
+        - action: select.select_option
+          metadata: {}
+          data:
+            option: Don't charge
+          target:
+            entity_id:
+            - select.go_echarger_252682_frc
+        custom_target_state: Don't charge
   mode: parallel
   max: 10
 - id: '1716307846138'
@@ -2919,11 +2976,19 @@
     below: 15
   conditions: []
   actions:
-  - action: switch.turn_off
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.ankermake_1
+      target_state: 'off'
   mode: single
 - id: '1723670137701'
   alias: Reload Dreame Robots After Internet Recovery
@@ -3299,16 +3364,33 @@
         below: 0.1
       alias: motion & dark enough & no timed light
     then:
-    - action: light.turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
       data:
-        brightness_pct: '{{ ganglicht_brightness }}'
-      target:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: '{{ light_ganglicht }}'
-    - action: light.turn_off
+        target_state: 'on'
+        service_data:
+          brightness_pct: '{{ ganglicht_brightness }}'
+        action_domain: light
+        action_type: turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
         entity_id: '{{ light_treppenlicht }}'
   - alias: On motion oben
     if:
@@ -3332,6 +3414,22 @@
         brightness_pct: '{{ treppenlicht_brightness }}'
       target:
         entity_id: '{{ light_treppenlicht }}'
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'on'
+        entity_id: '{{ light_treppenlicht }}'
+        service_data:
+          brightness_pct: '{{ treppenlicht_brightness }}'
     - delay: '{{ light_delay }}'
     - action: light.turn_on
       metadata: {}
@@ -3339,6 +3437,22 @@
         brightness_pct: '{{ ganglicht_brightness_oben }}'
       target:
         entity_id: '{{ light_ganglicht }}'
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: '{{ light_ganglicht }}'
+        target_state: 'on'
+        action_domain: light
+        action_type: turn_on
+        service_data:
+          brightness_pct: '{{ ganglicht_brightness_oben }}'
     - sequence:
       - wait_for_trigger:
         - trigger: state
@@ -3461,6 +3575,22 @@
           - condition: template
             value_template: '{{ repeat.index >= 10 }}'
           alias: either light on or we tried 10 times and failed
+      enabled: false
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: '{{ light_ganglicht }}'
+        target_state: 'on'
+        service_data:
+          brightness_pct: '{{ ganglicht_brightness }}'
+        action_domain: light
+        action_type: turn_on
   - alias: Off Light Sync
     if:
     - condition: trigger
@@ -3482,23 +3612,19 @@
       alias: No Motion Detected
       enabled: true
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: '{{ light_ganglicht }}'
-        - delay: '{{ light_delay }}'
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: light.ganglicht_zigbee_led
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index >= 10 }}'
-          alias: light off or we tried 10 times and failed
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: '{{ light_ganglicht }}'
   - alias: 'Off Illumination '
     if:
     - condition: trigger
@@ -3511,23 +3637,19 @@
       entity_id: sensor.aqara_p1_illuminance
       above: 79
     then:
-    - repeat:
-        sequence:
-        - action: light.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id: '{{ light_ganglicht }}'
-        - delay: '{{ light_delay }}'
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: light.ganglicht_zigbee_led
-            state: 'off'
-          - condition: template
-            value_template: '{{ repeat.index >= 10 }}'
-          alias: light off or we tried 10 times and failed
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: light
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        target_state: 'off'
+        entity_id: '{{ light_ganglicht }}'
   - alias: Fix Lamp not turning off completely
     if:
     - condition: trigger
@@ -5253,27 +5375,19 @@
         id:
         - 'On'
       sequence:
-      - repeat:
-          sequence:
-          - action: switch.turn_on
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.orangina_lampe_zigbee
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.orangina_lampe_zigbee
-              state: 'on'
-            - condition: template
-              value_template: '{{ repeat.index >= 10 }}'
-            alias: switch is on or we tried 10 times
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.orangina_lampe_zigbee
       alias: 'On'
     - conditions:
       - condition: or
@@ -5309,27 +5423,19 @@
             before: 04:00:00
           alias: After 1 o'clock force off
       sequence:
-      - repeat:
-          until:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: switch.orangina_lampe_zigbee
-              state: 'off'
-            - condition: template
-              value_template: '{{ repeat.index >= 10 }}'
-            alias: switch is off or we tried 10 times
-          sequence:
-          - action: switch.turn_off
-            metadata: {}
-            data: {}
-            target:
-              entity_id: switch.orangina_lampe_zigbee
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 5
-              milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.orangina_lampe_zigbee
       alias: 'Off'
   mode: queued
   max: 10
@@ -5611,7 +5717,7 @@
   triggers:
   - trigger: numeric_state
     entity_id:
-    - sensor.tibber_pulse_metrics
+    - sensor.tibber_node_battery_voltage
     below: 3.025
   conditions: []
   actions:
@@ -5674,10 +5780,6 @@
       - condition: trigger
         id:
         - Unten
-      - condition: state
-        entity_id: input_boolean.etwas_ist_imbriefkasten
-        state: 'on'
-        enabled: false
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -6520,13 +6622,27 @@
   mode: single
 - id: '1745964630082'
   alias: Delete old daily backups if storage gets low
-  description: Automatically deletes old daily, weekly, and monthly backups when available
-    storage on the USB media backup share falls below a threshold to free up disk
-    space.
+  description: "## \U0001F9F9 **Auto Backup Cleanup — Smart Storage Management** \n\n###
+    \U0001F3AF **Purpose** \n\nThis automation maintains the **USB backup storage**
+    by automatically deleting old **daily**, **weekly**, and **monthly** backups every
+    12h. It helps prevent disk saturation while keeping essential restore points intact.\n\n---
+    \ \n\n### ⏰ **Trigger Frequency** \n\n- Executes **every 12 hours**, ensuring
+    storage is regularly monitored and managed.  \n\n---  \n\n### ⚙️ **How It Works**\n\nEach
+    run initiates a set of cleanup shell commands that remove backups older than their
+    defined retention period.  This process keeps storage usage efficient while maintaining
+    a healthy backup rotation schedule.  \n\n---  \n\n### \U0001F9E0 **Logic Highlights**\n\n-
+    Removes only **expired backups**, protecting recent ones.\n- Ensures reliable
+    long-term operation without manual cleanup.  \n\n---  \n\n### \U0001F9F0 **Executed
+    Cleanup Commands**\n\n#### \U0001F5D3 **Daily Backup Cleanup (older than 7 days)**\n\n```
+    find /share/USBMEDIABACKUP_Share/Backup/ -name 'DailyBackup*' -type f -mtime +7
+    -delete ```\n\n#### \U0001F4C6 **Weekly Backup Cleanup (older than 60 days)**\n\n```
+    find /share/USBMEDIABACKUP_Share/Backup/ -name 'WeeklyBackup*.tar' -type f -mtime
+    +60 -delete ```\n\n#### \U0001F5C3 **Monthly Backup Cleanup (older than 120 days)**\n\n```
+    find /share/USBMEDIABACKUP_Share/Backup/ -name 'MonthlyBackup*.tar' -type f -mtime
+    +120 -delete ``` "
   triggers:
-  - trigger: state
-    entity_id:
-    - sensor.system_monitor_freier_massenspeicher_share_usbmediabackup_share
+  - trigger: time_pattern
+    hours: /12
   conditions: []
   actions:
   - action: shell_command.delete_old_backups_disk
@@ -6784,21 +6900,37 @@
         id:
         - Start
       sequence:
-      - action: switch.turn_on
+      - action: script.retry_action_with_backoff
         metadata: {}
-        data: {}
-        target:
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
           entity_id: switch.zirkulationspumpe_zigbee
+          target_state: 'on'
     - conditions:
       - condition: trigger
         id:
         - Stop
       sequence:
-      - action: switch.turn_off
+      - action: script.retry_action_with_backoff
         metadata: {}
-        data: {}
-        target:
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
           entity_id: switch.zirkulationspumpe_zigbee
+          target_state: 'off'
   mode: single
 - id: '1748530213618'
   alias: Allergie und Aufgaben Benachrichtigung
@@ -8886,13 +9018,23 @@
   - trigger: state
     entity_id:
     - switch.spulmaschine_tasmota
+    to:
+    - 'off'
   conditions: []
   actions:
-  - action: switch.turn_on
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_on
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: linear
+      notify_on_failure: true
       entity_id: switch.spulmaschine_tasmota
+      target_state: 'on'
+      notify_service: notify.duncan
   mode: single
 - id: '1753221152708'
   alias: Restart Frigate at 1 o'clock
@@ -10193,18 +10335,16 @@
   alias: Tibber Pulse Bridge Auto Restart
   description: "## ⚙️ Tibber Pulse Bridge Auto Restart\n\n### \U0001F9ED **Purpose**\nEnsures
     reliable operation of the **Tibber Pulse Bridge** by automatically\nrestarting
-    it every **second day at 12:00**, or when its **uptime** exceeds\n3 days. This
-    prevents MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n-
-    **\U0001F551 Time Trigger:** Executes exactly at `12:00:00` every day.  \n- **\U0001F4C8
-    Uptime Trigger:** Activates if `binary_sensor.tibber_bridge_metrics`\n  reports
-    `uptime_days > 2.5`, providing a safety fallback.\n\n### \U0001F680 **Action Flow**\n1.
-    **Publish MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in` to trigger
-    the bridge restart.\n2. **Delay (15s)**  \n   Waits for the restart to begin and
-    the device to disconnect.\n3. **Force Metric Refresh**  \n   Calls `button.refresh_tibber_bridge`
-    to request fresh telemetry.\n4. **Verification Delay (60s)**  \n   Allows the
-    bridge time to reconnect and update its uptime attribute.\n5. **Validation & Notification**
-    \ \n   If the bridge **has not reset** (`uptime_days > 0.5`) or is\n   **unavailable**,
-    sends a notification via `notify.duncan`\n   to flag a manual check.\n\n### \U0001F512
+    it **every day at 12:00**, or when its **uptime** exceeds\n2.5 days. This prevents
+    MQTT lockups and stale data readings.\n\n### \U0001F9E9 **Trigger Logic**\n- **\U0001F551
+    Time Trigger:** Executes exactly at `12:00:00` every day.  \n- **\U0001F4C8 Uptime
+    Trigger:** Activates if `sensor.tibber_node_bridge_status`\n  reports `uptime_days
+    > 2.5`, providing a safety fallback.\n\n### \U0001F680 **Action Flow**\n1. **Publish
+    MQTT Reset Command**  \n   Sends `reset` to topic `tibber/in` to trigger the bridge
+    restart.\n2. **Verification Delay (120s)**  \n   Allows the bridge time to reconnect
+    and update its uptime attribute.\n3. **Validation & Notification**  \n   If the
+    bridge **has not reset** (`uptime_days > 0.5`) or is\n   **unavailable**, sends
+    a notification via `notify.duncan`\n   to flag a manual check.\n\n### \U0001F512
     **Execution Mode**\n- `mode: single` — prevents overlapping restarts, ensuring
     clean execution.\n"
   triggers:
@@ -10212,7 +10352,7 @@
     at: '12:00:00'
   - trigger: numeric_state
     entity_id:
-    - binary_sensor.tibber_bridge_metrics
+    - sensor.tibber_node_bridge_status
     attribute: uptime_days
     above: 2.5
   conditions: []
@@ -10222,31 +10362,17 @@
       topic: tibber/in
       payload: reset
   - delay:
-      seconds: 15
-  - action: button.press
-    target:
-      entity_id: button.refresh_tibber_bridge
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: button.press
-    data: {}
-    target:
-      entity_id: button.refresh_tibber_node
-  - delay:
-      seconds: 60
+      seconds: 120
   - choose:
     - conditions:
       - condition: or
         conditions:
         - condition: numeric_state
-          entity_id: binary_sensor.tibber_bridge_metrics
+          entity_id: sensor.tibber_node_bridge_status
           attribute: uptime_days
           above: 0.5
         - condition: state
-          entity_id: binary_sensor.tibber_bridge_metrics
+          entity_id: sensor.tibber_node_bridge_status
           state: unavailable
       sequence:
       - action: notify.duncan
@@ -10292,20 +10418,20 @@
   mode: single
 - id: '1762188975423'
   alias: Plant Light Control via Retry Script
-  description: "  ## \U0001F305\U0001F307 **Plant Light Control with Reliable Retry
-    Logic**\n\n  This automation intelligently manages the **plant grow lights** throughout
-    the\n  day, ensuring dependable operation even if a switch command initially fails.
-    \ \n  It leverages the **Retry Action with Backoff** script to repeatedly attempt\n
-    \ each state change until success, with exponential retry delays for resilience.\n\n
-    \ ### \U0001F553 **Schedule Overview**\n\n  - **\U0001F305 Sunrise:** Turns **all
-    configured lights ON**, providing early light exposure.  \n  - **\U0001F307 Sunset:**
-    Turns **all lights OFF**, simulating natural daylight cycles.  \n  - **\U0001F557
-    20:00:** Turns **lights OFF** *only if the sun has already set*, ensuring\n    no
-    unnecessary evening illumination.\n\n  ### ⚙️ **Reliability Features**\n  Each
-    light entity is processed individually with up to **5 retry attempts**,  \n  using
-    a **5-second exponential backoff** between attempts to guarantee the\n  final
-    desired state is reached.\n\n  ---\n  *Entities managed:*  \n  `switch.rescue_plants`,
-    `switch.bett_power_strip_l3`"
+  description: "## \U0001F305\U0001F307 **Plant Light Control with Reliable Retry
+    Logic**\n\nThis automation intelligently manages the **plant grow lights** throughout
+    the day, ensuring dependable operation even if a switch command initially fails.
+    \  It leverages the **Retry Action with Backoff** script to repeatedly attempt
+    each state change until success, with exponential retry delays for resilience.\n\n###
+    \U0001F553 **Schedule Overview**\n\n- **\U0001F305 Sunrise:** Turns **all configured
+    lights ON**, providing early light exposure.   \n- **\U0001F307 Sunset:** Turns
+    **all lights OFF**, simulating natural daylight cycles.\n- **\U0001F557 20:00:**
+    Turns **lights OFF** *only if the sun has already set*, ensuring no unnecessary
+    evening illumination.\n\n### ⚙️ **Reliability Features**\n\nEach light entity
+    is processed individually with up to **5 retry attempts**,   using a **5-second
+    exponential backoff** between attempts to guarantee the final desired state is
+    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.rescue_plants`\n  \n
+    \ - `switch.bett_power_strip_l3`"
   triggers:
   - trigger: sun
     event: sunrise
@@ -10356,6 +10482,7 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
     - conditions:
       - condition: trigger
         id: time_20
