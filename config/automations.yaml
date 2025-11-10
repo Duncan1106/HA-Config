@@ -8897,22 +8897,33 @@
   mode: single
 - id: '1751548094070'
   alias: Poco F7 Request Location with Retry and Final Notification
-  description: "## \U0001F4CD Poco F7 Location Update & Reliability System  \n\n###
-    \U0001F50D **Purpose**   Ensures Duncan’s **current location** remains accurate\nand
-    up-to-date by periodically requesting location updates from his **Poco\nF7**.
-    \  Designed to handle cases when the device fails to report location or\ngoes
-    into an **unknown/unavailable** state.  \n\n### ⚙️ **How It Works**   - **Triggers**
-    when Home Assistant starts, when\nDuncan leaves home,  \n  or every **10 minutes**
-    while he’s not in bed and his location is unknown/unavailable.  \n- **Retries
-    up to 10 times**, sending repeated location update requests\n  to the **Poco F7**
-    every 2 minutes until the location becomes valid.  \n- If all retries fail, a
-    **final notification** prompts a **manual update**\nfrom Duncan.  \n\n### \U0001F9E9
-    **Automation Logic Overview**   - \U0001F552 Trigger: HA start / Location lost\n/
-    10-minute interval (if awake)   - ✅ Condition: Location must be `not_home`,\n`unavailable`,
-    or `unknown`   - \U0001F501 Action 1: Retry up to 10x every 2 min →\nrequest phone
-    location update   - \U0001F4F1 Action 2: If still unresolved → send\nmanual update
-    reminder notification  \n\n--- **Status:** Smart reliability layer for accurate
-    person tracking  \n**Mode:** Single instance — prevents overlap  \n"
+  description: "## \U0001F4CD Poco F7 – Automatic Location Recovery & Reliability
+    System\n\n### \U0001F3AF **Purpose**\nEnsures Duncan’s **location** in Home Assistant
+    stays accurate and up to date.  \nThis automation detects when the **Poco F7**
+    stops reporting a valid position  \n(e.g., becomes `unknown` or `unavailable`)
+    and automatically attempts to fix it  \nby requesting repeated location updates
+    from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
+    starts  \n  - Duncan’s location becomes `unknown` or `unavailable`  \n  - Every
+    **10 minutes** while he’s awake and not connected to home Wi-Fi  \n- **Retries
+    up to 10 times**, sending location update requests every **2 minutes**  \n  until
+    the device reports a valid location.\n- If the problem persists after all retries,
+    a **final notification** is sent  \n  asking Duncan to manually refresh his location
+    in the Home Assistant app.\n\n### \U0001F9E9 **Automation Logic Overview**\n\n|
+    \U0001F9E9 Type | \U0001F4A1 Name / Alias | \U0001F50D Details |\n|----------|------------------|-------------|\n|
+    **Trigger** | **Home Assistant Start** | When Home Assistant starts (`event: start`).
+    |\n| **Trigger** | **Location Lost** | When `person.duncan` state changes to `unknown`
+    or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 10 minutes while
+    conditions are met (`minutes: /10`). |\n| **Condition** | **Not on Home Wi-Fi**
+    | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Condition** | **Awake
+    Condition** | Runs only if bed occupancy sensor `binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied`
+    is **off** (Duncan not in bed). |\n| **Action 1** | **\U0001F501 Repeated Location
+    Requests** | Repeats up to **10 times**, every **2 minutes**, sending `request_location_update`
+    to `notify.mobile_app_poco_f7`. Stops early if a valid location is received. |\n|
+    **Action 2** | **\U0001F4F1 Final Manual Update Notification** | If still `not_home`,
+    `unknown`, or `unavailable` after retries → sends a notification asking Duncan
+    to manually refresh location. |\n| **Mode** | **Single** | Prevents overlapping
+    execution of the same automation. |\n\n---\n\n**Status:** Active reliability layer
+    for accurate person tracking  \n**Mode:** Single — prevents overlapping runs"
   triggers:
   - trigger: homeassistant
     event: start
@@ -8924,9 +8935,23 @@
   - trigger: time_pattern
     minutes: /10
   conditions:
-  - condition: state
-    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-    state: 'off'
+  - condition: not
+    conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.poco_f7_wi_fi_connection
+        state:
+        - DESK
+      - condition: state
+        entity_id: sensor.poco_f7_wi_fi_connection
+        state:
+        - Cudy-69F2
+      alias: In home Wifi
+    - condition: state
+      entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+      state:
+      - 'off'
   actions:
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
@@ -8944,7 +8969,7 @@
               entity_id: person.duncan
               state: unknown
         - condition: template
-          value_template: '{{ repeat.index >= 10 }}'
+          value_template: '{{ repeat.index >= 4 }}'
       sequence:
       - action: notify.mobile_app_poco_f7
         data:
@@ -10150,9 +10175,9 @@
     \ 3. **Safety Conditions**  \n     - The boolean `input_boolean.waschmaschine_fertig`
     must currently be **off**  \n       (prevents repeated notifications).  \n     -
     The automation must **not have triggered in the last 20 minutes**,  \n       avoiding
-    premature reactivation.  \n     - The runtime (`sensor.waschmaschine_lauft_seit`)
-    must be **above 12** —  \n       ensuring the washer ran for at least ~12 minutes
-    within the last 20,\n       which filters out false positives or brief power draws.\n\n
+    premature reactivation.  \n     - For the 2‑minute off trigger only: `sensor.waschmaschine_lauft_seit`
+    must be **above 12** (ensures ≥12 min of activity to avoid early/scheduled false
+    positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
     \ 4. **Action**  \n     - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
     \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
     |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
