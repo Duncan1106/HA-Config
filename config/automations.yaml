@@ -10134,35 +10134,39 @@
   max: 10
 - id: '1760873847404'
   alias: Auto Waschmaschine Fertig
-  description: "## \U0001F9FA Auto Waschmaschine Fertig\n\n### ⚙️ **Purpose**  \nThis
-    automation automatically turns on the `input_boolean.waschmaschine_fertig` when
-    the washing machine has **finished its cycle**.  \nIt detects this by monitoring
-    how long the washer has been drawing power during the **last 20 minutes** and
-    reacts when that duration drops below a defined threshold.  \n\n---\n\n### \U0001F9E9
-    **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.waschmaschine_lauft_seit`
-    measures how many minutes within the **last 20 minutes** the washing machine has
-    consumed power.  \n   - As long as the machine is actively running, this value
-    stays high (close to 20).  \n   - Once the washing stops, the value gradually
-    decreases as power draw ceases.  \n\n2. **Trigger Condition**  \n   - The automation
-    triggers when `sensor.waschmaschine_lauft_seit` falls **below 16.8 minutes**,
-    meaning the machine has not been using power for at least a few minutes.  \n\n3.
-    **Safety Condition**  \n   - It only runs if `input_boolean.waschmaschine_fertig`
-    is currently **off**, avoiding repeated triggers or duplicate notifications.  \n\n4.
-    **Action**  \n   - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
-    \ \n   - This can then be used by other automations (e.g., phone notifications,
-    LED indicators, or voice announcements).  \n\n---\n\n### \U0001F4CA **Technical
-    Summary**  \n\n| Component | Description |\n|------------|-------------|\n| **Trigger**
-    | `numeric_state` → `sensor.waschmaschine_lauft_seit` < `16.8` |\n| **Condition**
-    | `input_boolean.waschmaschine_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
-    → `input_boolean.waschmaschine_fertig` |\n| **Tracking Window** | Last 20 minutes
-    of power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
-    \ \n- The **16.8-minute threshold** is calibrated for a 20-minute sliding window
-    — adjust if your sensor reports in larger or smaller intervals.  \n- This automation
-    assumes the washer stops drawing noticeable power at the end of a cycle.  \n-
-    To complete the loop, create a **companion reset automation** that turns `input_boolean.waschmaschine_fertig`
-    back **off** when the machine starts drawing power again.  \n- Ideal for linking
-    with smart notifications, lights, or audio feedback to inform you when the laundry
-    is done.\n"
+  description: " ## \U0001F9FA Auto Waschmaschine Fertig\n\n  ### ⚙️ **Purpose**  \n\n
+    \ This automation automatically switches **on** the\n  `input_boolean.waschmaschine_fertig`
+    when the washing machine has **finished\n  its cycle**.  \n\n  It determines this
+    by analyzing the washing machine’s **power usage pattern**\n  over the **past
+    20 minutes** — when the runtime value drops below a threshold,\n  the machine
+    is considered done.  \n\n  ---\n\n  ### \U0001F9E9 **How It Works**  \n\n  1.
+    **Runtime Tracking**  \n     - The sensor `sensor.waschmaschine_lauft_seit` measures
+    how many minutes\n       during the **last 20-minute window** the washer has drawn
+    power.  \n     - While running, this value remains high (close to 20).  \n     -
+    After the wash cycle ends, the value gradually decreases as power\n       consumption
+    stops.\n\n  2. **Trigger Condition**  \n     - The automation triggers when  \n
+    \      `sensor.waschmaschine_lauft_seit` drops **below 16.8 minutes**,  \n       **or**
+    when `binary_sensor.waschmaschine_lauft` stays **off** for\n       **2 minutes**.\n\n
+    \ 3. **Safety Conditions**  \n     - The boolean `input_boolean.waschmaschine_fertig`
+    must currently be **off**  \n       (prevents repeated notifications).  \n     -
+    The automation must **not have triggered in the last 20 minutes**,  \n       avoiding
+    premature reactivation.  \n     - The runtime (`sensor.waschmaschine_lauft_seit`)
+    must be **above 12** —  \n       ensuring the washer ran for at least ~12 minutes
+    within the last 20,\n       which filters out false positives or brief power draws.\n\n
+    \ 4. **Action**  \n     - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
+    \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
+    |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
+    < 16.8`<br>`state`: `binary_sensor.waschmaschine_lauft` off for 2 min |\n  | **Conditions**
+    | Boolean off, last triggered > 20 min ago, runtime above 12 |\n  | **Action**
+    | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig` |\n  | **Tracking
+    Window** | 20 minutes of power draw |\n  | **Mode** | `single` |\n\n  ---\n\n
+    \ ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute threshold**
+    corresponds to roughly 85 % of the 20-minute\n    monitoring window — adjust to
+    match your washer’s power usage pattern.  \n  - The logic assumes that the washing
+    machine draws **no noticeable power** at\n    the end of its cycle.  \n  - Pair
+    this with a **reset automation** that turns\n    `input_boolean.waschmaschine_fertig`
+    back **off** when the washer starts\n    again.  \n  - Useful for smart notifications,
+    lights, or audible alerts to let you know\n    when laundry is ready."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -10184,6 +10188,9 @@
   - condition: template
     value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered') | default(\n
       \     as_datetime('0'), true)) > timedelta(minutes=20) }}"
+  - condition: numeric_state
+    entity_id: sensor.waschmaschine_lauft_seit
+    above: 12
   actions:
   - action: input_boolean.turn_on
     metadata: {}
