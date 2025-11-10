@@ -10172,6 +10172,7 @@
     entity_id:
     - sensor.waschmaschine_lauft_seit
     below: 16.8
+    id: drop
   - trigger: state
     entity_id:
     - binary_sensor.waschmaschine_lauft
@@ -10181,16 +10182,27 @@
       hours: 0
       minutes: 2
       seconds: 0
+    id: 2m
   conditions:
-  - condition: state
-    entity_id: input_boolean.waschmaschine_fertig
-    state: 'off'
   - condition: template
     value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered') | default(\n
       \     as_datetime('0'), true)) > timedelta(minutes=20) }}"
-  - condition: numeric_state
-    entity_id: sensor.waschmaschine_lauft_seit
-    above: 12
+  - condition: state
+    entity_id: input_boolean.waschmaschine_fertig
+    state: 'off'
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.waschmaschine_lauft_seit
+        above: 12
+      - condition: trigger
+        id:
+        - 2m
+    - condition: trigger
+      id:
+      - drop
   actions:
   - action: input_boolean.turn_on
     metadata: {}
