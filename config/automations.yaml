@@ -8905,7 +8905,7 @@
     from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
     starts  \n  - Duncan’s location becomes `unknown` or `unavailable`  \n  - Every
     **10 minutes** while he’s awake and not connected to home Wi-Fi  \n- **Retries
-    up to 10 times**, sending location update requests every **2 minutes**  \n  until
+    up to 4 times**, sending location update requests every **2 minutes**  \n  until
     the device reports a valid location.\n- If the problem persists after all retries,
     a **final notification** is sent  \n  asking Duncan to manually refresh his location
     in the Home Assistant app.\n\n### \U0001F9E9 **Automation Logic Overview**\n\n|
@@ -8917,7 +8917,7 @@
     | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Condition** | **Awake
     Condition** | Runs only if bed occupancy sensor `binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied`
     is **off** (Duncan not in bed). |\n| **Action 1** | **\U0001F501 Repeated Location
-    Requests** | Repeats up to **10 times**, every **2 minutes**, sending `request_location_update`
+    Requests** | Repeats up to **4 times**, every **2 minutes**, sending `request_location_update`
     to `notify.mobile_app_poco_f7`. Stops early if a valid location is received. |\n|
     **Action 2** | **\U0001F4F1 Final Manual Update Notification** | If still `not_home`,
     `unknown`, or `unavailable` after retries → sends a notification asking Duncan
@@ -8948,10 +8948,10 @@
         state:
         - Cudy-69F2
       alias: In home Wifi
-    - condition: state
-      entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-      state:
-      - 'off'
+  - condition: state
+    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    state:
+    - 'off'
   actions:
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
@@ -10182,14 +10182,14 @@
     \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
     |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
     < 16.8`<br>`state`: `binary_sensor.waschmaschine_lauft` off for 2 min |\n  | **Conditions**
-    | Boolean off, last triggered > 20 min ago, runtime above 12 |\n  | **Action**
-    | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig` |\n  | **Tracking
-    Window** | 20 minutes of power draw |\n  | **Mode** | `single` |\n\n  ---\n\n
-    \ ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute threshold**
-    corresponds to roughly 85 % of the 20-minute\n    monitoring window — adjust to
-    match your washer’s power usage pattern.  \n  - The logic assumes that the washing
-    machine draws **no noticeable power** at\n    the end of its cycle.  \n  - Pair
-    this with a **reset automation** that turns\n    `input_boolean.waschmaschine_fertig`
+    | Boolean off, last triggered > 20 min ago, runtime above 12 only for 2m off trigger
+    |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
+    |\n  | **Tracking Window** | 20 minutes of power draw |\n  | **Mode** | `single`
+    |\n\n  ---\n\n  ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute
+    threshold** corresponds to roughly 85 % of the 20-minute\n    monitoring window
+    — adjust to match your washer’s power usage pattern.  \n  - The logic assumes
+    that the washing machine draws **no noticeable power** at\n    the end of its
+    cycle.  \n  - Pair this with a **reset automation** that turns\n    `input_boolean.waschmaschine_fertig`
     back **off** when the washer starts\n    again.  \n  - Useful for smart notifications,
     lights, or audible alerts to let you know\n    when laundry is ready."
   triggers:
