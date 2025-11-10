@@ -10616,3 +10616,75 @@
         target:
           entity_id: number.ding_dong_tapo_threshold
   mode: single
+- id: '1762798868790'
+  alias: Fairphone 4 Location Update
+  description: "## \U0001F4CD Fairphone 4 – Automatic Location Recovery & Reliability
+    System\n\n### \U0001F3AF **Purpose**\nEnsures Katalin’s **location** in Home Assistant
+    stays accurate and up to date.  \nThis automation detects when the **Fairphone
+    4** stops reporting a valid position  \n(e.g., becomes `unknown` or `unavailable`)
+    and automatically attempts to fix it  \nby requesting repeated location updates
+    from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
+    starts  \n  - Katalin’s location becomes `unknown` or `unavailable`  \n  - Every
+    **10 minutes** while he’s awake and not connected to home Wi-Fi  \n- **Retries
+    up to 4 times**, sending location update requests every **2 minutes**  \n  until
+    the device reports a valid location.\n\n### \U0001F9E9 **Automation Logic Overview**\n\n|
+    \U0001F9E9 Type | \U0001F4A1 Name / Alias | \U0001F50D Details |\n|----------|------------------|-------------|\n|
+    **Trigger** | **Home Assistant Start** | When Home Assistant starts (`event: start`).
+    |\n| **Trigger** | **Location Lost** | When `person.katalin` state changes to
+    `unknown` or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 10 minutes
+    while conditions are met (`minutes: /10`). |\n| **Condition** | **Not on Home
+    Wi-Fi** | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Action 1**
+    | **\U0001F501 Repeated Location Requests** | Repeats up to **4 times**, every
+    **2 minutes**, sending `request_location_update` to `notify.mobile_app_fp4`. Stops
+    early if a valid location is received. |\n| **Mode** | **Single** | Prevents overlapping
+    execution of the same automation. |\n\n---\n\n**Status:** Active reliability layer
+    for accurate person tracking  \n**Mode:** Single — prevents overlapping runs"
+  triggers:
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: person.katalin
+    to:
+    - unavailable
+    - unknown
+  - trigger: time_pattern
+    minutes: /10
+  conditions:
+  - condition: not
+    conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.fp4_wifi_connection
+        state:
+        - DESK
+      - condition: state
+        entity_id: sensor.fp4_wifi_connection
+        state:
+        - Cudy-69F2
+      alias: In home Wifi
+  actions:
+  - alias: "\U0001F501 Repeated Location Requests"
+    repeat:
+      until:
+      - condition: or
+        conditions:
+        - condition: not
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: person.katalin
+              state: unavailable
+            - condition: state
+              entity_id: person.katalin
+              state: unknown
+        - condition: template
+          value_template: '{{ repeat.index >= 4 }}'
+      sequence:
+      - action: notify.mobile_app_fp4
+        data:
+          message: request_location_update
+      - delay:
+          minutes: 2
+  mode: single
