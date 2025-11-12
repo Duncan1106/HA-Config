@@ -6801,9 +6801,10 @@
     Restart `repocket` add-on\n2. Wait 5 seconds\n3. Restart `earnapp` add-on\n4.
     Wait 5 seconds\n5. Restart `earnfm` add-on\n6. Wait 5 seconds\n7. Restart `packetstream`
     add-on\n8. Wait 5 seconds\n9. Restart `pawns` add-on\n10. Wait 5 seconds\n11.
-    Restart `traffmonetizer` add-on\n\n---\n\n### \U0001F527 Technical Notes\n- Mode:
-    `single` (prevents overlapping runs if the automation triggers again unexpectedly).\n-
-    Uses short delays between add-on restarts to avoid potential conflicts or overload."
+    Restart `traffmonetizer` add-on\n12. Wait 5 seconds\n13. Restart `honeygain` add-on\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` (prevents overlapping runs if the
+    automation triggers again unexpectedly).\n- Uses short delays between add-on restarts
+    to avoid potential conflicts or overload."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -6858,6 +6859,15 @@
     metadata: {}
     data:
       addon: b3f9bc48_traffmonetizer
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - action: hassio.addon_restart
+    metadata: {}
+    data:
+      addon: b3f9bc48_honeygain
   mode: single
 - id: '1747573166845'
   alias: Boiler Timer
@@ -7130,42 +7140,6 @@
         title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
         message: '{{ agent_gemini.response.speech.plain.speech }}'
       action: notify.duncan
-  mode: single
-- id: '1748638092151'
-  alias: Restart Honeygain if Not Running
-  description: This automation ensures that the Honeygain addon is restarted if it
-    is not actively running. If the active device count drops below one, the automation
-    will start or restart the addon and reload the relevant configuration entry, helping
-    maintain continuous operation.
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.active_device_count
-    below: 1
-  - trigger: state
-    entity_id:
-    - sensor.active_device_count
-    to: '0'
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-  conditions: []
-  actions:
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_honeygain
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 10
-      milliseconds: 0
-  - action: homeassistant.reload_config_entry
-    metadata: {}
-    data: {}
-    target:
-      device_id: be21d8dbeedf2103ac5a484a78c7f3de
   mode: single
 - id: '1748645782485'
   alias: Request Tasmota Rule States on HA Startup
@@ -8237,6 +8211,7 @@
           entity_id: switch.esp32_s3_zero_deye8k_time_of_use
           target_state: 'off'
         alias: Turn Battery Off via retry Script
+        enabled: true
       - action: script.retry_action_with_backoff
         metadata: {}
         data:
@@ -8426,6 +8401,7 @@
           entity_id: switch.esp32_s3_zero_deye8k_time_of_use
           target_state: 'off'
         alias: 'Turn Battery Off via retry Script '
+        enabled: true
       - delay:
           hours: 0
           minutes: 0
@@ -8497,6 +8473,7 @@
               | float(0) > 50 %}
 
               {{ (battery_discharging) or (repeat.index >= 3) }}'
+        enabled: true
       alias: Fallback Battery Protection from Discharge to EV
   mode: single
 - id: '1750706221080'
@@ -8894,22 +8871,34 @@
   mode: single
 - id: '1751548094070'
   alias: Poco F7 Request Location with Retry and Final Notification
-  description: "## \U0001F4CD Poco F7 Location Update & Reliability System  \n\n###
-    \U0001F50D **Purpose**   Ensures Duncan’s **current location** remains accurate\nand
-    up-to-date by periodically requesting location updates from his **Poco\nF7**.
-    \  Designed to handle cases when the device fails to report location or\ngoes
-    into an **unknown/unavailable** state.  \n\n### ⚙️ **How It Works**   - **Triggers**
-    when Home Assistant starts, when\nDuncan leaves home,  \n  or every **10 minutes**
-    while he’s not in bed and his location is unknown/unavailable.  \n- **Retries
-    up to 10 times**, sending repeated location update requests\n  to the **Poco F7**
-    every 2 minutes until the location becomes valid.  \n- If all retries fail, a
-    **final notification** prompts a **manual update**\nfrom Duncan.  \n\n### \U0001F9E9
-    **Automation Logic Overview**   - \U0001F552 Trigger: HA start / Location lost\n/
-    10-minute interval (if awake)   - ✅ Condition: Location must be `not_home`,\n`unavailable`,
-    or `unknown`   - \U0001F501 Action 1: Retry up to 10x every 2 min →\nrequest phone
-    location update   - \U0001F4F1 Action 2: If still unresolved → send\nmanual update
-    reminder notification  \n\n--- **Status:** Smart reliability layer for accurate
-    person tracking  \n**Mode:** Single instance — prevents overlap  \n"
+  description: "## \U0001F4CD Poco F7 – Automatic Location Recovery & Reliability
+    System\n\n### \U0001F3AF **Purpose**\nEnsures Duncan’s **location** in Home Assistant
+    stays accurate and up to date.  \nThis automation detects when the **Poco F7**
+    stops reporting a valid position  \n(e.g., becomes `unknown` or `unavailable`)
+    and automatically attempts to fix it  \nby requesting repeated location updates
+    from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
+    starts  \n  - Duncan’s location becomes `unknown` or `unavailable`  \n  - Every
+    **5 minutes** while he’s awake and not connected to home Wi-Fi\n  - When Wifi
+    Connection Changes\n- **Retries up to 4 times**, sending location update requests
+    every **2 minutes**  \n  until the device reports a valid location.\n- If the
+    problem persists after all retries, a **final notification** is sent  \n  asking
+    Duncan to manually refresh his location in the Home Assistant app.\n\n### \U0001F9E9
+    **Automation Logic Overview**\n\n| \U0001F9E9 Type | \U0001F4A1 Name / Alias |
+    \U0001F50D Details |\n|----------|------------------|-------------|\n| **Trigger**
+    | **Home Assistant Start** | When Home Assistant starts (`event: start`). |\n|
+    **Trigger** | **Location Lost** | When `person.duncan` state changes to `unknown`
+    or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 10 minutes while
+    conditions are met (`minutes: /10`). |\n| **Condition** | **Not on Home Wi-Fi**
+    | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Condition** | **Awake
+    Condition** | Runs only if bed occupancy sensor `binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied`
+    is **off** (Duncan not in bed). |\n| **Action 1** | **\U0001F501 Repeated Location
+    Requests** | Repeats up to **4 times**, every **2 minutes**, sending `request_location_update`
+    to `notify.mobile_app_poco_f7`. Stops early if a valid location is received. |\n|
+    **Action 2** | **\U0001F4F1 Final Manual Update Notification** | If still `not_home`,
+    `unknown`, or `unavailable` after retries → sends a notification asking Duncan
+    to manually refresh location. |\n| **Mode** | **Single** | Prevents overlapping
+    execution of the same automation. |\n\n---\n\n**Status:** Active reliability layer
+    for accurate person tracking  \n**Mode:** Single — prevents overlapping runs"
   triggers:
   - trigger: homeassistant
     event: start
@@ -8919,11 +8908,34 @@
     - unavailable
     - unknown
   - trigger: time_pattern
-    minutes: /10
+    minutes: /5
+  - trigger: state
+    entity_id:
+    - sensor.poco_f7_wi_fi_connection
   conditions:
+  - condition: or
+    conditions:
+    - condition: not
+      conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: sensor.poco_f7_wi_fi_connection
+          state:
+          - DESK
+        - condition: state
+          entity_id: sensor.poco_f7_wi_fi_connection
+          state:
+          - Cudy-69F2
+        alias: In home Wifi
+    - condition: state
+      entity_id: person.duncan
+      state:
+      - not_home
   - condition: state
     entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-    state: 'off'
+    state:
+    - 'off'
   actions:
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
@@ -8941,7 +8953,7 @@
               entity_id: person.duncan
               state: unknown
         - condition: template
-          value_template: '{{ repeat.index >= 10 }}'
+          value_template: '{{ repeat.index >= 4 }}'
       sequence:
       - action: notify.mobile_app_poco_f7
         data:
@@ -8954,9 +8966,6 @@
       conditions:
       - condition: or
         conditions:
-        - condition: state
-          entity_id: person.duncan
-          state: not_home
         - condition: state
           entity_id: person.duncan
           state: unavailable
@@ -10131,40 +10140,43 @@
   max: 10
 - id: '1760873847404'
   alias: Auto Waschmaschine Fertig
-  description: "## \U0001F9FA Auto Waschmaschine Fertig\n\n### ⚙️ **Purpose**  \nThis
-    automation automatically turns on the `input_boolean.waschmaschine_fertig` when
-    the washing machine has **finished its cycle**.  \nIt detects this by monitoring
-    how long the washer has been drawing power during the **last 20 minutes** and
-    reacts when that duration drops below a defined threshold.  \n\n---\n\n### \U0001F9E9
-    **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.waschmaschine_lauft_seit`
-    measures how many minutes within the **last 20 minutes** the washing machine has
-    consumed power.  \n   - As long as the machine is actively running, this value
-    stays high (close to 20).  \n   - Once the washing stops, the value gradually
-    decreases as power draw ceases.  \n\n2. **Trigger Condition**  \n   - The automation
-    triggers when `sensor.waschmaschine_lauft_seit` falls **below 16.8 minutes**,
-    meaning the machine has not been using power for at least a few minutes.  \n\n3.
-    **Safety Condition**  \n   - It only runs if `input_boolean.waschmaschine_fertig`
-    is currently **off**, avoiding repeated triggers or duplicate notifications.  \n\n4.
-    **Action**  \n   - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
-    \ \n   - This can then be used by other automations (e.g., phone notifications,
-    LED indicators, or voice announcements).  \n\n---\n\n### \U0001F4CA **Technical
-    Summary**  \n\n| Component | Description |\n|------------|-------------|\n| **Trigger**
-    | `numeric_state` → `sensor.waschmaschine_lauft_seit` < `16.8` |\n| **Condition**
-    | `input_boolean.waschmaschine_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
-    → `input_boolean.waschmaschine_fertig` |\n| **Tracking Window** | Last 20 minutes
-    of power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
-    \ \n- The **16.8-minute threshold** is calibrated for a 20-minute sliding window
-    — adjust if your sensor reports in larger or smaller intervals.  \n- This automation
-    assumes the washer stops drawing noticeable power at the end of a cycle.  \n-
-    To complete the loop, create a **companion reset automation** that turns `input_boolean.waschmaschine_fertig`
-    back **off** when the machine starts drawing power again.  \n- Ideal for linking
-    with smart notifications, lights, or audio feedback to inform you when the laundry
-    is done.\n"
+  description: " ## \U0001F9FA Auto Waschmaschine Fertig\n\n  ### ⚙️ **Purpose**  \n\n
+    \ This automation automatically switches **on** the\n  `input_boolean.waschmaschine_fertig`
+    when the washing machine has **finished\n  its cycle**.  \n\n  It determines this
+    by analyzing the washing machine’s **power usage pattern**\n  over the **past
+    20 minutes** — when the runtime value drops below a threshold,\n  the machine
+    is considered done.  \n\n  ---\n\n  ### \U0001F9E9 **How It Works**  \n\n  1.
+    **Runtime Tracking**  \n     - The sensor `sensor.waschmaschine_lauft_seit` measures
+    how many minutes\n       during the **last 20-minute window** the washer has drawn
+    power.  \n     - While running, this value remains high (close to 20).  \n     -
+    After the wash cycle ends, the value gradually decreases as power\n       consumption
+    stops.\n\n  2. **Trigger Condition**  \n     - The automation triggers when  \n
+    \      `sensor.waschmaschine_lauft_seit` drops **below 16.8 minutes**,  \n       **or**
+    when `binary_sensor.waschmaschine_lauft` stays **off** for\n       **2 minutes**.\n\n
+    \ 3. **Safety Conditions**  \n     - The boolean `input_boolean.waschmaschine_fertig`
+    must currently be **off**  \n       (prevents repeated notifications).  \n     -
+    The automation must **not have triggered in the last 20 minutes**,  \n       avoiding
+    premature reactivation.  \n     - For the 2‑minute off trigger only: `sensor.waschmaschine_lauft_seit`
+    must be **above 14** (ensures ≥14 min of activity to avoid early/scheduled false
+    positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
+    \ 4. **Action**  \n     - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
+    \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
+    |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
+    < 16.8`<br>`state`: `binary_sensor.waschmaschine_lauft` off for 2 min |\n  | **Conditions**
+    | Boolean off, last triggered > 20 min ago, runtime above 14 only for 2m off trigger
+    |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
+    |\n  | **Tracking Window** | 20 minutes of power draw |\n  | **Mode** | `single`
+    |\n\n  ---\n\n  ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute
+    threshold** corresponds to roughly 85 % of the 20-minute\n    monitoring window
+    — adjust to match your washer’s power usage pattern.  \n  - The logic assumes
+    that the washing machine draws **no noticeable power** at\n    the end of its
+    cycle.  "
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.waschmaschine_lauft_seit
     below: 16.8
+    id: drop
   - trigger: state
     entity_id:
     - binary_sensor.waschmaschine_lauft
@@ -10174,13 +10186,27 @@
       hours: 0
       minutes: 2
       seconds: 0
+    id: 2m
   conditions:
-  - condition: state
-    entity_id: input_boolean.waschmaschine_fertig
-    state: 'off'
   - condition: template
     value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered') | default(\n
       \     as_datetime('0'), true)) > timedelta(minutes=20) }}"
+  - condition: state
+    entity_id: input_boolean.waschmaschine_fertig
+    state: 'off'
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: numeric_state
+        entity_id: sensor.waschmaschine_lauft_seit
+        above: 14
+      - condition: trigger
+        id:
+        - 2m
+    - condition: trigger
+      id:
+      - drop
   actions:
   - action: input_boolean.turn_on
     metadata: {}
@@ -10568,4 +10594,93 @@
           value: '60'
         target:
           entity_id: number.ding_dong_tapo_threshold
+  mode: single
+- id: '1762798868790'
+  alias: Fairphone 4 Location Update
+  description: "## \U0001F4CD Fairphone 4 – Automatic Location Recovery & Reliability
+    System\n\n### \U0001F3AF **Purpose**\nEnsures Katalin’s **location** in Home Assistant
+    stays accurate and up to date.  \nThis automation detects when the **Fairphone
+    4** stops reporting a valid position  \n(e.g., becomes `unknown` or `unavailable`)
+    and automatically attempts to fix it  \nby requesting repeated location updates
+    from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
+    starts  \n  - Katalin’s location becomes `unknown` or `unavailable`  \n  - Every
+    **10 minutes** while not connected to home Wi-Fi  \n- **Retries up to 4 times**,
+    sending location update requests every **2 minutes**  \n  until the device reports
+    a valid location.\n\n### \U0001F9E9 **Automation Logic Overview**\n\n| \U0001F9E9
+    Type | \U0001F4A1 Name / Alias | \U0001F50D Details |\n|----------|------------------|-------------|\n|
+    **Trigger** | **Home Assistant Start** | When Home Assistant starts (`event: start`).
+    |\n| **Trigger** | **Location Lost** | When `person.katalin` state changes to
+    `unknown` or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 10 minutes
+    while conditions are met (`minutes: /10`). |\n| **Condition** | **Not on Home
+    Wi-Fi** | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Action 1**
+    | **\U0001F501 Repeated Location Requests** | Repeats up to **4 times**, every
+    **2 minutes**, sending `request_location_update` to `notify.mobile_app_fp4`. Stops
+    early if a valid location is received. |\n| **Mode** | **Single** | Prevents overlapping
+    execution of the same automation. |\n\n---\n\n**Status:** Active reliability layer
+    for accurate person tracking  \n**Mode:** Single — prevents overlapping runs"
+  triggers:
+  - trigger: homeassistant
+    event: start
+  - trigger: state
+    entity_id: person.katalin
+    to:
+    - unavailable
+    - unknown
+  - trigger: time_pattern
+    minutes: /10
+  conditions:
+  - condition: not
+    conditions:
+    - condition: or
+      conditions:
+      - condition: state
+        entity_id: sensor.fp4_wifi_connection
+        state:
+        - DESK
+      - condition: state
+        entity_id: sensor.fp4_wifi_connection
+        state:
+        - Cudy-69F2
+      alias: In home Wifi
+  actions:
+  - alias: "\U0001F501 Repeated Location Requests"
+    repeat:
+      until:
+      - condition: or
+        conditions:
+        - condition: not
+          conditions:
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: person.katalin
+              state: unavailable
+            - condition: state
+              entity_id: person.katalin
+              state: unknown
+        - condition: template
+          value_template: '{{ repeat.index >= 4 }}'
+      sequence:
+      - action: notify.mobile_app_fp4
+        data:
+          message: request_location_update
+      - delay:
+          minutes: 2
+  mode: single
+- id: '1762813073816'
+  alias: Notify Next DNS Query Limit
+  description: Notifies when the Next DNS free query limit is almost reached.
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.my_first_profile_dns_abfragen
+    above: 280000
+  conditions: []
+  actions:
+  - action: notify.duncan
+    metadata: {}
+    data:
+      title: Next DNS
+      message: 'The free amount of queries is nearly used up ({{ (states(''sensor.my_first_profile_dns_abfragen'')|float(0)/1000)|round(0)
+        }}k/300k) '
   mode: single
