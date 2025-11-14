@@ -629,13 +629,26 @@ config:
         card_param: cards
         filter:
           include:
-          - entity_id: '*battery_plus'
+          - entity_id: sensor.*_battery_plus
             options:
+              bar_color: "{% set level = states(entity) | int %} {% if level > 80\
+                \ %}\n linear-gradient(90deg, lightgreen, green)\n{% elif level >\
+                \ 20 %}\n linear-gradient(90deg, yellow, orange)\n{% else %}\n linear-gradient(90deg,\
+                \ orange, red)\n{% endif %}"
+              color: "{% set level = states(entity) | int %} {% if level < 30 %}\n\
+                \ red\n{% elif level < 60 %}\n orange\n{% else %}\n green\n{% endif\
+                \ %}"
+              icon: "{% if states(entity) | int > 50 %}\n  mdi:battery-high\n{% else\
+                \ %}\n  mdi:battery-low\n{% endif %}"
+              name: '{{ entity | replace(''zigbee'','''') | replace(''battery_plus'','''')|
+                replace(''sensor.'','''')| replace(''_'','' '') | title }}: {{ states(entity)
+                }}%'
+              percent: '{{ states(entity) }}'
+              secondary: '{{ states(entity|replace(''plus'',''type''))}}'
               tap_action:
                 action: more-info
-              theme: battery
-              type: custom:entity-progress-card
-        show_empty: true
+              type: custom:entity-progress-card-template
+        show_empty: false
         sort:
           ignore_case: true
           method: state
