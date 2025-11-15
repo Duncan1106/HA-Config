@@ -10693,6 +10693,13 @@
   - at: 05:00:00
     trigger: time
     id: 'Off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.charge_battery_at_night
+    attribute: prevent_night_discharge
+    to:
+    - 'true'
+    id: Battery Off in cheap hours
   conditions:
   - condition: or
     conditions:
@@ -10707,9 +10714,14 @@
       - condition: trigger
         id:
         - 'On'
+      - condition: state
+        entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+        state:
+        - 'off'
     - condition: trigger
       id:
       - 'Off'
+      - Battery Off in cheap hours
   actions:
   - choose:
     - conditions:
@@ -10733,6 +10745,12 @@
           notify_service: notify.duncan
           entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
           target_state: 'on'
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''charge_target_percent'')}}'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
     - conditions:
       - condition: trigger
         id:
@@ -10751,3 +10769,20 @@
           notify_service: notify.duncan
           entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
           target_state: 'off'
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '7000'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+    - conditions:
+      - condition: trigger
+        id:
+        - Battery Off in cheap hours
+      sequence:
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '0'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
