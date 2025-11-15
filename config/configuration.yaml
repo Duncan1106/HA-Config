@@ -210,7 +210,7 @@ template:
         {% set usable_kwh = battery_capacity * (soc / 100.0) %}
         {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
 
-        {{ (usable_kwh + forecast) < target_kwh }}
+        {{ ((usable_kwh + forecast) < target_kwh) if now().hour > 23 or now().hour < 6 else false }}
 
       availability: >
         {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
@@ -251,7 +251,7 @@ template:
           {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
           {% set usable_kwh = battery_capacity * (soc / 100.0) %}
           {% set total_energy = usable_kwh + forecast %}
-          {{ total_energy < target_kwh }}
+          {{ (total_energy < target_kwh) if now().hour > 23 or now().hour < 6  else false }}
             
   - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
