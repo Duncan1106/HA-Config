@@ -197,6 +197,36 @@ notify:
 
 template:
   - binary_sensor:
+    - name: Charhe Battery at Night (dynamically)
+      unique_id: charge_battery_at_night
+      icon: mdi:flash-circle
+      state: >
+        {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+
+        {# Use only today’s forecast – after midnight this is the correct day #}
+        {% set forecast_raw = states('sensor.solcast_pv_forecast_prognose_heute') %}
+        {% set forecast = forecast_raw | float(0) %}
+
+        {% set battery_capacity = 25.0 %}
+        {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+        {% set target_kwh = 35.0 %}
+
+        {{ (usable_kwh + forecast) < target_kwh }}
+
+      availability: >
+        {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
+           and states('sensor.solcast_pv_forecast_prognose_heute') not in ['unknown','unavailable'] }}
+      attributes:
+        soc_percent: >
+          {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
+        usable_kwh: >
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {{ (25.0 * (soc / 100.0)) | round(2) }}
+        forecast_kwh: >
+          {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
+        target_kwh: 35.0
+        decision_formula: "usable_kwh + forecast_kwh < target_kwh"
+  - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
         state: >

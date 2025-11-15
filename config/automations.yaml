@@ -10656,3 +10656,49 @@
       message: 'The free amount of queries is nearly used up ({{ (states(''sensor.my_first_profile_dns_abfragen'')|float(0)/1000)|round(0)
         }}k/300k) '
   mode: single
+- id: '1763164752006'
+  alias: Night Battery Charging
+  description: 'Automatically charge the battery during night tariff if conditions
+    are met. Stops reliably at 4:55/5:00 even if HA restarts.
+
+    '
+  triggers:
+  - entity_id: binary_sensor.charge_battery_at_night
+    to: 'on'
+    trigger: state
+  - at: 04:55:00
+    trigger: time
+    id: 'Off'
+  - at: 05:00:00
+    trigger: time
+    id: 'Off'
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: time
+        after: 00:15:00
+        before: 04:30:00
+      - condition: state
+        entity_id: binary_sensor.night_charge_needed
+        state: 'on'
+    - condition: trigger
+      id:
+      - 'Off'
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.night_charge_needed
+        state: 'on'
+      sequence:
+      - target:
+          entity_id: switch.battery_charge
+        action: switch.turn_on
+    - conditions:
+      - condition: time
+        after: 04:54:00
+        before: 05:01:00
+      sequence:
+      - action: script.retry_turn_off_charge
