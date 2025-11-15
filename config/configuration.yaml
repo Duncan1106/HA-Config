@@ -203,14 +203,15 @@ template:
         {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
 
         {# Use only today’s forecast – after midnight this is the correct day #}
-        {% set forecast_raw = states('sensor.solcast_pv_forecast_prognose_heute') %}
-        {% set forecast = forecast_raw | float(0) %}
+        {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+        {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen')%}
+        {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0)  %}
 
         {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
         {% set usable_kwh = battery_capacity * (soc / 100.0) %}
         {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
 
-        {{ ((usable_kwh + forecast) < target_kwh) if now().hour < 6 else false }}
+        {{ ((usable_kwh + forecast) < target_kwh) }}
 
       availability: >
         {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
@@ -222,14 +223,19 @@ template:
           {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
           {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
           {{ (cap * (soc / 100.0)) | round(2) }}
-        forecast_kwh: >
+        forecast_heute_kwh: >
           {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
+        forecast_morgen_kwh: >
+          {{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) }}
         target_kwh: >
           {{ states('input_number.night_charge_target') | float(0) }}
         decision_formula: "usable_kwh + forecast_kwh < target_kwh"
         charge_needed_kwh: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-            {% set forecast = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0)  %}
+        
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
             {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
@@ -238,7 +244,10 @@ template:
         charge_target_percent: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-            {% set forecast = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen')%}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0)  %}
+        
             {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
             {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
@@ -246,7 +255,10 @@ template:
             {{ min([max([target_percent, soc]), 100]) | round(1) }}
         prevent_night_discharge: >
           {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-          {% set forecast = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0)  %}
+        
           {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
           {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
           {% set usable_kwh = battery_capacity * (soc / 100.0) %}
