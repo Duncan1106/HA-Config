@@ -10658,14 +10658,35 @@
   mode: single
 - id: '1763164752006'
   alias: Night Battery Charging
-  description: 'Automatically charge the battery during night tariff if conditions
-    are met. Stops reliably at 4:55/5:00 even if HA restarts.
-
-    '
+  description: "# \U0001F319 Night Battery Charging Automation\n\n## ⚙️ Purpose\nThis
+    automation automatically manages the charging of the battery during the night
+    tariff.  \nIt ensures that charging **starts only when conditions are met** and
+    **stops reliably** at 04:55 or 05:00, even if Home Assistant restarts.\n\n---\n\n##
+    ⏰ Triggers\n\n| Trigger ID | Type       | Details                                   |\n|------------|------------|-------------------------------------------|\n|
+    On         | State      | `binary_sensor.charge_battery_at_night` turns `on` |\n|
+    Off        | Time       | At `04:55:00`                             |\n| Off        |
+    Time       | At `05:00:00`                             |\n\n---\n\n## \U0001F4CB
+    Conditions\nThe automation runs if **either** of the following is true:\n\n1.
+    **Nighttime Charging Window**  \n   - Time is between `00:15:00` and `04:30:00`
+    \ \n   - `binary_sensor.charge_battery_at_night` is `on`  \n   - Trigger is `On`\n\n2.
+    **Scheduled Stop**  \n   - Trigger is `Off` (04:55 or 05:00)\n\n---\n\n## \U0001F527
+    Actions\n\n### 1️⃣ Start Charging\n- **Conditions:**  \n  - `binary_sensor.charge_battery_at_night`
+    is `on`  \n  - Trigger is `On`\n- **Action:**  \n  - Calls the **retry script**
+    to turn on the battery charger (details in Notes)\n\n### 2️⃣ Stop Charging\n-
+    **Conditions:**  \n  - Trigger is `Off`\n- **Action:**  \n  - Calls the **retry
+    script** to turn off the battery charger (details in Notes)\n\n---\n\n## ✅ Notes\n-
+    Both start and stop actions use the `script.retry_action_with_backoff` for reliability.
+    \ \n- Script parameters:\n  - Maximum retries: 10  \n  - Base delay: 5 seconds
+    \ \n  - Max delay: 60 seconds  \n  - Backoff type: simple  \n  - Notifies `notify.duncan`
+    on failure  \n  - Target entity: `switch.esp32_s3_zero_deye8k_battery_charge_grid`
+    \ \n  - Target state: `on` or `off` depending on the action\n- Ensures charging
+    stops reliably at the scheduled times, preventing overcharge and avoiding tariff
+    issues.  \n- Designed to be resilient even if Home Assistant restarts."
   triggers:
   - entity_id: binary_sensor.charge_battery_at_night
     to: 'on'
     trigger: state
+    id: 'On'
   - at: 04:55:00
     trigger: time
     id: 'Off'
@@ -10681,8 +10702,11 @@
         after: 00:15:00
         before: 04:30:00
       - condition: state
-        entity_id: binary_sensor.night_charge_needed
+        entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
+      - condition: trigger
+        id:
+        - 'On'
     - condition: trigger
       id:
       - 'Off'
@@ -10690,15 +10714,40 @@
   - choose:
     - conditions:
       - condition: state
-        entity_id: binary_sensor.night_charge_needed
+        entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
+      - condition: trigger
+        id:
+        - 'On'
       sequence:
-      - target:
-          entity_id: switch.battery_charge
-        action: switch.turn_on
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          target_state: 'on'
     - conditions:
-      - condition: time
-        after: 04:54:00
-        before: 05:01:00
+      - condition: trigger
+        id:
+        - 'Off'
       sequence:
-      - action: script.retry_turn_off_charge
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          target_state: 'off'
