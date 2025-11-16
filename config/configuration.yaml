@@ -214,9 +214,9 @@ template:
         {{ ((usable_kwh + forecast) < target_kwh) }}
 
       availability: >
+        {% set forecast_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
         {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
-           and states('sensor.solcast_pv_forecast_prognose_heute') not in ['unknown','unavailable']
-           and states('sensor.solcast_pv_forecast_prognose_morgen') not in ['unknown','unavailable'] }}
+          and states(forecast_entity) not in ['unknown','unavailable'] }}
       attributes:
         soc_percent: >
           {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
@@ -274,7 +274,21 @@ template:
           {% set usable_kwh = battery_capacity * (soc / 100.0) %}
           {% set total_energy = usable_kwh + forecast %}
           {{ (total_energy < target_kwh) }}
-            
+        saved_cost_eur: >
+          {% set night_tariff = 0.18 %}
+          {% set day_tariff = 0.30 %}
+        
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+          {% set remaining_kwh = (target_kwh - (usable_kwh + forecast)) | float(0) %}
+        
+          {{ ((day_tariff - night_tariff) * max([remaining_kwh, 0])) | round(2) }}
+          
   - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
