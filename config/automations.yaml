@@ -526,7 +526,6 @@
         - sensor.ipad_von_stephan_battery_level
         - sensor.poco_f7_battery_level
         - sensor.mi_9t_battery_level
-        - sensor.m2101k6g_battery_level
       actions:
       - metadata: {}
         data:
@@ -2840,6 +2839,7 @@
           entity_id: switch.gartenhaus_usb_switch_zigbee_l2
           target_state: 'on'
           base_delay: 1
+          notify_on_failure: false
     - conditions:
       - condition: state
         entity_id: binary_sensor.epever_cooling_needed
@@ -2856,6 +2856,7 @@
           backoff_type: linear
           entity_id: switch.gartenhaus_usb_switch_zigbee_l2
           target_state: 'off'
+          notify_on_failure: false
   mode: single
 - id: '1721219665412'
   alias: Auto Pool PulseTime Adjust
@@ -3675,31 +3676,6 @@
         entity_id: light.ganglicht_zigbee_led
   mode: parallel
   max: 6
-- id: '1727504565238'
-  alias: Open Lucky Pot
-  description: Check when we are able to open the Honeygain Lucky Pot, and open it
-  triggers:
-  - hours: '23'
-    minutes: '0'
-    seconds: '0'
-    trigger: time_pattern
-  - trigger: numeric_state
-    entity_id:
-    - sensor.today_s_earnings
-    above: 0.15
-  conditions:
-  - condition: numeric_state
-    entity_id: sensor.today_s_credits
-    above: 15
-  - condition: numeric_state
-    entity_id: sensor.today_s_lucky_pot_credits
-    below: 0.001
-  actions:
-  - data: {}
-    target:
-      entity_id: button.open_lucky_pot
-    action: button.press
-  mode: single
 - id: '1728376825897'
   alias: Bad Nachtlicht Motion
   description: "  ## \U0001F6BB Bad Nachtlicht Motion  \n\n  ### \U0001F4CB **Smart
@@ -6222,59 +6198,6 @@
           - input_boolean.waschmaschine_fertig
       alias: Waschmaschine
   mode: single
-- id: '1740768826171'
-  alias: 4 Button Garage
-  description: ''
-  triggers:
-  - domain: mqtt
-    device_id: 567e3678adb66923eb4b34ad88e55ff5
-    type: action
-    subtype: 1_single
-    trigger: device
-    id: '1'
-  - domain: mqtt
-    device_id: 567e3678adb66923eb4b34ad88e55ff5
-    type: action
-    subtype: 2_single
-    metadata: {}
-    trigger: device
-    id: '2'
-  - domain: mqtt
-    device_id: 567e3678adb66923eb4b34ad88e55ff5
-    type: action
-    subtype: 3_single
-    trigger: device
-    id: '3'
-  - domain: mqtt
-    device_id: 567e3678adb66923eb4b34ad88e55ff5
-    type: action
-    subtype: 4_single
-    trigger: device
-    id: '4'
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - '1'
-      sequence: []
-    - conditions:
-      - condition: trigger
-        id:
-        - '2'
-      sequence: []
-    - conditions:
-      - condition: trigger
-        id:
-        - '3'
-      sequence: []
-    - conditions:
-      - condition: trigger
-        id:
-        - '4'
-      sequence: []
-  mode: single
 - id: '1741093435280'
   alias: Set Herd CT Clamp Update Frequency at Startup and every Hour
   description: "## ⚡ Herd CT Clamp Update Frequency Control\n\n### \U0001F4CB Purpose\nKeeps
@@ -7191,26 +7114,6 @@
       qos: 0
       topic: cmnd/tasmota_18F373/Rule1
       payload: ' '
-- id: '1748906376880'
-  alias: Notify for Honeygain Withdrawal
-  description: Notifies when Honeygain balance is ready for withdrawal.
-  triggers:
-  - type: value
-    device_id: be21d8dbeedf2103ac5a484a78c7f3de
-    entity_id: 7b1b9754488d14a6c0f06e0320f7e33c
-    domain: sensor
-    metadata:
-      secondary: false
-    trigger: device
-    above: 20
-  conditions: []
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: Honeygain Withdrawn Now
-      message: 'Balance: {{ states(''sensor.account_balance'') | float(0)}}$'
-  mode: single
 - id: '1749115504854'
   alias: Adjust Addon Status based on AnkerMake M5C Usage
   description: "## ⚡ Adjust Addon Status based on AnkerMake M5C Usage\n\n### \U0001F4CB
@@ -7983,6 +7886,40 @@
         - condition: state
           entity_id: binary_sensor.go_echarger_270862_car
           state: 'on'
+        - condition: or
+          conditions:
+          - condition: trigger
+            id:
+            - Off_time
+          - condition: or
+            conditions:
+            - alias: Zoe full and was charging
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_zoe
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: Zoe
+            - alias: 'ID4 full and was charging '
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_id4
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: ID.4
+            - alias: 'MG4 full and was charging '
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_mg4
+              - condition: state
+                entity_id: sensor.go_e_11kw_car
+                state: MG4
         then:
         - alias: wait for power to go down after car_full trigger
           if:
@@ -8028,6 +7965,40 @@
         - condition: state
           entity_id: binary_sensor.go_echarger_252682_car
           state: 'on'
+        - condition: or
+          conditions:
+          - condition: trigger
+            id:
+            - Off_time
+          - condition: or
+            conditions:
+            - alias: Zoe full and was charging
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_zoe
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: Zoe
+            - alias: 'ID4 full and was charging '
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_id4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: ID.4
+            - alias: 'MG4 full and was charging '
+              condition: and
+              conditions:
+              - condition: trigger
+                id:
+                - car_full_mg4
+              - condition: state
+                entity_id: sensor.go_e_22kw_car
+                state: MG4
         then:
         - alias: wait for power to go down after car_full trigger
           if:
@@ -8188,6 +8159,7 @@
               - condition: template
                 value_template: '{{ repeat.index >= 3 }}'
               alias: Either battery is on or we retried 3 or more times
+        alias: Turn on Battery with Retry only if both Chargers are below 5 W
       alias: Stop EV Charging, Octopus Dumb Mode
     - conditions:
       - condition: trigger
@@ -8475,7 +8447,8 @@
               {{ (battery_discharging) or (repeat.index >= 3) }}'
         enabled: true
       alias: Fallback Battery Protection from Discharge to EV
-  mode: single
+  mode: parallel
+  max: 6
 - id: '1750706221080'
   alias: Adjust Grow Light Brightness from Sensor
   description: "## \U0001F4A1 Adjust Grow Light Brightness from Sensor\n\n### \U0001F4CB
@@ -10684,3 +10657,186 @@
       message: 'The free amount of queries is nearly used up ({{ (states(''sensor.my_first_profile_dns_abfragen'')|float(0)/1000)|round(0)
         }}k/300k) '
   mode: single
+- id: '1763164752006'
+  alias: Night Battery Charging
+  description: "# \U0001F319 Night Battery Charging Automation\n\n## ⚙️ Purpose\nThis
+    automation automatically manages the charging of the battery during the night
+    tariff.  \nIt ensures that charging **starts only when conditions are met** and
+    **stops reliably** at 04:55 or 05:00, even if Home Assistant restarts.\n\n---\n\n##
+    ⏰ Triggers\n\n| Trigger ID                 | Type       | Details                                                              |\n|-----------------------------|------------|----------------------------------------------------------------------|\n|
+    On                          | State      | `binary_sensor.charge_battery_at_night`
+    turns `on`                   |\n| Off                         | Time       | At
+    `04:55:00`                                                        |\n| Off                         |
+    Time       | At `05:00:00`                                                        |\n|
+    Battery Off in cheap hours  | State      | `binary_sensor.charge_battery_at_night`
+    attribute `prevent_night_discharge` turns `true` |\n\n---\n\n## \U0001F4CB Conditions\nThe
+    automation runs if **either** of the following is true:\n\n1. **Nighttime Charging
+    Window**  \n   - Time is between `00:15:00` and `04:30:00`  \n   - `binary_sensor.charge_battery_at_night`
+    is `on`  \n   - Trigger is `On`  \n   - Battery charger switch is `off`\n\n2.
+    **Scheduled Stop / Forced Off**  \n   - Trigger is `Off` (04:55 or 05:00)  \n
+    \  - Trigger is `Battery Off in cheap hours`\n\n---\n\n## \U0001F527 Actions\n\n###
+    1️⃣ Start Charging\n- **Conditions:**  \n  - `binary_sensor.charge_battery_at_night`
+    is `on`  \n  - Trigger is `On`\n- **Action:**  \n  - Calls the **retry script**
+    to turn on the battery charger  \n  - Updates `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    with the `charge_target_percent` attribute (details in Notes)\n\n### 2️⃣ Stop
+    Charging\n- **Conditions:**  \n  - Trigger is `Off`\n- **Action:**  \n  - Calls
+    the **retry script** to turn off the battery charger  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to `\"7000\"` (details in Notes)\n\n### 3️⃣ Battery Off in Cheap Hours\n- **Conditions:**
+    \ \n  - Trigger is `Battery Off in cheap hours`\n- **Action:**  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to `\"0\"` (details in Notes)\n\n---\n\n## ✅ Notes\n- **Retry Script Details:**
+    Both start and stop actions use the `script.retry_action_with_backoff` for reliability:\n
+    \ - Maximum retries: 10  \n  - Base delay: 5 seconds  \n  - Max delay: 60 seconds
+    \ \n  - Backoff type: simple  \n  - Notifies `notify.duncan` on failure  \n  -
+    Target entity: `switch.esp32_s3_zero_deye8k_battery_charge_grid`  \n  - Target
+    state: `on` or `off` depending on the action\n\n- **Number Adjustments:**  \n
+    \ - Start charging sets `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    from the `charge_target_percent` attribute  \n  - Stop charging sets `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to `\"7000\"`  \n  - Battery Off in cheap hours sets `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to `\"0\"`\n\n- Ensures charging stops reliably at the scheduled times, preventing
+    overcharge and avoiding tariff issues.  \n- Designed to be resilient even if Home
+    Assistant restarts."
+  triggers:
+  - entity_id: binary_sensor.charge_battery_at_night
+    to: 'on'
+    trigger: state
+    id: 'On'
+  - trigger: time
+    at: 00:15:00
+    id: 'On'
+  - at: 04:55:00
+    trigger: time
+    id: 'Off'
+  - at: 05:00:00
+    trigger: time
+    id: 'Off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.charge_battery_at_night
+    attribute: prevent_night_discharge
+    id: Battery Off in cheap hours
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: time
+        after: 00:14:59
+        before: 04:30:00
+      - condition: state
+        entity_id: binary_sensor.charge_battery_at_night
+        state: 'on'
+      - condition: trigger
+        id:
+        - 'On'
+      - condition: state
+        entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+        state:
+        - 'off'
+    - condition: trigger
+      id:
+      - 'Off'
+      - Battery Off in cheap hours
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.charge_battery_at_night
+        state: 'on'
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: "\U0001F319 Night Battery Charging Decision"
+          message: "Night charging started at {{ now().strftime('%H:%M') }}.\nThe
+            battery is currently at {{\n  (state_attr('binary_sensor.charge_battery_at_night',
+            'soc_percent') | float(0)) | round()\n}}%  ({{ \n  (state_attr('binary_sensor.charge_battery_at_night',
+            'usable_kwh') | float(0)) | round(2)\n}} kWh usable).\nForecasted PV generation
+            today: {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'forecast_heute_kwh')
+            | float(0)) | round(2)\n}} kWh\nTarget energy for tonight: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
+            'target_kwh') | float(0)) | round(2)\n}} kWh. \nTotal energy available
+            (usable + forecast): {{\n  (state_attr('binary_sensor.charge_battery_at_night',
+            'total_energy_kwh') | float(0)) | round(2)\n}} kWh.\n⚠️ Missing energy
+            to reach target: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
+            'charge_needed_kwh') | float(0)) | round(2)\n}} kWh.\nAction: Charging
+            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'charge_target_percent')
+            | float(0)) | round(0)\n}}%.\n"
+          data:
+            tag: night_battery_charge
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          target_state: 'on'
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '{% set target = state_attr(''binary_sensor.charge_battery_at_night'',
+            ''charge_target_percent'') | float(0) %}
+
+            {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '0'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+          target_state: 'off'
+      - action: number.set_value
+        metadata: {}
+        data:
+          value: '7000'
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+    - conditions:
+      - condition: trigger
+        id:
+        - Battery Off in cheap hours
+      sequence:
+      - if:
+        - condition: template
+          value_template: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''prevent_night_discharge'')}}'
+        then:
+        - action: number.set_value
+          metadata: {}
+          data:
+            value: '0'
+          target:
+            entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+        else:
+        - action: number.set_value
+          metadata: {}
+          data:
+            value: '7000'
+          target:
+            entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+  mode: parallel
+  max: 10

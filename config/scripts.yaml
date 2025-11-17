@@ -636,20 +636,36 @@ terra_sunrise:
     data: {}
     action: input_boolean.turn_on
     continue_on_error: true
-  - action: switch.turn_on
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_on
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.terrarium_tasmota2
+      target_state: 'on'
+      max_retries: 5
     continue_on_error: true
   - data: {}
     action: script.luftbefeuchter
     continue_on_error: true
-  - action: switch.turn_on
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_on
+      max_retries: 5
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.terrarium
+      target_state: 'on'
     continue_on_error: true
   mode: single
 luftbefeuchter:
@@ -673,11 +689,19 @@ luftbefeuchter:
 
         {{ hum1 >= compare or hum2 >= compare }}'
     then:
-    - action: switch.turn_off
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: switch.terrarium_tasmota3
+        target_state: 'off'
     - action: input_boolean.turn_off
       metadata: {}
       data: {}
@@ -714,11 +738,19 @@ luftbefeuchter:
         minutes: 0
         seconds: 2
         milliseconds: 0
-    - action: switch.turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: switch.terrarium_tasmota3
+        target_state: 'on'
     - wait_for_trigger:
       - trigger: state
         entity_id:
@@ -745,20 +777,36 @@ terra_sunset:
     data: {}
     action: input_boolean.turn_off
     continue_on_error: true
-  - action: switch.turn_off
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.terrarium
+      target_state: 'off'
     continue_on_error: true
   - data: {}
     action: script.luftbefeuchter
     continue_on_error: true
-  - action: switch.turn_off
+  - action: script.retry_action_with_backoff
     metadata: {}
-    data: {}
-    target:
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
       entity_id: switch.terrarium_tasmota2
+      target_state: 'off'
     continue_on_error: true
   mode: single
 warmelampe:
@@ -770,11 +818,20 @@ warmelampe:
       entity_id: sensor.esp32_c3_mini_terra_terrarium_temperature_average
       below: 25
     then:
-    - action: switch.turn_on
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: switch
+        action_type: turn_on
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: switch.terrarium
+        target_state: 'on'
+      continue_on_error: true
   - alias: If Temp > 32 -> heat off
     if:
     - condition: or
@@ -786,11 +843,20 @@ warmelampe:
         entity_id: sensor.t_h_terrarium_temperature
         above: 27
     then:
-    - action: switch.turn_off
+    - action: script.retry_action_with_backoff
       metadata: {}
-      data: {}
-      target:
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
         entity_id: switch.terrarium
+        target_state: 'off'
+      continue_on_error: true
     else: []
   mode: queued
 '1707895746671':
@@ -878,11 +944,10 @@ warmelampe:
       - condition: sun
         before: sunrise
         after: sunset
-      - condition: device
-        type: is_off
-        device_id: 8d90a3db9282aaec047e6d784c3c33ea
-        entity_id: b4f1ebab5a3e2a26b29eed4b78278bb4
-        domain: switch
+      - condition: state
+        entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+        state:
+        - 'off'
     then:
     - if:
       - condition: and
@@ -940,30 +1005,26 @@ warmelampe:
       - condition: sun
         before: sunrise
         after: sunset
-      - condition: device
-        type: is_on
-        device_id: 8d90a3db9282aaec047e6d784c3c33ea
-        entity_id: b4f1ebab5a3e2a26b29eed4b78278bb4
-        domain: switch
+      - condition: state
+        entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+        state:
+        - 'on'
     then:
     - if:
       - condition: and
         conditions:
-        - condition: device
-          type: is_off
-          device_id: 8d90a3db9282aaec047e6d784c3c33ea
-          entity_id: 0a519193061df96ff6bb7345b0904519
-          domain: light
-        - type: is_not_occupied
-          condition: device
-          device_id: 8d90a3db9282aaec047e6d784c3c33ea
-          entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-          domain: binary_sensor
-        - type: is_on
-          condition: device
-          device_id: ffc86bfcc740ddde767208e2a0031ecd
-          entity_id: c029525ed2ebb07c129190168fe249a6
-          domain: binary_sensor
+        - condition: state
+          entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
+          state:
+          - 'off'
+        - condition: state
+          entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+          state:
+          - 'off'
+        - condition: state
+          entity_id: binary_sensor.esphome_web_529778_room_occupied
+          state:
+          - 'on'
       then:
       - action: light.turn_on
         metadata: {}

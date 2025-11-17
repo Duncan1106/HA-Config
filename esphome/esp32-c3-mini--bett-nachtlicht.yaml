@@ -145,10 +145,21 @@ binary_sensor:
         - if: 
             condition: 
               - switch.is_off: was_in_bed
-            then: 
-              - homeassistant.action: 
-                  action: script.esphome_rgb_light_set
-                  data: {}
+            then:
+              - homeassistant.action:
+                  action: script.retry_action_with_backoff
+                  data:
+                    action_domain: 'light'
+                    action_type: 'turn_on'
+                    max_retries: '10'
+                    base_delay: '5'
+                    max_delay: '60'
+                    backoff_type: 'simple'
+                    notify_on_failure: 'true'
+                    notify_service: 'notify.duncan'
+                    entity_id: 'light.esp32_c3_mini_kallax_light_kallax_licht'
+                    target_state: "on"
+                    service_data: "{'transition': '3', 'brightness_pct': '40'}"
         - light.turn_on:
             id: night_light
             brightness: !lambda return id(night_brightness).state / 100.0;

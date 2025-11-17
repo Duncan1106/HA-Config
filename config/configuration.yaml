@@ -197,6 +197,99 @@ notify:
 
 template:
   - binary_sensor:
+    - name: Charge Battery at Night (dynamically)
+      unique_id: charge_battery_at_night
+      state: >
+        {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+
+        {# Use only today’s forecast – after midnight this is the correct day #}
+        {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+        {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+        {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+
+        {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+        {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+        {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+
+        {{ ((usable_kwh + forecast) < target_kwh) }}
+
+      availability: >
+        {% set forecast_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
+        {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
+          and states(forecast_entity) not in ['unknown','unavailable'] }}
+      attributes:
+        soc_percent: >
+          {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
+        usable_kwh: >
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
+          {{ (cap * (soc / 100.0)) | round(2) }}
+        forecast_heute_kwh: >
+          {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
+        forecast_morgen_kwh: >
+          {{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) | round(2) }}
+        target_kwh: >
+          {{ states('input_number.night_charge_target') | float(0) }}
+        total_energy_kwh: >
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+        
+          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+          {{ (usable_kwh + forecast) | round(2) }}
+        decision_formula: "usable_kwh + forecast_kwh < target_kwh"
+        charge_needed_kwh: >
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+        
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+            {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+            {% set remaining_kwh = (target_kwh - (usable_kwh + forecast)) | float(0) %}
+            {{ max([remaining_kwh, 0]) | round(2) }}
+        charge_target_percent: >
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+        
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+            {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+            {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
+            {% set target_percent = ((usable_kwh + remaining_kwh) / battery_capacity) * 100 %}
+            {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
+        prevent_night_discharge: >
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+        
+          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+          {% set total_energy = usable_kwh + forecast %}
+          {{ (total_energy < target_kwh) }}
+        saved_cost_eur: >
+          {% set night_tariff = 0.187425 %}
+          {% set day_tariff = 0.302379 %}
+        
+          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+          {% set remaining_kwh = (target_kwh - (usable_kwh + forecast)) | float(0) %}
+        
+          {{ ((day_tariff - night_tariff) * max([remaining_kwh, 0])) | round(2) }}
+          
+  - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
         state: >
