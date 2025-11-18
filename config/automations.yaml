@@ -10324,6 +10324,10 @@
           state:
           - 'on'
         then:
+        - alias: Set up variables for the actions
+          variables:
+            leave_on: '{{ ''OPEN_'' ~ context.id }}'
+            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
         - action: notify.duncan
           metadata: {}
           data:
@@ -10331,6 +10335,28 @@
             message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
             data:
               tag: powerbank_low
+              actions:
+              - action: '{{ leave_on }}'
+                title: Leave On
+              - action: '{{ turn_off }}'
+                title: Turn Off
+        - alias: Wait for a response
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: '{{ turn_off }}'
+            trigger: event
+        - alias: Perform the action
+          choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+            sequence:
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.bett_powerbank_low_power
       - action: script.retry_action_with_backoff
         metadata: {}
         data:
