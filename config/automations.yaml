@@ -7445,8 +7445,8 @@
     dispatch begins | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     → `off` | Intelligent dispatch ends | Off_dispatch |\n  | `sensor.renault_zoe_batterie
     > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level
-    > 99% for 5 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
-    > 99.9% for 5 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
+    > 99% for 1 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
+    > 99.9% for 3 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
     Prevents battery discharge if EVs draw > grid power | prevent_battery_discharge
     |\n\n  ---\n\n  ### ✅ **Mode Logic**\n\n  - **Dumb Mode:** Follows a fixed time-based
     routine for battery and EV control between 00:00 – 05:00.  \n  - **Intelligent
@@ -7514,7 +7514,7 @@
     id: car_full_id4
     for:
       hours: 0
-      minutes: 5
+      minutes: 1
       seconds: 0
     above: 99
   - trigger: numeric_state
@@ -7522,7 +7522,7 @@
     - sensor.lsjwh4097rn105299_soc
     for:
       hours: 0
-      minutes: 5
+      minutes: 3
       seconds: 0
     above: 99.9
     id: car_full_mg4
@@ -7929,17 +7929,22 @@
             - car_full_id4
             - car_full_mg4
           then:
-          - wait_for_trigger:
-            - trigger: numeric_state
-              entity_id:
-              - sensor.go_echarger_270862_nrg_12
-              below: 5
-            timeout:
-              hours: 0
-              minutes: 30
-              seconds: 0
-              milliseconds: 0
-            continue_on_timeout: true
+          - if:
+            - condition: numeric_state
+              entity_id: sensor.go_echarger_270862_nrg_12
+              above: 5
+            then:
+            - wait_for_trigger:
+              - trigger: numeric_state
+                entity_id:
+                - sensor.go_echarger_270862_nrg_12
+                below: 5
+              timeout:
+                hours: 0
+                minutes: 30
+                seconds: 0
+                milliseconds: 0
+              continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
