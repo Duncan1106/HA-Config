@@ -7072,8 +7072,9 @@
     mismatches between the device state and HA’s internal representation.  \n\n---\n\n###
     ⏰ **Triggers**  \n\n| Trigger | Event / Schedule |\n|---------|-----------------|\n|
     HA Startup | `homeassistant.start` |\n| Periodic Refresh | Every 12 hours (`time_pattern:
-    hours=/12`) |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation always
-    runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
+    hours=/12`) |\n| Terrarium | Changes from Unavailable |\n| Kaffemaschine Solis
+    | Changes from Unavailable |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation
+    always runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
     \ \n\n| Topic | Payload |\n|-------|---------|\n| `cmnd/tasmota_157F88/Rule1`
     | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2` | `\"
     \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\" \"` (requests
@@ -7089,6 +7090,16 @@
     event: start
   - trigger: time_pattern
     hours: /12
+  - trigger: state
+    entity_id:
+    - switch.terrarium_tasmota2
+    from:
+    - unavailable
+  - trigger: state
+    entity_id:
+    - sensor.kaffeemaschine_energy_power
+    from:
+    - unavailable
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -7928,23 +7939,21 @@
             - car_full_zoe
             - car_full_id4
             - car_full_mg4
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
           then:
-          - if:
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_270862_nrg_12
-              above: 5
-            then:
-            - wait_for_trigger:
-              - trigger: numeric_state
-                entity_id:
-                - sensor.go_echarger_270862_nrg_12
-                below: 5
-              timeout:
-                hours: 0
-                minutes: 30
-                seconds: 0
-                milliseconds: 0
-              continue_on_timeout: true
+          - wait_for_trigger:
+            - trigger: numeric_state
+              entity_id:
+              - sensor.go_echarger_270862_nrg_12
+              below: 5
+            timeout:
+              hours: 0
+              minutes: 30
+              seconds: 0
+              milliseconds: 0
+            continue_on_timeout: true
         - action: script.retry_action_with_backoff
           metadata: {}
           data:
@@ -8012,6 +8021,9 @@
             - car_full_zoe
             - car_full_id4
             - car_full_mg4
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -9462,13 +9474,13 @@
       entity_id: switch.bett_plug_right
   mode: single
 - id: '1757084461870'
-  alias: Turn Off Bett Plug Left Over 65W
+  alias: Turn Off Bett Plug Left Over 75W
   description: ''
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.bett_plug_left_power
-    above: 65
+    above: 75
   conditions: []
   actions:
   - action: switch.turn_off
