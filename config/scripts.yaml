@@ -897,23 +897,20 @@ warmelampe:
     - if:
       - condition: and
         conditions:
-        - type: is_on
-          condition: device
-          device_id: ffc86bfcc740ddde767208e2a0031ecd
-          entity_id: c029525ed2ebb07c129190168fe249a6
-          domain: binary_sensor
+        - condition: state
+          entity_id: binary_sensor.esphome_web_529778_room_occupied
+          state:
+          - 'on'
         - condition: or
           conditions:
-          - condition: device
-            type: is_off
-            device_id: 5ed65099ff7c1b63e0f69717f9e71af1
-            entity_id: 310233a130d9ea8be012253a75f60f15
-            domain: light
-          - type: is_not_occupied
-            condition: device
-            device_id: 8d90a3db9282aaec047e6d784c3c33ea
-            entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-            domain: binary_sensor
+          - condition: state
+            entity_id: light.esp32_c3_mini_picture_light_licht
+            state:
+            - 'off'
+          - condition: state
+            entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+            state:
+            - 'off'
       then:
       - metadata: {}
         data:
@@ -930,13 +927,32 @@ warmelampe:
           - light.esp32_c3_mini_kallax_light_kallax_licht
         action: light.turn_on
       else:
-      - metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - light.esp32_c3_mini_picture_light_licht
-          - light.esp32_c3_mini_kallax_light_kallax_licht
-        action: light.turn_off
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_picture_light_licht
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
   - alias: Nightime
     if:
     - condition: and
@@ -952,23 +968,20 @@ warmelampe:
     - if:
       - condition: and
         conditions:
-        - type: is_on
-          condition: device
-          device_id: ffc86bfcc740ddde767208e2a0031ecd
-          entity_id: c029525ed2ebb07c129190168fe249a6
-          domain: binary_sensor
+        - condition: state
+          entity_id: binary_sensor.esphome_web_529778_room_occupied
+          state:
+          - 'on'
         - condition: or
           conditions:
-          - condition: device
-            type: is_off
-            device_id: 8d90a3db9282aaec047e6d784c3c33ea
-            entity_id: 0a519193061df96ff6bb7345b0904519
-            domain: light
-          - type: is_not_occupied
-            condition: device
-            device_id: 8d90a3db9282aaec047e6d784c3c33ea
-            entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-            domain: binary_sensor
+          - condition: state
+            entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+            state:
+            - 'off'
+          - condition: state
+            entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
+            state:
+            - 'off'
       then:
       - metadata: {}
         data: {}
@@ -989,15 +1002,51 @@ warmelampe:
         target:
           entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
       else:
-      - metadata: {}
+      - action: script.retry_action_with_backoff
+        metadata: {}
         data:
-          transition: 2
-        target:
-          entity_id:
-          - light.esp32_c3_mini_picture_light_licht
-          - light.esp32_c3_mini_kallax_light_kallax_licht
-          - light.esp32_c3_mini_bett_nachtlicht_bettlicht
-        action: light.turn_off
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
+          service_data:
+            transition: 2
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_picture_light_licht
+          service_data:
+            transition: 2
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
+          service_data:
+            transition: 2
   - alias: 'Bedtime '
     if:
     - condition: and
@@ -1034,15 +1083,51 @@ warmelampe:
         target:
           entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
       else:
-      - metadata: {}
+      - action: script.retry_action_with_backoff
+        metadata: {}
         data:
-          transition: 5
-        target:
-          entity_id:
-          - light.esp32_c3_mini_picture_light_licht
-          - light.esp32_c3_mini_kallax_light_kallax_licht
-          - light.esp32_c3_mini_bett_nachtlicht_bettlicht
-        action: light.turn_off
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_picture_light_licht
+          service_data:
+            transition: 5
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
+          service_data:
+            transition: 5
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
+          service_data:
+            transition: 5
     enabled: true
   mode: queued
   icon: mdi:television-ambient-light

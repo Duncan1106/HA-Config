@@ -1807,6 +1807,10 @@
     attribute: current_L1
     above: input_number.fuselimit
     id: overcurrent_l1
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   - trigger: numeric_state
     entity_id:
     - sensor.smart_meter_mqtt_data
@@ -1845,15 +1849,6 @@
           '').upper()] | float(0) / 1000) | round(2)\n}} A (Grenzwert: {{ ((states('input_number.fuselimit')
           | float(0)) / 1000.0) | round(2) }} A)"
       action: notify.duncan
-    - metadata: {}
-      data:
-        option: Don't charge
-      target:
-        entity_id:
-        - select.go_echarger_252682_frc
-        - select.go_echarger_270862_frc
-      action: select.select_option
-      enabled: false
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -7072,8 +7067,9 @@
     mismatches between the device state and HA’s internal representation.  \n\n---\n\n###
     ⏰ **Triggers**  \n\n| Trigger | Event / Schedule |\n|---------|-----------------|\n|
     HA Startup | `homeassistant.start` |\n| Periodic Refresh | Every 12 hours (`time_pattern:
-    hours=/12`) |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation always
-    runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
+    hours=/12`) |\n| Terrarium | Changes from Unavailable |\n| Kaffemaschine Solis
+    | Changes from Unavailable |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation
+    always runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
     \ \n\n| Topic | Payload |\n|-------|---------|\n| `cmnd/tasmota_157F88/Rule1`
     | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2` | `\"
     \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\" \"` (requests
@@ -7089,6 +7085,16 @@
     event: start
   - trigger: time_pattern
     hours: /12
+  - trigger: state
+    entity_id:
+    - switch.terrarium_tasmota2
+    from:
+    - unavailable
+  - trigger: state
+    entity_id:
+    - sensor.kaffeemaschine_energy_power
+    from:
+    - unavailable
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -7445,8 +7451,8 @@
     dispatch begins | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_intelligent_dispatching`
     → `off` | Intelligent dispatch ends | Off_dispatch |\n  | `sensor.renault_zoe_batterie
     > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level
-    > 99% for 5 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
-    > 99.9% for 5 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
+    > 99% for 1 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
+    > 99.9% for 3 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
     Prevents battery discharge if EVs draw > grid power | prevent_battery_discharge
     |\n\n  ---\n\n  ### ✅ **Mode Logic**\n\n  - **Dumb Mode:** Follows a fixed time-based
     routine for battery and EV control between 00:00 – 05:00.  \n  - **Intelligent
@@ -7514,7 +7520,7 @@
     id: car_full_id4
     for:
       hours: 0
-      minutes: 5
+      minutes: 1
       seconds: 0
     above: 99
   - trigger: numeric_state
@@ -7522,7 +7528,7 @@
     - sensor.lsjwh4097rn105299_soc
     for:
       hours: 0
-      minutes: 5
+      minutes: 3
       seconds: 0
     above: 99.9
     id: car_full_mg4
@@ -7928,6 +7934,9 @@
             - car_full_zoe
             - car_full_id4
             - car_full_mg4
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -8007,6 +8016,9 @@
             - car_full_zoe
             - car_full_id4
             - car_full_mg4
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
           then:
           - wait_for_trigger:
             - trigger: numeric_state
@@ -9457,13 +9469,13 @@
       entity_id: switch.bett_plug_right
   mode: single
 - id: '1757084461870'
-  alias: Turn Off Bett Plug Left Over 65W
+  alias: Turn Off Bett Plug Left Over 75W
   description: ''
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.bett_plug_left_power
-    above: 65
+    above: 75
   conditions: []
   actions:
   - action: switch.turn_off
@@ -10310,14 +10322,52 @@
           action_domain: switch
           max_retries: 10
           base_delay: 5
-      - action: notify.duncan
-        metadata: {}
-        data:
-          title: "\U0001F307 Bett Powerbank"
-          message: Steckdose ausgeschaltet. Bitte prüfen, ob die Powerbank weiterhin
-            im Low-Power-Modus verbleibt.
+      - alias: Notify only when the plug was on
+        if:
+        - condition: state
+          entity_id: switch.bett_power_strip_l2
+          state:
+          - 'on'
+        then:
+        - alias: Set up variables for the actions
+          variables:
+            leave_on: '{{ ''OPEN_'' ~ context.id }}'
+            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
+        - action: notify.duncan
+          metadata: {}
           data:
-            tag: powerbank_low
+            title: "\U0001F307 Bett Powerbank"
+            message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
+            data:
+              tag: powerbank_low
+              actions:
+              - action: '{{ leave_on }}'
+                title: Leave On
+              - action: '{{ turn_off }}'
+                title: Turn Off
+        - alias: Wait for a response
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: '{{ turn_off }}'
+            trigger: event
+          timeout:
+            hours: 1
+            minutes: 0
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+        - alias: Perform the action
+          choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+            sequence:
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.bett_powerbank_low_power
     - conditions:
       - condition: trigger
         id:
@@ -10329,7 +10379,8 @@
           data:
             tag: powerbank_low
           message: clear_notification
-  mode: single
+  mode: queued
+  max: 3
 - id: '1761086236371'
   alias: Tibber Pulse Bridge Auto Restart
   description: "## ⚙️ Tibber Pulse Bridge Auto Restart\n\n### \U0001F9ED **Purpose**\nEnsures
@@ -10720,7 +10771,7 @@
     - condition: and
       conditions:
       - condition: time
-        after: 00:14:59
+        after: 00:14:55
         before: 04:30:00
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
