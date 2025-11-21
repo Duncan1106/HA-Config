@@ -10851,3 +10851,68 @@
           entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
   mode: parallel
   max: 10
+- id: '1763753257619'
+  alias: Notify on Terrarium Sensor Failure
+  description: "## ⚡ Terrarium DHT Sensor Failure Notification\n\n### \U0001F4CB **Intelligent
+    DHT Sensor Monitoring**\n\nThis automation monitors the three DHT22 sensors in
+    the terrarium (**Left**, **Middle**, **Right**) for both **temperature** and **humidity**.
+    \ \n\nIf any sensor fails to provide a valid reading for **more than 30 seconds**,
+    it triggers a notification to Duncan, clearly identifying which sensors are affected
+    and reminding to **check the wiring**.  \n\nThis ensures **early detection of
+    disconnected or malfunctioning sensors** and prevents unnoticed temperature or
+    humidity issues in the terrarium.\n\n---\n\n### ⏰ **Trigger Overview**\n\n| Type
+    | Entity / Condition | Purpose |\n|------|------------------|---------|\n| `state`
+    | `sensor.esp32_c3_mini_terra_dht_status` | Triggered when the status changes
+    from `\"All Good\"` to any other state for 30 seconds. |\n\n---\n\n### \U0001F9E9
+    **Conditions**\n\n| Condition Type | Entity / Requirement | Purpose |\n|----------------|--------------------|---------|\n|
+    `state` | `sensor.esp32_c3_mini_terra_dht_status` != `\"All Good\"` | Ensures
+    the automation only fires if at least one sensor is actually failing, preventing
+    false positives. |\n\n---\n\n### ⚡ **Actions & Notifications**\n\n| Action Type
+    | Description |\n|-------------|-------------|\n| `notify.duncan` | Sends a notification
+    with the title **\"DHT Sensor Problem\"**. The message dynamically reflects which
+    sensors are broken: |\n| **Message Examples** | - **Single sensor broken:** `The
+    Middle DHT sensor is broken. Check the wiring.`<br>- **Multiple sensors broken:**
+    `The Left & Middle DHT sensors are broken. Check the wiring.`<br>- **All sensors
+    working:** `All DHT sensors are working fine.` |\n\n**Logic Overview:**\n\n- Reads
+    `sensor.esp32_c3_mini_terra_dht_status` text sensor.\n- Splits the sensor names
+    if multiple are failing.\n- Properly formats singular/plural in notification.\n-
+    Adds a friendly `\"Check the wiring.\"` reminder.\n\n---\n\n### ⚙️ **Technical
+    Overview**\n\n- **Mode:** `single` — ensures only one notification at a time.\n-
+    **Update interval:** 5 seconds for the status sensor.\n- **Failure detection:**
+    Any sensor returning `NaN` for temperature or humidity is marked broken.\n- **Notification
+    delay:** Only fires after 30 seconds of continuous failure to avoid false alerts.\n\n---\n\n###
+    \U0001F4A1 **Notes**\n\n- Works for all three sensors (**Left, Middle, Right**),
+    grouped by sensor.\n- Designed to integrate cleanly with Home Assistant notifications
+    and future a\n"
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.esp32_c3_mini_terra_dht_status
+    from:
+    - All Good
+    to:
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  conditions:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: sensor.esp32_c3_mini_terra_dht_status
+      state:
+      - All Good
+  actions:
+  - action: notify.duncan
+    metadata: {}
+    data:
+      title: DHT Sensor Problem
+      message: "\n  {% set broken = states('sensor.esp32_c3_mini_terra_dht_status')
+        %}\n  {% if broken != \"All Good\" %}\n    {% set sensors = broken.split('
+        ') %}\n    {% if sensors | length == 1 %}\n      The {{ sensors[0] }} DHT
+        sensor is broken. Check the wiring.\n    {% else %}\n      The {{ sensors[:-1]
+        | join(', ') }} & {{ sensors[-1] }} DHT sensors are broken. Check the wiring.\n
+        \   {% endif %}\n  {% endif %}\n"
+      data:
+        tag: dht_sensor_problem
+  mode: single

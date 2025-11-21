@@ -92,16 +92,42 @@ i2c:
 
 button:
   - platform: restart
-    name: "Terra Sensor Restart"
+    name: Restart
 
 binary_sensor:
   - platform: status
-    name: "Terra Sensor Status"
+    name: Status
 
 text_sensor:
   - platform: wifi_info
     ip_address:
       name: IP Address
+
+  - platform: template
+    name: "DHT Status"
+    id: dht_status
+    update_interval: 2s
+    lambda: |-
+      bool left_broken   = std::isnan(id(left_temperature).state)   || std::isnan(id(left_humidity).state);
+      bool middle_broken = std::isnan(id(middle_temperature).state) || std::isnan(id(middle_humidity).state);
+      bool right_broken  = std::isnan(id(right_temperature).state)  || std::isnan(id(right_humidity).state);
+
+      std::string out = "";
+
+      if (left_broken)   out += "Left ";
+      if (middle_broken) out += "Middle ";
+      if (right_broken)  out += "Right ";
+
+      if (out.empty()) {
+        return std::string("All Good");
+      }
+
+      // Trim trailing space
+      if (out[out.size() - 1] == ' ') {
+        out.pop_back();
+      }
+
+      return out;
 
 one_wire:
   - platform: gpio
