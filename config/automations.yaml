@@ -1741,11 +1741,12 @@
     to: 'on'
   actions:
   - variables:
-      baseline: '{{ states(''sensor.terrarium_energy_power'')|float(0) }}'
+      baseline: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+        }}'
   - wait_for_trigger:
     - trigger: state
       entity_id:
-      - switch.terrarium_tasmota3
+      - switch.terrarium_zigbee_l1
       to: 'on'
     timeout:
       hours: 0
@@ -1753,12 +1754,13 @@
       seconds: 30
       milliseconds: 0
     continue_on_timeout: false
-  - wait_template: '{{ states(''sensor.terrarium_energy_power'')|float(0) > baseline
-      + 10 }}'
+  - wait_template: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+      > baseline + 10 }}'
     timeout: 00:01:00
     continue_on_timeout: true
   - variables:
-      current_power: '{{ states(''sensor.terrarium_energy_power'')|float(0) }}'
+      current_power: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+        }}'
       delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
@@ -2429,7 +2431,7 @@
     when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
     Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
     \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
-    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_tasmota3`
+    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_zigbee_l1`
     turns off, resets\n  `input_boolean.luftbefeuchter_aktiv`\n  to maintain logical
     synchronization  \n\n\n---\n\n\n### \U0001F527 Technical Specs\n\n- **Mode:**
     `parallel`  \n- **Max concurrent runs:** 10  \n- Uses **`choose` blocks** to isolate
@@ -2454,9 +2456,10 @@
     id: sunset
   - trigger: state
     entity_id:
-    - switch.terrarium_tasmota3
+    - switch.terrarium_zigbee_l1
     id: Luftbefeuchter off
-    to: 'off'
+    to:
+    - 'off'
   conditions:
   - condition: sun
     before: sunset
@@ -7067,29 +7070,22 @@
     mismatches between the device state and HA’s internal representation.  \n\n---\n\n###
     ⏰ **Triggers**  \n\n| Trigger | Event / Schedule |\n|---------|-----------------|\n|
     HA Startup | `homeassistant.start` |\n| Periodic Refresh | Every 12 hours (`time_pattern:
-    hours=/12`) |\n| Terrarium | Changes from Unavailable |\n| Kaffemaschine Solis
-    | Changes from Unavailable |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation
-    always runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
-    \ \n\n| Topic | Payload |\n|-------|---------|\n| `cmnd/tasmota_157F88/Rule1`
-    | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2` | `\"
-    \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\" \"` (requests
-    current rule state) |\n| `cmnd/tasmota_18F373/Rule1`  | `\" \"` (requests current
-    rule state) |\n\n> **Note:** Sending an empty payload to Tasmota rule topics requests
-    the current state without modifying the rule itself.  \n\n---\n\n### \U0001F527
-    **Technical Specs**  \n\n- **Mode:** `single` (prevents overlap during startup)
-    \ \n- **MQTT QoS:** 0 (fire-and-forget)  \n- **Devices:** Tasmota devices `157F88`
-    and `18F373`  \n- **Purpose:** Ensures rule states are synchronized in HA immediately
+    hours=/12`) |\n| Kaffemaschine Solis | Changes from Unavailable |\n\n---\n\n###
+    ✅ **Conditions**  \n- None — the automation always runs on the triggers above.
+    \ \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**  \n\n| Topic | Payload |\n|-------|---------|\n|
+    `cmnd/tasmota_157F88/Rule1` | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2`
+    | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\"
+    \"` (requests current rule state) |\n> **Note:** Sending an empty payload to Tasmota
+    rule topics requests the current state without modifying the rule itself.  \n\n---\n\n###
+    \U0001F527 **Technical Specs**  \n\n- **Mode:** `single` (prevents overlap during
+    startup)  \n- **MQTT QoS:** 0 (fire-and-forget)  \n- **Devices:** Tasmota device
+    `157F88` \n- **Purpose:** Ensures rule states are synchronized in HA immediately
     and refreshed every 12 hours"
   triggers:
   - trigger: homeassistant
     event: start
   - trigger: time_pattern
     hours: /12
-  - trigger: state
-    entity_id:
-    - switch.terrarium_tasmota2
-    from:
-    - unavailable
   - trigger: state
     entity_id:
     - sensor.kaffeemaschine_energy_power
@@ -7113,12 +7109,6 @@
     data:
       qos: 0
       topic: cmnd/tasmota_157F88/Rule3
-      payload: ' '
-  - action: mqtt.publish
-    metadata: {}
-    data:
-      qos: 0
-      topic: cmnd/tasmota_18F373/Rule1
       payload: ' '
 - id: '1749115504854'
   alias: Adjust Addon Status based on AnkerMake M5C Usage
@@ -9347,8 +9337,9 @@
     - alias: Kallax Zone Control
       conditions:
       - condition: state
-        entity_id: switch.terrarium_tasmota4
-        state: 'on'
+        entity_id: switch.terrarium_zigbee_l5
+        state:
+        - 'on'
       - condition: or
         conditions:
         - condition: state
