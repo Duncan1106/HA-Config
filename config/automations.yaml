@@ -1726,12 +1726,12 @@
     a functioning humidifier will draw **Δ ≥ 10 W** shortly after turning on.  \nUses
     a **dynamic baseline** measured at startup. Runs only when `input_boolean.luftbefeuchter_aktiv`
     is on.\n\n---\n\n### \U0001F4CC Flow\n\n1. **Set baseline**  \n   - Record current
-    power (`sensor.terrarium_energy_power`) at automation start.\n\n2. **Wait for
-    device**  \n   - Pauses until `switch.terrarium_tasmota3` is on or 30s timeout.\n\n3.
-    **Monitor power**  \n   - Wait up to 60s for **+10 W increase** over baseline.\n\n4.
-    **Notify if empty**  \n   - Power increase <10 W → notify `notify.duncan`  \n
-    \  - Reset `counter.luftbefeuchter`  \n   - Include previous activation count
-    for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
+    power (`sensor.terrarium_power_plug_zigbee_power`) at automation start.\n\n2.
+    **Wait for device**  \n   - Pauses until `switch.terrarium_zigbee_l1` is on or
+    30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+10 W increase**
+    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <10 W → notify
+    `notify.duncan`  \n   - Reset `counter.luftbefeuchter`  \n   - Include previous
+    activation count for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
     = on`\n\n---\n\n### ⚡ Actions\n\n- Record baseline  \n- Wait for humidifier to
     turn on  \n- Monitor for +10 W increase  \n- Notify if tank may be empty  \n-
     Reset usage counter  \n- Send usage context"
@@ -1741,24 +1741,26 @@
     to: 'on'
   actions:
   - variables:
-      baseline: '{{ states(''sensor.terrarium_energy_power'')|float(0) }}'
+      baseline: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+        }}'
   - wait_for_trigger:
     - trigger: state
       entity_id:
-      - switch.terrarium_tasmota3
+      - switch.terrarium_zigbee_l1
       to: 'on'
     timeout:
       hours: 0
-      minutes: 0
+      minutes: 1
       seconds: 30
       milliseconds: 0
     continue_on_timeout: false
-  - wait_template: '{{ states(''sensor.terrarium_energy_power'')|float(0) > baseline
-      + 10 }}'
+  - wait_template: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+      > baseline + 10 }}'
     timeout: 00:01:00
     continue_on_timeout: true
   - variables:
-      current_power: '{{ states(''sensor.terrarium_energy_power'')|float(0) }}'
+      current_power: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
+        }}'
       delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
@@ -2429,7 +2431,7 @@
     when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
     Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
     \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
-    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_tasmota3`
+    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_zigbee_l1`
     turns off, resets\n  `input_boolean.luftbefeuchter_aktiv`\n  to maintain logical
     synchronization  \n\n\n---\n\n\n### \U0001F527 Technical Specs\n\n- **Mode:**
     `parallel`  \n- **Max concurrent runs:** 10  \n- Uses **`choose` blocks** to isolate
@@ -2454,9 +2456,10 @@
     id: sunset
   - trigger: state
     entity_id:
-    - switch.terrarium_tasmota3
+    - switch.terrarium_zigbee_l1
     id: Luftbefeuchter off
-    to: 'off'
+    to:
+    - 'off'
   conditions:
   - condition: sun
     before: sunset
@@ -3702,7 +3705,7 @@
     light **off** with a **2s fade**\n    (with retries)  \n  - Else (still dark)
     → set light to **brightness 9** with a **2s fade**\n    (with retries)  \n\n  ---\n\n
     \ #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50 lux**
-    \ \n  - Turn off `light.bad_nachtlicht` immediately with a **0.5s fade**\n    (with
+    \ \n  - Turn off `light.bad_nachtlicht` immediately with a **0.25s fade**\n    (with
     retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target Light:**
     `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
     \ \n    - `binary_sensor.kinderbad_bewegung`  \n  - **Mode:** `restart`  \n  -
@@ -3865,7 +3868,7 @@
         target_state: 'off'
         entity_id: light.bad_nachtlicht
         service_data:
-          transition: 0.5
+          transition: 0.25
   mode: restart
 - id: '1730294194772'
   alias: Aqara H1 EU Decoupled Switch Right
@@ -3876,7 +3879,7 @@
     from the Aqara H1 EU switch is detected.  \n\n- **Conditions**:  \n  1. The switch
     must be in **decoupled mode** (`select.duncan_lichtschalter_operation_mode_right`).
     \ \n  2. A **10-second cooldown** prevents the automation from retriggering too
-    quickly.  \n\n- **Action**:  \n  Toggles the state of the **Gerade switch** (`switch.gerade`).
+    quickly.  \n\n- **Action**:  \n  Toggles the state of the **Gerade switch** (`switch.duncan_lichtschalter_right`).
     \ \n\n### Purpose:  \nThis automation allows the right button of the Aqara H1
     EU switch to independently control the **Gerade switch**, while enforcing a cooldown
     to avoid rapid toggling."
@@ -3899,7 +3902,7 @@
     data: {}
     target:
       entity_id:
-      - switch.gerade
+      - switch.duncan_lichtschalter_right
   mode: single
 - id: '1730367818444'
   alias: VW Unlocked Reminder
@@ -5206,10 +5209,10 @@
     must be in **decoupled mode** (`select.duncan_lichtschalter_operation_mode_left`).
     \ \n  2. A **cooldown period of 10 seconds** ensures the automation does not trigger
     repeatedly if pressed too quickly.  \n\n- **Action**:  \n  Toggles the state of
-    the **Schräg switch** (`switch.schrag`).  \n\n### Purpose:  \nThis automation
-    allows the left button of the Aqara H1 EU switch to act as a wireless trigger
-    for controlling the Schräg switch, while avoiding accidental or rapid re-triggers
-    through a built-in cooldown."
+    the **Schräg switch** (`switch.duncan_lichtschalter_left`).  \n\n### Purpose:
+    \ \nThis automation allows the left button of the Aqara H1 EU switch to act as
+    a wireless trigger for controlling the Schräg switch, while avoiding accidental
+    or rapid re-triggers through a built-in cooldown."
   triggers:
   - domain: mqtt
     device_id: adf0a0e198e203d27f9ac23dd706eceb
@@ -5230,7 +5233,7 @@
     data: {}
     target:
       entity_id:
-      - switch.schrag
+      - switch.duncan_lichtschalter_left
   mode: single
 - id: '1738338302199'
   alias: WallPanelBrightness
@@ -7067,29 +7070,22 @@
     mismatches between the device state and HA’s internal representation.  \n\n---\n\n###
     ⏰ **Triggers**  \n\n| Trigger | Event / Schedule |\n|---------|-----------------|\n|
     HA Startup | `homeassistant.start` |\n| Periodic Refresh | Every 12 hours (`time_pattern:
-    hours=/12`) |\n| Terrarium | Changes from Unavailable |\n| Kaffemaschine Solis
-    | Changes from Unavailable |\n\n---\n\n### ✅ **Conditions**  \n- None — the automation
-    always runs on the triggers above.  \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**
-    \ \n\n| Topic | Payload |\n|-------|---------|\n| `cmnd/tasmota_157F88/Rule1`
-    | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2` | `\"
-    \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\" \"` (requests
-    current rule state) |\n| `cmnd/tasmota_18F373/Rule1`  | `\" \"` (requests current
-    rule state) |\n\n> **Note:** Sending an empty payload to Tasmota rule topics requests
-    the current state without modifying the rule itself.  \n\n---\n\n### \U0001F527
-    **Technical Specs**  \n\n- **Mode:** `single` (prevents overlap during startup)
-    \ \n- **MQTT QoS:** 0 (fire-and-forget)  \n- **Devices:** Tasmota devices `157F88`
-    and `18F373`  \n- **Purpose:** Ensures rule states are synchronized in HA immediately
+    hours=/12`) |\n| Kaffemaschine Solis | Changes from Unavailable |\n\n---\n\n###
+    ✅ **Conditions**  \n- None — the automation always runs on the triggers above.
+    \ \n\n---\n\n### \U0001F3AF **MQTT Publish Mapping**  \n\n| Topic | Payload |\n|-------|---------|\n|
+    `cmnd/tasmota_157F88/Rule1` | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule2`
+    | `\" \"` (requests current rule state) |\n| `cmnd/tasmota_157F88/Rule3` | `\"
+    \"` (requests current rule state) |\n> **Note:** Sending an empty payload to Tasmota
+    rule topics requests the current state without modifying the rule itself.  \n\n---\n\n###
+    \U0001F527 **Technical Specs**  \n\n- **Mode:** `single` (prevents overlap during
+    startup)  \n- **MQTT QoS:** 0 (fire-and-forget)  \n- **Devices:** Tasmota device
+    `157F88` \n- **Purpose:** Ensures rule states are synchronized in HA immediately
     and refreshed every 12 hours"
   triggers:
   - trigger: homeassistant
     event: start
   - trigger: time_pattern
     hours: /12
-  - trigger: state
-    entity_id:
-    - switch.terrarium_tasmota2
-    from:
-    - unavailable
   - trigger: state
     entity_id:
     - sensor.kaffeemaschine_energy_power
@@ -7113,12 +7109,6 @@
     data:
       qos: 0
       topic: cmnd/tasmota_157F88/Rule3
-      payload: ' '
-  - action: mqtt.publish
-    metadata: {}
-    data:
-      qos: 0
-      topic: cmnd/tasmota_18F373/Rule1
       payload: ' '
 - id: '1749115504854'
   alias: Adjust Addon Status based on AnkerMake M5C Usage
@@ -9347,8 +9337,9 @@
     - alias: Kallax Zone Control
       conditions:
       - condition: state
-        entity_id: switch.terrarium_tasmota4
-        state: 'on'
+        entity_id: switch.terrarium_zigbee_l5
+        state:
+        - 'on'
       - condition: or
         conditions:
         - condition: state
@@ -9933,7 +9924,7 @@
 
 
             {{ prompt }}'
-          agent_id: conversation.google_generative_ai
+          agent_id: conversation.google_ai_conversation_2_5_flash
         response_variable: agent_gemini
         action: conversation.process
       - delay:
@@ -10718,23 +10709,20 @@
     On                          | State      | `binary_sensor.charge_battery_at_night`
     turns `on`                   |\n| Off                         | Time       | At
     `04:55:00`                                                        |\n| Off                         |
-    Time       | At `05:00:00`                                                        |\n|
-    Battery Off in cheap hours  | State      | `binary_sensor.charge_battery_at_night`
-    attribute `prevent_night_discharge` turns `true` |\n\n---\n\n## \U0001F4CB Conditions\nThe
-    automation runs if **either** of the following is true:\n\n1. **Nighttime Charging
-    Window**  \n   - Time is between `00:15:00` and `04:30:00`  \n   - `binary_sensor.charge_battery_at_night`
-    is `on`  \n   - Trigger is `On`  \n   - Battery charger switch is `off`\n\n2.
-    **Scheduled Stop / Forced Off**  \n   - Trigger is `Off` (04:55 or 05:00)  \n
-    \  - Trigger is `Battery Off in cheap hours`\n\n---\n\n## \U0001F527 Actions\n\n###
-    1️⃣ Start Charging\n- **Conditions:**  \n  - `binary_sensor.charge_battery_at_night`
-    is `on`  \n  - Trigger is `On`\n- **Action:**  \n  - Calls the **retry script**
-    to turn on the battery charger  \n  - Updates `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
-    with the `charge_target_percent` attribute (details in Notes)\n\n### 2️⃣ Stop
-    Charging\n- **Conditions:**  \n  - Trigger is `Off`\n- **Action:**  \n  - Calls
-    the **retry script** to turn off the battery charger  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"7000\"` (details in Notes)\n\n### 3️⃣ Battery Off in Cheap Hours\n- **Conditions:**
-    \ \n  - Trigger is `Battery Off in cheap hours`\n- **Action:**  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"0\"` (details in Notes)\n\n---\n\n## ✅ Notes\n- **Retry Script Details:**
+    Time       | At `05:00:00`                                                        |\n\n---\n\n##
+    \U0001F4CB Conditions\nThe automation runs if **either** of the following is true:\n\n1.
+    **Nighttime Charging Window**  \n   - Time is between `00:15:00` and `04:30:00`
+    \ \n   - `binary_sensor.charge_battery_at_night` is `on`  \n   - Trigger is `On`
+    \ \n   - Battery charger switch is `off`\n\n2. **Scheduled Stop / Forced Off**
+    \ \n   - Trigger is `Off` (04:55 or 05:00)  \n   - Trigger is `Battery Off in
+    cheap hours`\n\n---\n\n## \U0001F527 Actions\n\n### 1️⃣ Start Charging\n- **Conditions:**
+    \ \n  - `binary_sensor.charge_battery_at_night` is `on`  \n  - Trigger is `On`\n-
+    **Action:**  \n  - Calls the **retry script** to turn on the battery charger  \n
+    \ - Updates `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto` with the
+    `charge_target_percent` attribute (details in Notes)\n\n### 2️⃣ Stop Charging\n-
+    **Conditions:**  \n  - Trigger is `Off`\n- **Action:**  \n  - Calls the **retry
+    script** to turn off the battery charger  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to `\"7000\"` (details in Notes)\n  \n---\n\n## ✅ Notes\n- **Retry Script Details:**
     Both start and stop actions use the `script.retry_action_with_backoff` for reliability:\n
     \ - Maximum retries: 10  \n  - Base delay: 5 seconds  \n  - Max delay: 60 seconds
     \ \n  - Backoff type: simple  \n  - Notifies `notify.duncan` on failure  \n  -
@@ -10742,8 +10730,7 @@
     state: `on` or `off` depending on the action\n\n- **Number Adjustments:**  \n
     \ - Start charging sets `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
     from the `charge_target_percent` attribute  \n  - Stop charging sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"7000\"`  \n  - Battery Off in cheap hours sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"0\"`\n\n- Ensures charging stops reliably at the scheduled times, preventing
+    to `\"7000\"`  \n\n- Ensures charging stops reliably at the scheduled times, preventing
     overcharge and avoiding tariff issues.  \n- Designed to be resilient even if Home
     Assistant restarts."
   triggers:
@@ -10760,11 +10747,6 @@
   - at: 05:00:00
     trigger: time
     id: 'Off'
-  - trigger: state
-    entity_id:
-    - binary_sensor.charge_battery_at_night
-    attribute: prevent_night_discharge
-    id: Battery Off in cheap hours
   conditions:
   - condition: or
     conditions:
@@ -10786,7 +10768,6 @@
     - condition: trigger
       id:
       - 'Off'
-      - Battery Off in cheap hours
   actions:
   - choose:
     - conditions:
@@ -10867,27 +10848,119 @@
           value: '7000'
         target:
           entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+  mode: parallel
+  max: 10
+- id: '1763753257619'
+  alias: Notify on Terrarium Sensor Failure
+  description: "## ⚡ Terrarium DHT Sensor Failure Notification\n\n### \U0001F4CB **Intelligent
+    DHT Sensor Monitoring**\n\nThis automation monitors the three DHT22 sensors in
+    the terrarium (**Left**, **Middle**, **Right**) for both **temperature** and **humidity**.
+    \ \n\nIf any sensor fails to provide a valid reading for **more than 30 seconds**,
+    it triggers a notification to Duncan, clearly identifying which sensors are affected
+    and reminding to **check the wiring**.  \n\nThis ensures **early detection of
+    disconnected or malfunctioning sensors** and prevents unnoticed temperature or
+    humidity issues in the terrarium.\n\n---\n\n### ⏰ **Trigger Overview**\n\n| Type
+    | Entity / Condition | Purpose |\n|------|------------------|---------|\n| `state`
+    | `sensor.esp32_c3_mini_terra_dht_status` | Triggered when the status changes
+    from `\"All Good\"` to any other state for 30 seconds. |\n\n---\n\n### \U0001F9E9
+    **Conditions**\n\n| Condition Type | Entity / Requirement | Purpose |\n|----------------|--------------------|---------|\n|
+    `state` | `sensor.esp32_c3_mini_terra_dht_status` != `\"All Good\"` | Ensures
+    the automation only fires if at least one sensor is actually failing, preventing
+    false positives. |\n\n---\n\n### ⚡ **Actions & Notifications**\n\n| Action Type
+    | Description |\n|-------------|-------------|\n| `notify.duncan` | Sends a notification
+    with the title **\"DHT Sensor Problem\"**. The message dynamically reflects which
+    sensors are broken: |\n| **Message Examples** | - **Single sensor broken:** `The
+    Middle DHT sensor is broken. Check the wiring.`<br>- **Multiple sensors broken:**
+    `The Left & Middle DHT sensors are broken. Check the wiring.`<br>- **All sensors
+    working:** `All DHT sensors are working fine.` |\n\n**Logic Overview:**\n\n- Reads
+    `sensor.esp32_c3_mini_terra_dht_status` text sensor.\n- Splits the sensor names
+    if multiple are failing.\n- Properly formats singular/plural in notification.\n-
+    Adds a friendly `\"Check the wiring.\"` reminder.\n\n---\n\n### ⚙️ **Technical
+    Overview**\n\n- **Mode:** `single` — ensures only one notification at a time.\n-
+    **Update interval:** 5 seconds for the status sensor.\n- **Failure detection:**
+    Any sensor returning `NaN` for temperature or humidity is marked broken.\n- **Notification
+    delay:** Only fires after 30 seconds of continuous failure to avoid false alerts.\n\n---\n\n###
+    \U0001F4A1 **Notes**\n\n- Works for all three sensors (**Left, Middle, Right**),
+    grouped by sensor.\n- Designed to integrate cleanly with Home Assistant notifications
+    and future a\n"
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.esp32_c3_mini_terra_dht_status
+    from:
+    - All Good
+    to:
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+    id: Error
+  - trigger: state
+    entity_id:
+    - sensor.esp32_c3_mini_terra_dht_status
+    to:
+    - All Good
+    id: Clear
+  conditions: []
+  actions:
+  - choose:
     - conditions:
       - condition: trigger
         id:
-        - Battery Off in cheap hours
+        - Error
       sequence:
-      - if:
-        - condition: template
-          value_template: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''prevent_night_discharge'')}}'
-        then:
-        - action: number.set_value
-          metadata: {}
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: DHT Sensor Problem
+          message: "\n  {% set broken = states('sensor.esp32_c3_mini_terra_dht_status')
+            %}\n  {% if broken != \"All Good\" %}\n    {% set sensors = broken.split('
+            ') %}\n    {% if sensors | length == 1 %}\n      The {{ sensors[0] }}
+            DHT sensor is broken. Check the wiring.\n    {% else %}\n      The {{
+            sensors[:-1] | join(', ') }} & {{ sensors[-1] }} DHT sensors are broken.
+            Check the wiring.\n    {% endif %}\n  {% endif %}\n"
           data:
-            value: '0'
-          target:
-            entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
-        else:
-        - action: number.set_value
-          metadata: {}
+            tag: dht_sensor_problem
+    - conditions:
+      - condition: trigger
+        id:
+        - Clear
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
           data:
-            value: '7000'
-          target:
-            entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
-  mode: parallel
-  max: 10
+            tag: dht_sensor_problem
+          message: clear_notification
+  mode: single
+- id: '1763821325453'
+  alias: Terrarium Auto-Off
+  description: Automatically turns off the terrarium humidifier switch 10 minutes
+    after it's turned on, with a retry mechanism.
+  triggers:
+  - trigger: state
+    entity_id:
+    - switch.terrarium_zigbee_l1
+    to:
+    - 'on'
+  conditions: []
+  actions:
+  - delay:
+      hours: 0
+      minutes: 10
+      seconds: 0
+      milliseconds: 0
+  - action: script.retry_action_with_backoff
+    metadata: {}
+    data:
+      action_domain: switch
+      action_type: turn_off
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: simple
+      notify_on_failure: true
+      notify_service: notify.duncan
+      entity_id: switch.terrarium_zigbee_l1
+      target_state: 'off'
+  mode: single
