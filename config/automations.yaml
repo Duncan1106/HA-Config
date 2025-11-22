@@ -10895,24 +10895,44 @@
       hours: 0
       minutes: 0
       seconds: 30
-  conditions:
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: sensor.esp32_c3_mini_terra_dht_status
-      state:
-      - All Good
+    id: Error
+  - trigger: state
+    entity_id:
+    - sensor.esp32_c3_mini_terra_dht_status
+    from:
+    - All Good
+    to:
+    - All Good
+    id: Clear
+  conditions: []
   actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: DHT Sensor Problem
-      message: "\n  {% set broken = states('sensor.esp32_c3_mini_terra_dht_status')
-        %}\n  {% if broken != \"All Good\" %}\n    {% set sensors = broken.split('
-        ') %}\n    {% if sensors | length == 1 %}\n      The {{ sensors[0] }} DHT
-        sensor is broken. Check the wiring.\n    {% else %}\n      The {{ sensors[:-1]
-        | join(', ') }} & {{ sensors[-1] }} DHT sensors are broken. Check the wiring.\n
-        \   {% endif %}\n  {% endif %}\n"
-      data:
-        tag: dht_sensor_problem
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Error
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          title: DHT Sensor Problem
+          message: "\n  {% set broken = states('sensor.esp32_c3_mini_terra_dht_status')
+            %}\n  {% if broken != \"All Good\" %}\n    {% set sensors = broken.split('
+            ') %}\n    {% if sensors | length == 1 %}\n      The {{ sensors[0] }}
+            DHT sensor is broken. Check the wiring.\n    {% else %}\n      The {{
+            sensors[:-1] | join(', ') }} & {{ sensors[-1] }} DHT sensors are broken.
+            Check the wiring.\n    {% endif %}\n  {% endif %}\n"
+          data:
+            tag: dht_sensor_problem
+    - conditions:
+      - condition: trigger
+        id:
+        - Clear
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          data:
+            tag: dht_sensor_problem
+          message: clear_notification
   mode: single
