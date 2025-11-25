@@ -10682,23 +10682,6 @@
       - delay:
           minutes: 2
   mode: single
-- id: '1762813073816'
-  alias: Notify Next DNS Query Limit
-  description: Notifies when the Next DNS free query limit is almost reached.
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.my_first_profile_dns_abfragen
-    above: 280000
-  conditions: []
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: Next DNS
-      message: 'The free amount of queries is nearly used up ({{ (states(''sensor.my_first_profile_dns_abfragen'')|float(0)/1000)|round(0)
-        }}k/300k) '
-  mode: single
 - id: '1763164752006'
   alias: Night Battery Charging
   description: "# \U0001F319 Night Battery Charging Automation\n\n## ⚙️ Purpose\nThis
@@ -10793,7 +10776,8 @@
             to reach target: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
             'charge_needed_kwh') | float(0)) | round(2)\n}} kWh.\nAction: Charging
             to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'charge_target_percent')
-            | float(0)) | round(0)\n}}%.\n"
+            | float(0)) | round(0)\n}}%.\nSaved cost by charging tonight: {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')
+            | float(0)) }} €\n"
           data:
             tag: night_battery_charge
       - action: script.retry_action_with_backoff
@@ -10824,6 +10808,14 @@
           value: '0'
         target:
           entity_id: number.esp32_s3_zero_deye8k_time_point_1_power
+      - action: input_number.set_value
+        metadata: {}
+        data:
+          value: '{{ (states(''input_number.save_through_night_battery_charging'')
+            | float(0)) + (state_attr(''binary_sensor.charge_battery_at_night'',''saved_cost_eur'')
+            | float(0)) }}'
+        target:
+          entity_id: input_number.save_through_night_battery_charging
     - conditions:
       - condition: trigger
         id:
@@ -10963,4 +10955,56 @@
       notify_service: notify.duncan
       entity_id: switch.terrarium_zigbee_l1
       target_state: 'off'
+  mode: single
+- id: '1763832773682'
+  alias: Daily Mama Temperature Notification
+  description: "\n  ## \U0001F321️ Daily Mama Temperature Notification\n\n  ### \U0001F4CB
+    **Automated Temperature Snapshot for Key Areas**\n\n  This automation sends a
+    daily **14:00 temperature update** summarizing both the **current temperature**
+    and the **lowest temperature measured in the last 24 hours** for important monitored
+    locations.  \n  It ensures a consistent daily overview of temperature trends without
+    requiring manual checking.\n\n  ---\n\n  ### ⏱ **Trigger Overview**\n\n  | Trigger
+    | Description | ID |\n  |--------|-------------|----|\n  | `14:00` | Daily report
+    time | daily_temperature_trigger |\n\n  ---\n\n  ### ✅ **Logic Summary**\n\n  -
+    Runs exactly once per day at 14:00.\n  - Gathers the current temperature and the
+    minimum temperature in the last 24 hours for two monitored areas.\n  - Formats
+    the values neatly in a push notification.\n  - Sends the notification to the FP4
+    mobile device using Home Assistant's mobile notify service.\n\n  ---\n\n  ###
+    ⚙️ **Action Workflow**\n\n  #### Temperature Data Collection\n  - Reads the **current
+    temperature** from:\n    - `sensor.t_h_garage_zigbee_temperature` (Garage)\n    -
+    `sensor.esp32_c3_zero_epever_bme280_temperature` (Gartenhaus / EPEver Node)\n\n
+    \ - Reads the **minimum temperatures** from the last 24 hours via:\n    - `sensor.temperatur_min`\n
+    \   - `sensor.bme280_temperature_min`\n\n  - Each value is rounded to 2 decimal
+    places and gracefully falls back to `0` if unavailable.\n\n  #### Notification
+    Delivery\n  - Constructs a structured message including:\n    - Area names (resolved
+    dynamically via `area_name()`)\n    - Current temperature\n    - Minimum temperature
+    \ \n  - Sends the notification using:\n    - `notify.mobile_app_fp4`\n  - Adds
+    a unique tag: `daily_temperature_garage_gartenhaus`  \n    (ensures newer updates
+    replace older ones rather than stacking)\n\n  ---\n\n  ### \U0001F527 **Technical
+    Details**\n\n  - **Mode:** `single`  \n    Prevents overlapping notifications
+    if HA restarts around 14:00.\n  - **Sensors Included:**  \n    - Garage Zigbee
+    T/H sensor  \n    - ESP32-C3 EPEver BME280 temperature sensor  \n    - Min-temp
+    helper sensors for each area\n  - **Notification Target:**  \n    - `mobile_app_fp4`\n\n
+    \ ---\n\n  ### \U0001F324️ **Design Notes**\n\n  - Provides a simple, reliable
+    daily temperature overview for outdoor or utility zones.\n  - Uses area names
+    dynamically so messages remain correct even if devices move.\n  - The minimum-temperature
+    tracking allows spotting cold nights or unexpected drops.\n  - Clean formatting
+    enhances readability in the mobile app."
+  triggers:
+  - trigger: time
+    at: '14:00:00'
+  conditions: []
+  actions:
+  - action: notify.mobile_app_fp4
+    data:
+      title: Temperatur-Update
+      message: "{{ area_name('sensor.t_h_garage_zigbee_temperature') | default('Garage')
+        }}:\n  - Aktuell: {{ states('sensor.t_h_garage_zigbee_temperature') | float(0)
+        | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.temperatur_min') |
+        float(0) | round(2)}} °C\n\n{{ area_name('sensor.esp32_c3_zero_epever_bme280_temperature')
+        | default('Gartenhaus') }}:\n  - Aktuell: {{ states('sensor.esp32_c3_zero_epever_bme280_temperature')
+        | float(0) | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.bme280_temperature_min')
+        | float(0) | round(2) }} °C"
+      data:
+        tag: daily_temperature_garage_gartenhaus
   mode: single
