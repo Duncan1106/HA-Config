@@ -6895,7 +6895,7 @@
     with title including today’s weekday.  \n   - **Failure (after all retries):**
     Sends a fallback message  \n     *“Heute konnte leider keine Nachricht generiert
     werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do Entity:**
-    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_generative_ai`
+    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_generative_ai_2_5_pro`
     \ \n- **Fallback AI Agent:** `conversation.google_ai_conversation_2_5_flash`  \n-
     **Notification Target:** `notify.duncan`  \n- **Retries:** Up to 10 per agent
     \ \n- **Retry Delay:** 5 seconds  \n- **AI Token Limit:** 300 tokens  \n- **Pollen
@@ -6976,7 +6976,7 @@
 
 
             {{ prompt }}'
-          agent_id: conversation.google_ai_conversation_2_5_flash
+          agent_id: conversation.google_ai_conversation_2_5_pro
         response_variable: agent_gemini
         action: conversation.process
       - alias: Wait only if failed
@@ -11010,7 +11010,29 @@
   mode: single
 - id: '1764102977901'
   alias: Adjust Battery Energy Target based on Today's Consumption
-  description: ''
+  description: "# \U0001F50B Adjust Battery Energy Target Based on Today's Consumption\n\n##
+    \U0001F3AF Zweck\n\nDiese Automation berechnet jeden Abend um **23:59:55**, wie
+    viel Energie in der kommenden Nacht mindestens nachgeladen werden soll.  \nSie
+    gleicht dafür den **gesamten heutigen Hausverbrauch** mit der **heute geladenen
+    Energie der beiden Wallboxen** ab und addiert einen kleinen **Sicherheitsaufschlag
+    von 2.5 kWh**.\n\nDer Wert wird anschließend in `input_number.night_charge_target`
+    gespeichert.  \nDamit bestimmt die Automation, wie viel Energie in der Nacht bereitgestellt
+    werden soll, falls der kommende Tag wenig PV-Ertrag bringt.\n\n---\n\n## ⏰ Trigger\n\nDie
+    Automation läuft **ein einziges Mal pro Tag**, ausgelöst durch:\n\n| Zeit | Beschreibung
+    |\n|------|--------------|\n| 23:59:55 | Tagesabschluss, Berechnung des Nachtladeziels
+    |\n\n---\n\n## \U0001F9E0 Berechnungslogik\n\nDie Formel arbeitet wie ein kleiner
+    Energiebuchhalter:\n\n- Heutiger Hausverbrauch (`sensor.home_consumption_total_day`)
+    \ \n- minus heutige Ladung an der 11 kW Wallbox (`sensor.daily_energy_goe_11kw`)
+    \ \n- minus heutige Ladung an der 22 kW Wallbox (`sensor.daily_energy_goe_22kw`)
+    \ \n- plus 2.5 kWh Sicherheitsaufschlag\n\nDas Ergebnis wird auf **mindestens
+    15 kWh** begrenzt.  \nFalls der Tagesverbrauch besonders niedrig war, schützt
+    dieser Mindestwert vor einer zu konservativen Nachladung.\n\nBeispielhaft gesprochen:
+    \ \nWenn das Haus heute 20 kWh verbraucht hat und die Autos 10 kWh gezogen haben,
+    ist der Nettobedarf 10 kWh → plus 2.5 → aber da das kleiner als 15 ist, wird auf
+    **15 kWh** gesetzt.\n\n---\n\n## \U0001F527 Actions\n\nDie berechnete Energiemenge
+    wird in  \n`input_number.night_charge_target`  \ngeschrieben und kann von anderen
+    Automationen genutzt werden, um das nächtliche Laden oder die Batterieziele dynamisch
+    anzupassen.\n\n---"
   triggers:
   - trigger: time
     at: '23:59:55'
@@ -11019,9 +11041,9 @@
   - action: input_number.set_value
     metadata: {}
     data:
-      value: "{{ (states('sensor.home_consumption_total_day')| float(0)-\n    (states('sensor.daily_energy_goe_11kw')|
-        float(0) +\n    states('sensor.daily_energy_goe_22kw')|float(0))) | round(2)
-        }}\n"
+      value: "{{ max(\n  [((states('sensor.home_consumption_total_day')| float(0)-(states('sensor.daily_energy_goe_11kw')|
+        float(0) + states('sensor.daily_energy_goe_22kw')|float(0))) | round(2) +
+        2.5),\n  15\n  ]) \n}}\n"
     target:
       entity_id: input_number.night_charge_target
   mode: single
