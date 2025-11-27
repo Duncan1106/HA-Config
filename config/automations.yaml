@@ -9389,6 +9389,10 @@
     entity_id:
     - sensor.bett_plug_right_power
     above: 30
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
   conditions: []
   actions:
   - action: switch.turn_off
@@ -9405,6 +9409,10 @@
     entity_id:
     - sensor.bett_plug_left_power
     above: 75
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
   conditions: []
   actions:
   - action: switch.turn_off
@@ -10713,7 +10721,7 @@
             'total_energy_kwh') | float(0)) | round(2)\n}} kWh.\n⚠️ Missing energy
             to reach target: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
             'charge_needed_kwh') | float(0)) | round(2)\n}} kWh.\nAction: Charging
-            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'charge_target_percent')
+            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'offset_charge_target_percent')
             | float(0)) | round(0)\n}}%.\nSaved cost by charging tonight: {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')
             | float(0)) }} €\n"
           data:
@@ -10735,7 +10743,7 @@
         metadata: {}
         data:
           value: '{% set target = state_attr(''binary_sensor.charge_battery_at_night'',
-            ''charge_target_percent'') | float(0) %}
+            ''offset_charge_target_percent'') | float(0) %}
 
             {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
         target:
@@ -10979,9 +10987,10 @@
   - action: input_number.set_value
     metadata: {}
     data:
-      value: "{{ max(\n  [((states('sensor.home_consumption_total_day')| float(0)-(states('sensor.daily_energy_goe_11kw')|
-        float(0) + states('sensor.daily_energy_goe_22kw')|float(0))) | round(2) +
-        2.5),\n  15\n  ]) \n}}\n"
+      value: "{% set target =\n     (states('sensor.home_consumption_total_day')|float(0))\n
+        \    - ((states('sensor.daily_energy_goe_11kw')|float(0))\n        + (states('sensor.daily_energy_goe_22kw')|float(0)))\n
+        \    + 2.5 %}\n{% set floored = [target, 15] | max %}\n{% set cap = state_attr('input_number.night_charge_target','max')
+        | float(999) %}\n{{ [floored, cap] | min | round(2) }}\n"
     target:
       entity_id: input_number.night_charge_target
   mode: single

@@ -252,21 +252,22 @@ template:
             {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
             {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
-            {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) + states('input_number.battery_charge_percent_offset') | float(0) %}
+            {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) %}
             {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
         battery_charge_percent_offset: >
           {{ states('input_number.battery_charge_percent_offset') | float(0) }}
-        prevent_night_discharge: >
-          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
-          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
-          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+        offset_charge_target_percent: >
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
         
-          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
-          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-          {% set total_energy = usable_kwh + forecast %}
-          {{ (total_energy < target_kwh) }}
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+            {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+            {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
+            {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) + states('input_number.battery_charge_percent_offset') | float(0) %}
+            {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
         saved_cost_eur: >
           {% set night_tariff = 0.187425 %}
           {% set day_tariff = 0.302379 %}
