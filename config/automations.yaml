@@ -3250,7 +3250,7 @@
     robust sync & reliability fixes to ensure lights turn on/off correctly.  \n\n---\n\n###
     \U0001F506 **Turn ON Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
     **Motion (below)** | `binary_sensor.aqara_p1_occupancy`, `binary_sensor.gang_bewegung_keller_tur_occupancy`
-    | State = **on** |\n| **Motion (above)** | `binary_sensor.treppenhaus_occupancy`
+    | State = **on** |\n| **Motion (above)** | `binary_sensor.treppenhaus_presence`
     | State = **on** |\n| **Sync ON** | `sensor.light_brighness` | Above **0.1** |\n\n---\n\n###
     \U0001F319 **Turn OFF Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
     **Sync OFF** | `sensor.light_brighness` | Below **0.1** |\n| **Illuminance** |
@@ -3286,7 +3286,7 @@
     id: 'On motion '
   - trigger: state
     entity_id:
-    - binary_sensor.treppenhaus_occupancy
+    - binary_sensor.treppenhaus_presence
     to: 'on'
     id: On motion oben
   - trigger: numeric_state
@@ -3407,13 +3407,6 @@
         below: 0.1
       alias: motion oben & dark enough & no timed light
     then:
-    - action: light.turn_on
-      metadata: {}
-      data:
-        brightness_pct: '{{ treppenlicht_brightness }}'
-      target:
-        entity_id: '{{ light_treppenlicht }}'
-      enabled: false
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -3430,13 +3423,6 @@
         service_data:
           brightness_pct: '{{ treppenlicht_brightness }}'
     - delay: '{{ light_delay }}'
-    - action: light.turn_on
-      metadata: {}
-      data:
-        brightness_pct: '{{ ganglicht_brightness_oben }}'
-      target:
-        entity_id: '{{ light_ganglicht }}'
-      enabled: false
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -3479,21 +3465,18 @@
             conditions:
             - condition: or
               conditions:
-              - type: is_motion
-                condition: device
-                device_id: 6aa53e57ab4128aa151491184dee696c
-                entity_id: f186a7b86f51499f34c6a256d7b755a6
-                domain: binary_sensor
-              - type: is_motion
-                condition: device
-                device_id: 0c126cf3ac97892e31c219e4e479933d
-                entity_id: 1b5c6eef919911c8e327a309ab828d22
-                domain: binary_sensor
-              - type: is_motion
-                condition: device
-                device_id: e89ead353b14ef9ce97038650a6e3bb4
-                entity_id: a7cb7008da8607788c4b8d01cc73f4e0
-                domain: binary_sensor
+              - condition: state
+                entity_id: binary_sensor.aqara_p1_occupancy
+                state:
+                - 'on'
+              - condition: state
+                entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
+                state:
+                - 'on'
+              - condition: state
+                entity_id: binary_sensor.treppenhaus_presence
+                state:
+                - 'on'
         then:
         - action: light.turn_off
           metadata: {}
@@ -3603,7 +3586,7 @@
           entity_id: binary_sensor.aqara_p1_occupancy
           state: 'on'
         - condition: state
-          entity_id: binary_sensor.treppenhaus_occupancy
+          entity_id: binary_sensor.treppenhaus_presence
           state: 'on'
         - condition: state
           entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
@@ -6734,15 +6717,6 @@
   - action: hassio.addon_restart
     metadata: {}
     data:
-      addon: b3f9bc48_repocket
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
       addon: b3f9bc48_earnapp
   - delay:
       hours: 0
@@ -6752,43 +6726,7 @@
   - action: hassio.addon_restart
     metadata: {}
     data:
-      addon: b3f9bc48_earnfm
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_packetstream
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
       addon: b3f9bc48_pawns
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_traffmonetizer
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_honeygain
   mode: single
 - id: '1747573166845'
   alias: Boiler Timer
@@ -6883,7 +6821,7 @@
     or air-quality text.  \n   - **To-Do Prompt:** Embeds the random task *unaltered*
     and adds practical, helpful suggestions for completing it today.  \n   - **Main
     Prompt:** Instructs the AI to produce a short, clean, readable message (in **German**,
-    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `conversation.google_generative_ai`.
+    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `conversation.google_ai_conversation_2_5_pro`.
     \ \n   - Retries up to **10 times**, but waits **only when a failure occurs**.
     \ \n   - Recognizes failure phrases such as:  \n     - `\"Unable to get response\"`
     \ \n     - `\"Sorry, I had a problem getting a response from Google Generative
@@ -6895,7 +6833,7 @@
     with title including today’s weekday.  \n   - **Failure (after all retries):**
     Sends a fallback message  \n     *“Heute konnte leider keine Nachricht generiert
     werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do Entity:**
-    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_generative_ai`
+    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_ai_conversation_2_5_pro`
     \ \n- **Fallback AI Agent:** `conversation.google_ai_conversation_2_5_flash`  \n-
     **Notification Target:** `notify.duncan`  \n- **Retries:** Up to 10 per agent
     \ \n- **Retry Delay:** 5 seconds  \n- **AI Token Limit:** 300 tokens  \n- **Pollen
@@ -6976,7 +6914,7 @@
 
 
             {{ prompt }}'
-          agent_id: conversation.google_generative_ai
+          agent_id: conversation.google_ai_conversation_2_5_pro
         response_variable: agent_gemini
         action: conversation.process
       - alias: Wait only if failed
@@ -9444,13 +9382,17 @@
       addon: 68413af6_git-exporter
   mode: single
 - id: '1757084399628'
-  alias: Turn Off Bett Plug Right Over 25W
+  alias: Turn Off Bett Plug Right Over 30W
   description: ''
   triggers:
   - trigger: numeric_state
     entity_id:
     - sensor.bett_plug_right_power
-    above: 25
+    above: 30
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
   conditions: []
   actions:
   - action: switch.turn_off
@@ -9467,6 +9409,10 @@
     entity_id:
     - sensor.bett_plug_left_power
     above: 75
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 15
   conditions: []
   actions:
   - action: switch.turn_off
@@ -10775,7 +10721,7 @@
             'total_energy_kwh') | float(0)) | round(2)\n}} kWh.\n⚠️ Missing energy
             to reach target: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
             'charge_needed_kwh') | float(0)) | round(2)\n}} kWh.\nAction: Charging
-            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'charge_target_percent')
+            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'offset_charge_target_percent')
             | float(0)) | round(0)\n}}%.\nSaved cost by charging tonight: {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')
             | float(0)) }} €\n"
           data:
@@ -10797,7 +10743,7 @@
         metadata: {}
         data:
           value: '{% set target = state_attr(''binary_sensor.charge_battery_at_night'',
-            ''charge_target_percent'') | float(0) %}
+            ''offset_charge_target_percent'') | float(0) %}
 
             {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
         target:
@@ -11007,4 +10953,44 @@
         | float(0) | round(2) }} °C"
       data:
         tag: daily_temperature_garage_gartenhaus
+  mode: single
+- id: '1764102977901'
+  alias: Adjust Battery Energy Target based on Today's Consumption
+  description: "# \U0001F50B Adjust Battery Energy Target Based on Today's Consumption\n\n##
+    \U0001F3AF Zweck\n\nDiese Automation berechnet jeden Abend um **23:59:55**, wie
+    viel Energie in der kommenden Nacht mindestens nachgeladen werden soll.  \nSie
+    gleicht dafür den **gesamten heutigen Hausverbrauch** mit der **heute geladenen
+    Energie der beiden Wallboxen** ab und addiert einen kleinen **Sicherheitsaufschlag
+    von 2.5 kWh**.\n\nDer Wert wird anschließend in `input_number.night_charge_target`
+    gespeichert.  \nDamit bestimmt die Automation, wie viel Energie in der Nacht bereitgestellt
+    werden soll, falls der kommende Tag wenig PV-Ertrag bringt.\n\n---\n\n## ⏰ Trigger\n\nDie
+    Automation läuft **ein einziges Mal pro Tag**, ausgelöst durch:\n\n| Zeit | Beschreibung
+    |\n|------|--------------|\n| 23:59:55 | Tagesabschluss, Berechnung des Nachtladeziels
+    |\n\n---\n\n## \U0001F9E0 Berechnungslogik\n\nDie Formel arbeitet wie ein kleiner
+    Energiebuchhalter:\n\n- Heutiger Hausverbrauch (`sensor.home_consumption_total_day`)
+    \ \n- minus heutige Ladung an der 11 kW Wallbox (`sensor.daily_energy_goe_11kw`)
+    \ \n- minus heutige Ladung an der 22 kW Wallbox (`sensor.daily_energy_goe_22kw`)
+    \ \n- plus 2.5 kWh Sicherheitsaufschlag\n\nDas Ergebnis wird auf **mindestens
+    15 kWh** begrenzt.  \nFalls der Tagesverbrauch besonders niedrig war, schützt
+    dieser Mindestwert vor einer zu konservativen Nachladung.\n\nBeispielhaft gesprochen:
+    \ \nWenn das Haus heute 20 kWh verbraucht hat und die Autos 10 kWh gezogen haben,
+    ist der Nettobedarf 10 kWh → plus 2.5 → aber da das kleiner als 15 ist, wird auf
+    **15 kWh** gesetzt.\n\n---\n\n## \U0001F527 Actions\n\nDie berechnete Energiemenge
+    wird in  \n`input_number.night_charge_target`  \ngeschrieben und kann von anderen
+    Automationen genutzt werden, um das nächtliche Laden oder die Batterieziele dynamisch
+    anzupassen.\n\n---"
+  triggers:
+  - trigger: time
+    at: '23:59:55'
+  conditions: []
+  actions:
+  - action: input_number.set_value
+    metadata: {}
+    data:
+      value: "{% set target =\n     (states('sensor.home_consumption_total_day')|float(0))\n
+        \    - ((states('sensor.daily_energy_goe_11kw')|float(0))\n        + (states('sensor.daily_energy_goe_22kw')|float(0)))\n
+        \    + 2.5 %}\n{% set floored = [target, 15] | max %}\n{% set cap = state_attr('input_number.night_charge_target','max')
+        | float(999) %}\n{{ [floored, cap] | min | round(2) }}\n"
+    target:
+      entity_id: input_number.night_charge_target
   mode: single
