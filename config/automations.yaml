@@ -10999,3 +10999,58 @@
     target:
       entity_id: input_number.night_charge_target
   mode: single
+- id: '1764427174379'
+  alias: Auto Schlafzimmer Treppe Licht
+  description: Automatically turns the stairway light on or off based on ambient brightness,
+    using a retry script to ensure reliability.
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    above: 39
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    below: 40
+    id: 'Off'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
+          target_state: 'on'
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
+          target_state: 'off'
+  mode: single
