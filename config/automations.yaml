@@ -1109,7 +1109,8 @@
     - metadata: {}
       data:
         message: Feuer erkannt bei {{sensors}}
-      action: notify.mobile_app_stephan_iphone
+      action: notify.familie
+      enabled: false
   variables:
     threshold: 45
     include:
@@ -1128,15 +1129,15 @@
       - sensor.t_h_kinderbad_zigbee_temperature
       - sensor.t_h_garage_zigbee_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
-    sensors: "{% set result = namespace(sensors=[]) %} {% for state in states.sensor
-      | selectattr('attributes.device_class', '==', 'temperature') %}\n  {% if 0 <=
-      state.state | int(-1) > threshold | int and state.entity_id in include.entity_id
-      %}\n    {% set result.sensors = result.sensors + [state.name ~ ' (' ~ state.state
-      ~ ' °C)'] %}\n  {% endif %}\n{% endfor %} {% for state in states.binary_sensor
-      | selectattr('attributes.device_class', '==', 'temperature') | selectattr('state',
-      '==', 'on') %}\n  {% if state.entity_id in include.entity_id %}\n    {% set
-      result.sensors = result.sensors + [state.name] %}\n  {% endif %}\n{% endfor
-      %} {{result.sensors|join(', ')}}"
+    sensors: "{% set result = namespace(sensors=[]) %} {% for s in states.sensor |
+      selectattr('attributes.device_class', '==', 'temperature') %}\n  {% set v =
+      s.state | float(-999) %}\n  {% if v >= 0 and v > (threshold | float) and s.entity_id
+      in include.entity_id %}\n    {% set result.sensors = result.sensors + [ s.name
+      ~ ' (' ~ (v | round(2)) ~ ' °C)' ] %}\n  {% endif %}\n{% endfor %} {% for b
+      in states.binary_sensor\n  | selectattr('attributes.device_class', '==', 'temperature')\n
+      \ | selectattr('state', '==', 'on') %}\n  {% if b.entity_id in include.entity_id
+      %}\n    {% set result.sensors = result.sensors + [ b.name ] %}\n  {% endif %}\n{%
+      endfor %} {{ result.sensors | join(', ') }}"
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
@@ -1738,6 +1739,11 @@
   - trigger: state
     entity_id: input_boolean.luftbefeuchter_aktiv
     to: 'on'
+  conditions:
+  - condition: state
+    entity_id: switch.terrarium_zigbee_l1
+    state:
+    - 'off'
   actions:
   - variables:
       baseline: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
