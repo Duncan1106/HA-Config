@@ -169,7 +169,6 @@ notify:
     services:
       - action: mobile_app_poco_f7
       - action: mobile_app_mi_9t
-      - action: mobile_app_m2101k6g
 
   - platform: group
     name: "Admin"
@@ -587,28 +586,37 @@ template:
       - name: "Rollo Summer Should Close"
         unique_id: rollo_summer_should_close
         state: >
-          {% set manual = this.attributes.manual_mode | int(0) %}
-          {% set summer = this.attributes.summer | int(0) %}
-          {% set within_daylight = this.attributes.within_daylight | int(0) %}
-          {% set sun_hits_window = this.attributes.sun_hits_window | int(0) %}
-          {% set not_raining = this.attributes.not_raining | int(0) %}
-        
-          {% if manual > 0 or not summer %}
-            None
-          {% elif ( ( summer + within_daylight + sun_hits_window + not_raining ) < 4 ) %}
-            false
-          {% else %}
-            {% set strong_uv_index = (this.attributes.strong_uv_index | float(0)) %}
-            {% set strong_uv_lux = (this.attributes.strong_uv_lux | float(0)) %}
-            {% set high_temp_diff = (this.attributes.high_temp_diff | float(0)) %}
-            {% set extreme_temp = (this.attributes.extreme_temp | float(0)) %}
-            {% set sum = strong_uv_index + strong_uv_lux + high_temp_diff + extreme_temp %}
-            {% if sum >= 1.9 %}
-                true
+            {# Safety-Check: Wenn this.attributes nicht existiert oder leer ist → None #}
+            {% if this is not defined or this.attributes is not defined or this.attributes | length == 0 %}
+              None
             {% else %}
+
+              {% set manual = this.attributes.manual_mode | default(0) | int %}
+              {% set summer = this.attributes.summer | default(0) | int %}
+              {% set within_daylight = this.attributes.within_daylight | default(0) | int %}
+              {% set sun_hits_window = this.attributes.sun_hits_window | default(0) | int %}
+              {% set not_raining = this.attributes.not_raining | default(0) | int %}
+
+              {% if manual > 0 or summer < 1 %}
+                None
+              {% elif (summer + within_daylight + sun_hits_window + not_raining) < 4 %}
                 false
+              {% else %}
+                {% set strong_uv_index = this.attributes.strong_uv_index | default(0) | float %}
+                {% set strong_uv_lux = this.attributes.strong_uv_lux | default(0) | float %}
+                {% set high_temp_diff = this.attributes.high_temp_diff | default(0) | float %}
+                {% set extreme_temp = this.attributes.extreme_temp | default(0) | float %}
+
+                {% set sum = strong_uv_index + strong_uv_lux + high_temp_diff + extreme_temp %}
+
+                {% if sum >= 1.9 %}
+                  true
+                {% else %}
+                  false
+                {% endif %}
+              {% endif %}
+
             {% endif %}
-          {% endif %}
         attributes:
           manual_mode: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
           first_blockers: ''
