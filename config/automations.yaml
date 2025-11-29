@@ -8700,6 +8700,10 @@
   - condition: sun
     before: sunset
     after: sunrise
+  - condition: numeric_state
+    entity_id: binary_sensor.rollo_summer_should_close
+    attribute: summer
+    above: 0
   actions:
   - choose:
     - alias: Rollo schließen
@@ -11053,4 +11057,136 @@
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'off'
+  mode: single
+- id: '1764434672349'
+  alias: Rollo Winter Helper Night State
+  description: "Sets boolean helpers to track if it was cold or wet overnight. \nResets
+    the flags one hour after sunrise."
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gw1100a_outdoor_temperature
+    id: temp low
+    below: 1.8
+  - trigger: state
+    entity_id:
+    - weather.irauen33
+    - weather.forecast_home
+    to:
+    - rainy
+    - snowy-rainy
+    - snowy
+    - pouring
+    - hail
+    id: wet
+  - trigger: sun
+    event: sunrise
+    offset: +01:00:00
+    id: reset
+  conditions:
+  - condition: state
+    entity_id: input_boolean.rollo_state
+    state:
+    - 'off'
+  - condition: sun
+    after: sunset
+    before: sunrise
+    before_offset: +02:00:00
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - temp low
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.rollo_was_cold
+    - conditions:
+      - condition: trigger
+        id:
+        - wet
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.rollo_was_wet
+    - conditions:
+      - condition: trigger
+        id:
+        - reset
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.rollo_was_cold
+          - input_boolean.rollo_was_wet
+  mode: single
+- id: '1764435549773'
+  alias: 'Weather: Set Low Temp and Wet Flags (Sunset to Sunrise)'
+  description: Checks forecast from sunset until sunrise using multiple weather providers.
+  triggers:
+  - event: sunset
+    offset: 0
+    trigger: sun
+  actions:
+  - action: weather.get_forecasts
+    target:
+      entity_id:
+      - weather.micro_weather_station
+      - weather.forecast_home
+    data:
+      type: hourly
+    response_variable: weather_data
+  - variables:
+      weather_results: "{% set next_sunrise = state_attr('sun.sun', 'next_rising')
+        | as_datetime %} {% set ns = namespace(is_low=false, is_wet=false) %}\n{#
+        --- COMBINE FORECASTS --- #} {% set combined_forecast = [] %}\n{# Loop through
+        the keys (entity IDs) in the response variable #} {% for entity_id in weather_data.keys()
+        %}\n  {# Add all forecast items from the current entity to the combined list
+        #}\n  {% set combined_forecast = combined_forecast + weather_data[entity_id].forecast
+        %}\n{% endfor %}\n{# Sort the combined list chronologically by the 'datetime'
+        key #} {% set sorted_forecast = combined_forecast | sort(attribute='datetime')
+        %}\n{# --- LOOP THROUGH COMBINED & SORTED FORECAST --- #} {% for item in sorted_forecast
+        %}\n  {% set item_time = item.datetime | as_datetime %}\n\n  {# Check time:
+        Only look at data BEFORE the next sunrise #}\n  {% if item_time < next_sunrise
+        %}\n\n    {# --- LOGIC 1: Low Temp Flag (< 10°C) --- #}\n    {% if item.temperature
+        < 10 %}\n      {% set ns.is_low = true %}\n    {% endif %}\n\n    {# --- LOGIC
+        2: Wet Forecast Flag ((Precip or Hum>60) AND <2°C) --- #}\n    \n    {% set
+        is_precip = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
+        'snowy-rainy'] %}\n    {% set is_humid = item.humidity > 60 %}\n    {% set
+        is_cold = item.temperature < 2 %}\n\n    {# If (Moisture is present or high)
+        AND (It is freezing cold) #}\n    {% if (is_precip or is_humid) and is_cold
+        %}\n      {% set ns.is_wet = true %}\n    {% endif %}\n\n  {% endif %}\n  \n
+        \ {# Stop processing if both flags have already been set #}\n  {% if ns.is_low
+        and ns.is_wet %}\n    {% break %}\n  {% endif %}\n  \n{% endfor %}\n{{ {'low':
+        ns.is_low, 'wet': ns.is_wet} }}\n"
+  - if:
+    - condition: template
+      value_template: '{{ weather_results.low }}'
+    then:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.forecast_temp_low
+    else:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.forecast_temp_low
+  - if:
+    - condition: template
+      value_template: '{{ weather_results.wet }}'
+    then:
+    - action: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.forecast_wet
+    else:
+    - action: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.forecast_wet
   mode: single
