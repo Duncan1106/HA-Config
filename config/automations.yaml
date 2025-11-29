@@ -1129,15 +1129,15 @@
       - sensor.t_h_kinderbad_zigbee_temperature
       - sensor.t_h_garage_zigbee_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
-    sensors: "{% set result = namespace(sensors=[]) %} {% for s in states.sensor |
-      selectattr('attributes.device_class', '==', 'temperature') %}\n  {% set v =
-      s.state | float(-999) %}\n  {% if v >= 0 and v > (threshold | float) and s.entity_id
-      in include.entity_id %}\n    {% set result.sensors = result.sensors + [ s.name
-      ~ ' (' ~ (v | round(2)) ~ ' °C)' ] %}\n  {% endif %}\n{% endfor %} {% for b
-      in states.binary_sensor\n  | selectattr('attributes.device_class', '==', 'temperature')\n
-      \ | selectattr('state', '==', 'on') %}\n  {% if b.entity_id in include.entity_id
-      %}\n    {% set result.sensors = result.sensors + [ b.name ] %}\n  {% endif %}\n{%
-      endfor %} {{ result.sensors | join(', ') }}"
+    sensors: "{% set result = namespace(sensors=[]) %} {% for s in expand(include.entity_id)
+      %}\n  {% if s.domain == 'sensor' %}\n    {% set u = s.attributes.unit_of_measurement
+      | default('', true) %}\n    {% set v_raw = s.state | float(-999) %}\n    {%
+      if v_raw != -999 %}\n      {% set v = (v_raw - 32) * 5/9 if u in ['°F','F','Fahrenheit']
+      else v_raw %}\n      {% if v >= 0 and v > (threshold | float) %}\n        {%
+      set result.sensors = result.sensors + [ s.name ~ ' (' ~ (v | round(2)) ~ ' °C)'
+      ] %}\n      {% endif %}\n    {% endif %}\n  {% elif s.domain == 'binary_sensor'
+      and s.state == 'on' %}\n    {% set result.sensors = result.sensors + [ s.name
+      ] %}\n  {% endif %}\n{% endfor %} {{ result.sensors | join(', ') }}"
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
