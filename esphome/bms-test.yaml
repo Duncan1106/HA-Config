@@ -64,9 +64,74 @@ button:
   - platform: restart
     name: Restart
 
+uart:
+  id: mod_uart
+  tx_pin: GPIO21
+  rx_pin: GPIO20
+  baud_rate: 9600
+  parity: NONE
+  data_bits: 8
+  stop_bits: 1
+
+modbus:
+  send_wait_time: 500ms
+  uart_id: mod_uart
+  id: mod_bus
+
+modbus_controller:
+- id: m1
+  address: 1
+  modbus_id: mod_bus
+  command_throttle: 200ms
+  setup_priority: -10
+  update_interval: 10s
+
+- id: m2
+  address: 2
+  modbus_id: mod_bus
+  command_throttle: 200ms
+  setup_priority: -10
+  update_interval: 10s
+
 binary_sensor:
   - platform: status
     name: Status
+
+  # Binary Sensor for Bit 0: Charge enable (0b0001)
+  - platform: modbus_controller
+    modbus_controller_id: m1
+    name: "Bat1 Charge Enabled"
+    register_type: read
+    address: 0x1302
+    device_id: bms_bat1
+    bitmask: 0x01 # Checks if bit 0 is set (Value 1)
+
+  # Binary Sensor for Bit 2: Discharge enable (0b0100)
+  - platform: modbus_controller
+    modbus_controller_id: m1
+    name: "Bat1 Discharge Enabled"
+    register_type: read
+    address: 0x1302
+    device_id: bms_bat1
+    bitmask: 0x04 # Checks if bit 2 is set (Value 4)
+
+  # Binary Sensor for Bit 0: Charge enable (0b0001)
+  - platform: modbus_controller
+    modbus_controller_id: m2
+    name: "Bat2 Charge Enabled"
+    register_type: read
+    address: 0x1302
+    device_id: bms_bat2
+    bitmask: 0x01 # Checks if bit 0 is set (Value 1)
+
+  # Binary Sensor for Bit 2: Discharge enable (0b0100)
+  - platform: modbus_controller
+    modbus_controller_id: m2
+    name: "Bat2 Discharge Enabled"
+    register_type: read
+    address: 0x1302
+    device_id: bms_bat2
+    bitmask: 0x04 # Checks if bit 2 is set (Value 4)
 
 text_sensor:
   - platform: wifi_info
@@ -150,35 +215,6 @@ text_sensor:
           if (status & 0b0000000000010000) return std::string("Cell Voltage Low Fault");
           if (status & 0b0000000000001000) return std::string("Cell Voltage High Fault");
           return std::string("No Fault");  // Standardwert, wenn keine Bedingung erfüllt ist
-
-uart:
-  id: mod_uart
-  tx_pin: GPIO21
-  rx_pin: GPIO20
-  baud_rate: 9600
-  parity: NONE
-  data_bits: 8
-  stop_bits: 1
-
-modbus:
-  send_wait_time: 500ms
-  uart_id: mod_uart
-  id: mod_bus
-
-modbus_controller:
-- id: m1
-  address: 1
-  modbus_id: mod_bus
-  command_throttle: 200ms
-  setup_priority: -10
-  update_interval: 10s
-
-- id: m2
-  address: 2
-  modbus_id: mod_bus
-  command_throttle: 200ms
-  setup_priority: -10
-  update_interval: 10s
 
 number:
   - platform: template
