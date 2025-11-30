@@ -5813,13 +5813,13 @@
     - input_boolean.trockner_fertig
     from: 'on'
     to: 'off'
-    id: Trockner fertig
+    id: trockner_fertig
   - trigger: state
     entity_id:
     - input_boolean.waschmaschine_fertig
     from: 'on'
     to: 'off'
-    id: Waschmaschine fertig
+    id: waschmaschine_fertig
   conditions: []
   actions:
   - choose:
@@ -5944,24 +5944,14 @@
     - conditions:
       - condition: trigger
         id:
-        - Trockner fertig
+        - trockner_fertig
+        - waschmaschine_fertig
       sequence:
       - action: notify.familie
         metadata: {}
         data:
           data:
-            tag: trockner_fertig
-          message: clear_notification
-    - conditions:
-      - condition: trigger
-        id:
-        - Waschmaschine fertig
-      sequence:
-      - action: notify.familie
-        metadata: {}
-        data:
-          data:
-            tag: waschmaschine_fertig
+            tag: '{{ trigger.id }}'
           message: clear_notification
   mode: parallel
   max: 10
@@ -11144,7 +11134,7 @@
   - condition: sun
     after: sunset
     before: sunrise
-    before_offset: +02:00:00
+    before_offset: +01:00:01
   actions:
   - choose:
     - conditions:
@@ -11218,9 +11208,9 @@
           \           {% if current_temp < 10 or low_temp < 10 %}\n              {%
           set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
           = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
-          'snowy-rainy'] %}\n            {% set is_humid = item.get('humidity', 0)
-          > 60 %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
-          \           {% if (is_precip or is_humid) and is_cold %}\n              {%
+          'snowy-rainy'] %}\n            {% set is_humid = item.humidity | default(0,
+          true) > 60 %}\n            {% set is_cold = current_temp < 2 or low_temp
+          < 2 %}\n            {% if (is_precip or is_humid) and is_cold %}\n              {%
           set ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n
           \       {% if ns.is_low and ns.is_wet %}\n            {% break %}\n        {%
           endif %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
