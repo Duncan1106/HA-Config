@@ -1109,7 +1109,8 @@
     - metadata: {}
       data:
         message: Feuer erkannt bei {{sensors}}
-      action: notify.mobile_app_stephan_iphone
+      action: notify.familie
+      enabled: false
   variables:
     threshold: 45
     include:
@@ -1123,21 +1124,20 @@
       - sensor.gw1100a_indoor_temperature
       - sensor.t_h_duncan_zigbee_temperature
       - sensor.t_h_waschkuche_zigbee_temperature
-      - sensor.weinkeller_temperature
+      - sensor.t_h_weinkeller_zigbee_temperature
       - sensor.t_h_bad_zigbee_temperature
       - sensor.t_h_kinderbad_zigbee_temperature
-      - sensor.inverter_battery_temperature
       - sensor.t_h_garage_zigbee_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
-    sensors: "{% set result = namespace(sensors=[]) %} {% for state in states.sensor
-      | selectattr('attributes.device_class', '==', 'temperature') %}\n  {% if 0 <=
-      state.state | int(-1) > threshold | int and state.entity_id in include.entity_id
-      %}\n    {% set result.sensors = result.sensors + [state.name ~ ' (' ~ state.state
-      ~ ' °C)'] %}\n  {% endif %}\n{% endfor %} {% for state in states.binary_sensor
-      | selectattr('attributes.device_class', '==', 'temperature') | selectattr('state',
-      '==', 'on') %}\n  {% if state.entity_id in include.entity_id %}\n    {% set
-      result.sensors = result.sensors + [state.name] %}\n  {% endif %}\n{% endfor
-      %} {{result.sensors|join(', ')}}"
+    sensors: "{% set result = namespace(sensors=[]) %} {% for s in expand(include.entity_id)
+      %}\n  {% if s.domain == 'sensor' %}\n    {% set u = s.attributes.unit_of_measurement
+      | default('', true) %}\n    {% set v_raw = s.state | float(-999) %}\n    {%
+      if v_raw != -999 %}\n      {% set v = (v_raw - 32) * 5/9 if u in ['°F','F','Fahrenheit']
+      else v_raw %}\n      {% if v >= 0 and v > (threshold | float) %}\n        {%
+      set result.sensors = result.sensors + [ s.name ~ ' (' ~ (v | round(2)) ~ ' °C)'
+      ] %}\n      {% endif %}\n    {% endif %}\n  {% elif s.domain == 'binary_sensor'
+      and s.state == 'on' %}\n    {% set result.sensors = result.sensors + [ s.name
+      ] %}\n  {% endif %}\n{% endfor %} {{ result.sensors | join(', ') }}"
   mode: single
 - id: '1710856538174'
   alias: Count Battery Full
@@ -1739,6 +1739,11 @@
   - trigger: state
     entity_id: input_boolean.luftbefeuchter_aktiv
     to: 'on'
+  conditions:
+  - condition: state
+    entity_id: switch.terrarium_zigbee_l1
+    state:
+    - 'off'
   actions:
   - variables:
       baseline: '{{ states(''sensor.terrarium_power_plug_zigbee_power'')|float(0)
@@ -5848,6 +5853,19 @@
               message: Die Waschmaschine ist fertig
             target:
               entity_id: tts.google_ai_tts
+            enabled: false
+          - action: chime_tts.say
+            target:
+              entity_id:
+              - media_player.lenovo_tab_p11
+            data:
+              chime_path: classical
+              message: Die Waschmaschine ist fertig
+              tts_platform: google_translate
+              language: de
+              offset: -750
+              cache: true
+              volume_level: 0.55
           - delay:
               hours: 0
               minutes: 10
@@ -5894,6 +5912,19 @@
               message: Der Trockner ist fertig
             target:
               entity_id: tts.google_ai_tts
+            enabled: false
+          - action: chime_tts.say
+            target:
+              entity_id:
+              - media_player.lenovo_tab_p11
+            data:
+              chime_path: classical
+              message: Der Trockner ist fertig
+              tts_platform: google_translate
+              language: de
+              offset: -750
+              cache: true
+              volume_level: 0.55
           - delay:
               hours: 0
               minutes: 10
@@ -7419,6 +7450,14 @@
     at: 00:01:00
     enabled: true
     id: On_time
+  - trigger: state
+    entity_id:
+    - input_select.octopus_night_time
+    from:
+    - Intelligent
+    to:
+    - Dumb
+    id: On_time_change
   - trigger: time
     at: 04:59:00
     id: Off_time
@@ -7480,9 +7519,19 @@
   actions:
   - choose:
     - conditions:
-      - condition: trigger
-        id:
-        - On_time
+      - condition: or
+        conditions:
+        - condition: trigger
+          id:
+          - On_time
+        - condition: and
+          conditions:
+          - condition: time
+            after: 00:00:00
+            before: 04:30:00
+          - condition: trigger
+            id:
+            - On_time_change
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Dumb
@@ -8695,6 +8744,10 @@
   - condition: sun
     before: sunset
     after: sunrise
+  - condition: numeric_state
+    entity_id: binary_sensor.rollo_summer_should_close
+    attribute: summer
+    above: 0
   actions:
   - choose:
     - alias: Rollo schließen
@@ -9447,6 +9500,10 @@
       - condition: trigger
         id:
         - '23'
+        - Start
+      - condition: time
+        after: '23:00:00'
+        before: 03:59:00
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -9569,11 +9626,6 @@
           entity_id:
           - switch.garagentor_tasmota
           - switch.sauger_tasmota
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 5
-          milliseconds: 0
       alias: Power off all the way
   mode: queued
   max: 3
@@ -10993,4 +11045,223 @@
         | float(999) %}\n{{ [floored, cap] | min | round(2) }}\n"
     target:
       entity_id: input_number.night_charge_target
+  mode: single
+- id: '1764427174379'
+  alias: Auto Schlafzimmer Treppe Licht
+  description: Automatically turns the stairway light on or off based on ambient brightness,
+    using a retry script to ensure reliability.
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    above: 39
+    id: 'On'
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    below: 40
+    id: 'Off'
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - 'On'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
+          target_state: 'on'
+    - conditions:
+      - condition: trigger
+        id:
+        - 'Off'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
+          target_state: 'off'
+  mode: single
+- id: '1764434672349'
+  alias: Rollo Winter Helper Night State
+  description: "Sets boolean helpers to track if it was cold or wet overnight. \nResets
+    the flags one hour after sunrise."
+  triggers:
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gw1100a_outdoor_temperature
+    id: temp low
+    below: 2
+  - trigger: state
+    entity_id:
+    - weather.irauen33
+    - weather.forecast_home
+    to:
+    - rainy
+    - snowy-rainy
+    - snowy
+    - pouring
+    - hail
+    id: wet
+  - trigger: sun
+    event: sunrise
+    offset: +01:00:00
+    id: reset
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gw1100a_humidity
+    above: 60
+    id: wet
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gw1100a_rain_rate
+    above: 0.1
+    id: wet
+  conditions:
+  - condition: state
+    entity_id: input_boolean.rollo_state
+    state:
+    - 'off'
+  - condition: sun
+    after: sunset
+    before: sunrise
+    before_offset: +02:00:00
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - temp low
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.rollo_was_cold
+    - conditions:
+      - condition: trigger
+        id:
+        - wet
+      sequence:
+      - action: input_boolean.turn_on
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.rollo_was_wet
+    - conditions:
+      - condition: trigger
+        id:
+        - reset
+      sequence:
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.rollo_was_cold
+          - input_boolean.rollo_was_wet
+  mode: single
+- id: '1764435549773'
+  alias: 'Weather: Set Low Temp and Wet Flags (Sunset to Sunrise)'
+  description: Checks forecast from sunset until sunrise using multiple weather providers.
+  triggers:
+  - event: sunset
+    offset: -00:15:00
+    trigger: sun
+    id: sunset
+  - trigger: sun
+    event: sunrise
+    offset: +02:00:00
+    id: sunrise
+  actions:
+  - if:
+    - condition: trigger
+      id:
+      - sunset
+    then:
+    - data:
+        type: hourly
+      target:
+        entity_id:
+        - weather.micro_weather_station
+        - weather.forecast_home
+      response_variable: weather_data
+      action: weather.get_forecasts
+    - variables:
+        weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
+          set next_sunrise = states('sensor.sun_next_rising') | as_datetime() | as_local
+          %} {% for entity_id, entity_data in weather_data.items() %}\n    {% set
+          forecast = entity_data.forecast %}\n    {% for item in forecast %}\n        {%
+          set item_time = item.datetime | as_datetime() | as_local %}\n        {%
+          if item_time < next_sunrise %}\n            {% set current_temp = item.temperature
+          %}\n            {% set low_temp = item.templow | default(current_temp) %}\n
+          \           {% if current_temp < 10 or low_temp < 10 %}\n              {%
+          set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
+          = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
+          'snowy-rainy'] %}\n            {% set is_humid = item.get('humidity', 0)
+          > 60 %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
+          \           {% if (is_precip or is_humid) and is_cold %}\n              {%
+          set ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n
+          \       {% if ns.is_low and ns.is_wet %}\n            {% break %}\n        {%
+          endif %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
+          break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
+          }}\n"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ weather_results.low }}'
+        sequence:
+        - target:
+            entity_id: input_boolean.forecast_temp_low
+          action: input_boolean.turn_on
+      default:
+      - target:
+          entity_id: input_boolean.forecast_temp_low
+        action: input_boolean.turn_off
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ weather_results.wet }}'
+        sequence:
+        - target:
+            entity_id: input_boolean.forecast_wet
+          action: input_boolean.turn_on
+      default:
+      - target:
+          entity_id: input_boolean.forecast_wet
+        action: input_boolean.turn_off
+    alias: forecast booleans based on forecast
+  - if:
+    - condition: trigger
+      id:
+      - sunrise
+    then:
+    - action: input_boolean.turn_off
+      metadata: {}
+      data: {}
+      target:
+        entity_id:
+        - input_boolean.forecast_temp_low
+        - input_boolean.forecast_wet
+    alias: Reset to off at sunrise +2h
   mode: single

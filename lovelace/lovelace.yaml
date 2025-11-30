@@ -1687,6 +1687,33 @@ config:
         tap_action:
           action: more-info
         type: custom:entity-progress-card-template
+      - cards:
+        - entity: sensor.smart_meter_mqtt_data
+          features_position: bottom
+          icon: mdi:current-ac
+          name: L1
+          state_content: current_L1
+          type: tile
+          vertical: false
+        - entity: sensor.smart_meter_mqtt_data
+          features_position: bottom
+          icon: mdi:current-ac
+          name: L3
+          state_content: current_L3
+          type: tile
+          vertical: false
+        - entity: sensor.smart_meter_mqtt_data
+          features_position: bottom
+          icon: mdi:current-ac
+          name: L2
+          state_content: current_L2
+          type: tile
+          vertical: false
+        type: horizontal-stack
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
       type: grid
     - cards:
       - heading: Jetzt
@@ -2198,13 +2225,19 @@ config:
       - above: 0
         condition: numeric_state
         entity: sensor.daily_mg4_charged_energy
-    - content: '{{ states(''binary_sensor.octopus_a_10a76963_intelligent_dispatching'')
+    - color: magenta
+      content: '{{ states(''binary_sensor.octopus_a_10a76963_intelligent_dispatching'')
         | title }}'
-      entity: input_select.octopus_night_time
+      entity: sensor.octopus_a_10a76963_device_status
+      icon: mdi:jellyfish
       label: Octopus
       tap_action:
         action: more-info
       type: custom:mushroom-template-badge
+      visibility:
+      - condition: state
+        entity: switch.octopus_a_10a76963_device_smart_control
+        state: 'on'
     - content: "{% set d = state_attr('binary_sensor.octopus_a_10a76963_intelligent_dispatching','planned_dispatches')\
         \ %} {% if d and (d | count) > 0 %}\n  {{ as_timestamp(d[0]['start_time'])\
         \ | timestamp_custom('%H:%M') }} - {{ as_timestamp(d[0]['end_time']) | timestamp_custom('%H:%M')\
@@ -2221,6 +2254,25 @@ config:
       - condition: state
         entity: input_select.octopus_night_time
         state: Intelligent
+    - color: "{% set mode =  states('input_select.octopus_night_time') %}\n{% if mode\
+        \ == 'Intelligent' %}\n  blue\n{% elif mode == 'Dumb' %}\n  green\n{% else\
+        \ %}\n  gray\n{% endif %}"
+      content: '{{ states(''input_select.octopus_night_time'') }}'
+      double_tap_action:
+        action: perform-action
+        data:
+          cycle: true
+        perform_action: input_select.select_next
+        target:
+          entity_id: input_select.octopus_night_time
+      entity: input_select.octopus_night_time
+      icon: "{% set mode =  states('input_select.octopus_night_time') %}\n{% if mode\
+        \ == 'Intelligent' %}\n  mdi:brain\n{% elif mode == 'Dumb' %}\n  mdi:cog\n\
+        {% else %}\n  mdi:ev-station\n{% endif %}"
+      label: Mode
+      tap_action:
+        action: more-info
+      type: custom:mushroom-template-badge
     cards: []
     dense_section_placement: false
     icon: mdi:ev-plug-type2
@@ -4563,7 +4615,7 @@ config:
           type: custom:mushroom-entity-card
         type: horizontal-stack
       - entity: binary_sensor.rollo_summer_should_close
-        name: Rollo Should Close
+        name: 'Summer: Rollo Should Close'
         type: custom:mushroom-entity-card
         visibility:
         - condition: user
@@ -4572,6 +4624,16 @@ config:
       - entity: input_boolean.rollo_summer_override
         name: Rollo Override
         type: custom:mushroom-entity-card
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+      - entities:
+        - entity: input_boolean.forecast_temp_low
+        - entity: input_boolean.forecast_wet
+        - entity: input_boolean.rollo_was_cold
+        - entity: input_boolean.rollo_was_wet
+        type: entities
         visibility:
         - condition: user
           users:
@@ -7669,8 +7731,9 @@ config:
           labels: hover
           points: hover
         type: custom:mini-graph-card
-      - auto_swipe_interval: 15000
-        card_spacing: 15
+      - auto_height: false
+        auto_hide_pagination: 0
+        auto_swipe_interval: 15000
         cards:
         - cellColumns: 4
           cellCount: 16
@@ -7713,22 +7776,28 @@ config:
             cell_voltage_7: sensor.battery_1_bat1_cell_07
             cell_voltage_8: sensor.battery_1_bat1_cell_08
             cell_voltage_9: sensor.battery_1_bat1_cell_09
-            charging: ''
+            charging: binary_sensor.battery_1_bat1_charge_enabled
             charging_cycles: sensor.inverter_total_battery_life_cycles
             current: sensor.battery_1_bat1_current
             delta_cell_voltage: sensor.battery_1_bat1_cell_voltage_difference
-            discharging: ''
+            discharging: binary_sensor.battery_1_bat1_discharge_enabled
             errors: sensor.battery_1_bat1_fault_status
             max_voltage_cell: ''
             min_voltage_cell: ''
             power: sensor.battery_1_bat1_power
             power_tube_temperature: sensor.battery_1_bat1_bms_temperature
             state_of_charge: sensor.battery_1_bat1_soc
+            temperature_sensor_1: sensor.battery_1_bat1_temp_sensor_1
+            temperature_sensor_2: sensor.battery_1_bat1_temp_sensor_2
+            temperature_sensor_3: sensor.battery_1_bat1_temp_sensor_3
+            temperature_sensor_4: sensor.battery_1_bat1_temp_sensor_4
             total_battery_capacity_setting: number.battery_1_battery1_capacity
             total_charging_cycle_capacity: ''
             total_runtime_formatted: ''
             total_voltage: sensor.battery_1_bat1_voltage
+          hasHeater: '0'
           prefix: jk_bms
+          tempSensorsCount: 4
           title: Battery 1
           type: custom:jk-bms-card
         - cellColumns: 4
@@ -7772,31 +7841,33 @@ config:
             cell_voltage_7: sensor.battery_2_bat2_cell_07
             cell_voltage_8: sensor.battery_2_bat2_cell_08
             cell_voltage_9: sensor.battery_2_bat2_cell_09
-            charging: ''
+            charging: binary_sensor.battery_2_bat2_charge_enabled
             charging_cycles: sensor.inverter_total_battery_life_cycles
             current: sensor.battery_2_bat2_current
             delta_cell_voltage: sensor.battery_2_bat2_cell_voltage_difference
-            discharging: ''
+            discharging: binary_sensor.battery_2_bat2_discharge_enabled
             errors: sensor.battery_2_bat2_fault_status
             max_voltage_cell: ''
             min_voltage_cell: ''
             power: sensor.battery_2_bat2_power
             power_tube_temperature: sensor.battery_2_bat2_bms_temperature
             state_of_charge: sensor.battery_2_bat2_soc
+            temperature_sensor_1: sensor.battery_2_bat2_temp_sensor_1
+            temperature_sensor_2: sensor.battery_2_bat2_temp_sensor_2
+            temperature_sensor_3: sensor.battery_2_bat2_temp_sensor_3
+            temperature_sensor_4: sensor.battery_2_bat2_temp_sensor_4
             total_battery_capacity_setting: number.battery_2_battery2_capacity
             total_charging_cycle_capacity: ''
             total_runtime_formatted: ''
             total_voltage: sensor.battery_2_bat2_voltage
+          hasHeater: '0'
           prefix: jk_bms
+          tempSensorsCount: 4
           title: Battery 2
           type: custom:jk-bms-card
-        enable_auto_swipe: false
-        enable_loopback: true
         enable_reset_after: true
-        reset_after_timeout: 30000
-        reset_target_card: 1
+        loop_mode: loopback
         show_pagination: false
-        swipe_direction: horizontal
         type: custom:simple-swipe-card
       - apex_config:
           dataLabels:
