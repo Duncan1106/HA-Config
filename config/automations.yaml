@@ -11192,63 +11192,63 @@
     offset: +02:00:00
     id: sunrise
   actions:
-  - if:
+  - alias: forecast booleans based on forecast
+    if:
     - condition: trigger
       id:
       - sunset
     then:
-    - data:
-        type: hourly
-      target:
-        entity_id:
-        - weather.micro_weather_station
-        - weather.forecast_home
-      response_variable: weather_data
-      action: weather.get_forecasts
-    - variables:
-        weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
-          set next_sunrise = states('sensor.sun_next_rising') | as_datetime() | as_local
-          %} {% for entity_id, entity_data in weather_data.items() %}\n    {% set
-          forecast = entity_data.forecast %}\n    {% for item in forecast %}\n        {%
-          set item_time = item.datetime | as_datetime() | as_local %}\n        {%
-          if item_time < next_sunrise %}\n            {% set current_temp = item.temperature
-          %}\n            {% set low_temp = item.templow | default(current_temp) %}\n
-          \           {% if current_temp < 10 or low_temp < 10 %}\n              {%
-          set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
-          = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
-          'snowy-rainy'] %}\n            {% set is_humid = item.humidity | default(0,
-          true) > 60 %}\n            {% set is_cold = current_temp < 2 or low_temp
-          < 2 %}\n            {% if (is_precip or is_humid) and is_cold %}\n              {%
-          set ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n
-          \       {% if ns.is_low and ns.is_wet %}\n            {% break %}\n        {%
-          endif %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
-          break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
-          }}\n"
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ weather_results.low }}'
-        sequence:
+    - sequence:
+      - data:
+          type: hourly
+        target:
+          entity_id:
+          - weather.micro_weather_station
+          - weather.forecast_home
+        response_variable: weather_data
+        action: weather.get_forecasts
+      - variables:
+          weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
+            set next_sunrise = states('sensor.sun_next_rising') | as_datetime() |
+            as_local %} {% for entity_id, entity_data in weather_data.items() %}\n
+            \   {% set forecast = entity_data.forecast %}\n    {% for item in forecast
+            %}\n        {% set item_time = item.datetime | as_datetime() | as_local
+            %}\n        {% if item_time < next_sunrise %}\n            {% set current_temp
+            = item.temperature %}\n            {% set low_temp = item.templow | default(current_temp)
+            %}\n            {% if current_temp < 10 or low_temp < 10 %}\n              {%
+            set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
+            = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
+            'snowy-rainy'] %}\n            {% set is_cold = current_temp < 2 or low_temp
+            < 2 %}\n            {% if is_precip and is_cold %}\n              {% set
+            ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n        {%
+            if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
+            %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
+            break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
+            }}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ weather_results.low }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.forecast_temp_low
+            action: input_boolean.turn_on
+        default:
         - target:
             entity_id: input_boolean.forecast_temp_low
-          action: input_boolean.turn_on
-      default:
-      - target:
-          entity_id: input_boolean.forecast_temp_low
-        action: input_boolean.turn_off
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ weather_results.wet }}'
-        sequence:
+          action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ weather_results.wet }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.forecast_wet
+            action: input_boolean.turn_on
+        default:
         - target:
             entity_id: input_boolean.forecast_wet
-          action: input_boolean.turn_on
-      default:
-      - target:
-          entity_id: input_boolean.forecast_wet
-        action: input_boolean.turn_off
-    alias: forecast booleans based on forecast
+          action: input_boolean.turn_off
   - if:
     - condition: trigger
       id:
