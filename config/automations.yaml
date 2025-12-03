@@ -10467,8 +10467,8 @@
     evening illumination.\n\n### ⚙️ **Reliability Features**\n\nEach light entity
     is processed individually with up to **5 retry attempts**,   using a **5-second
     exponential backoff** between attempts to guarantee the final desired state is
-    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.rescue_plants`\n  \n
-    \ - `switch.bett_power_strip_l3`"
+    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.plant_tent`\n  \n  -
+    `switch.bett_power_strip_l3`"
   triggers:
   - trigger: sun
     event: sunrise
@@ -10482,7 +10482,7 @@
   actions:
   - variables:
       entities:
-      - switch.rescue_plants
+      - switch.plant_tent
       - switch.bett_power_strip_l3
   - choose:
     - conditions:
@@ -11262,57 +11262,4 @@
         - input_boolean.forecast_temp_low
         - input_boolean.forecast_wet
     alias: Reset to off at sunrise +2h
-  mode: single
-- id: '1764671639664'
-  alias: Plant Tent Daily Light Cycle
-  description: Turns the plant tent light on at sunrise and off at sunset, ensuring
-    a consistent daily light cycle for the plants.
-  triggers:
-  - trigger: sun
-    event: sunrise
-    offset: 0
-    id: rise
-  - trigger: sun
-    event: sunset
-    offset: 0
-    id: set
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - rise
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.plant_tent
-          target_state: 'on'
-    - conditions:
-      - condition: trigger
-        id:
-        - set
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.plant_tent
-          target_state: 'off'
   mode: single
