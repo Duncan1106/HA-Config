@@ -1976,11 +1976,12 @@ retry_action_with_backoff:
             value_template: '{{ not is_state(entity_id, effective_target_state) }}'
           sequence:
           - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
-            timeout: "{% set bd = base_delay | float(5) %} {% set md = max_delay |
-              float(60) %} {% if backoff_type == 'simple' %}\n  {{ [bd, md] | min
-              }}\n{% elif backoff_type == 'linear' %}\n  {{ [repeat.index * bd, md]
-              | min }}\n{% elif backoff_type == 'exponential' %}\n  {{ [2**(repeat.index-1)
-              * bd, md] | min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}\n"
+            timeout: "{% set bd = base_delay | default(6, true) | float(0) %} {% set
+              md = max_delay |default(60, true) | float() %} {% if backoff_type ==
+              'simple' %}\n  {{ [bd, md] | min }}\n{% elif backoff_type == 'linear'
+              %}\n  {{ [repeat.index * bd, md] | min }}\n{% elif backoff_type == 'exponential'
+              %}\n  {{ [2**(repeat.index-1) * bd, md] | min }}\n{% else %}\n  {{ [bd,
+              md] | min }}\n{% endif %}\n"
   - choose:
     - conditions:
       - condition: template
@@ -2031,4 +2032,4 @@ retry_action_with_backoff:
             }}) | {{ params_line }}'
           data:
             tag: '{{ tag_value }}'
-  max: 100
+  max: 256

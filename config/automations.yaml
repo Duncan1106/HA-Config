@@ -10484,6 +10484,21 @@
       entities:
       - switch.plant_tent
       - switch.bett_power_strip_l3
+  - repeat:
+      for_each: '{{ entities }}'
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        data:
+          entity_id: '{{ repeat.item }}'
+          target_state: 'off'
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 5
+          base_delay: 5
+          backoff_type: exponential
+          notify_on_failure: true
+          notify_service: notify.duncan
   - choose:
     - conditions:
       - condition: trigger
@@ -10493,6 +10508,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'on'
@@ -10501,6 +10517,8 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: sunset
@@ -10511,6 +10529,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'off'
@@ -10520,6 +10539,7 @@
               base_delay: 5
               backoff_type: exponential
               notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: time_20
@@ -10531,6 +10551,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'off'
@@ -10539,6 +10560,8 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_service: notify.duncan
+    enabled: false
   mode: single
 - id: '1762211918473'
   alias: Ding Dong Frigate Detection Adjustments
