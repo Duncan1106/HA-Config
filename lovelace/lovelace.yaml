@@ -8328,36 +8328,40 @@ config:
             state: Use %
           type: conditional
         type: horizontal-stack
-      - content: "## \U0001F319 Night Battery Charging Decision\n**Battery status:**\
-          \  \n- **State of charge:** {{ (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'soc_percent') | default(states('sensor.felicity_ess_soc_avg'), true)\
-          \ | float(0)) | round(1) }}%\n- **Usable energy:** {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'usable_kwh') | default(0, true) | float(0)) | round(2)\n  }} kWh  \n\n\
-          \n**PV Forecast {{ 'Tomorrow' if now().hour > 5 else 'Today' }}:** {{\n\
-          \  (state_attr('binary_sensor.charge_battery_at_night',\n    'forecast_morgen_kwh')\
-          \ if now().hour > 5\n    else state_attr('binary_sensor.charge_battery_at_night','forecast_heute_kwh')\n\
-          \  ) | default(0, true) | float(0) | round(2)\n}} kWh\n\n**Target for Tonight:**\
-          \  \n- Required: {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'target_kwh') | default(0, true) | float(0)) | round(2)\n  }} kWh  \n\n\
-          - Available (usable + forecast): {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'total_energy_kwh') | default(0, true) | float(0)) | round(2)\n  }} kWh\n\
-          \n\n**Energy missing to reach target:** {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'charge_needed_kwh') | default(0, true) | float(0)) | round(2)\n  }} kWh\n\
-          \n\n**Charge Target:** {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'charge_target_percent') | default(0, true) | float(0)) | round(0)\n \
-          \ }}%\n\n\n**Charge Target Offset:**  {{ (state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')\
-          \ | default(states('input_number.battery_charge_percent_offset'), true))\
-          \ | float(0) | round(0) }}%\n\n**Total Charge Target:** {{\n    (state_attr('binary_sensor.charge_battery_at_night',\
-          \ 'offset_charge_target_percent') | default(0, true) | float(0)) | round(0)\n\
-          \  }}%\n\n  \n**Saved cost by charging tonight:** {{ '%.2f' | format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
-          \ | default(0, true) | float(0)) }} \u20AC\n\n\n**Total Saved till now:**\
-          \ {{ '%.2f' | format(states('input_number.save_through_night_battery_charging')\
-          \ | default(0, true) | float(0)) }} \u20AC"
+      - content: "## {{ '\u26A1' if is_state('binary_sensor.charge_battery_at_night','on')\
+          \ else '\U0001F6AB' }} Night Battery Charging Decision\n**\U0001F50B Battery\
+          \ status:**  \n- **State of charge:** {{ (state_attr('binary_sensor.charge_battery_at_night','soc_percent')\
+          \ | default(states('sensor.felicity_ess_soc_avg'), true) | float(0)) | round(1)\
+          \ }}%  \n- **\u26A1 Usable energy:** {{ (state_attr('binary_sensor.charge_battery_at_night','usable_kwh')\
+          \ | default(0, true) | float(0)) | round(2) }} kWh\n\n**\U0001F31E PV Forecast\
+          \ {{ 'Tomorrow' if now().hour > 5 else 'Today' }}:** {{ (state_attr('binary_sensor.charge_battery_at_night','forecast_morgen_kwh')\
+          \ if now().hour > 5 else state_attr('binary_sensor.charge_battery_at_night','forecast_heute_kwh'))\
+          \ | default(0, true) | float(0) | round(2) }} kWh\n## \U0001F6E1\uFE0F Buffer\
+          \ (Safety Margin)\n\n- **\U0001F4C8 Dynamic Margin ({{ states('input_number.night_charge_dynamic_margin_percent')\
+          \ }}% of forecast):** {{ (state_attr('binary_sensor.charge_battery_at_night','dynamic_margin_kwh')\
+          \ | default(0,true) | float(0)) | round(2) }} kWh\n- **\U0001F6E1\uFE0F\
+          \ Minimum SoC Margin ({{ states('input_number.night_charge_minimum_soc_percent')\
+          \ }}%):** {{ (state_attr('binary_sensor.charge_battery_at_night','minimum_soc_kwh')\
+          \ | default(0,true) | float(0)) | round(2) }} kWh\n- **\U0001F9F0 Applied\
+          \ Buffer (max):** {{ (state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh')\
+          \ | default(0,true) | float(0)) | round(2) }} kWh\n\n## \U0001F3AF Target\
+          \ for Today\n- **Target:** {{ (state_attr('binary_sensor.charge_battery_at_night','target_kwh')\
+          \ | default(0, true) | float(0)) | round(2) }} kWh  \n- **\u2705 Available\
+          \ (usable + forecast \u2212 buffer):** {{ (state_attr('binary_sensor.charge_battery_at_night','total_energy_kwh')\
+          \ | default(0, true) | float(0)) | round(2) }} kWh\n\n**\u2757 Energy missing\
+          \ to reach target:** {{ (state_attr('binary_sensor.charge_battery_at_night','charge_needed_kwh')\
+          \ | default(0, true) | float(0)) | round(2) }} kWh\n**\U0001F527 Charge\
+          \ Target:** {{ (state_attr('binary_sensor.charge_battery_at_night','charge_target_percent')\
+          \ | default(0, true) | float(0)) | round(0) }}%  \n**\U0001F3F7\uFE0F Charge\
+          \ Target Offset:** {{ (state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')\
+          \ | default(states('input_number.battery_charge_percent_offset'), true)\
+          \ | float(0)) | round(0) }}%  \n**\U0001F3C1 Total Charge Target:** {{ (state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')\
+          \ | default(0, true) | float(0)) | round(0) }}%\n## \U0001F4B8 Cost Savings\n\
+          - **\U0001F4B6 Saved cost tonight:** {{ (state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
+          \ | default(0, true) | float(0)) | round(2) }} \u20AC  \n- **\U0001F4B0\
+          \ Total savings so far:** {{ states('input_number.save_through_night_battery_charging')\
+          \ | default(0, true) | float(0) | round(2) }} \u20AC"
         type: markdown
-        visibility:
-        - condition: state
-          entity: binary_sensor.charge_battery_at_night
-          state: 'on'
       - entities:
         - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
           name: Enable Automations
@@ -8369,6 +8373,8 @@ config:
         - entity: input_number.night_charge_target
         - entity: input_number.battery_charge_percent_offset
           name: Charge Target Offset
+        - entity: input_number.night_charge_minimum_soc_percent
+        - entity: input_number.night_charge_dynamic_margin_percent
         - entity: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
           name: 'Charge from Grid Upto:'
         - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
