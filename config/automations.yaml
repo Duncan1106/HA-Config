@@ -11141,3 +11141,139 @@
         - input_boolean.forecast_wet
     alias: Reset to off at sunrise +2h
   mode: single
+- id: '1760998194743'
+  alias: Bett Powerbank Ladezeit
+  description: "## \U0001F50B Bett Powerbank Ladezeit\n\nAutomatisiert das **Laden
+    der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
+    \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
+    \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
+    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
+    um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
+    Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
+    an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
+    **Low-Power-Modus deaktiviert:** Benachrichtigungen werden **gelöscht**, falls
+    der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
+    `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
+    ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
+    > 20 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
+    Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
+    Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
+    Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Sunrise
+  - trigger: sun
+    event: sunset
+    offset: 0
+    id: Sunset
+  - trigger: state
+    entity_id:
+    - input_boolean.bett_powerbank_low_power
+    id: Boolean turned off
+    to: 'off'
+    from: 'on'
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: input_boolean.bett_powerbank_low_power
+      state: 'on'
+    - condition: trigger
+      id:
+      - Boolean turned off
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunrise
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 20
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_type: turn_on
+          backoff_type: linear
+          entity_id: switch.bett_powerbank_charger
+          target_state: 'on'
+          action_domain: switch
+          max_retries: 10
+          base_delay: 5
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunset
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_type: turn_off
+          backoff_type: linear
+          entity_id: switch.bett_powerbank_charger
+          target_state: 'off'
+          action_domain: switch
+          max_retries: 10
+          base_delay: 5
+      - alias: Notify only when the plug was on
+        if:
+        - condition: state
+          entity_id: switch.bett_powerbank_charger
+          state:
+          - 'on'
+        then:
+        - alias: Set up variables for the actions
+          variables:
+            leave_on: '{{ ''OPEN_'' ~ context.id }}'
+            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: "\U0001F307 Bett Powerbank"
+            message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
+            data:
+              tag: powerbank_low
+              actions:
+              - action: '{{ leave_on }}'
+                title: Leave On
+              - action: '{{ turn_off }}'
+                title: Turn Off
+        - alias: Wait for a response
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: '{{ turn_off }}'
+            trigger: event
+          timeout:
+            hours: 1
+            minutes: 0
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+        - alias: Perform the action
+          choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+            sequence:
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.bett_powerbank_low_power
+    - conditions:
+      - condition: trigger
+        id:
+        - Boolean turned off
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          data:
+            tag: powerbank_low
+          message: clear_notification
+  mode: queued
+  max: 3
