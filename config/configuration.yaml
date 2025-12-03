@@ -323,11 +323,14 @@ template:
               + states('input_number.battery_charge_percent_offset') | float(0)
             %}
             {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
+          
           dynamic_margin_kwh: >
-            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
+            {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
             {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
-            {{ (battery_capacity * (margin_percent / 100)) | round(2) }}
-
+            {{ (forecast * (margin_percent / 100)) | round(2) }}
+                  
           minimum_soc_kwh: >
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
             {% set min_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
@@ -339,24 +342,31 @@ template:
               {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
               {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
               {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
+            
               {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
               {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
               {% set min_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
             
               {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-              {% set margin_kwh = battery_capacity * (margin_percent / 100) %}
+              {% set dynamic_margin_kwh = forecast * (margin_percent / 100) %}
               {% set min_soc_kwh = battery_capacity * (min_soc_percent / 100) %}
-            
-              {% set applied_buffer = max([margin_kwh, min_soc_kwh]) %}
+              
+              {% set applied_buffer = max([dynamic_margin_kwh, min_soc_kwh]) %}
               {% set remaining_kwh = target_kwh - (usable_kwh + forecast - applied_buffer) %}
             
               {{ max([remaining_kwh, 0]) | round(2) }}
+                      
           
           applied_buffer_kwh: >
-            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-            {% set margin_kwh = battery_capacity * (states('input_number.night_charge_dynamic_margin_percent') | float(0) / 100) %}
-            {% set min_soc_kwh = battery_capacity * (states('input_number.night_charge_minimum_soc_percent') | float(0) / 100) %}
-            {{ max([margin_kwh, min_soc_kwh]) | round(2) }}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
+            {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
+            {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set dynamic_margin = forecast * (margin_percent / 100) %}
+            {% set minimum_soc = cap * (states('input_number.night_charge_minimum_soc_percent') | float(0) / 100) %}
+            {{ max([dynamic_margin, minimum_soc]) | round(2) }}
+          
           
           saved_cost_eur: >
             {% set night_tariff = 0.187425 %}
