@@ -78,8 +78,6 @@ recorder:
       - automation.publish_to_mqtt_grid_export
       - sensor.stephans_iphone_next_update
       - sensor.enyas_iphone_next_update
-      - sensor.stephans_iphone_travel_time_hhmm
-      - sensor.enyas_iphone_travel_time_hhmm
       - sensor.stephans_iphone_arrival_time
       - sensor.enyas_iphone_arrival_time
       - sensor.enyas_iphone_last_update
@@ -187,101 +185,211 @@ notify:
 
 template:
   - binary_sensor:
-    - name: Charge Battery at Night (dynamically)
-      unique_id: charge_battery_at_night
-      state: >
-        {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-
-        {# Use only today’s forecast – after midnight this is the correct day #}
-        {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
-        {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
-        {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-
-        {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-        {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-        {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
-
-        {{ ((usable_kwh + forecast) < target_kwh) }}
-
-      availability: >
-        {% set forecast_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
-        {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
-          and states(forecast_entity) not in ['unknown','unavailable'] }}
-      attributes:
-        soc_percent: >
-          {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
-        usable_kwh: >
+      - name: Charge Battery at Night (dynamically)
+        unique_id: charge_battery_at_night
+        state: >
           {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-          {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
-          {{ (cap * (soc / 100.0)) | round(2) }}
-        forecast_heute_kwh: >
-          {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
-        forecast_morgen_kwh: >
-          {{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) | round(2) }}
-        target_kwh: >
-          {{ states('input_number.night_charge_target') | float(0) }}
-        total_energy_kwh: >
-          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+    
+          {# Select correct forecast (today before 05:00, otherwise tomorrow) #}
           {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
           {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
           {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-        
+    
           {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
           {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-          {{ (usable_kwh + forecast) | round(2) }}
-        decision_formula: "usable_kwh + forecast_kwh < target_kwh"
-        charge_needed_kwh: >
+          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+    
+          {# Dynamic + Minimum SoC Buffer #}
+          {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+          {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+    
+          {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+          {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+          {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
+          {{ (usable_kwh + forecast - buffer_kwh) < target_kwh }}
+    
+        availability: >
+          {% set forecast_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
+          {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
+            and states(forecast_entity) not in ['unknown','unavailable'] }}
+    
+        attributes:
+          soc_percent: >
+            {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
+    
+          usable_kwh: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
+            {{ (cap * (soc / 100.0)) | round(2) }}
+    
+          forecast_heute_kwh: >
+            {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
+    
+          forecast_morgen_kwh: >
+            {{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) | round(2) }}
+    
+          target_kwh: >
+            {{ states('input_number.night_charge_target') | float(0) }}
+    
+          total_energy_kwh: >
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+            
             {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
             {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
             {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-        
+    
+            {# Buffers #}
+            {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+            {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+            {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
+            {{ max([(usable_kwh + forecast - buffer_kwh), 0]) | round(2) }}
+    
+          decision_formula: "usable_kwh + forecast - buffer_kwh < target_kwh"
+    
+          charge_needed_kwh: >
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-            {% set remaining_kwh = (target_kwh - (usable_kwh + forecast)) | float(0) %}
+    
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+    
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+    
+            {# Buffers #}
+            {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+            {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+            {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
+            {% set remaining_kwh = target_kwh - (usable_kwh + forecast - buffer_kwh) %}
             {{ max([remaining_kwh, 0]) | round(2) }}
-        charge_target_percent: >
+    
+          charge_target_percent: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+    
             {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
             {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
             {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-        
+    
+            {# Buffer logic #}
+            {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+            {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+            {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
             {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-            {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
+            {% set remaining_kwh = max([(target_kwh - (usable_kwh + forecast - buffer_kwh)), 0]) %}
+    
             {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) %}
             {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
-        battery_charge_percent_offset: >
-          {{ states('input_number.battery_charge_percent_offset') | float(0) }}
-        offset_charge_target_percent: >
+    
+          battery_charge_percent_offset: >
+            {{ states('input_number.battery_charge_percent_offset') | float(0) }}
+    
+          offset_charge_target_percent: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+    
             {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
             {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
             {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-        
-            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+    
+            {# Buffer logic #}
+            {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+            {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+            {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
             {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-            {% set remaining_kwh = target_kwh - (usable_kwh + forecast) %}
-            {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) + states('input_number.battery_charge_percent_offset') | float(0) %}
+            {% set remaining_kwh = max([(target_kwh - (usable_kwh + forecast - buffer_kwh)), 0]) %}
+    
+            {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100)
+              + states('input_number.battery_charge_percent_offset') | float(0)
+            %}
             {{ min([max([target_percent, soc]), 100]) | round(0, 'ceil', 100) }}
-        saved_cost_eur: >
-          {% set night_tariff = 0.187425 %}
-          {% set day_tariff = 0.302379 %}
-        
-          {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
-          {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
-          {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
-          {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
-          {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
-          {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
-          {% set usable_kwh = battery_capacity * (soc / 100.0) %}
-          {% set remaining_kwh = (target_kwh - (usable_kwh + forecast)) | float(0) %}
-        
-          {{ ((day_tariff - night_tariff) * max([remaining_kwh, 0])) | round(2) }}
           
+          dynamic_margin_kwh: >
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
+            {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
+            {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {{ (forecast * (margin_percent / 100)) | round(2) }}
+                  
+          minimum_soc_kwh: >
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set min_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {{ (battery_capacity * (min_soc_percent / 100)) | round(2) }}
+          
+          charge_needed_with_margin_kwh: >
+              {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+              {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+              {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+              {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
+              {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
+            
+              {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+              {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+              {% set min_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            
+              {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+              {% set dynamic_margin_kwh = forecast * (margin_percent / 100) %}
+              {% set min_soc_kwh = battery_capacity * (min_soc_percent / 100) %}
+              
+              {% set applied_buffer = max([dynamic_margin_kwh, min_soc_kwh]) %}
+              {% set remaining_kwh = target_kwh - (usable_kwh + forecast - applied_buffer) %}
+            
+              {{ max([remaining_kwh, 0]) | round(2) }}
+                      
+          
+          applied_buffer_kwh: >
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
+            {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
+            {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set dynamic_margin = forecast * (margin_percent / 100) %}
+            {% set minimum_soc = cap * (states('input_number.night_charge_minimum_soc_percent') | float(0) / 100) %}
+            {{ max([dynamic_margin, minimum_soc]) | round(2) }}
+          
+          
+          saved_cost_eur: >
+            {% set night_tariff = 0.187425 %}
+            {% set day_tariff = 0.302379 %}
+    
+            {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
+            {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
+            {% set usable_kwh = battery_capacity * (soc / 100.0) %}
+    
+            {% set target_kwh = states('input_number.night_charge_target') | float(0) %}
+            {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') %}
+            {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') %}
+            {% set forecast = forecast_today | float(0) if now().hour < 5 else forecast_tomorrow | float(0) %}
+    
+            {# Buffers #}
+            {% set dynamic_margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
+            {% set minimum_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
+            {% set dynamic_margin_kwh = forecast * (dynamic_margin_percent / 100) %}
+            {% set minimum_soc_margin_kwh = battery_capacity * (minimum_soc_percent / 100) %}
+            {% set buffer_kwh = max([dynamic_margin_kwh, minimum_soc_margin_kwh]) %}
+    
+            {% set remaining_kwh = max([(target_kwh - (usable_kwh + forecast - buffer_kwh)), 0]) %}
+    
+            {{ ((day_tariff - night_tariff) * remaining_kwh) | round(2) }}
+              
   - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
@@ -974,7 +1082,6 @@ template:
         state_class: total
         icon: mdi:power-plug-off
 
-
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -996,7 +1103,6 @@ template:
         device_class: power
         state_class: measurement
         icon: mdi:transmission-tower
-
 
   - triggers:
       - trigger: homeassistant
@@ -1087,34 +1193,34 @@ template:
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
 
-cover:
-  - platform: template
-    covers:
-      wintergarten_dachfenster:
-        device_class: window
+
+  - cover:
+      - device_class: WINDOW
         unique_id: wintergarten_dachfenster
         optimistic: false
-        friendly_name: "Wintergarten Dachfenster"
-        value_template: "{{ is_state('binary_sensor.dachfenster_wintergarten','on')  }}"
         open_cover:
-          action: script.wintergarten_dachfenster_open
+        - action: script.wintergarten_dachfenster_open
         close_cover:
-          action: script.wintergarten_dachfenster_close
+        - action: script.wintergarten_dachfenster_close
         stop_cover:
-          action: script.wintergarten_dachfenster_stop
-      
-      wintergarten_rolladen_dachfenster:
-        device_class: blind
+        - action: script.wintergarten_dachfenster_stop
+        default_entity_id: cover.wintergarten_dachfenster
+        name: Wintergarten Dachfenster
+        state: '{{ is_state(''binary_sensor.dachfenster_wintergarten'',''on'')  }}'
+
+  - cover:
+      - device_class: BLIND
         unique_id: wintergarten_rolladen_dachfenster
         optimistic: true
-        value_template: "{{ true }}"
-        friendly_name: "Wintergarten Rolladen Dachfenster"
         open_cover:
-          action: script.wintergarten_dachfenster_rolladen_open
+        - action: script.wintergarten_dachfenster_rolladen_open
         close_cover:
-          action: script.wintergarten_dachfenster_rolladen_close
+        - action: script.wintergarten_dachfenster_rolladen_close
         stop_cover:
-          action: script.wintergarten_dachfenster_rolladen_stop
+        - action: script.wintergarten_dachfenster_rolladen_stop
+        default_entity_id: cover.wintergarten_rolladen_dachfenster
+        name: Wintergarten Rolladen Dachfenster
+        state: '{{ true }}'
 
 mqtt:
   switch:
@@ -1317,6 +1423,15 @@ command_line:
       command: 'du -sm /media/m5ccam/ | awk ''{print $1}'''
       value_template: "{{ (value|int(0) / 1024) | round(3) }}"
 
+  - sensor:
+      name: Time-Maschine Folder Size
+      unit_of_measurement: GB
+      unique_id: time_maschine_folder_size
+      scan_interval: 300
+      device_class: data_size
+      command: 'du -sm /media/timemachine/ | awk ''{print $1}'''
+      value_template: "{{ (value|int(0) / 1024) | round(3) }}"
+      
 sensor:
   # Tasmota newest Version
   - platform: rest

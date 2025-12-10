@@ -4885,6 +4885,10 @@
     - condition: state
       entity_id: person.stephan
       state: home
+  - alias: restart finished
+    condition: template
+    value_template: "    {% set boot = as_timestamp(states('sensor.uptime')) %}\n
+      \   {{ boot is number and (as_timestamp(now()) - boot) >= 120 }}"
   actions:
   - choose:
     - conditions:
@@ -5767,16 +5771,16 @@
     states\n  don’t get ignored.\n\n  ---\n\n  ### ⏰ **Triggers**\n\n  | Entity |
     From → To | Trigger ID |\n  |--------|-----------|------------|\n  | `input_boolean.waschmaschine_fertig`
     | off → on | Waschmaschine |\n  | `input_boolean.trockner_fertig` | off → on |
-    Trockner |\n  | `input_boolean.waschmaschine_fertig` | on → off | Waschmaschine
-    fertig |\n  | `input_boolean.trockner_fertig` | on → off | Trockner fertig |\n\n
-    \ > Completion flags turning **on** start the reminders.  \n  > Flags turning
-    **off** clear notifications and stop alerts.\n\n  ---\n\n  ### ✅ **Conditions**\n\n
-    \ - No additional conditions.  \n    The automation always responds to the defined
-    triggers.\n\n  ---\n\n  ### \U0001F3AF **Actions / Workflow**\n\n  1. **Waschmaschine
-    Reminder**\n     - When `Waschmaschine` is triggered (done = on):\n       - Repeats:\n
-    \        - Sends push notification (`notify.familie`) with tag `waschmaschine_fertig`.\n
-    \        - Speaks announcement via TTS: *“Die Waschmaschine ist fertig.”*\n         -
-    Waits 10 minutes, then repeats.\n       - Loop continues until `input_boolean.waschmaschine_fertig
+    Trockner |\n  | `input_boolean.waschmaschine_fertig` | on → off | waschmaschine_fertig
+    |\n  | `input_boolean.trockner_fertig` | on → off | trockner_fertig |\n\n  > Completion
+    flags turning **on** start the reminders.  \n  > Flags turning **off** clear notifications
+    and stop alerts.\n\n  ---\n\n  ### ✅ **Conditions**\n\n  - No additional conditions.
+    \ \n    The automation always responds to the defined triggers.\n\n  ---\n\n  ###
+    \U0001F3AF **Actions / Workflow**\n\n  1. **Waschmaschine Reminder**\n     - When
+    `Waschmaschine` is triggered (done = on):\n       - Repeats:\n         - Sends
+    push notification (`notify.familie`) with tag `waschmaschine_fertig`.\n         -
+    Speaks announcement via TTS: *“Die Waschmaschine ist fertig.”*\n         - Waits
+    10 minutes, then repeats.\n       - Loop continues until `input_boolean.waschmaschine_fertig
     = off`.\n       - Clears notification tag once cycle is acknowledged.\n\n  2.
     **Trockner Reminder**\n     - When `Trockner` is triggered (done = on):\n       -
     Repeats:\n         - Sends push notification with tag `trockner_fertig`.\n         -
@@ -5813,13 +5817,13 @@
     - input_boolean.trockner_fertig
     from: 'on'
     to: 'off'
-    id: Trockner fertig
+    id: trockner_fertig
   - trigger: state
     entity_id:
     - input_boolean.waschmaschine_fertig
     from: 'on'
     to: 'off'
-    id: Waschmaschine fertig
+    id: waschmaschine_fertig
   conditions: []
   actions:
   - choose:
@@ -5944,24 +5948,14 @@
     - conditions:
       - condition: trigger
         id:
-        - Trockner fertig
+        - trockner_fertig
+        - waschmaschine_fertig
       sequence:
       - action: notify.familie
         metadata: {}
         data:
           data:
-            tag: trockner_fertig
-          message: clear_notification
-    - conditions:
-      - condition: trigger
-        id:
-        - Waschmaschine fertig
-      sequence:
-      - action: notify.familie
-        metadata: {}
-        data:
-          data:
-            tag: waschmaschine_fertig
+            tag: '{{ trigger.id }}'
           message: clear_notification
   mode: parallel
   max: 10
@@ -6176,6 +6170,11 @@
     type: action
     subtype: button_2_double
     trigger: device
+    id: Waschmaschine
+  - trigger: numeric_state
+    entity_id:
+    - sensor.trockner_lauft_seit
+    above: 5
     id: Waschmaschine
   conditions: []
   actions:
@@ -6469,7 +6468,11 @@
     zone: zone.home
     event: enter
     id: Home
-  conditions: []
+  conditions:
+  - alias: restart finished
+    condition: template
+    value_template: "    {% set boot = as_timestamp(states('sensor.uptime')) %}\n
+      \   {{ boot is number and (as_timestamp(now()) - boot) >= 120 }}"
   actions:
   - choose:
     - conditions:
@@ -9110,7 +9113,7 @@
       hours: 0
       minutes: 0
       seconds: 10
-    id: Dieplay
+    id: Display
   conditions: []
   actions:
   - choose:
@@ -9139,7 +9142,7 @@
       - condition: trigger
         id:
         - 3 hours
-        - Dieplay
+        - Display
       sequence:
       - action: switch.turn_off
         metadata: {}
@@ -9506,6 +9509,7 @@
         before: 03:59:00
       sequence:
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -9519,6 +9523,7 @@
           entity_id: switch.garagentor_tasmota
           target_state: 'off'
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -9532,6 +9537,7 @@
           entity_id: switch.sauger_tasmota
           target_state: 'off'
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -9575,6 +9581,7 @@
               seconds: 0
           continue_on_timeout: true
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -9588,6 +9595,7 @@
           entity_id: switch.garagentor_tasmota
           target_state: 'on'
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -9601,6 +9609,7 @@
           entity_id: switch.sauger_tasmota
           target_state: 'on'
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -10207,11 +10216,11 @@
     \ \n   - This boolean can be used in companion automations to send notifications,
     flash LEDs, or announce via TTS that the drying is done.  \n\n---\n\n### \U0001F4CA
     **Technical Summary**  \n\n| Component | Description |\n|------------|-------------|\n|
-    **Trigger** | `numeric_state` → `sensor.trockner_lauft_seit` < `19.75` |\n| **Condition**
+    **Trigger** | `numeric_state` → `sensor.trockner_lauft_seit` < `19.5` |\n| **Condition**
     | `input_boolean.trockner_fertig` = `off` |\n| **Action** | `input_boolean.turn_on`
     → `input_boolean.trockner_fertig` |\n| **Tracking Window** | Last 20 minutes of
     power draw |\n| **Mode** | `single` |\n\n---\n\n### \U0001F9E0 **Notes & Recommendations**
-    \ \n- The **19.75-minute threshold** is optimized for a 20-minute rolling window
+    \ \n- The **19.5-minute threshold** is optimized for a 20-minute rolling window
     — fine-tune it based on how your sensor updates.  \n- This setup assumes the dryer
     stops drawing significant power once finished.  \n- For completeness, pair it
     with a **reset automation** that turns `input_boolean.trockner_fertig` back **off**
@@ -10222,7 +10231,7 @@
   - trigger: numeric_state
     entity_id:
     - sensor.trockner_lauft_seit
-    below: 19.75
+    below: 19.5
   conditions:
   - condition: state
     entity_id: input_boolean.trockner_fertig
@@ -10234,142 +10243,6 @@
     target:
       entity_id: input_boolean.trockner_fertig
   mode: single
-- id: '1760998194743'
-  alias: Bett Powerbank Ladezeit
-  description: "## \U0001F50B Bett Powerbank Ladezeit\n\nAutomatisiert das **Laden
-    der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
-    \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
-    \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
-    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
-    um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
-    Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
-    an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
-    **Low-Power-Modus deaktiviert:** Benachrichtigungen werden **gelöscht**, falls
-    der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
-    `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
-    ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
-    > 20 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
-    Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
-    Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
-    Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
-  triggers:
-  - trigger: sun
-    event: sunrise
-    offset: 0
-    id: Sunrise
-  - trigger: sun
-    event: sunset
-    offset: 0
-    id: Sunset
-  - trigger: state
-    entity_id:
-    - input_boolean.bett_powerbank_low_power
-    id: Boolean turned off
-    to: 'off'
-    from: 'on'
-  conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: input_boolean.bett_powerbank_low_power
-      state: 'on'
-    - condition: trigger
-      id:
-      - Boolean turned off
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Sunrise
-      - condition: numeric_state
-        entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 20
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_type: turn_on
-          backoff_type: linear
-          entity_id: switch.bett_power_strip_l2
-          target_state: 'on'
-          action_domain: switch
-          max_retries: 10
-          base_delay: 5
-    - conditions:
-      - condition: trigger
-        id:
-        - Sunset
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_type: turn_off
-          backoff_type: linear
-          entity_id: switch.bett_power_strip_l2
-          target_state: 'off'
-          action_domain: switch
-          max_retries: 10
-          base_delay: 5
-      - alias: Notify only when the plug was on
-        if:
-        - condition: state
-          entity_id: switch.bett_power_strip_l2
-          state:
-          - 'on'
-        then:
-        - alias: Set up variables for the actions
-          variables:
-            leave_on: '{{ ''OPEN_'' ~ context.id }}'
-            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
-        - action: notify.duncan
-          metadata: {}
-          data:
-            title: "\U0001F307 Bett Powerbank"
-            message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
-            data:
-              tag: powerbank_low
-              actions:
-              - action: '{{ leave_on }}'
-                title: Leave On
-              - action: '{{ turn_off }}'
-                title: Turn Off
-        - alias: Wait for a response
-          wait_for_trigger:
-          - event_type: mobile_app_notification_action
-            event_data:
-              action: '{{ turn_off }}'
-            trigger: event
-          timeout:
-            hours: 1
-            minutes: 0
-            seconds: 0
-            milliseconds: 0
-          continue_on_timeout: true
-        - alias: Perform the action
-          choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
-            sequence:
-            - action: input_boolean.turn_off
-              metadata: {}
-              data: {}
-              target:
-                entity_id: input_boolean.bett_powerbank_low_power
-    - conditions:
-      - condition: trigger
-        id:
-        - Boolean turned off
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          data:
-            tag: powerbank_low
-          message: clear_notification
-  mode: queued
-  max: 3
 - id: '1761086236371'
   alias: Tibber Pulse Bridge Auto Restart
   description: "## ⚙️ Tibber Pulse Bridge Auto Restart\n\n### \U0001F9ED **Purpose**\nEnsures
@@ -10469,8 +10342,8 @@
     evening illumination.\n\n### ⚙️ **Reliability Features**\n\nEach light entity
     is processed individually with up to **5 retry attempts**,   using a **5-second
     exponential backoff** between attempts to guarantee the final desired state is
-    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.rescue_plants`\n  \n
-    \ - `switch.bett_power_strip_l3`"
+    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.plant_tent`\n  \n  -
+    `switch.tisch`"
   triggers:
   - trigger: sun
     event: sunrise
@@ -10484,8 +10357,8 @@
   actions:
   - variables:
       entities:
-      - switch.rescue_plants
-      - switch.bett_power_strip_l3
+      - switch.plant_tent
+      - switch.tisch
   - choose:
     - conditions:
       - condition: trigger
@@ -10495,6 +10368,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'on'
@@ -10503,6 +10377,8 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: sunset
@@ -10513,6 +10389,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'off'
@@ -10522,6 +10399,7 @@
               base_delay: 5
               backoff_type: exponential
               notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: time_20
@@ -10533,6 +10411,7 @@
           for_each: '{{ entities }}'
           sequence:
           - action: script.retry_action_with_backoff
+            continue_on_error: true
             data:
               entity_id: '{{ repeat.item }}'
               target_state: 'off'
@@ -10541,6 +10420,8 @@
               max_retries: 5
               base_delay: 5
               backoff_type: exponential
+              notify_service: notify.duncan
+    enabled: true
   mode: single
 - id: '1762211918473'
   alias: Ding Dong Frigate Detection Adjustments
@@ -10692,7 +10573,7 @@
     `04:55:00`                                                        |\n| Off                         |
     Time       | At `05:00:00`                                                        |\n\n---\n\n##
     \U0001F4CB Conditions\nThe automation runs if **either** of the following is true:\n\n1.
-    **Nighttime Charging Window**  \n   - Time is between `00:15:00` and `04:30:00`
+    **Nighttime Charging Window**  \n   - Time is between `00:05:00` and `04:30:00`
     \ \n   - `binary_sensor.charge_battery_at_night` is `on`  \n   - Trigger is `On`
     \ \n   - Battery charger switch is `off`\n\n2. **Scheduled Stop / Forced Off**
     \ \n   - Trigger is `Off` (04:55 or 05:00)  \n   - Trigger is `Battery Off in
@@ -10720,7 +10601,7 @@
     trigger: state
     id: 'On'
   - trigger: time
-    at: 00:15:00
+    at: 00:05:00
     id: 'On'
   - at: 04:55:00
     trigger: time
@@ -10734,7 +10615,7 @@
     - condition: and
       conditions:
       - condition: time
-        after: 00:14:55
+        after: 00:04:55
         before: 04:30:00
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
@@ -11061,6 +10942,9 @@
     - sensor.light_brighness
     below: 40
     id: 'Off'
+  - trigger: homeassistant
+    event: start
+    id: start
   conditions: []
   actions:
   - choose:
@@ -11068,6 +10952,10 @@
       - condition: trigger
         id:
         - 'On'
+        - start
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        above: 39
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -11075,17 +10963,21 @@
           action_domain: switch
           action_type: turn_on
           max_retries: 10
-          base_delay: 5
           max_delay: 60
-          backoff_type: simple
+          backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'on'
+          base_delay: 5
     - conditions:
       - condition: trigger
         id:
         - 'Off'
+        - start
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        below: 40
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -11095,7 +10987,7 @@
           max_retries: 10
           base_delay: 5
           max_delay: 60
-          backoff_type: simple
+          backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
@@ -11111,17 +11003,6 @@
     - sensor.gw1100a_outdoor_temperature
     id: temp low
     below: 2
-  - trigger: state
-    entity_id:
-    - weather.irauen33
-    - weather.forecast_home
-    to:
-    - rainy
-    - snowy-rainy
-    - snowy
-    - pouring
-    - hail
-    id: wet
   - trigger: sun
     event: sunrise
     offset: +01:00:00
@@ -11136,6 +11017,12 @@
     - sensor.gw1100a_rain_rate
     above: 0.1
     id: wet
+  - trigger: state
+    entity_id:
+    - binary_sensor.rain_sun_flower_rain
+    to:
+    - 'on'
+    id: wet
   conditions:
   - condition: state
     entity_id: input_boolean.rollo_state
@@ -11144,13 +11031,17 @@
   - condition: sun
     after: sunset
     before: sunrise
-    before_offset: +02:00:00
+    before_offset: +01:00:01
   actions:
   - choose:
     - conditions:
       - condition: trigger
         id:
         - temp low
+      - condition: state
+        entity_id: input_boolean.rollo_was_cold
+        state:
+        - 'off'
       sequence:
       - action: input_boolean.turn_on
         metadata: {}
@@ -11162,6 +11053,10 @@
       - condition: trigger
         id:
         - wet
+      - condition: state
+        entity_id: input_boolean.rollo_was_wet
+        state:
+        - 'off'
       sequence:
       - action: input_boolean.turn_on
         metadata: {}
@@ -11194,63 +11089,63 @@
     offset: +02:00:00
     id: sunrise
   actions:
-  - if:
+  - alias: forecast booleans based on forecast
+    if:
     - condition: trigger
       id:
       - sunset
     then:
-    - data:
-        type: hourly
-      target:
-        entity_id:
-        - weather.micro_weather_station
-        - weather.forecast_home
-      response_variable: weather_data
-      action: weather.get_forecasts
-    - variables:
-        weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
-          set next_sunrise = states('sensor.sun_next_rising') | as_datetime() | as_local
-          %} {% for entity_id, entity_data in weather_data.items() %}\n    {% set
-          forecast = entity_data.forecast %}\n    {% for item in forecast %}\n        {%
-          set item_time = item.datetime | as_datetime() | as_local %}\n        {%
-          if item_time < next_sunrise %}\n            {% set current_temp = item.temperature
-          %}\n            {% set low_temp = item.templow | default(current_temp) %}\n
-          \           {% if current_temp < 10 or low_temp < 10 %}\n              {%
-          set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
-          = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
-          'snowy-rainy'] %}\n            {% set is_humid = item.get('humidity', 0)
-          > 60 %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
-          \           {% if (is_precip or is_humid) and is_cold %}\n              {%
-          set ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n
-          \       {% if ns.is_low and ns.is_wet %}\n            {% break %}\n        {%
-          endif %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
-          break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
-          }}\n"
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ weather_results.low }}'
-        sequence:
+    - sequence:
+      - data:
+          type: hourly
+        target:
+          entity_id:
+          - weather.micro_weather_station
+          - weather.forecast_home
+        response_variable: weather_data
+        action: weather.get_forecasts
+      - variables:
+          weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
+            set next_sunrise = states('sensor.sun_next_rising') | as_datetime() |
+            as_local %} {% for entity_id, entity_data in weather_data.items() %}\n
+            \   {% set forecast = entity_data.forecast %}\n    {% for item in forecast
+            %}\n        {% set item_time = item.datetime | as_datetime() | as_local
+            %}\n        {% if item_time < next_sunrise %}\n            {% set current_temp
+            = item.temperature %}\n            {% set low_temp = item.templow | default(current_temp)
+            %}\n            {% if current_temp < 10 or low_temp < 10 %}\n              {%
+            set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
+            = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
+            'snowy-rainy'] %}\n            {% set is_cold = current_temp < 2 or low_temp
+            < 2 %}\n            {% if is_precip and is_cold %}\n              {% set
+            ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n        {%
+            if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
+            %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
+            break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
+            }}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ weather_results.low }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.forecast_temp_low
+            action: input_boolean.turn_on
+        default:
         - target:
             entity_id: input_boolean.forecast_temp_low
-          action: input_boolean.turn_on
-      default:
-      - target:
-          entity_id: input_boolean.forecast_temp_low
-        action: input_boolean.turn_off
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ weather_results.wet }}'
-        sequence:
+          action: input_boolean.turn_off
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ weather_results.wet }}'
+          sequence:
+          - target:
+              entity_id: input_boolean.forecast_wet
+            action: input_boolean.turn_on
+        default:
         - target:
             entity_id: input_boolean.forecast_wet
-          action: input_boolean.turn_on
-      default:
-      - target:
-          entity_id: input_boolean.forecast_wet
-        action: input_boolean.turn_off
-    alias: forecast booleans based on forecast
+          action: input_boolean.turn_off
   - if:
     - condition: trigger
       id:
@@ -11264,4 +11159,159 @@
         - input_boolean.forecast_temp_low
         - input_boolean.forecast_wet
     alias: Reset to off at sunrise +2h
+  mode: single
+- id: '1760998194743'
+  alias: Bett Powerbank Ladezeit
+  description: "## \U0001F50B Bett Powerbank Ladezeit\n\nAutomatisiert das **Laden
+    der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
+    \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
+    \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
+    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
+    um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
+    Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
+    an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
+    **Low-Power-Modus deaktiviert:** Benachrichtigungen werden **gelöscht**, falls
+    der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
+    `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
+    ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
+    > 20 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
+    Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
+    Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
+    Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
+  triggers:
+  - trigger: sun
+    event: sunrise
+    offset: 0
+    id: Sunrise
+  - trigger: sun
+    event: sunset
+    offset: +00:05:00
+    id: Sunset
+  - trigger: state
+    entity_id:
+    - input_boolean.bett_powerbank_low_power
+    id: Boolean turned off
+    to: 'off'
+    from: 'on'
+  conditions:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: input_boolean.bett_powerbank_low_power
+      state: 'on'
+    - condition: trigger
+      id:
+      - Boolean turned off
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunrise
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 20
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_type: turn_on
+          backoff_type: linear
+          entity_id: switch.bett_powerbank_charger
+          target_state: 'on'
+          action_domain: switch
+          max_retries: 10
+          base_delay: 5
+    - conditions:
+      - condition: trigger
+        id:
+        - Sunset
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_type: turn_off
+          backoff_type: linear
+          entity_id: switch.bett_powerbank_charger
+          target_state: 'off'
+          action_domain: switch
+          max_retries: 10
+          base_delay: 5
+      - alias: Notify only when the plug was on
+        if:
+        - condition: state
+          entity_id: switch.bett_powerbank_charger
+          state:
+          - 'on'
+        then:
+        - alias: Set up variables for the actions
+          variables:
+            leave_on: '{{ ''OPEN_'' ~ context.id }}'
+            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
+        - action: notify.duncan
+          metadata: {}
+          data:
+            title: "\U0001F307 Bett Powerbank"
+            message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
+            data:
+              tag: powerbank_low
+              actions:
+              - action: '{{ leave_on }}'
+                title: Leave On
+              - action: '{{ turn_off }}'
+                title: Turn Off
+        - alias: Wait for a response
+          wait_for_trigger:
+          - event_type: mobile_app_notification_action
+            event_data:
+              action: '{{ turn_off }}'
+            trigger: event
+          timeout:
+            hours: 1
+            minutes: 0
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+        - alias: Perform the action
+          choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+            sequence:
+            - action: input_boolean.turn_off
+              metadata: {}
+              data: {}
+              target:
+                entity_id: input_boolean.bett_powerbank_low_power
+    - conditions:
+      - condition: trigger
+        id:
+        - Boolean turned off
+      sequence:
+      - action: notify.duncan
+        metadata: {}
+        data:
+          data:
+            tag: powerbank_low
+          message: clear_notification
+  mode: queued
+  max: 3
+- id: '1764880714672'
+  alias: Notify When Enya LED Strip Is Offline
+  description: Monitors the connectivity of Enya's LED strip and sends an alert to
+    Duncan if it goes offline.
+  triggers:
+  - trigger: state
+    entity_id:
+    - light.led_strip
+    to:
+    - unavailable
+    - unknown
+  conditions: []
+  actions:
+  - action: notify.duncan
+    metadata: {}
+    data:
+      title: Enya LED Strip
+      message: Der LED Strip ist {{ states('light.led_strip') | title }}
   mode: single
