@@ -59,6 +59,7 @@ recorder:
       - sensor.zoe_remaining_charging_time
       - sensor.vw_status
       - sensor.zoe_status
+      - sensor.mg4_status
       - sensor.total_print_time
       - sensor.remaining_time
       - sensor.elapsed_time
@@ -1035,7 +1036,7 @@ template:
           {% set bkw = states('sensor.bkw_outlet_1_energy_power') | float(0) %}
           {% set known_power = states('sensor.known_power') | float(0) %}
           {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
-          {{ home if home > known_power else known_power }}
+          {{ home | clamp(known_power, 33000) }}
 
       - name: "Home Consumption Total Day"
         unique_id: home_consumption_total_day
@@ -1082,6 +1083,19 @@ template:
         state_class: total
         icon: mdi:power-plug-off
 
+      - name: "Battery Charge Power from Solar"
+        unique_id: battery_charge_power_from_solar
+        state: >
+          {% set bat_charge = states('sensor.battery_charge') | float(0) | round(0) %}
+          {% set charge_from_solar = is_state('binary_sensor.battery_charging_from_solar','on') %}
+          {{ iif(charge_from_solar, bat_charge, 0, 0)}}
+        availability: >
+          {{ states('sensor.battery_charge') not in ['unavailable','unknown'] and states('binary_sensor.battery_charging_from_solar') not in ['unavailable','unknown'] }}
+        device_class: power
+        unit_of_measurement: "W"
+        state_class: measurement
+        icon: mdi:solar-power
+        
   - trigger:
       - platform: time_pattern
         seconds: "/5"
