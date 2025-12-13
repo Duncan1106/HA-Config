@@ -5843,33 +5843,23 @@
                 notification_icon: mdi:washing-machine
               title: Waschmaschine fertig
               message: Bitte ausräumen
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          - action: tts.speak
-            metadata: {}
-            data:
-              cache: true
-              language: de-DE
-              media_player_entity_id: media_player.lenovo_tab_p11
-              message: Die Waschmaschine ist fertig
-            target:
-              entity_id: tts.google_ai_tts
-            enabled: false
           - action: chime_tts.say
             target:
               entity_id:
               - media_player.lenovo_tab_p11
             data:
               chime_path: classical
-              message: Die Waschmaschine ist fertig
-              tts_platform: google_translate
+              message: '{% set wäsche_sprueche = [ "Räum das Ding aus", "Ab in den
+                Keller", "Ich schleuder mich zu Tode", "Manuellen Entladeprozess starten",
+                "Feucht. Schwer. Jetzt", "Befreie die Socken, bevor sie rebellieren",
+                "Angetreten: Wäsche!" ] %}
+
+                {{ wäsche_sprueche | random }}'
+              tts_platform: google_ai_tts
               language: de
               offset: -750
               cache: true
-              volume_level: 0.55
+              volume_level: 0.65
           - delay:
               hours: 0
               minutes: 10
@@ -5902,33 +5892,23 @@
                 notification_icon: mdi:tumble-dryer
               title: Trockner fertig
               message: Bitte ausräumen
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          - action: tts.speak
-            metadata: {}
-            data:
-              cache: true
-              language: de-DE
-              media_player_entity_id: media_player.lenovo_tab_p11
-              message: Der Trockner ist fertig
-            target:
-              entity_id: tts.google_ai_tts
-            enabled: false
           - action: chime_tts.say
             target:
               entity_id:
               - media_player.lenovo_tab_p11
             data:
               chime_path: classical
-              message: Der Trockner ist fertig
-              tts_platform: google_translate
+              message: "{% set trockner_sprueche = [ \n  \"Räum das Ding aus\", \n
+                \ \"Ab in den Keller\", \n  \"Ich hab mich trocken gewirbelt\", \n
+                \ \"Manuellen Entladeprozess starten\", \n  \"Trocken. Warm. Jetzt.\",
+                \n  \"Befreie die Socken, bevor sie rebellieren\", \n  \"Zeit die
+                Socken zu sortieren\", \n  \"Bitte das Flusensieb streicheln\", \n
+                \ \"Angetreten: Wäsche!\" \n] %}\n{{ trockner_sprueche | random }}"
+              tts_platform: google_ai_tts
               language: de
               offset: -750
               cache: true
-              volume_level: 0.55
+              volume_level: 0.65
           - delay:
               hours: 0
               minutes: 10
@@ -10129,14 +10109,14 @@
     must currently be **off**  \n       (prevents repeated notifications).  \n     -
     The automation must **not have triggered in the last 20 minutes**,  \n       avoiding
     premature reactivation.  \n     - For the 2‑minute off trigger only: `sensor.waschmaschine_lauft_seit`
-    must be **above 14** (ensures ≥14 min of activity to avoid early/scheduled false
-    positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
+    must be **above 14.75** (ensures ≥14.75 min of activity to avoid early/scheduled
+    false positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
     \ 4. **Action**  \n     - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
     \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
     |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
     < 16.8`<br>`state`: `binary_sensor.waschmaschine_lauft` off for 2 min |\n  | **Conditions**
-    | Boolean off, last triggered > 20 min ago, runtime above 14 only for 2m off trigger
-    |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
+    | Boolean off, last triggered > 20 min ago, runtime above 14.75 only for 2m off
+    trigger |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
     |\n  | **Tracking Window** | 20 minutes of power draw |\n  | **Mode** | `single`
     |\n\n  ---\n\n  ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute
     threshold** corresponds to roughly 85 % of the 20-minute\n    monitoring window
@@ -10172,7 +10152,7 @@
       conditions:
       - condition: numeric_state
         entity_id: sensor.waschmaschine_lauft_seit
-        above: 14
+        above: 14.75
       - condition: trigger
         id:
         - 2m
