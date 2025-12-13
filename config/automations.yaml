@@ -10323,6 +10323,26 @@
   - trigger: time
     at: '20:00:00'
     id: time_20
+  - trigger: state
+    entity_id:
+    - switch.plant_tent
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: switch.plant_tent
+  - trigger: state
+    entity_id:
+    - switch.tisch
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    id: switch.tisch
   actions:
   - variables:
       entities:
@@ -10390,6 +10410,26 @@
               base_delay: 5
               backoff_type: exponential
               notify_service: notify.duncan
+    - conditions:
+      - condition: trigger
+        id:
+        - switch.plant_tent
+        - switch.tisch
+      - condition: time
+        before: sensor.sun_next_rising
+        after: '20:00:00'
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        data:
+          entity_id: '{{ trigger.id }}'
+          target_state: 'off'
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 5
+          base_delay: 5
+          backoff_type: exponential
+          notify_service: notify.duncan
     enabled: true
   mode: single
 - id: '1762211918473'
