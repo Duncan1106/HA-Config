@@ -3998,8 +3998,10 @@ config:
             hold_action:
               action: none
             icon: mdi:tire
+            icon_type: icon
             layout: horizontal
             name: Reifendruck
+            primary_info: name
             show_icon: true
             show_primary: true
             show_secondary: true
@@ -4013,9 +4015,10 @@ config:
                   name: ''
                 front_right:
                   entity: sensor.lsjwh4097rn105299_tyres_front_right_pressure
-                hide_rotation_button: true
+                hide_rotation_button: false
                 horizontal: true
-                left: 70
+                image_size: 90
+                left: 50
                 rear_left:
                   entity: sensor.lsjwh4097rn105299_tyres_rear_left_pressure
                 rear_right:
@@ -4369,19 +4372,38 @@ config:
       - auto_height: false
         auto_hide_pagination: 0
         cards:
-        - entity: weather.micro_weather_station
-          forecast_type: daily
-          secondary_info_attribute: wind_speed
+        - default_forecast: daily
+          entity: weather.micro_weather_station
+          forecast:
+            extra_attribute: precipitation_probability
+            hourly_group_size: 1
+            mode: chart
+            show_sun_times: true
+          forecast_action:
+            tap_action:
+              action: toggle-forecast
           show_current: true
           show_forecast: true
-          type: weather-forecast
-        - entity: weather.irauen33
-          forecast_type: daily
-          name: Weatherunderground
-          secondary_info_attribute: wind_speed
+          tap_action:
+            action: more-info
+          temperature_entity: sensor.gw1100a_outdoor_temperature
+          type: custom:weather-forecast-card
+        - default_forecast: daily
+          entity: weather.forecast_home
+          forecast:
+            extra_attribute: precipitation_probability
+            hourly_group_size: 1
+            mode: chart
+            show_sun_times: true
+          forecast_action:
+            tap_action:
+              action: toggle-forecast
           show_current: true
           show_forecast: true
-          type: weather-forecast
+          tap_action:
+            action: more-info
+          temperature_entity: sensor.gw1100a_outdoor_temperature
+          type: custom:weather-forecast-card
         enable_reset_after: true
         loop_mode: infinite
         show_pagination: false
@@ -8425,7 +8447,10 @@ config:
           - **\U0001F4B6 Saved cost tonight:** {{ '%.2f' | format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
           \ | default(0, true) | float(0)) }} \u20AC\n- **\U0001F4B0 Total savings\
           \ so far:** {{ '%.2f' | format(states('input_number.save_through_night_battery_charging')\
-          \ | default(0, true) | float(0)) }} \u20AC"
+          \ | default(0, true) | float(0)) }} \u20AC\n\n\n{% set target =\n     (states('sensor.home_consumption_total_day')|float(0))\n\
+          \     - ((states('sensor.daily_energy_goe_11kw')|float(0))\n        + (states('sensor.daily_energy_goe_22kw')|float(0)))\n\
+          \     + 2.5 %}\n{% set floored = [target, 15] | max %}\n{% set cap = state_attr('input_number.night_charge_target','max')\
+          \ | float(999) %}\nHome needs: {{ [floored, cap] | min | round(2) }} kWh"
         type: markdown
       - entities:
         - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations

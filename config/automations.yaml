@@ -5843,33 +5843,23 @@
                 notification_icon: mdi:washing-machine
               title: Waschmaschine fertig
               message: Bitte ausräumen
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          - action: tts.speak
-            metadata: {}
-            data:
-              cache: true
-              language: de-DE
-              media_player_entity_id: media_player.lenovo_tab_p11
-              message: Die Waschmaschine ist fertig
-            target:
-              entity_id: tts.google_ai_tts
-            enabled: false
           - action: chime_tts.say
             target:
               entity_id:
               - media_player.lenovo_tab_p11
             data:
               chime_path: classical
-              message: Die Waschmaschine ist fertig
-              tts_platform: google_translate
+              message: '{% set wäsche_sprueche = [ "Räum das Ding aus", "Ab in den
+                Keller", "Ich schleuder mich zu Tode", "Manuellen Entladeprozess starten",
+                "Feucht. Schwer. Jetzt", "Befreie die Socken, bevor sie rebellieren",
+                "Angetreten: Wäsche!" ] %}
+
+                {{ wäsche_sprueche | random }}'
+              tts_platform: google_ai_tts
               language: de
               offset: -750
               cache: true
-              volume_level: 0.55
+              volume_level: 0.65
           - delay:
               hours: 0
               minutes: 10
@@ -5902,33 +5892,23 @@
                 notification_icon: mdi:tumble-dryer
               title: Trockner fertig
               message: Bitte ausräumen
-          - delay:
-              hours: 0
-              minutes: 0
-              seconds: 0
-              milliseconds: 500
-          - action: tts.speak
-            metadata: {}
-            data:
-              cache: true
-              language: de-DE
-              media_player_entity_id: media_player.lenovo_tab_p11
-              message: Der Trockner ist fertig
-            target:
-              entity_id: tts.google_ai_tts
-            enabled: false
           - action: chime_tts.say
             target:
               entity_id:
               - media_player.lenovo_tab_p11
             data:
               chime_path: classical
-              message: Der Trockner ist fertig
-              tts_platform: google_translate
+              message: "{% set trockner_sprueche = [ \n  \"Räum das Ding aus\", \n
+                \ \"Ab in den Keller\", \n  \"Ich hab mich trocken gewirbelt\", \n
+                \ \"Manuellen Entladeprozess starten\", \n  \"Trocken. Warm. Jetzt.\",
+                \n  \"Befreie die Socken, bevor sie rebellieren\", \n  \"Zeit die
+                Socken zu sortieren\", \n  \"Bitte das Flusensieb streicheln\", \n
+                \ \"Angetreten: Wäsche!\" \n] %}\n{{ trockner_sprueche | random }}"
+              tts_platform: google_ai_tts
               language: de
               offset: -750
               cache: true
-              volume_level: 0.55
+              volume_level: 0.65
           - delay:
               hours: 0
               minutes: 10
@@ -6732,17 +6712,13 @@
   alias: Restart Add-ons at 01:00 daily
   description: "## \U0001F504 Daily Add-on Restart Automation\n\n### \U0001F4CB Purpose\nThis
     automation restarts a set of Home Assistant add-ons daily at **01:00 AM**. \nIts
-    goal is to ensure the add-ons (repocket, earnapp, earnfm, packetstream, pawns,
-    traffmonetizer) are refreshed, which helps recover from updates or minor issues.\n\n---\n\n###
-    ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n### ✅ Conditions\n- No additional
-    conditions; the restart occurs every day.\n\n---\n\n### \U0001F3AF Actions / Workflow\n1.
-    Restart `repocket` add-on\n2. Wait 5 seconds\n3. Restart `earnapp` add-on\n4.
-    Wait 5 seconds\n5. Restart `earnfm` add-on\n6. Wait 5 seconds\n7. Restart `packetstream`
-    add-on\n8. Wait 5 seconds\n9. Restart `pawns` add-on\n10. Wait 5 seconds\n11.
-    Restart `traffmonetizer` add-on\n12. Wait 5 seconds\n13. Restart `honeygain` add-on\n\n---\n\n###
-    \U0001F527 Technical Notes\n- Mode: `single` (prevents overlapping runs if the
-    automation triggers again unexpectedly).\n- Uses short delays between add-on restarts
-    to avoid potential conflicts or overload."
+    goal is to ensure the add-ons are refreshed, which helps recover from updates
+    or minor issues.\n\n---\n\n### ⏱ Trigger\n- Daily at `01:00:00`.\n\n---\n\n###
+    ✅ Conditions\n- No additional conditions; the restart occurs every day.\n\n---\n\n###
+    \U0001F3AF Actions / Workflow\n1. Restart `earnapp` add-on\n---\n\n### \U0001F527
+    Technical Notes\n- Mode: `single` (prevents overlapping runs if the automation
+    triggers again unexpectedly).\n- Uses short delays between add-on restarts to
+    avoid potential conflicts or overload."
   triggers:
   - trigger: time
     at: 01:00:00
@@ -6752,15 +6728,6 @@
     metadata: {}
     data:
       addon: b3f9bc48_earnapp
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 5
-      milliseconds: 0
-  - action: hassio.addon_restart
-    metadata: {}
-    data:
-      addon: b3f9bc48_pawns
   mode: single
 - id: '1747573166845'
   alias: Boiler Timer
@@ -9232,19 +9199,19 @@
   alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
   description: "## \U0001F33F Paludarium Pump & Fan Cycle (Daytime, Combined Zones)\n\n###
     \U0001F4CB Purpose\nAutomates the daytime cycling of left, Kallax, and right paludarium
-    pumps in\n15-minute on/off intervals. After a pump turns off, a fan cooldown is
-    started\nto maintain environmental stability. Includes checks for power strip\navailability
+    pumps in\n5m ON / 15m OFF. After a pump turns off, a fan cooldown is started\nto
+    maintain environmental stability. Includes checks for power strip\navailability
     and a failsafe 1-minute time pattern trigger.\n\n---\n\n### ⏰ Triggers\n- 1-minute
-    time pattern (failsafe)\n- Pump switches turning `on` or `off` for 15 minutes\n\n---\n\n###
-    ✅ Conditions\n- Only runs during daytime (between sunrise and sunset)\n- Zone-specific
-    power strip must be on to control respective pumps\n\n---\n\n### \U0001F3AF Actions
-    / Workflow\n- **Left, Kallax, Right Zones:**  \n  - If pump has been on for its
-    duration, turn off and start fan cooldown  \n  - If pump has been off for its
-    duration, turn pump back on\n- Uses variables to define pump/fan entities and
-    durations\n- Runs zone sequences in parallel to allow simultaneous management\n\n---\n\n###
-    \U0001F527 Technical Specs\n- **Mode:** `parallel` with a max of 10 to handle
-    multiple concurrent sequences\n- **Pump On/Off Duration:** 14 minutes 55 seconds
-    \ \n- **Fan Duration:** 2 minutes 30 seconds\n- Uses `script.run_fan_for_duration`
+    time pattern (failsafe)\n- 5m ON / 15m OFF\n\n---\n\n### ✅ Conditions\n- Only
+    runs during daytime (between sunrise and sunset)\n- Zone-specific power strip
+    must be on to control respective pumps\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    **Left, Kallax, Right Zones:**  \n  - If pump has been on for its duration, turn
+    off and start fan cooldown  \n  - If pump has been off for its duration, turn
+    pump back on\n- Uses variables to define pump/fan entities and durations\n- Runs
+    zone sequences in parallel to allow simultaneous management\n\n---\n\n### \U0001F527
+    Technical Specs\n- **Mode:** `parallel` with a max of 10 to handle multiple concurrent
+    sequences\n- **Pump On Duration:** 4 minutes 55 seconds\n- **Pump Off Duration:**
+    14 minutes 55 seconds\n- **Fan Duration:** 2 minutes 30 seconds\n- Uses `script.run_fan_for_duration`
     to manage fan cooldown timing"
   triggers:
   - minutes: /1
@@ -9275,7 +9242,7 @@
     after: sunrise
   actions:
   - variables:
-      pump_on_duration: 00:14:55
+      pump_on_duration: 00:04:55
       pump_off_duration: 00:14:55
       fan_duration: 00:02:30
       pump_left: switch.desk_paludarium_turm_links_l3
@@ -9328,6 +9295,7 @@
             data: {}
             target:
               entity_id: '{{ pump_left }}'
+  - choose:
     - alias: Kallax Zone Control
       conditions:
       - condition: state
@@ -9372,6 +9340,7 @@
               entity_id: '{{ pump_kallax }}'
             action: switch.turn_on
             data: {}
+  - choose:
     - alias: Right Zone Control
       conditions:
       - condition: state
@@ -9589,7 +9558,7 @@
           max_retries: 10
           base_delay: 5
           max_delay: 60
-          backoff_type: simple
+          backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.garagentor_tasmota
@@ -9603,7 +9572,7 @@
           max_retries: 10
           base_delay: 5
           max_delay: 60
-          backoff_type: simple
+          backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.sauger_tasmota
@@ -9617,7 +9586,7 @@
           max_retries: 10
           base_delay: 5
           max_delay: 60
-          backoff_type: simple
+          backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.backofen_tasmota
@@ -10140,14 +10109,14 @@
     must currently be **off**  \n       (prevents repeated notifications).  \n     -
     The automation must **not have triggered in the last 20 minutes**,  \n       avoiding
     premature reactivation.  \n     - For the 2‑minute off trigger only: `sensor.waschmaschine_lauft_seit`
-    must be **above 14** (ensures ≥14 min of activity to avoid early/scheduled false
-    positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
+    must be **above 14.75** (ensures ≥14.75 min of activity to avoid early/scheduled
+    false positives). The numeric threshold path (`<16.8`) does not require this guard.\n\n\n
     \ 4. **Action**  \n     - Turns **on** the boolean `input_boolean.waschmaschine_fertig`.
     \ \n\n  ---\n\n  ### \U0001F4CA **Technical Summary**  \n\n  | Component | Description
     |\n  |------------|-------------|\n  | **Trigger** | `numeric_state`: `sensor.waschmaschine_lauft_seit
     < 16.8`<br>`state`: `binary_sensor.waschmaschine_lauft` off for 2 min |\n  | **Conditions**
-    | Boolean off, last triggered > 20 min ago, runtime above 14 only for 2m off trigger
-    |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
+    | Boolean off, last triggered > 20 min ago, runtime above 14.75 only for 2m off
+    trigger |\n  | **Action** | `input_boolean.turn_on` → `input_boolean.waschmaschine_fertig`
     |\n  | **Tracking Window** | 20 minutes of power draw |\n  | **Mode** | `single`
     |\n\n  ---\n\n  ### \U0001F9E0 **Notes & Recommendations**  \n\n  - The **16.8-minute
     threshold** corresponds to roughly 85 % of the 20-minute\n    monitoring window
@@ -10183,7 +10152,7 @@
       conditions:
       - condition: numeric_state
         entity_id: sensor.waschmaschine_lauft_seit
-        above: 14
+        above: 14.75
       - condition: trigger
         id:
         - 2m
@@ -10354,6 +10323,26 @@
   - trigger: time
     at: '20:00:00'
     id: time_20
+  - trigger: state
+    entity_id:
+    - switch.plant_tent
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: switch.plant_tent
+  - trigger: state
+    entity_id:
+    - switch.tisch
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+    id: switch.tisch
   actions:
   - variables:
       entities:
@@ -10421,6 +10410,26 @@
               base_delay: 5
               backoff_type: exponential
               notify_service: notify.duncan
+    - conditions:
+      - condition: trigger
+        id:
+        - switch.plant_tent
+        - switch.tisch
+      - condition: time
+        before: sensor.sun_next_rising
+        after: '20:00:00'
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        data:
+          entity_id: '{{ trigger.id }}'
+          target_state: 'off'
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 5
+          base_delay: 5
+          backoff_type: exponential
+          notify_service: notify.duncan
     enabled: true
   mode: single
 - id: '1762211918473'
@@ -10928,7 +10937,7 @@
       entity_id: input_number.night_charge_target
   mode: single
 - id: '1764427174379'
-  alias: Auto Schlafzimmer Treppe Licht
+  alias: Auto Treppe Licht
   description: Automatically turns the stairway light on or off based on ambient brightness,
     using a retry script to ensure reliability.
   triggers:
@@ -10958,6 +10967,7 @@
         above: 39
       sequence:
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -10970,6 +10980,20 @@
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'on'
           base_delay: 5
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.treppe_led_lichterkette_zigbee
+          target_state: 'on'
+          base_delay: 5
     - conditions:
       - condition: trigger
         id:
@@ -10980,6 +11004,7 @@
         below: 40
       sequence:
       - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
         data:
           action_domain: switch
@@ -10991,6 +11016,20 @@
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.treppe_led_lichterkette_zigbee
           target_state: 'off'
   mode: single
 - id: '1764434672349'
@@ -11296,22 +11335,3 @@
           message: clear_notification
   mode: queued
   max: 3
-- id: '1764880714672'
-  alias: Notify When Enya LED Strip Is Offline
-  description: Monitors the connectivity of Enya's LED strip and sends an alert to
-    Duncan if it goes offline.
-  triggers:
-  - trigger: state
-    entity_id:
-    - light.led_strip
-    to:
-    - unavailable
-    - unknown
-  conditions: []
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: Enya LED Strip
-      message: Der LED Strip ist {{ states('light.led_strip') | title }}
-  mode: single
