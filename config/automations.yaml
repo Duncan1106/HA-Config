@@ -842,6 +842,25 @@
         data:
           message: Das Wasser hat nur {{ states('sensor.boiler_temperature') | float(0)|
             round(0) }}°C!
+          data:
+            tag: boiler_low_temp
+        action: notify.duncan
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.boiler_temperature
+          above: 35
+        timeout:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+        continue_on_timeout: false
+      - metadata: {}
+        data:
+          message: clear_notification
+          data:
+            tag: boiler_low_temp
         action: notify.duncan
     - action: script.boiler_save_energy_script
       metadata: {}
