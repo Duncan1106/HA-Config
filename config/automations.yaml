@@ -11340,3 +11340,83 @@
           message: clear_notification
   mode: queued
   max: 3
+- id: '1765713065237'
+  alias: Christmas Tree Scheduler
+  description: "## \U0001F384 Christmas Tree Scheduler  \n\nControls the Christmas
+    Tree (`switch.christmas_tree`) based on the\nschedule (`binary_sensor.christmas_tree`)
+    and home presence\n(`binary_sensor.anyone_home`).  \n\nThe tree turns ON only
+    when the schedule is active and at least one\nperson is home. It turns OFF if
+    either condition fails.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Trigger Entity |
+    Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
+    `binary_sensor.christmas_tree` | State changes | \"Schedule\" |\n| `binary_sensor.anyone_home`
+    | State changes | \"Presence\" |\n| Home Assistant | Start | \"HA_Start\" |\n\n>
+    **Note:** Any trigger ensures the tree state is correctly set immediately.\n\n---\n\n###
+    ✅ **Conditions**  \n\n- None; all triggers evaluate the current state of the sensors
+    in the actions.\n\n---\n\n### \U0001F3AF **Actions / Workflow**  \n\n1. **Turn
+    ON tree**  \n   - Triggered when both sensors are `on`  \n   - Uses retry logic
+    for reliability  \n\n2. **Turn OFF tree**  \n   - Triggered when either sensor
+    is `off`  \n   - Uses retry logic for reliability  \n\n---\n\n### \U0001F527 **Technical
+    Specs**  \n\n- **Mode:** `restart` (ensures latest state wins)  \n- **Device Controlled:**
+    `switch.weihnachtsbaum_zigbee`  \n\n---\n\n### ⚡ **Notes / Best Practices**  \n\n-
+    Modular logic: schedule and presence are independent  \n- Safe on HA restart  \n-
+    Scales well for future overrides or extra conditions"
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.christmas_tree
+    id: Schedule
+  - trigger: state
+    entity_id: binary_sensor.anyone_home
+    id: Presence
+  - trigger: homeassistant
+    event: start
+    id: HA_Start
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.christmas_tree
+          state: 'on'
+        - condition: state
+          entity_id: binary_sensor.anyone_home
+          state: 'on'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.weihnachtsbaum_zigbee
+          target_state: 'on'
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.christmas_tree
+          state: 'off'
+        - condition: state
+          entity_id: binary_sensor.anyone_home
+          state: 'off'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.weihnachtsbaum_zigbee
+          target_state: 'off'
+  mode: restart

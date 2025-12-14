@@ -186,6 +186,50 @@ notify:
 
 template:
   - binary_sensor:
+      - name: Christmas Tree
+        unique_id: christmas_tree_schedule
+        icon: mdi:pine-tree
+
+        availability: >
+          {{ 
+            states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
+            and states('sun.sun') not in ['unknown', 'unavailable']
+            and state_attr('sun.sun', 'next_rising') is not none
+            and state_attr('sun.sun', 'next_setting') is not none
+          }}
+
+        state: >
+          {% set now_ts = now() %}
+          {% set workday = is_state('binary_sensor.workday_sensor', 'on') %}
+
+          {% set sunrise = state_attr('sun.sun', 'next_rising') | as_datetime | as_local %}
+          {% set sunset  = state_attr('sun.sun', 'next_setting') | as_datetime | as_local %}
+
+          {% if workday %}
+            {# Workday: Mon–Fri, not a holiday #}
+            {% set morning_on =
+              now_ts >= today_at('04:30')
+              and now_ts < sunrise
+            %}
+            {% set evening_on =
+              now_ts >= sunset - timedelta(minutes=30)
+              and now_ts < today_at('22:30')
+            %}
+          {% else %}
+            {# Weekend or public holiday #}
+            {% set morning_on =
+              now_ts >= today_at('06:00')
+              and now_ts < today_at('11:00')
+            %}
+            {% set evening_on =
+              now_ts >= sunset - timedelta(minutes=45)
+              and now_ts < today_at('23:00')
+            %}
+          {% endif %}
+
+          {{ morning_on or evening_on }}
+
+  - binary_sensor:
       - name: Charge Battery at Night (dynamically)
         unique_id: charge_battery_at_night
         state: >
