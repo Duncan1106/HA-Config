@@ -189,45 +189,98 @@ template:
       - name: Christmas Tree
         unique_id: christmas_tree_schedule
         icon: mdi:pine-tree
-
+    
         availability: >
-          {{ 
+          {{
             states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
             and states('sun.sun') not in ['unknown', 'unavailable']
             and state_attr('sun.sun', 'next_rising') is not none
             and state_attr('sun.sun', 'next_setting') is not none
           }}
-
+    
         state: >
-          {% set now_ts = now() %}
+          {% set time = now().strftime('%H:%M') %}
           {% set workday = is_state('binary_sensor.workday_sensor', 'on') %}
-
+    
           {% set sunrise = state_attr('sun.sun', 'next_rising') | as_datetime | as_local %}
           {% set sunset  = state_attr('sun.sun', 'next_setting') | as_datetime | as_local %}
-
+    
+          {% set sunrise_hhmm = sunrise.strftime('%H:%M') %}
+          {% set sunset_30_hhmm = (sunset - timedelta(minutes=30)).strftime('%H:%M') %}
+          {% set sunset_45_hhmm = (sunset - timedelta(minutes=45)).strftime('%H:%M') %}
+    
           {% if workday %}
-            {# Workday: Mon–Fri, not a holiday #}
-            {% set morning_on =
-              now_ts >= today_at('04:30')
-              and now_ts < sunrise
-            %}
-            {% set evening_on =
-              now_ts >= sunset - timedelta(minutes=30)
-              and now_ts < today_at('22:30')
-            %}
+            {% set morning_on = '04:30' <= time < sunrise_hhmm %}
+            {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
           {% else %}
-            {# Weekend or public holiday #}
-            {% set morning_on =
-              now_ts >= today_at('06:00')
-              and now_ts < today_at('11:00')
-            %}
-            {% set evening_on =
-              now_ts >= sunset - timedelta(minutes=45)
-              and now_ts < today_at('23:00')
-            %}
+            {% set morning_on = '06:00' <= time < '11:00' %}
+            {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
           {% endif %}
-
+    
           {{ morning_on or evening_on }}
+    
+        attributes:
+          schedule_type: >
+            {{ 'workday' if is_state('binary_sensor.workday_sensor', 'on') else 'weekend' }}
+    
+          period: >
+            {% set time = now().strftime('%H:%M') %}
+            {% set workday = is_state('binary_sensor.workday_sensor', 'on') %}
+    
+            {% set sunrise = state_attr('sun.sun', 'next_rising') | as_datetime | as_local %}
+            {% set sunset  = state_attr('sun.sun', 'next_setting') | as_datetime | as_local %}
+    
+            {% set sunrise_hhmm = sunrise.strftime('%H:%M') %}
+            {% set sunset_30_hhmm = (sunset - timedelta(minutes=30)).strftime('%H:%M') %}
+            {% set sunset_45_hhmm = (sunset - timedelta(minutes=45)).strftime('%H:%M') %}
+    
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_hhmm %}
+                morning
+              {% elif sunset_30_hhmm <= time < '22:30' %}
+                evening
+              {% else %}
+                off
+              {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %}
+                morning
+              {% elif sunset_45_hhmm <= time < '23:00' %}
+                evening
+              {% else %}
+                off
+              {% endif %}
+            {% endif %}
+    
+          reason: >
+            {% set time = now().strftime('%H:%M') %}
+            {% set workday = is_state('binary_sensor.workday_sensor', 'on') %}
+    
+            {% set sunrise = state_attr('sun.sun', 'next_rising') | as_datetime | as_local %}
+            {% set sunset  = state_attr('sun.sun', 'next_setting') | as_datetime | as_local %}
+    
+            {% set sunrise_hhmm = sunrise.strftime('%H:%M') %}
+            {% set sunset_30_hhmm = (sunset - timedelta(minutes=30)).strftime('%H:%M') %}
+            {% set sunset_45_hhmm = (sunset - timedelta(minutes=45)).strftime('%H:%M') %}
+    
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_hhmm %}
+                Workday morning window
+              {% elif sunset_30_hhmm <= time < '22:30' %}
+                Workday evening window
+              {% else %}
+                Outside workday schedule
+              {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %}
+                Weekend morning window
+              {% elif sunset_45_hhmm <= time < '23:00' %}
+                Weekend evening window
+              {% else %}
+                Outside weekend schedule
+              {% endif %}
+            {% endif %}
+ 
 
   - binary_sensor:
       - name: Charge Battery at Night (dynamically)
