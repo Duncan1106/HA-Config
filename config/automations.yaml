@@ -10982,12 +10982,22 @@
     entity_id:
     - sensor.light_brighness
     above: 39
-    id: 'On'
+    id: On above 39
   - trigger: numeric_state
     entity_id:
     - sensor.light_brighness
     below: 40
-    id: 'Off'
+    id: Off below 40
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    above: 29
+    id: On above 29
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    below: 30
+    id: Off below 30
   - trigger: homeassistant
     event: start
     id: start
@@ -10997,8 +11007,8 @@
     - conditions:
       - condition: trigger
         id:
-        - 'On'
         - start
+        - On above 39
       - condition: numeric_state
         entity_id: sensor.light_brighness
         above: 39
@@ -11017,25 +11027,12 @@
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'on'
           base_delay: 5
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.treppe_led_lichterkette_zigbee
-          target_state: 'on'
-          base_delay: 5
+      alias: Treppenlicht Schlafzimmer ON
     - conditions:
       - condition: trigger
         id:
-        - 'Off'
         - start
+        - Off below 40
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 40
@@ -11054,6 +11051,40 @@
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'off'
+      alias: Treppenlicht Schlafzimmer OFF
+    - conditions:
+      - condition: trigger
+        id:
+        - start
+        - On above 29
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        above: 29
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.treppe_led_lichterkette_zigbee
+          target_state: 'on'
+          base_delay: 5
+      alias: Treppenlicht LED ON
+    - conditions:
+      - condition: trigger
+        id:
+        - start
+        - Off below 30
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        below: 30
+      sequence:
       - action: script.retry_action_with_backoff
         continue_on_error: true
         metadata: {}
@@ -11068,6 +11099,7 @@
           notify_service: notify.duncan
           entity_id: switch.treppe_led_lichterkette_zigbee
           target_state: 'off'
+      alias: Treppenlicht LED OFF
   mode: single
 - id: '1764434672349'
   alias: Rollo Winter Helper Night State
