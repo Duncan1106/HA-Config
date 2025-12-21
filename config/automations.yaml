@@ -8248,22 +8248,33 @@
               entity_id:
               - select.go_echarger_270862_frc
           custom_target_state: Don't charge
-      - wait_for_trigger:
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_270862_nrg_12
-          below: 5
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_252682_nrg_12
-          below: 5
-        timeout:
-          hours: 0
-          minutes: 1
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: true
-        alias: Wait for power change below 5W
+      - if:
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
+        then:
+        - wait_for_trigger:
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_270862_nrg_12
+            below: 5
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_252682_nrg_12
+            below: 5
+          timeout:
+            hours: 0
+            minutes: 1
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+          alias: Wait for power change below 5W
+        alias: Only wait if above 5W
       - alias: No EV charger draw -> battery ON | wait longer
         if:
         - condition: and
@@ -11087,6 +11098,7 @@
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'off'
       alias: Treppenlicht Schlafzimmer OFF
+  - choose:
     - conditions:
       - condition: trigger
         id:
