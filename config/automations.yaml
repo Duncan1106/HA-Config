@@ -573,6 +573,7 @@
           }}:8123
         data:
           notification_icon: mdi:restart
+          tag: ha_start
       action: notify.duncan
     - action: hassio.addon_restart
       metadata: {}
@@ -615,6 +616,7 @@
           2)}}'
         data:
           notification_icon: mdi:restart
+          tag: ha_stop
       action: notify.duncan
   mode: single
 - id: '1705619896975'
@@ -696,6 +698,7 @@
       include_duration_tracking: disable_duration_tracking
       include_cycle_counter: enable_cycle_counter
       cycle_counter_helper: counter.spulmaschine
+      end_notify_tag: spuelmaschine_fertig
 - id: '1708932016459'
   alias: Update System Metrics Sensors
   description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
@@ -832,6 +835,9 @@
       id:
       - 'On'
     then:
+    - action: script.boiler_save_energy_script
+      metadata: {}
+      data: {}
     - alias: Notify of not enough warm water
       if:
       - condition: numeric_state
@@ -842,10 +848,30 @@
         data:
           message: Das Wasser hat nur {{ states('sensor.boiler_temperature') | float(0)|
             round(0) }}°C!
+          data:
+            tag: boiler_low_temp
         action: notify.duncan
-    - action: script.boiler_save_energy_script
-      metadata: {}
-      data: {}
+      - wait_for_trigger:
+        - trigger: numeric_state
+          entity_id:
+          - sensor.boiler_temperature
+          above: 35
+        timeout:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ wait.completed }}'
+        then:
+        - metadata: {}
+          data:
+            message: clear_notification
+            data:
+              tag: boiler_low_temp
+          action: notify.duncan
   - alias: 'Off'
     if:
     - condition: trigger
@@ -939,6 +965,8 @@
           {{ states(''sensor.energy_summary_1st_block_2'') }}
 
           '
+        data:
+          tag: summary_sunrise
       action: notify.duncan
   - alias: 'Message sunset '
     if:
@@ -957,6 +985,8 @@
           {{ states(''sensor.energy_summary_1st_block_2'') }}
 
           '
+        data:
+          tag: summary_sunset
       action: notify.duncan
   - alias: 'Message midnight '
     if:
@@ -975,6 +1005,8 @@
           {{ states(''sensor.energy_summary_1st_block_2'') }}
 
           '
+        data:
+          tag: summary_midnight
       action: notify.duncan
   - alias: Appliances
     if:
@@ -990,6 +1022,8 @@
         message: '{{ states(''sensor.appliance_used'') }}
 
           '
+        data:
+          tag: appliances
       action: notify.duncan
   - alias: Sunset Notification
     if:
@@ -1070,6 +1104,8 @@
         message: '{{ states(''sensor.solar_forecast_text_tomorrow'') }}
 
           '
+        data:
+          tag: forecast_tomorrow
       action: notify.duncan
   - alias: Forecast today
     if:
@@ -1085,6 +1121,8 @@
         message: '{{ states(''sensor.solar_forecast_text_today'') }}
 
           '
+        data:
+          tag: forecast_today
       action: notify.duncan
   mode: parallel
   max: 10
@@ -1625,6 +1663,8 @@
       message: Du warst {{ time_since(now() - timedelta(hours=states('sensor.time_in_bed_last_24h')|float(0)),
         2)}} im Bett
       title: Zeit im Bett
+      data:
+        tag: time_in_bed
     action: notify.duncan
   mode: single
 - id: '1712941263468'
@@ -1723,15 +1763,15 @@
   alias: Terrarium Humidifier Empty Detection
   description: "## \U0001F4A7 Terrarium Humidifier Empty Detection (Dynamic)\n\nDetects
     if the **terrarium humidifier tank is empty** by monitoring power usage.  \nAssumes
-    a functioning humidifier will draw **Δ ≥ 10 W** shortly after turning on.  \nUses
+    a functioning humidifier will draw **Δ ≥ 5 W** shortly after turning on.  \nUses
     a **dynamic baseline** measured at startup. Runs only when `input_boolean.luftbefeuchter_aktiv`
     is on.\n\n---\n\n### \U0001F4CC Flow\n\n1. **Set baseline**  \n   - Record current
     power (`sensor.terrarium_power_plug_zigbee_power`) at automation start.\n\n2.
     **Wait for device**  \n   - Pauses until `switch.terrarium_zigbee_l1` is on or
-    30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+10 W increase**
-    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <10 W → notify
-    `notify.duncan`  \n   - Reset `counter.luftbefeuchter`  \n   - Include previous
-    activation count for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
+    2min30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+5W increase**
+    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <5W → notify `notify.duncan`
+    \ \n   - Reset `counter.luftbefeuchter`  \n   - Include previous activation count
+    for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
     = on`\n\n---\n\n### ⚡ Actions\n\n- Record baseline  \n- Wait for humidifier to
     turn on  \n- Monitor for +10 W increase  \n- Notify if tank may be empty  \n-
     Reset usage counter  \n- Send usage context"
@@ -1755,7 +1795,7 @@
       to: 'on'
     timeout:
       hours: 0
-      minutes: 1
+      minutes: 2
       seconds: 30
       milliseconds: 0
     continue_on_timeout: false
@@ -1769,7 +1809,7 @@
       delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
-      value_template: '{{ delta_power <= 10 }}'
+      value_template: '{{ delta_power <= 5 }}'
     - condition: state
       entity_id: input_boolean.luftbefeuchter_aktiv
       state: 'on'
@@ -2424,15 +2464,15 @@
     Purpose\n\nCoordinates the **terrarium's heat lamp** and **humidifier** operation
     to\nmaintain stable climate conditions throughout the day.  \nHandles sunrise/sunset
     routines, periodic heat checks, and humidity control.\n\n\n---\n\n\n### ⏰ Triggers\n\n-
-    **Every minute:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
+    **Every 5 minutes:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
     turns **on**  \n- **Sunrise:** Executes 30 minutes **after** sunrise  \n- **Sunset:**
     Executes 30 minutes **before** sunset  \n- **Humidifier switch:** (`switch.terrarium_tasmota3`)
     turns **off**\n  → keeps the boolean state synchronized  \n\n\n---\n\n\n### ✅
     Conditions\n\n- Operates **only during daytime** (between sunrise and sunset)
     \ \n- Requires **terrarium master switch**\n  (`input_boolean.terrarium_on`) to
     be **on**  \n\n\n---\n\n\n### \U0001F3AF Actions / Workflow\n\n**☀️ Daytime Heat
-    Lamp Control**  \n- Runs `script.warmelampe` every minute during daytime if the
-    terrarium is active  \n\n**\U0001F4A7 Humidifier Control**  \n- Runs `script.luftbefeuchter`
+    Lamp Control**  \n- Runs `script.warmelampe` every 5 minute during daytime if
+    the terrarium is active  \n\n**\U0001F4A7 Humidifier Control**  \n- Runs `script.luftbefeuchter`
     when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
     Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
     \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
@@ -2443,8 +2483,8 @@
     day, sunrise, sunset, and sensor actions  \n- Integrates both **time-based** and
     **sensor-driven** logic for robust climate control\n"
   triggers:
-  - minutes: /1
-    id: '1'
+  - minutes: /5
+    id: '5'
     trigger: time_pattern
   - trigger: state
     entity_id:
@@ -4884,7 +4924,8 @@
       state: not_home
     - condition: state
       entity_id: person.stephan
-      state: home
+      state:
+      - home
   - alias: restart finished
     condition: template
     value_template: "    {% set boot = as_timestamp(states('sensor.uptime')) %}\n
@@ -4909,14 +4950,15 @@
             after: '13:00:00'
             weekday:
             - fri
+        - condition: not
+          conditions:
+          - condition: state
+            entity_id: person.stephan
+            state:
+            - home
         - condition: trigger
           id:
           - Arbeit
-        - condition: not
-          conditions:
-          - condition: time
-            after: '17:59:30'
-            before: '18:00:30'
       sequence:
       - action: icloud3.action
         metadata: {}
@@ -5831,6 +5873,9 @@
       - condition: trigger
         id:
         - Waschmaschine
+      - condition: time
+        after: 06:00:00
+        before: '23:00:00'
       sequence:
       - repeat:
           sequence:
@@ -5880,6 +5925,9 @@
       - condition: trigger
         id:
         - Trockner
+      - condition: time
+        after: 06:00:00
+        before: '23:00:00'
       sequence:
       - repeat:
           sequence:
@@ -6994,11 +7042,15 @@
         data:
           title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
           message: Heute konnte leider keine Nachricht generiert werden.
+          data:
+            tag: allergie_and_tasks_failure
     default:
     - alias: Send notification
       data:
         title: '{{ now().strftime(''%A'') }} Allergie und Aufgaben'
         message: '{{ agent_gemini.response.speech.plain.speech }}'
+        data:
+          tag: allergie_and_tasks
       action: notify.duncan
   mode: single
 - id: '1748645782485'
@@ -7828,12 +7880,18 @@
         after: 00:00:00
         before: 05:00:00
       sequence:
-      - action: input_select.select_option
-        metadata: {}
-        data:
-          option: Intelligent
-        target:
-          entity_id: input_select.octopus_night_time
+      - if:
+        - condition: trigger
+          id:
+          - Off_time
+        then:
+        - action: input_select.select_option
+          metadata: {}
+          data:
+            option: Intelligent
+          target:
+            entity_id: input_select.octopus_night_time
+        alias: Turn back to Intelligent Mode on Time Off Trigger
       - alias: If Car is connected to 11kW Charger then stop charging
         if:
         - condition: state
@@ -8192,22 +8250,33 @@
               entity_id:
               - select.go_echarger_270862_frc
           custom_target_state: Don't charge
-      - wait_for_trigger:
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_270862_nrg_12
-          below: 5
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_252682_nrg_12
-          below: 5
-        timeout:
-          hours: 0
-          minutes: 1
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: true
-        alias: Wait for power change below 5W
+      - if:
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            above: 5
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            above: 5
+        then:
+        - wait_for_trigger:
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_270862_nrg_12
+            below: 5
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_252682_nrg_12
+            below: 5
+          timeout:
+            hours: 0
+            minutes: 1
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+          alias: Wait for power change below 5W
+        alias: Only wait if above 5W
       - alias: No EV charger draw -> battery ON | wait longer
         if:
         - condition: and
@@ -8815,20 +8884,20 @@
     from the device.\n\n### ⚙️ **How It Works**\n- **Triggers** when:\n  - Home Assistant
     starts  \n  - Duncan’s location becomes `unknown` or `unavailable`  \n  - Every
     **5 minutes** while he’s awake and not connected to home Wi-Fi\n  - When Wifi
-    Connection Changes\n- **Retries up to 4 times**, sending location update requests
-    every **2 minutes**  \n  until the device reports a valid location.\n- If the
+    Connection Changes\n- **Retries up to 3 times**, sending location update requests
+    every **60 seconds**  \n  until the device reports a valid location.\n- If the
     problem persists after all retries, a **final notification** is sent  \n  asking
     Duncan to manually refresh his location in the Home Assistant app.\n\n### \U0001F9E9
     **Automation Logic Overview**\n\n| \U0001F9E9 Type | \U0001F4A1 Name / Alias |
     \U0001F50D Details |\n|----------|------------------|-------------|\n| **Trigger**
     | **Home Assistant Start** | When Home Assistant starts (`event: start`). |\n|
     **Trigger** | **Location Lost** | When `person.duncan` state changes to `unknown`
-    or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 10 minutes while
-    conditions are met (`minutes: /10`). |\n| **Condition** | **Not on Home Wi-Fi**
+    or `unavailable`. |\n| **Trigger** | **Periodic Check** | Every 5 minutes while
+    conditions are met (`minutes: /5`). |\n| **Condition** | **Not on Home Wi-Fi**
     | Skips if connected to Wi-Fi `DESK` or `Cudy-69F2`. |\n| **Condition** | **Awake
     Condition** | Runs only if bed occupancy sensor `binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied`
     is **off** (Duncan not in bed). |\n| **Action 1** | **\U0001F501 Repeated Location
-    Requests** | Repeats up to **4 times**, every **2 minutes**, sending `request_location_update`
+    Requests** | Repeats up to **3 times**, every **60 seconds**, sending `request_location_update`
     to `notify.mobile_app_poco_f7`. Stops early if a valid location is received. |\n|
     **Action 2** | **\U0001F4F1 Final Manual Update Notification** | If still `not_home`,
     `unknown`, or `unavailable` after retries → sends a notification asking Duncan
@@ -8889,13 +8958,16 @@
               entity_id: person.duncan
               state: unknown
         - condition: template
-          value_template: '{{ repeat.index >= 4 }}'
+          value_template: '{{ repeat.index >= 3 }}'
       sequence:
       - action: notify.mobile_app_poco_f7
         data:
           message: request_location_update
       - delay:
-          minutes: 2
+          hours: 0
+          minutes: 1
+          seconds: 0
+          milliseconds: 0
   - alias: "\U0001F4F1 Final Manual Update Notification"
     choose:
     - alias: Check if Location Still Unknown
@@ -9943,11 +10015,15 @@
             Events: {{ fallback_text }}
 
             '
+          data:
+            tag: agenda_failure
     default:
     - alias: Send notification
       data:
         title: '{{ title }}'
         message: '{{ agent_gemini.response.speech.plain.speech }}'
+        data:
+          tag: agenda
       action: notify.duncan
   mode: single
 - id: '1759922754025'
@@ -10308,11 +10384,13 @@
     lights ON**, providing early light exposure.   \n- **\U0001F307 Sunset:** Turns
     **all lights OFF**, simulating natural daylight cycles.\n- **\U0001F557 20:00:**
     Turns **lights OFF** *only if the sun has already set*, ensuring no unnecessary
-    evening illumination.\n\n### ⚙️ **Reliability Features**\n\nEach light entity
-    is processed individually with up to **5 retry attempts**,   using a **5-second
-    exponential backoff** between attempts to guarantee the final desired state is
-    reached.\n\n--- \n\n*Entities managed:*  \n\n\n  - `switch.plant_tent`\n  \n  -
-    `switch.tisch`"
+    evening illumination.\n- **\U0001F6AB Manual ON after hours:** Turn **OFF** the
+    plant lights if accidentally turned on after the configured hours,  preventing
+    the plants from getting their earned rest/dark period\n\n### ⚙️ **Reliability
+    Features**\n\nEach light entity is processed individually with up to **5 retry
+    attempts**,   using a **5-second exponential backoff** between attempts to guarantee
+    the final desired state is reached.\n\n--- \n\n*Entities managed:*  \n\n\n  -
+    `switch.plant_tent`\n  \n  - `switch.tisch`"
   triggers:
   - trigger: sun
     event: sunrise
@@ -10330,7 +10408,7 @@
     - 'on'
     for:
       hours: 0
-      minutes: 1
+      minutes: 5
       seconds: 0
     id: switch.plant_tent
   - trigger: state
@@ -10340,7 +10418,7 @@
     - 'on'
     for:
       hours: 0
-      minutes: 5
+      minutes: 1
       seconds: 0
     id: switch.tisch
   actions:
@@ -10532,19 +10610,26 @@
   - trigger: time_pattern
     minutes: /10
   conditions:
-  - condition: not
+  - condition: or
     conditions:
-    - condition: or
+    - condition: not
       conditions:
-      - condition: state
-        entity_id: sensor.fp4_wifi_connection
-        state:
-        - DESK
-      - condition: state
-        entity_id: sensor.fp4_wifi_connection
-        state:
-        - Cudy-69F2
-      alias: In home Wifi
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: sensor.fp4_wifi_connection
+          state:
+          - DESK
+        - condition: state
+          entity_id: sensor.fp4_wifi_connection
+          state:
+          - Cudy-69F2
+        alias: In home Wifi
+      alias: Not In Home Wifi
+    - condition: state
+      entity_id: person.katalin
+      state:
+      - not_home
   actions:
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
@@ -10945,12 +11030,22 @@
     entity_id:
     - sensor.light_brighness
     above: 39
-    id: 'On'
+    id: On_above_39
   - trigger: numeric_state
     entity_id:
     - sensor.light_brighness
     below: 40
-    id: 'Off'
+    id: Off_below_40
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    above: 29
+    id: On_above_29
+  - trigger: numeric_state
+    entity_id:
+    - sensor.light_brighness
+    below: 30
+    id: Off_below_30
   - trigger: homeassistant
     event: start
     id: start
@@ -10960,8 +11055,8 @@
     - conditions:
       - condition: trigger
         id:
-        - 'On'
         - start
+        - On_above_39
       - condition: numeric_state
         entity_id: sensor.light_brighness
         above: 39
@@ -10980,25 +11075,12 @@
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'on'
           base_delay: 5
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.treppe_led_lichterkette_zigbee
-          target_state: 'on'
-          base_delay: 5
+      alias: Treppenlicht Schlafzimmer ON
     - conditions:
       - condition: trigger
         id:
-        - 'Off'
         - start
+        - Off_below_40
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 40
@@ -11017,6 +11099,41 @@
           notify_service: notify.duncan
           entity_id: switch.schlafzimmer_treppenbeleuchtung_zigbee
           target_state: 'off'
+      alias: Treppenlicht Schlafzimmer OFF
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - start
+        - On_above_29
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        above: 29
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.treppe_led_lichterkette_zigbee
+          target_state: 'on'
+          base_delay: 5
+      alias: Treppenlicht LED ON
+    - conditions:
+      - condition: trigger
+        id:
+        - start
+        - Off_below_30
+      - condition: numeric_state
+        entity_id: sensor.light_brighness
+        below: 30
+      sequence:
       - action: script.retry_action_with_backoff
         continue_on_error: true
         metadata: {}
@@ -11031,7 +11148,9 @@
           notify_service: notify.duncan
           entity_id: switch.treppe_led_lichterkette_zigbee
           target_state: 'off'
-  mode: single
+      alias: Treppenlicht LED OFF
+  mode: parallel
+  max: 5
 - id: '1764434672349'
   alias: Rollo Winter Helper Night State
   description: "Sets boolean helpers to track if it was cold or wet overnight. \nResets
@@ -11335,3 +11454,183 @@
           message: clear_notification
   mode: queued
   max: 3
+- id: '1765713065237'
+  alias: Christmas Tree Scheduler
+  description: "## \U0001F384 Christmas Tree Scheduler  \n\nControls the Christmas
+    Tree (`switch.weihnachtsbaum_zigbee`) based on the\nschedule (`binary_sensor.christmas_tree`)
+    and home presence\n(`binary_sensor.anyone_home`).  \n\nThe tree turns ON only
+    when the schedule is active and at least one\nperson is home. It turns OFF if
+    either condition fails.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Trigger Entity |
+    Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
+    `binary_sensor.christmas_tree` | State changes | \"Schedule\" |\n| `binary_sensor.anyone_home`
+    | State changes | \"Presence\" |\n| Home Assistant | Start | \"HA_Start\" |\n\n>
+    **Note:** Any trigger ensures the tree state is correctly set immediately.\n\n---\n\n###
+    ✅ **Conditions**  \n\n- None; all triggers evaluate the current state of the sensors
+    in the actions.\n\n---\n\n### \U0001F3AF **Actions / Workflow**  \n\n1. **Turn
+    ON tree**  \n   - Triggered when both sensors are `on`  \n   - Uses retry logic
+    for reliability  \n\n2. **Turn OFF tree**  \n   - Triggered when either sensor
+    is `off`  \n   - Uses retry logic for reliability  \n\n---\n\n### \U0001F527 **Technical
+    Specs**  \n\n- **Mode:** `restart` (ensures latest state wins)  \n- **Device Controlled:**
+    `switch.weihnachtsbaum_zigbee`  \n\n---\n\n### ⚡ **Notes / Best Practices**  \n\n-
+    Modular logic: schedule and presence are independent  \n- Safe on HA restart  \n-
+    Scales well for future overrides or extra conditions"
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.christmas_tree
+    id: Schedule
+    to:
+    - 'on'
+    - 'off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.anyone_home
+    id: Presence
+    to:
+    - 'on'
+    - 'off'
+  - trigger: homeassistant
+    event: start
+    id: HA_Start
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.christmas_tree
+          state: 'on'
+        - condition: state
+          entity_id: binary_sensor.anyone_home
+          state: 'on'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.weihnachtsbaum_zigbee
+          target_state: 'on'
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: binary_sensor.christmas_tree
+          state: 'off'
+        - condition: state
+          entity_id: binary_sensor.anyone_home
+          state: 'off'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.weihnachtsbaum_zigbee
+          target_state: 'off'
+  mode: restart
+- id: '1766573948427'
+  alias: Bat1 Circuit Breaker Failure
+  description: "  ## \U0001F50C Bat1 Circuit Breaker Monitoring Automation\n\n\n  ###
+    \U0001F4CB **Persistent Battery Breaker Fault Detection**\n\n\n  This automation
+    continuously monitors the **Bat1 current sensor**\n  (`sensor.battery_1_bat1_current`)
+    to detect a **tripped circuit breaker**\n  condition.\n\n\n  A breaker fault is
+    defined strictly as the battery current being **exactly\n  0 A** for a sustained
+    period of time, independent of current direction.\n  Both **positive (discharge)**
+    and **negative (charge)** currents are treated\n  as healthy operating states.\n\n\n
+    \ Once a fault is detected, the automation sends **persistent reminder\n  notifications**
+    at fixed intervals until the breaker is reset, ensuring the\n  issue cannot be
+    silently overlooked.\n\n\n  ---\n\n\n  ### ⏱️ **Fault Detection Logic**\n\n\n
+    \ #### \U0001F6A8 **Breaker Popped Condition**\n\n\n  **Trigger Criteria:**  \n\n
+    \ - `sensor.battery_1_bat1_current` is a valid number  \n  - Current equals **exactly
+    0 A**  \n  - Condition persists for **5 minutes continuously**\n\n\n  This duration
+    filter ensures that:\n  - Short sensor dropouts  \n  - Brief idle states  \n  -
+    Transient reporting glitches  \n\n  do **not** cause false alerts.\n\n\n  Only
+    a sustained 0 A reading is interpreted as a **physical breaker trip**.\n\n\n  ---\n\n\n
+    \ ### \U0001F501 **Reminder Mechanism**\n\n\n  Once the breaker fault condition
+    is met, the automation enters a controlled\n  **reminder loop** implemented via
+    `repeat: until`.\n\n\n  **Behavior:**\n\n  - Sends an immediate notification when
+    the fault is confirmed\n  - Re-sends the notification every **30 minutes**\n  -
+    Continues indefinitely **while the current remains 0 A**\n  - All notifications
+    share the same **notification tag**, preventing clutter\n    and ensuring updates
+    replace previous messages\n\n\n  This guarantees persistent visibility of the
+    fault without notification spam\n  or duplicate entries.\n\n\n  ---\n\n\n  ###
+    ✅ **Automatic Recovery Handling**\n\n\n  #### \U0001F504 **Breaker Restored Condition**\n\n\n
+    \ **Trigger Criteria:**  \n\n  - `sensor.battery_1_bat1_current` is a valid number
+    \ \n  - Current becomes **non-zero** (positive *or* negative)  \n  - Condition
+    persists for **1 minute**\n\n\n  Once the breaker is reset and current flow resumes,
+    the automation immediately\n  clears the active notification using the same notification
+    tag.\n\n\n  No manual acknowledgement is required.\n\n\n  ---\n\n\n  ### ⚙️ **Technical
+    Overview**\n\n\n  - **Mode:** `restart`  \n    Ensures that:\n    - Reminder loops
+    are terminated immediately upon recovery\n    - No delayed or stale reminders
+    survive restarts or state changes\n\n\n  - **Trigger Types:**\n    - `template`
+    — sustained 0 A detection\n    - `template` — sustained non-zero recovery detection\n\n\n
+    \ - **Monitored Entity:**\n    - `sensor.battery_1_bat1_current`\n\n\n  - **Notification
+    Target:**\n    - `notify.duncan`\n\n\n  - **Notification Tag:**\n    - `bat1_breaker`
+    (used for both reminders and automatic clearing)\n\n\n  ---\n\n\n  ### \U0001F9E0
+    **Design Notes & Rationale**\n\n\n  - Current **direction is intentionally ignored**
+    — only zero vs non-zero\n    matters.\n\n  - No numeric thresholds or hysteresis
+    bands are used, as the sensor is known\n    to report a clean `0 A` value when
+    the breaker is physically open.\n\n  - Reminder logic is condition-guarded, not
+    time-driven, ensuring notifications\n    stop immediately once the fault is resolved.\n\n
+    \ - The automation is restart-safe and designed for **long-running, unattended\n
+    \   operation**.\n\n\n  ---\n\n\n  ### \U0001F4A1 **Summary**\n\n\n  This automation
+    acts as a **fault lifecycle monitor** rather than a simple\n  threshold alert:\n\n
+    \ - Detects real breaker trips\n  - Escalates visibility through reminders\n  -
+    Automatically clears once resolved\n  - Requires no manual reset or acknowledgement\n\n
+    \ A small automation — but one that behaves like a proper monitoring system."
+  triggers:
+  - trigger: template
+    value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n   and
+      states('sensor.battery_1_bat1_current') | float == 0 }}\n"
+    for: 00:05:00
+    id: breaker_popped
+  - trigger: template
+    value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n   and
+      states('sensor.battery_1_bat1_current') | float != 0 }}\n"
+    for: 00:01:00
+    id: breaker_restored
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: breaker_popped
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n
+              \  and states('sensor.battery_1_bat1_current') | float != 0 }}\n"
+          sequence:
+          - action: notify.duncan
+            data:
+              title: Bat1 Breaker out
+              message: 'Bat1 current is 0A. Please check and reset the circuit breaker.
+
+                '
+              data:
+                tag: bat1_breaker
+          - delay: 00:30:00
+    - conditions:
+      - condition: trigger
+        id: breaker_restored
+      sequence:
+      - action: notify.duncan
+        data:
+          message: clear_notification
+          data:
+            tag: bat1_breaker
+  mode: restart
