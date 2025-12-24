@@ -1317,17 +1317,16 @@ template:
       - name: "Upcoming Birthdays"
         icon: mdi:cake-variant-outline
         unique_id: upcoming_birthdays
+        availability: >
+          {% set people = label_entities('birthday') %}
+          {{ people | map('states') | reject('in', ['unknown', 'unavailable']) | list | count == people | count }}
+    
         state: >
-          {% set people = [
-            'input_datetime.katalin',
-            'input_datetime.enya',
-            'input_datetime.stephan',
-            'input_datetime.duncan'
-          ] %}
+          {% set people = label_entities('birthday') %}
           {% set today = now().date() %}
           {% set ns = namespace(active=false) %}
           {% for entity in people %}
-            {% set d = strptime(states(entity), '%Y-%m-%d').date() %}
+            {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() %}
             {% set next_birthday = d.replace(year=today.year) %}
             {% if next_birthday < today %}
               {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
@@ -1337,18 +1336,14 @@ template:
             {% endif %}
           {% endfor %}
           {{ ns.active }}
+    
         attributes:
           upcoming: >
-            {% set people = [
-              'input_datetime.katalin',
-              'input_datetime.enya',
-              'input_datetime.stephan',
-              'input_datetime.duncan'
-            ] %}
+            {% set people = label_entities('birthday') %}
             {% set today = now().date() %}
             {% set ns = namespace(lines=[]) %}
             {% for entity in people %}
-              {% set d = strptime(states(entity), '%Y-%m-%d').date() %}
+              {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() %}
               {% set next_birthday = d.replace(year=today.year) %}
               {% if next_birthday < today %}
                 {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
