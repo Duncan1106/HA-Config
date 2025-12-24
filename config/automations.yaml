@@ -1763,15 +1763,15 @@
   alias: Terrarium Humidifier Empty Detection
   description: "## \U0001F4A7 Terrarium Humidifier Empty Detection (Dynamic)\n\nDetects
     if the **terrarium humidifier tank is empty** by monitoring power usage.  \nAssumes
-    a functioning humidifier will draw **Δ ≥ 10 W** shortly after turning on.  \nUses
+    a functioning humidifier will draw **Δ ≥ 5 W** shortly after turning on.  \nUses
     a **dynamic baseline** measured at startup. Runs only when `input_boolean.luftbefeuchter_aktiv`
     is on.\n\n---\n\n### \U0001F4CC Flow\n\n1. **Set baseline**  \n   - Record current
     power (`sensor.terrarium_power_plug_zigbee_power`) at automation start.\n\n2.
     **Wait for device**  \n   - Pauses until `switch.terrarium_zigbee_l1` is on or
-    30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+10 W increase**
-    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <10 W → notify
-    `notify.duncan`  \n   - Reset `counter.luftbefeuchter`  \n   - Include previous
-    activation count for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
+    2min30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+5W increase**
+    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <5W → notify `notify.duncan`
+    \ \n   - Reset `counter.luftbefeuchter`  \n   - Include previous activation count
+    for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
     = on`\n\n---\n\n### ⚡ Actions\n\n- Record baseline  \n- Wait for humidifier to
     turn on  \n- Monitor for +10 W increase  \n- Notify if tank may be empty  \n-
     Reset usage counter  \n- Send usage context"
@@ -1809,7 +1809,7 @@
       delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
-      value_template: '{{ delta_power <= 10 }}'
+      value_template: '{{ delta_power <= 5 }}'
     - condition: state
       entity_id: input_boolean.luftbefeuchter_aktiv
       state: 'on'
@@ -2464,15 +2464,15 @@
     Purpose\n\nCoordinates the **terrarium's heat lamp** and **humidifier** operation
     to\nmaintain stable climate conditions throughout the day.  \nHandles sunrise/sunset
     routines, periodic heat checks, and humidity control.\n\n\n---\n\n\n### ⏰ Triggers\n\n-
-    **Every minute:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
+    **Every 5 minutes:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
     turns **on**  \n- **Sunrise:** Executes 30 minutes **after** sunrise  \n- **Sunset:**
     Executes 30 minutes **before** sunset  \n- **Humidifier switch:** (`switch.terrarium_tasmota3`)
     turns **off**\n  → keeps the boolean state synchronized  \n\n\n---\n\n\n### ✅
     Conditions\n\n- Operates **only during daytime** (between sunrise and sunset)
     \ \n- Requires **terrarium master switch**\n  (`input_boolean.terrarium_on`) to
     be **on**  \n\n\n---\n\n\n### \U0001F3AF Actions / Workflow\n\n**☀️ Daytime Heat
-    Lamp Control**  \n- Runs `script.warmelampe` every minute during daytime if the
-    terrarium is active  \n\n**\U0001F4A7 Humidifier Control**  \n- Runs `script.luftbefeuchter`
+    Lamp Control**  \n- Runs `script.warmelampe` every 5 minute during daytime if
+    the terrarium is active  \n\n**\U0001F4A7 Humidifier Control**  \n- Runs `script.luftbefeuchter`
     when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
     Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
     \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
@@ -2483,8 +2483,8 @@
     day, sunrise, sunset, and sensor actions  \n- Integrates both **time-based** and
     **sensor-driven** logic for robust climate control\n"
   triggers:
-  - minutes: /1
-    id: '1'
+  - minutes: /5
+    id: '5'
     trigger: time_pattern
   - trigger: state
     entity_id:
