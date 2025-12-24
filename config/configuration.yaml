@@ -279,7 +279,6 @@ template:
           now: >
             {{ now().strftime('%H:%M') }}
  
-
   - binary_sensor:
       - name: Charge Battery at Night (dynamically)
         unique_id: charge_battery_at_night
@@ -486,7 +485,7 @@ template:
             {% set remaining_kwh = max([(target_kwh - (usable_kwh + forecast - buffer_kwh)), 0]) %}
     
             {{ ((day_tariff - night_tariff) * remaining_kwh) | round(2) }}
-              
+
   - binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
@@ -1303,7 +1302,66 @@ template:
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
 
-
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - platform: time_pattern
+        minutes: "/5"
+      - platform: state
+        entity_id:
+          - input_datetime.katalin
+          - input_datetime.enya
+          - input_datetime.stephan
+          - input_datetime.duncan
+    binary_sensor:
+      - name: "Upcoming Birthdays"
+        icon: mdi:cake-variant-outline
+        unique_id: upcoming_birthdays
+        state: >
+          {% set people = [
+            'input_datetime.katalin',
+            'input_datetime.enya',
+            'input_datetime.stephan',
+            'input_datetime.duncan'
+          ] %}
+          {% set today = now().date() %}
+          {% set ns = namespace(active=false) %}
+          {% for entity in people %}
+            {% set d = strptime(states(entity), '%Y-%m-%d').date() %}
+            {% set next_birthday = d.replace(year=today.year) %}
+            {% if next_birthday < today %}
+              {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+            {% endif %}
+            {% if (next_birthday - today).days <= 4 %}
+              {% set ns.active = true %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.active }}
+        attributes:
+          upcoming: >
+            {% set people = [
+              'input_datetime.katalin',
+              'input_datetime.enya',
+              'input_datetime.stephan',
+              'input_datetime.duncan'
+            ] %}
+            {% set today = now().date() %}
+            {% set ns = namespace(lines=[]) %}
+            {% for entity in people %}
+              {% set d = strptime(states(entity), '%Y-%m-%d').date() %}
+              {% set next_birthday = d.replace(year=today.year) %}
+              {% if next_birthday < today %}
+                {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+              {% endif %}
+              {% set days = (next_birthday - today).days %}
+              {% if days <= 4 %}
+                {% set turning = next_birthday.year - d.year %}
+                {% set name = state_attr(entity, 'friendly_name') %}
+                {% set label = '🎉 HEUTE' if days == 0 else days ~ ' Tage' %}
+                {% set ns.lines = ns.lines + ['🎂 ' ~ name ~ ': ' ~ label ~ ' – wird ' ~ turning] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.lines }}
   - cover:
       - device_class: WINDOW
         unique_id: wintergarten_dachfenster
