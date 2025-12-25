@@ -11609,6 +11609,11 @@
       hours: 0
       minutes: 0
       seconds: 5
+  conditions:
+  - condition: state
+    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+    state:
+    - 'on'
   actions:
   - choose:
     - conditions:
@@ -11638,3 +11643,155 @@
           data:
             tag: bat1_breaker
   mode: restart
+- id: '1766701693252'
+  alias: Rollo Winter Control (All-in-One)
+  description: "Complete winter control for the rollo using IR commands. input_boolean.rollo_state:\n
+    \ ON = rollo assumed closed\n  OFF = rollo assumed open\n\nFunctions: - Sunset:
+    close if safe, otherwise notify - Sunrise: open if safe, otherwise notify - Delayed
+    open: open later when conditions are safe (temp >= 5°C or at noon)\n"
+  triggers:
+  - trigger: sun
+    event: sunset
+    id: sunset
+  - trigger: sun
+    event: sunrise
+    id: sunrise
+  - trigger: numeric_state
+    entity_id: sensor.gw1100a_outdoor_temperature
+    above: 5
+    id: temp_safe
+  - trigger: numeric_state
+    entity_id: sensor.gw1100a_outdoor_temperature
+    above: 10
+    id: temp_safe
+  - trigger: time
+    at: '12:00:00'
+    id: noon_retry
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: sunset
+      - condition: state
+        entity_id: input_boolean.rollo_state
+        state: 'off'
+      - condition: not
+        conditions:
+        - condition: and
+          conditions:
+          - condition: state
+            entity_id: input_boolean.forecast_temp_low
+            state: 'on'
+          - condition: state
+            entity_id: input_boolean.forecast_wet
+            state: 'on'
+      sequence:
+      - action: cover.close_cover
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.rollo_state
+      alias: Close if forecast allows
+    - conditions:
+      - condition: trigger
+        id: sunset
+      - condition: state
+        entity_id: input_boolean.rollo_state
+        state: 'off'
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: input_boolean.forecast_temp_low
+          state: 'on'
+        - condition: state
+          entity_id: input_boolean.forecast_wet
+          state: 'on'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: "\U0001FA9F Rollo not closed at sunset"
+          message: 'Close command was skipped due to forecasted winter risk: low temperature
+            & wet/freezing conditions.
+
+            '
+          data:
+            tag: rollo_sunset_block
+      alias: Notify if forecast blocks
+    - conditions:
+      - condition: trigger
+        id: sunrise
+      - condition: state
+        entity_id: input_boolean.rollo_state
+        state: 'on'
+      - condition: not
+        conditions:
+        - condition: and
+          conditions:
+          - condition: state
+            entity_id: input_boolean.rollo_was_cold
+            state: 'on'
+          - condition: state
+            entity_id: input_boolean.rollo_was_wet
+            state: 'on'
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rollo_state
+      alias: 'Open if allowed '
+    - conditions:
+      - condition: trigger
+        id: sunrise
+      - condition: state
+        entity_id: input_boolean.rollo_state
+        state: 'on'
+      - condition: and
+        conditions:
+        - condition: state
+          entity_id: input_boolean.rollo_was_cold
+          state: 'on'
+        - condition: state
+          entity_id: input_boolean.rollo_was_wet
+          state: 'on'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: "\U0001FA9F Rollo stayed closed after sunrise"
+          message: 'Open command was skipped due to overnight conditions: freezing
+            temperatures & wet conditions.
+
+            '
+          data:
+            tag: rollo_sunrise_block
+      alias: Notify if blocked
+    - conditions:
+      - condition: or
+        conditions:
+        - condition: trigger
+          id: temp_safe
+        - condition: trigger
+          id: noon_retry
+      - condition: state
+        entity_id: input_boolean.rollo_state
+        state: 'on'
+      sequence:
+      - action: cover.open_cover
+        target:
+          entity_id: cover.wintergarten_rolladen_dachfenster
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.rollo_state
+      - action: notify.duncan
+        data:
+          title: "\U0001FA9F Rollo opened later"
+          message: 'Rollo was opened later once conditions were safe again. Current
+            temperature: {{ states(''sensor.gw1100a_outdoor_temperature'') }} °C.
+
+            '
+          data:
+            tag: rollo_noon_reset
+      alias: Retry/Safe Open l
+  mode: single
