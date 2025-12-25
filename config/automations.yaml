@@ -11556,15 +11556,15 @@
     silently overlooked.\n\n\n  ---\n\n\n  ### ⏱️ **Fault Detection Logic**\n\n\n
     \ #### \U0001F6A8 **Breaker Popped Condition**\n\n\n  **Trigger Criteria:**  \n\n
     \ - `sensor.battery_1_bat1_current` is a valid number  \n  - Current equals **exactly
-    0 A**  \n  - Condition persists for **5 minutes continuously**\n\n\n  This duration
-    filter ensures that:\n  - Short sensor dropouts  \n  - Brief idle states  \n  -
-    Transient reporting glitches  \n\n  do **not** cause false alerts.\n\n\n  Only
-    a sustained 0 A reading is interpreted as a **physical breaker trip**.\n\n\n  ---\n\n\n
-    \ ### \U0001F501 **Reminder Mechanism**\n\n\n  Once the breaker fault condition
-    is met, the automation enters a controlled\n  **reminder loop** implemented via
-    `repeat: until`.\n\n\n  **Behavior:**\n\n  - Sends an immediate notification when
-    the fault is confirmed\n  - Re-sends the notification every **30 minutes**\n  -
-    Continues indefinitely **while the current remains 0 A**\n  - All notifications
+    0 A**  \n  - Condition persists for **2 minutes 30 seconds continuously**\n\n\n
+    \ This duration filter ensures that:\n  - Short sensor dropouts  \n  - Brief idle
+    states  \n  - Transient reporting glitches  \n\n  do **not** cause false alerts.\n\n\n
+    \ Only a sustained 0 A reading is interpreted as a **physical breaker trip**.\n\n\n
+    \ ---\n\n\n  ### \U0001F501 **Reminder Mechanism**\n\n\n  Once the breaker fault
+    condition is met, the automation enters a controlled\n  **reminder loop** implemented
+    via `repeat: until`.\n\n\n  **Behavior:**\n\n  - Sends an immediate notification
+    when the fault is confirmed\n  - Re-sends the notification every **30 minutes**\n
+    \ - Continues indefinitely **while the current remains 0 A**\n  - All notifications
     share the same **notification tag**, preventing clutter\n    and ensuring updates
     replace previous messages\n\n\n  This guarantees persistent visibility of the
     fault without notification spam\n  or duplicate entries.\n\n\n  ---\n\n\n  ###
@@ -11596,7 +11596,10 @@
   - trigger: template
     value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n   and
       states('sensor.battery_1_bat1_current') | float == 0 }}\n"
-    for: 00:05:00
+    for:
+      hours: 0
+      minutes: 2
+      seconds: 30
     id: breaker_popped
   - trigger: template
     value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n   and
@@ -11626,6 +11629,13 @@
                 '
               data:
                 tag: bat1_breaker
+          - action: notify.mobile_app_stephan_iphone
+            metadata: {}
+            data:
+              title: Batterie Sicherung
+              message: Bitte wieder anschalten
+              data:
+                tag: bat1_breaker
           - delay: 00:30:00
     - conditions:
       - condition: trigger
@@ -11636,4 +11646,10 @@
           message: clear_notification
           data:
             tag: bat1_breaker
+      - action: notify.mobile_app_stephan_iphone
+        metadata: {}
+        data:
+          data:
+            tag: bat1_breaker
+          message: clear_notification
   mode: restart
