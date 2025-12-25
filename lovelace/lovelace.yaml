@@ -7868,6 +7868,8 @@ config:
             \ }} kWh"
           type: markdown
         - entities:
+          - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
+            name: 'Automation: Charge Grid'
           - entity: binary_sensor.charge_battery_at_night
             name: Charge Battery at Night
           - entity: input_number.night_charge_target
@@ -7880,6 +7882,10 @@ config:
             name: Forecast Margin
           - entity: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
             name: 'Charge Battery from Grid:'
+          - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
+            icon: mdi:current-dc
+            name:
+              type: entity
           type: entities
         loop_mode: loopback
         show_pagination: false
@@ -8447,14 +8453,6 @@ config:
           name: 'Automation: Charge Solar'
         - entity: switch.esp32_s3_zero_deye8k_battery_charge_grid
           name: 'Automation: Charge Grid'
-        - entity: binary_sensor.charge_battery_at_night
-        - entity: input_number.night_charge_target
-        - entity: input_number.battery_charge_percent_offset
-          name: Charge Target Offset
-        - entity: input_number.night_charge_minimum_soc_percent
-          name: Min SoC
-        - entity: input_number.night_charge_dynamic_margin_percent
-          name: Forecast Margin
         - entity: number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
           name: 'Charge from Grid Upto:'
         - entity: number.esp32_s3_zero_deye8k_grid_charge_buffer_power
@@ -8520,15 +8518,15 @@ config:
         heading: Costs & Time
         heading_style: title
         type: heading
-      - cards:
-        - entity: sensor.gesamt_kosten_pv_active_moving
-          fill_container: true
-          layout: vertical
-          name: Gesamt Kosten
-          primary_info: state
-          secondary_info: name
-          type: custom:mushroom-entity-card
-        type: vertical-stack
+      - entity: sensor.gesamt_kosten_pv_active_moving
+        fill_container: true
+        grid_options:
+          columns: full
+        layout: vertical
+        name: Gesamt Kosten
+        primary_info: state
+        secondary_info: name
+        type: custom:mushroom-entity-card
       - cards:
         - cards:
           - entity: sensor.inverter_total_battery_discharge_hourly_energy_cost
@@ -8616,6 +8614,49 @@ config:
         - condition: user
           users:
           - 4f7767cac0c342edb25e991662a2f56c
+      - align_header: center
+        align_state: center
+        animate: true
+        cache: true
+        card_mod:
+          style: ".header.flex .name.flex .ellipsis::after{\n  color: var(--primary-text-color);\n\
+            \  content: \": {{states('sensor.gesamt_kosten_pv_active_moving') | float(0)\
+            \ | round(2)}}\u20AC Heute: {{ state_attr('sensor.gesamt_kosten_pv_active_moving','daily_change')\
+            \ }} Gestern: {{states('sensor.gesamt_kosten_change') | float(0) | round(2)}}\u20AC\
+            \";\n  white-space: pre;\n}\n"
+        entities:
+        - sensor.gesamt_kosten_pv_active_moving
+        font_size: 60
+        height: 150
+        hour24: true
+        hours_to_show: 24
+        line_width: 2
+        name: Kosten
+        points_per_hour: 10
+        show:
+          fill: true
+          icon: false
+          labels: false
+          points: hover
+          state: false
+        type: custom:mini-graph-card
+      - cards:
+        - entity: sensor.break_even_time_solar
+          icon: mdi:progress-clock
+          layout: vertical
+          name: Realtime
+          type: custom:mushroom-entity-card
+        - entity: sensor.break_even_avg_1_week
+          icon: mdi:progress-clock
+          layout: vertical
+          name: 1 Week
+          type: custom:mushroom-entity-card
+        - entity: sensor.break_even_avg
+          icon: mdi:progress-clock
+          layout: vertical
+          name: 6 Months
+          type: custom:mushroom-entity-card
+        type: horizontal-stack
       type: grid
     subview: true
     title: Savings
