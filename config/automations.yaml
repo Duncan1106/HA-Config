@@ -11563,7 +11563,7 @@
     \ ---\n\n\n  ### \U0001F501 **Reminder Mechanism**\n\n\n  Once the breaker fault
     condition is met, the automation enters a controlled\n  **reminder loop** implemented
     via `repeat: until`.\n\n\n  **Behavior:**\n\n  - Sends an immediate notification
-    when the fault is confirmed\n  - Re-sends the notification every **30 minutes**\n
+    when the fault is confirmed\n  - Re-sends the notification every **15 minutes**\n
     \ - Continues indefinitely **while the current remains 0 A**\n  - All notifications
     share the same **notification tag**, preventing clutter\n    and ensuring updates
     replace previous messages\n\n\n  This guarantees persistent visibility of the
@@ -11579,7 +11579,7 @@
     survive restarts or state changes\n\n\n  - **Trigger Types:**\n    - `template`
     — sustained 0 A detection\n    - `template` — sustained non-zero recovery detection\n\n\n
     \ - **Monitored Entity:**\n    - `sensor.battery_1_bat1_current`\n\n\n  - **Notification
-    Target:**\n    - `notify.duncan`\n\n\n  - **Notification Tag:**\n    - `bat1_breaker`
+    Target:**\n    - `notify.admin`\n\n\n  - **Notification Tag:**\n    - `bat1_breaker`
     (used for both reminders and automatic clearing)\n\n\n  ---\n\n\n  ### \U0001F9E0
     **Design Notes & Rationale**\n\n\n  - Current **direction is intentionally ignored**
     — only zero vs non-zero\n    matters.\n\n  - No numeric thresholds or hysteresis
@@ -11621,35 +11621,20 @@
             value_template: "{{ states('sensor.battery_1_bat1_current') | is_number\n
               \  and states('sensor.battery_1_bat1_current') | float != 0 }}\n"
           sequence:
-          - action: notify.duncan
-            data:
-              title: Bat1 Breaker out
-              message: 'Bat1 current is 0A. Please check and reset the circuit breaker.
-
-                '
-              data:
-                tag: bat1_breaker
-          - action: notify.mobile_app_stephan_iphone
-            metadata: {}
+          - action: notify.admin
             data:
               title: Batterie Sicherung
               message: Bitte wieder anschalten
               data:
                 tag: bat1_breaker
-          - delay: 00:30:00
+          - delay: 00:15:00
     - conditions:
       - condition: trigger
         id: breaker_restored
       sequence:
-      - action: notify.duncan
+      - action: notify.admin
         data:
           message: clear_notification
           data:
             tag: bat1_breaker
-      - action: notify.mobile_app_stephan_iphone
-        metadata: {}
-        data:
-          data:
-            tag: bat1_breaker
-          message: clear_notification
   mode: restart
