@@ -185,7 +185,30 @@ notify:
       - action: mobile_app_stephan_iphone
 
 template:
-  - binary_sensor:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: state
+        entity_id:
+          - binary_sensor.workday_sensor
+          - sun.sun
+      - platform: time
+        at:
+          - "04:30:01"
+          - "06:00:01"
+          - "11:00:01"
+          - "22:30:01"
+          - "23:00:01"
+      - platform: sun
+        event: sunrise
+        offset: "+00:15:01"
+      - platform: sun
+        event: sunset
+        offset: "-00:29:59"
+      - platform: sun
+        event: sunset
+        offset: "-00:44:59"
+    binary_sensor:
       - name: Christmas Tree
         unique_id: christmas_tree_schedule
         icon: mdi:pine-tree
@@ -279,7 +302,16 @@ template:
           now: >
             {{ now().strftime('%H:%M') }}
  
-  - binary_sensor:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: state
+        entity_id:
+          - sensor.felicity_ess_soc_avg
+          - input_number.night_charge_dynamic_margin_percent
+          - input_number.night_charge_minimum_soc_percent
+          - input_number.night_charge_target
+    binary_sensor:
       - name: Charge Battery at Night (dynamically)
         unique_id: charge_battery_at_night
         state: >
@@ -308,25 +340,19 @@ template:
           {% set forecast_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
           {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
             and states(forecast_entity) not in ['unknown','unavailable'] }}
-    
         attributes:
           soc_percent: >
             {{ states('sensor.felicity_ess_soc_avg') | float(0) }}
-    
           usable_kwh: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set cap = states('sensor.inverter_battery_capacity') | float(0) %}
             {{ (cap * (soc / 100.0)) | round(2) }}
-    
           forecast_heute_kwh: >
             {{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) | round(2) }}
-    
           forecast_morgen_kwh: >
             {{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) | round(2) }}
-    
           target_kwh: >
             {{ states('input_number.night_charge_target') | float(0) }}
-    
           total_energy_kwh: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
@@ -346,7 +372,6 @@ template:
             {{ max([(usable_kwh + forecast - buffer_kwh), 0]) | round(2) }}
     
           decision_formula: "usable_kwh + forecast - buffer_kwh < target_kwh"
-    
           charge_needed_kwh: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
@@ -367,7 +392,6 @@ template:
     
             {% set remaining_kwh = target_kwh - (usable_kwh + forecast - buffer_kwh) %}
             {{ max([remaining_kwh, 0]) | round(2) }}
-    
           charge_target_percent: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
@@ -389,10 +413,8 @@ template:
     
             {% set target_percent = (((usable_kwh + remaining_kwh) / battery_capacity) * 100) %}
             {{ (target_percent | clamp(soc, 100)) | round(0, 'ceil', 100) }}
-    
           battery_charge_percent_offset: >
             {{ states('input_number.battery_charge_percent_offset') | float(0) }}
-    
           offset_charge_target_percent: >
             {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
@@ -416,20 +438,16 @@ template:
               + states('input_number.battery_charge_percent_offset') | float(0)
             %}
             {{ (target_percent | clamp(soc, 100)) | round(0, 'ceil', 100) }}
-            
-          
           dynamic_margin_kwh: >
             {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
             {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
             {% set forecast = forecast_today if now().hour < 5 else forecast_tomorrow %}
             {% set margin_percent = states('input_number.night_charge_dynamic_margin_percent') | float(0) %}
             {{ (forecast * (margin_percent / 100)) | round(2) }}
-                  
           minimum_soc_kwh: >
             {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
             {% set min_soc_percent = states('input_number.night_charge_minimum_soc_percent') | float(0) %}
             {{ (battery_capacity * (min_soc_percent / 100)) | round(2) }}
-          
           charge_needed_with_margin_kwh: >
               {% set soc = states('sensor.felicity_ess_soc_avg') | float(0) %}
               {% set battery_capacity = states('sensor.inverter_battery_capacity') | float(0) %}
@@ -449,8 +467,6 @@ template:
               {% set remaining_kwh = target_kwh - (usable_kwh + forecast - applied_buffer) %}
             
               {{ max([remaining_kwh, 0]) | round(2) }}
-                      
-          
           applied_buffer_kwh: >
             {% set forecast_today = states('sensor.solcast_pv_forecast_prognose_heute') | float(0) %}
             {% set forecast_tomorrow = states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) %}
@@ -460,8 +476,6 @@ template:
             {% set dynamic_margin = forecast * (margin_percent / 100) %}
             {% set minimum_soc = cap * (states('input_number.night_charge_minimum_soc_percent') | float(0) / 100) %}
             {{ max([dynamic_margin, minimum_soc]) | round(2) }}
-          
-          
           saved_cost_eur: >
             {% set night_tariff = 0.187425 %}
             {% set day_tariff = 0.302379 %}
@@ -486,7 +500,16 @@ template:
     
             {{ ((day_tariff - night_tariff) * remaining_kwh) | round(2) }}
 
-  - binary_sensor:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: time_pattern
+        hours: "/2"
+      - platform: state
+        entity_id: 
+          - sensor.daily_luftbefeuchter
+          - input_number.max_humidifier_activations_per_day
+    binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
         state: >
@@ -534,7 +557,6 @@ template:
              {% endif %}
              {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
           next_sunset_offset_end: "{{ (as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25)).strftime('%Y-%m-%d %H:%M:%S') }}"
-          current_time: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
           actual_triggers_today: "{{ states('sensor.daily_luftbefeuchter') | int(0) }}"
           max_activations_per_day: "{{ states('input_number.max_humidifier_activations_per_day') | int(15) }}"
           remaining_activations: >
@@ -623,8 +645,8 @@ template:
   - trigger:
       - platform: state
         entity_id: input_text.search_todo_list
-      - platform: time_pattern
-        seconds: "/2"
+    #   - platform: time_pattern
+    #     seconds: "/2"
       - platform: state
         entity_id: &todo_lists
           - todo.kellervorrate
@@ -757,7 +779,6 @@ template:
             {% else %}
               []
             {% endif %}
-
   - trigger: 
       - platform: state
         entity_id: sensor.kellervorrate_combined_filtered_items
@@ -779,8 +800,6 @@ template:
             }}
 
   - triggers:
-      - platform: time_pattern
-        seconds: "/15"
       - platform: state
         entity_id: input_boolean.rollo_summer_override
       - platform: state
@@ -824,12 +843,12 @@ template:
             {% endif %}
         attributes:
           manual_mode: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
+          
           first_blockers: ''
           summer: >
             {% set summer_months = [5,6,7,8,9] %}
             {% set month = now().month %}
             {{ 1 if (month in summer_months) else 0 }}
-
           within_daylight: >
             {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
             {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
@@ -841,14 +860,12 @@ template:
             {% set open_after = relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES) %}
             {% set close_before = relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES) %}
             {{ 1 if ((current_time > open_after) and (current_time < close_before)) else 0 }}
-
           sun_hits_window: >
             {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
             {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
             {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
             {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
             {{ 1 if ((azimuth > SUN_WINDOW_AZIMUTH_THRESHOLD) and (elevation > SUN_WINDOW_ELEVATION_THRESHOLD)) else 0 }}
-
           not_raining: >
               {% set RAIN_RATE_THRESHOLD = 0.1 %}
               {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
@@ -867,6 +884,7 @@ template:
               {% set count_true = rain_conditions | select('equalto', true) | list | count %}
             
               {{ 1 if (count_true < 2) else 0 }}
+          
           heat_reasons: ''
           strong_uv_index: >
             {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
@@ -905,7 +923,6 @@ template:
             {% set ratio = diff / TEMP_DIFF_THRESHOLD if TEMP_DIFF_THRESHOLD > 0 else 0 %}
             {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
             {% endif %}
-
           extreme_temp: >
             {% set BASELINE = 20.0 %}
             {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
@@ -919,7 +936,7 @@ template:
             {% else %}
               {{ ratio }}
             {% endif %}
-            
+
           Reason: ''
           reason: >
               {% set ns = namespace(reasons=[]) %}
@@ -1030,8 +1047,8 @@ template:
               {% endif %}
             
               {{ ns.reasons | join(',\n') }}
+
           Time: ''
-          current_time: "{{ now().strftime('%H:%M') }}"
           open_after: >
             {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
             {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
@@ -1048,6 +1065,7 @@ template:
             {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt is not none and next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1) if next_setting_raw_dt is not none else none) %}
 
             {{ (relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES)).strftime('%H:%M') if relevant_sunset_dt is not none else 'unavailable' }}
+
           Sensors: ''
           temp_inside: >
               {% set val = states('sensor.gw1100a_indoor_temperature') | float(0) %}
@@ -1306,7 +1324,7 @@ template:
       - trigger: homeassistant
         event: start
       - platform: time_pattern
-        minutes: "/5"
+        hours: "/2"
       - platform: state
         entity_id:
           - input_datetime.katalin
