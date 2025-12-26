@@ -1205,14 +1205,16 @@ template:
           {% set today = now().date() %}
           {% set ns = namespace(active=false) %}
           {% for entity in people %}
-            {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() %}
-            {% set next_birthday = d.replace(year=today.year) %}
-            {% if next_birthday < today %}
-              {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
-            {% endif %}
-            {% if (next_birthday - today).days <= 4 %}
-              {% set ns.active = true %}
-            {% endif %}
+            {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
+            {% if d is not none %}
+                {% set next_birthday = d.replace(year=today.year) %}
+                {% if next_birthday < today %}
+                  {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+                {% endif %}
+                {% if (next_birthday - today).days <= 4 %}
+                  {% set ns.active = true %}
+                {% endif %}
+            {%endif %}
           {% endfor %}
           {{ ns.active }}
     
@@ -1222,17 +1224,19 @@ template:
             {% set today = now().date() %}
             {% set ns = namespace(lines=[]) %}
             {% for entity in people %}
-              {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() %}
-              {% set next_birthday = d.replace(year=today.year) %}
-              {% if next_birthday < today %}
-                {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
-              {% endif %}
-              {% set days = (next_birthday - today).days %}
-              {% if days <= 4 %}
-                {% set turning = next_birthday.year - d.year %}
-                {% set name = state_attr(entity, 'friendly_name') %}
-                {% set label = '🎉 HEUTE' if days == 0 else days ~ ' Tage' %}
-                {% set ns.lines = ns.lines + ['🎂 ' ~ name ~ ': ' ~ label ~ ' – wird ' ~ turning] %}
+              {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
+              {% if d is not none %}
+                  {% set next_birthday = d.replace(year=today.year) %}
+                  {% if next_birthday < today %}
+                    {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+                  {% endif %}
+                  {% set days = (next_birthday - today).days %}
+                  {% if days <= 4 %}
+                    {% set turning = next_birthday.year - d.year %}
+                    {% set name = state_attr(entity, 'friendly_name') %}
+                    {% set label = '🎉 HEUTE' if days == 0 else days ~ ' Tage' %}
+                    {% set ns.lines = ns.lines + ['🎂 ' ~ name ~ ': ' ~ label ~ ' – wird ' ~ turning] %}
+                  {% endif %}
               {% endif %}
             {% endfor %}
             {{ ns.lines }}
