@@ -11380,62 +11380,63 @@
         id:
         - Sunset
       sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_type: turn_off
-          backoff_type: linear
-          entity_id: switch.bett_powerbank_charger
-          target_state: 'off'
-          action_domain: switch
-          max_retries: 10
-          base_delay: 5
-      - alias: Notify only when the plug was on
-        if:
-        - condition: state
-          entity_id: switch.bett_powerbank_charger
-          state:
-          - 'on'
-        then:
-        - alias: Set up variables for the actions
-          variables:
-            leave_on: '{{ ''OPEN_'' ~ context.id }}'
-            turn_off: '{{ ''CLOSE_'' ~ context.id }}'
-        - action: notify.duncan
+      - parallel:
+        - alias: Notify only when the plug was on
+          if:
+          - condition: state
+            entity_id: switch.bett_powerbank_charger
+            state:
+            - 'on'
+          then:
+          - alias: Set up variables for the actions
+            variables:
+              leave_on: '{{ ''OPEN_'' ~ context.id }}'
+              turn_off: '{{ ''CLOSE_'' ~ context.id }}'
+          - action: notify.duncan
+            metadata: {}
+            data:
+              title: "\U0001F307 Bett Powerbank"
+              message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
+              data:
+                tag: powerbank_low
+                actions:
+                - action: '{{ leave_on }}'
+                  title: Leave On
+                - action: '{{ turn_off }}'
+                  title: Turn Off
+          - alias: Wait for a response
+            wait_for_trigger:
+            - event_type: mobile_app_notification_action
+              event_data:
+                action: '{{ turn_off }}'
+              trigger: event
+            timeout:
+              hours: 1
+              minutes: 0
+              seconds: 0
+              milliseconds: 0
+            continue_on_timeout: true
+          - alias: Perform the action
+            choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+              sequence:
+              - action: input_boolean.turn_off
+                metadata: {}
+                data: {}
+                target:
+                  entity_id: input_boolean.bett_powerbank_low_power
+        - action: script.retry_action_with_backoff
           metadata: {}
           data:
-            title: "\U0001F307 Bett Powerbank"
-            message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
-            data:
-              tag: powerbank_low
-              actions:
-              - action: '{{ leave_on }}'
-                title: Leave On
-              - action: '{{ turn_off }}'
-                title: Turn Off
-        - alias: Wait for a response
-          wait_for_trigger:
-          - event_type: mobile_app_notification_action
-            event_data:
-              action: '{{ turn_off }}'
-            trigger: event
-          timeout:
-            hours: 1
-            minutes: 0
-            seconds: 0
-            milliseconds: 0
-          continue_on_timeout: true
-        - alias: Perform the action
-          choose:
-          - conditions:
-            - condition: template
-              value_template: '{{ wait.trigger.event.data.action == turn_off }}'
-            sequence:
-            - action: input_boolean.turn_off
-              metadata: {}
-              data: {}
-              target:
-                entity_id: input_boolean.bett_powerbank_low_power
+            action_type: turn_off
+            backoff_type: linear
+            entity_id: switch.bett_powerbank_charger
+            target_state: 'off'
+            action_domain: switch
+            max_retries: 10
+            base_delay: 5
     - conditions:
       - condition: trigger
         id:
