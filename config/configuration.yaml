@@ -315,7 +315,10 @@ template:
           
           # Offset
           charge_offset: "{{ states('input_number.battery_charge_percent_offset') | float(0) }}"
-
+          charge_kwh_for_amps: >
+            {% set offset_kwh = cap * (charge_offset| float(0) / 100) %}
+            {{ (charge_needed | float(0)) + offset_kwh }}
+         
           # Charging Power Calculation Inputs
           battery_voltage: 51.2
           efficiency: 0.95
@@ -331,7 +334,7 @@ template:
             {{ [h, 0.1] | max }}
           
           raw_amps: >
-            {% set charge_kwh = charge_needed | float(0) %}
+            {% set charge_kwh = charge_kwh_for_amps | float(0) %}
             {% if charge_kwh > 0 %}
               {% set voltage = battery_voltage | float %}
               {% set efficiency_val = efficiency | float %}
@@ -357,6 +360,7 @@ template:
           total_energy_kwh: "{{ [net_energy, 0] | max | round(2) }}"
           decision_formula: "usable_kwh + forecast - buffer_kwh < target_kwh"
           charge_needed_kwh: "{{ charge_needed | round(2) }}"
+          charge_kwh: "{{ charge_kwh_for_amps }}"
           charge_target_percent: >
             {% set target_pct = ((usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
             {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
