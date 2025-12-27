@@ -581,7 +581,14 @@ switch:
         - switch.turn_off: grid_charge
         - delay: 5s
         - button.press: use_solar_reference
-            
+  
+  - platform: template
+    optimistic: True
+    name: Battery Charge External Amp Controll 
+    restore_mode: RESTORE_DEFAULT_OFF
+    id: battery_amps_external
+    entity_category: diagnostic
+    
   - platform: template
     #state_topic: solarcontrol/grid_charge
     name: Battery Charge Solar
@@ -1137,6 +1144,7 @@ number:
     name: "Maximum battery_grid charge current"
     address: 128
     unit_of_measurement: A
+    mode: BOX
     value_type: U_WORD
     max_value: 120
     min_value: 0
@@ -1582,11 +1590,14 @@ sensor:
     entity_category: diagnostic
     on_value: 
       then:
-        - number.set: 
-            id: Maximum_battery_grid_charge_current
-            value: !lambda if (x + id(amp_offset).state > 0) { return ( x + id(amp_offset).state); } else { return 0; }
+        - if:
+            condition: 
+              - switch.is_off: battery_amps_external
+            then:
+              - number.set: 
+                 id: Maximum_battery_grid_charge_current
+                 value: !lambda if (x + id(amp_offset).state > 0) { return ( x + id(amp_offset).state); } else { return 0; }
 
-   
   - platform: modbus_controller
     modbus_controller_id: ${modbus_controller_id}
     name: "Battery AH"

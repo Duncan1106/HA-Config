@@ -7862,8 +7862,10 @@ config:
             \ | default(states('input_number.battery_charge_percent_offset'), true)\
             \ | float(0)) | round(0) }}%  \n**\U0001F3C1 Total Charge Target:** {{\
             \ (state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')\
-            \ | default(0, true) | float(0)) | round(0) }}%\n{% endif %}\n## \U0001F4B8\
-            \ Cost Savings\n- **\U0001F4B6 Saved cost tonight:** {{ '%.2f' | format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
+            \ | default(0, true) | float(0)) | round(0) }}%\n**Amps needed to reach\
+            \ Target:** {{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps')\
+            \ | default(0, true) | int(0) }}A\n{% endif %}\n## \U0001F4B8 Cost Savings\n\
+            - **\U0001F4B6 Saved cost tonight:** {{ '%.2f' | format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
             \ | default(0, true) | float(0)) }} \u20AC\n- **\U0001F4B0 Total savings\
             \ so far:** {{ '%.2f' | format(states('input_number.save_through_night_battery_charging')\
             \ | default(0, true) | float(0)) }} \u20AC\n\n\n{% set target =\n    \
@@ -7892,6 +7894,8 @@ config:
             icon: mdi:current-dc
             name:
               type: entity
+          - entity: number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current
+            name: Actual Grid Charge Current
           type: entities
         loop_mode: loopback
         type: custom:simple-swipe-card
@@ -8477,6 +8481,12 @@ config:
         - entity: sensor.esp32_s3_zero_deye8k_theoretical_grid_charge_current
           name: Theoretical Current
         - entity: sensor.inverter_battery_current
+        - entity: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+          name:
+            type: entity
+        - entity: number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current
+          name:
+            type: entity
         type: entities
       type: grid
     subview: true
