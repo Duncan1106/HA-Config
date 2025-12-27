@@ -322,10 +322,18 @@ template:
           # Charging Power Calculation Inputs
           battery_voltage: 51.2
           efficiency: 0.95
-          
+          min_amps: 30
+          max_amps: 120
+
           # Night charge timing (timestamp-based, string-safe)
           night_charge_end: "{{ today_at('04:55') }}"
-          night_charge_end_ts: "{{ as_timestamp(today_at('04:55')) }}"
+          night_charge_end_ts: >
+            {% set end = today_at('04:55') %}
+            {% if now() > end %}
+              {{ as_timestamp(end + timedelta(days=1)) }}
+            {% else %}
+              {{ as_timestamp(end) }}
+            {% endif %}
           now_ts: "{{ as_timestamp(now()) }}"
 
           remaining_hours: >
@@ -333,7 +341,7 @@ template:
             {% set now_ts_val = now_ts | float(0) %}
             {% set h = (end_ts - now_ts_val) / 3600 %}
             {{ [h, 0.1] | max }}
-          
+
           raw_amps: >
             {% set charge_kwh = charge_kwh_for_amps | float(0) %}
             {% if charge_kwh > 0 %}
@@ -344,14 +352,14 @@ template:
             {% else %}
               0
             {% endif %}
-          
-        state: "{{ net_energy < target_kwh }}"
-        
+          actual_amps: >
+            {{ ((raw_amps | float(0) // 5 + 1) * 5) | clamp(min_amps|int(30), max_amps|int(120)) }}
+
+        state: "{{ net_energy|float < target_kwh|float }}"
         availability: >
           {% set f_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
           {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
              and states(f_entity) not in ['unknown','unavailable'] }}
-        
         attributes:
           soc_percent: "{{ soc }}"
           usable_kwh: "{{ usable_kwh | round(2) }}"
@@ -379,11 +387,7 @@ template:
             {{ ((day_tariff - night_tariff) * charge_needed) | round(2) }}
           remaining_hours: "{{ remaining_hours }}"
           required_charge_amps_raw: "{{ raw_amps | round(1) }}"
-          required_charge_amps: >
-            {% set min_amps = 35 | float %}
-            {% set max_amps = 90 | float %}
-            {% set rounded_amps = ((raw_amps // 5 + 1) * 5) %}
-            {{ rounded_amps | clamp(min_amps, max_amps) }}
+          required_charge_amps: "{{ actual_amps }}"
           updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
 
   - trigger:
