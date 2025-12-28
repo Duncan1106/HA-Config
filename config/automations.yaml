@@ -10689,6 +10689,11 @@
   - at: 05:00:00
     trigger: time
     id: 'Off'
+  - trigger: state
+    entity_id:
+    - binary_sensor.charge_battery_at_night
+    attribute: required_charge_amps
+    id: amps
   conditions:
   - condition: or
     conditions:
@@ -10812,6 +10817,35 @@
           entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
           target_state: 'off'
           max_delay: 120
+    - conditions:
+      - condition: trigger
+        id:
+        - amps
+      - condition: state
+        entity_id: binary_sensor.charge_battery_at_night
+        state:
+        - 'on'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current
+        data:
+          value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
+            | default(30, true) | int }}'
   mode: parallel
   max: 10
 - id: '1763753257619'
