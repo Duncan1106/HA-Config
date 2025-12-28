@@ -325,24 +325,24 @@ template:
           min_amps: 30
           max_amps: 120
 
-          # Night charge window
-          window_start: "{{ today_at('00:05') }}"
-          window_end: "{{ today_at('04:55') }}"
+          # Night charge window (today)
+          window_start_ts: "{{ as_timestamp(today_at('00:05')) }}"
+          window_end_ts: "{{ as_timestamp(today_at('04:55')) }}"
           now_ts: "{{ as_timestamp(now()) }}"
-          start_ts: "{{ as_timestamp(window_start) }}"
-          end_ts: "{{ as_timestamp(window_end) }}"
 
           # Remaining hours inside the night window
           remaining_hours: >
-            {% set now_val = now_ts | float(0) %}
-            {% set start_val = start_ts | float(0) %}
-            {% set end_val = end_ts | float(0) %}
+            {% set now_val = now_ts | float %}
+            {% set start_val = window_start_ts | float %}
+            {% set end_val = window_end_ts | float %}
+            {% set full_window = (end_val - start_val) / 3600 %}
+        
             {% if now_val < start_val %}
-              {{ (end_val - start_val) / 3600 }}
-            {% elif now_val >= start_val and now_val <= end_val %}
+              {{ full_window }}
+            {% elif now_val <= end_val %}
               {{ (end_val - now_val) / 3600 }}
             {% else %}
-              {{ (end_val - start_val) / 3600 }}
+              {{ full_window }}
             {% endif %}
 
           raw_amps: >
