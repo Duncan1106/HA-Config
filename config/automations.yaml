@@ -11849,3 +11849,58 @@
             tag: rollo_noon_reset
       alias: Retry/Safe Open l
   mode: single
+- id: '1766920317036'
+  alias: Heizungsverteiler EG Überstrom dynamisch
+  description: 'Überwacht den Strom des Heizungsverteilers EG mit gestaffelten numeric_state
+    Triggern, nutzt dein Retry-Script zum Abschalten und sendet eine klare Notification
+    je Zone.
+
+    '
+  triggers:
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 1
+    below: 2
+    for:
+      seconds: 30
+    id: zone_1
+    trigger: numeric_state
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 2
+    below: 4
+    for:
+      seconds: 15
+    id: zone_2
+    trigger: numeric_state
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 4
+    for:
+      seconds: 5
+    id: zone_3
+    trigger: numeric_state
+  conditions:
+  - condition: state
+    entity_id: switch.heizungsverteiler_eg
+    state:
+    - 'on'
+  actions:
+  - data:
+      entity_id: switch.heizungsverteiler_eg
+      target_state: 'off'
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: linear
+      notify_on_failure: true
+      notify_service: notify.duncan
+    action: script.retry_action_with_backoff
+  - data:
+      title: "{% if trigger.id == 'zone_1' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
+        (1-2 A)\n{% elif trigger.id == 'zone_2' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
+        (2-4 A)\n{% elif trigger.id == 'zone_3' %}\n  ⚠️ Heizungsverteiler EG sofort
+        abgeschaltet (>4 A)\n{% endif %}\n"
+      message: 'Der Heizungsverteiler EG wurde abgeschaltet, weil der Strom {{ trigger.to_state.state
+        }} A erreicht hat. Das ersetzt vorübergehend die Sicherung.
+
+        '
+    action: notify.duncan
+  mode: single
