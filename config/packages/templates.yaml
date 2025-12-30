@@ -1,4 +1,5 @@
 template:
+  # Christmas Tree
   - trigger:
       - trigger: homeassistant
         event: start
@@ -89,6 +90,7 @@ template:
           updated: "{{ time }}"
           updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
 
+  # Battery
   - trigger:
       - trigger: homeassistant
         event: start
@@ -118,13 +120,13 @@ template:
           margin_pct: "{{ states('input_number.night_charge_dynamic_margin_percent') | float(0) }}"
           min_soc_pct: "{{ states('input_number.night_charge_minimum_soc_percent') | float(0) }}"
           
-          usable_kwh: "{{ cap * (soc / 100.0) }}"
+          battery_usable_kwh: "{{ cap * (soc / 100.0) }}"
           dyn_margin_kwh: "{{ forecast_kwh * (margin_pct / 100) }}"
           min_soc_kwh: "{{ cap * (min_soc_pct / 100) }}"
           buffer_kwh: "{{ [dyn_margin_kwh, min_soc_kwh] | max }}"
           
           # Resulting Energy State
-          net_energy: "{{ usable_kwh + forecast_kwh - buffer_kwh }}"
+          net_energy: "{{ battery_usable_kwh + forecast_kwh - buffer_kwh }}"
           charge_needed: "{{ (target_kwh - net_energy) | clamp(0, target_kwh) }}"
                     
           # Offset
@@ -177,14 +179,14 @@ template:
           {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
              and states(f_entity) not in ['unknown','unavailable'] }}
         attributes:
-          decision_formula: "usable_kwh + forecast_kwh - buffer_kwh < target_kwh + charge_offset_kwh"
+          decision_formula: "battery_usable_kwh + forecast_kwh - buffer_kwh < target_kwh + charge_offset_kwh"
           battery_state: ''
           soc_percent: "{{ soc }}"
-          usable_kwh: "{{ usable_kwh | round(2) }}"
+          usable_kwh: "{{ battery_usable_kwh | round(2) }}"
           forecast: ''
-          forecast_selected_kwh: "{{ forecast_kwh | round(2) }}"
           forecast_heute_kwh: "{{ f_today | round(2) }}"
           forecast_morgen_kwh: "{{ f_tomorrow | round(2) }}"
+          forecast_selected_kwh: "{{ forecast_kwh | round(2) }}"
           target: ''
           target_kwh: "{{ target_kwh }}"
           effective_target_kwh: "{{ effective_target_kwh | round(2) }}"
@@ -193,11 +195,11 @@ template:
           charge_needed_kwh: "{{ charge_needed | round(2) }}"
           charge_needed_effective_kwh: "{{ effective_charge_needed }}"
           charge_target_percent: >
-            {% set target_pct = ((usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
+            {% set target_pct = ((battery_usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
             {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
           battery_charge_percent_offset: "{{ charge_offset }}"
           offset_charge_target_percent: >
-            {% set target_pct = (((usable_kwh + charge_needed) / cap) * 100) + charge_offset if cap > 0 else 0 %}
+            {% set target_pct = (((battery_usable_kwh + charge_needed) / cap) * 100) + charge_offset if cap > 0 else 0 %}
             {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
           charge_offset_kwh: "{{ charge_offset_kwh | round(2) }}"
           buffer: ''
@@ -215,6 +217,7 @@ template:
           required_charge_amps: "{{ actual_amps }}"
           updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
 
+  # Humidifier
   - trigger:
       - trigger: homeassistant
         event: start
@@ -225,6 +228,11 @@ template:
     binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
+        availability: >
+          {{ states('sun.sun') not in ['unknown', 'unavailable']
+             and state_attr('sun.sun', 'next_rising') is not none
+             and state_attr('sun.sun', 'next_setting') is not none
+             and states('sensor.daily_luftbefeuchter') not in ['unknown', 'unavailable'] }}
         state: >
           {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
           {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
@@ -347,7 +355,8 @@ template:
               {% set out.times = ["No valid trigger times"] %}
             {% endif %}
             {{ out.times }}
-
+  
+  # Heizraum Lüftung
   - trigger:
       - trigger: homeassistant
         event: start
@@ -401,7 +410,9 @@ template:
         availability: >
           {{ states('sensor.inverter_temperature') not in ['unknown','unavailable']
              and states('sensor.heizraum_lufter_abluft_power') not in ['unknown','unavailable']
-             and states('sensor.gw1100a_outdoor_temperature') not in ['unknown','unavailable'] }}
+             and states('sensor.esphome_az_envy_1_temperature_heizraum') not in ['unknown','unavailable'] 
+             and states('sensor.gw1100a_outdoor_temperature') not in ['unknown','unavailable'] 
+          }}
         attributes:
           inverter_temp: "{{ inverter_temp }}"
           inverter_level: "{{ inverter_level }}"
@@ -420,7 +431,8 @@ template:
             {% else %}
               Keine Zuluft nötig
             {% endif %}
-
+  
+  # Kellervorraete
   - trigger:
       - platform: event
         event_type: event_template_reloaded
@@ -440,6 +452,8 @@ template:
         event: start
       - platform: state
         entity_id: input_text.search_todo_list
+      - platform: state
+        entity_id: input_button.update_kellervorrate
       - platform: state
         entity_id: &todo_lists
           - todo.kellervorrate
@@ -594,6 +608,7 @@ template:
                 ) | md5
             }}
 
+  # Rollo Sommer
   - triggers:
       - platform: state
         entity_id: input_boolean.rollo_summer_override
@@ -904,7 +919,8 @@ template:
             {% set val = states('sensor.sun_solar_azimuth') | float(0) %}
             {% set threshold = 150 %}
             {{ val | round(0) }} (> {{ threshold }})
-
+  
+  # PV Kosten
   - trigger:
       - platform: time_pattern
         minutes: "/1"
@@ -927,6 +943,7 @@ template:
             {% set after = states('sensor.gesamt_kosten_pv_active_moving') | float(0) %}
             {{ (before - after) | round(2) }}€
 
+  # Home Power, Home Energy, Unmonitored Power, Unmonitored Energy
   - trigger:
       - platform: time_pattern
         seconds: "/10"
@@ -936,6 +953,20 @@ template:
         unit_of_measurement: "W"
         state_class: measurement
         device_class: power
+        availability: >
+          {% set sensors = [
+            'sensor.grid_import',
+            'sensor.grid_export',
+            'sensor.battery_charge',
+            'sensor.battery_discharge',
+            'sensor.inverter_power_losses',
+            'sensor.inverter_pv_power',
+            'sensor.scb_ac_power',
+            'sensor.bkw_outlet_1_energy_power',
+            'sensor.known_power'
+          ] %}
+          {{ sensors | map('states') | reject('in', ['unavailable','unknown','none']) | list | length == sensors | length }}
+
         state: |
           {% set grid_import = states('sensor.grid_import') | float(0) %}
           {% set grid_export = states('sensor.grid_export') | float(0) %}
@@ -955,6 +986,17 @@ template:
         unit_of_measurement: "kWh"
         state_class: total
         device_class: energy
+        availability: >
+          {% set sensors = [
+            'sensor.daily_solar_production',
+            'sensor.bkw_outlet_1_energy_today',
+            'sensor.inverter_today_battery_charge',
+            'sensor.daily_battery_discharged_energy',
+            'sensor.daily_netzbezug',
+            'sensor.daily_netzeinspeisung',
+            'sensor.inverter_today_energy_losses'
+          ] %}
+          {{ sensors | map('states') | reject('in', ['unavailable','unknown','none']) | list | length == sensors | length }}
         state: |
             {% set pv = states('sensor.daily_solar_production') | float(0) %}
             {% set bkw = states('sensor.bkw_outlet_1_energy_today') | float(0) %}
@@ -1007,7 +1049,8 @@ template:
         unit_of_measurement: "W"
         state_class: measurement
         icon: mdi:solar-power
-        
+
+  # Grid Power
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -1016,20 +1059,21 @@ template:
         unique_id: grid_power
         state: >
           {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-          {% if tibber not in ['unavailable', 'unknown'] %}
+          {% if tibber not in ['unavailable', 'unknown', 'none'] %}
             {{ tibber | float(0) }}
           {% else %}
             {{ states('sensor.smart_meter_mqtt_grid_power') | float(0) }}
           {% endif %}
         availability: >
           {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-          {% set smart  = states('sensor.smart_meter_mqtt_grid_power') %}
-          {{ tibber not in ['unavailable', 'unknown'] or smart not in ['unavailable', 'unknown'] }}
+          {% set smart = states('sensor.smart_meter_mqtt_grid_power') %}
+          {{ tibber not in ['unavailable', 'unknown', 'none'] or smart not in ['unavailable', 'unknown', 'none'] }}
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
         icon: mdi:transmission-tower
 
+  # AI Beta Release Notes Summary
   - triggers:
       - trigger: homeassistant
         event: start
@@ -1095,7 +1139,6 @@ template:
             {{ beta_scrape.beta_notes_content }}
             
           agent_id: conversation.z_ai_glm_4_5_air_free
-    
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
@@ -1120,61 +1163,95 @@ template:
               {{beta_scrape.beta_url.value|string }}
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
-
+  
+  # Birtdays
   - triggers:
-      - trigger: homeassistant
-        event: start
-      - platform: event
-        event_type: event_template_reloaded
-      - platform: time_pattern
-        hours: "/12"
+    - trigger: homeassistant
+      event: start
+    - platform: event
+      event_type: event_template_reloaded
+    - platform: time_pattern
+      hours: "/12"
     binary_sensor:
-      - name: "Upcoming Birthdays"
-        icon: mdi:cake-variant-outline
-        unique_id: upcoming_birthdays
-        availability: >
-          {% set people = label_entities('birthday') %}
-          {{ people | map('states') | reject('in', ['unknown', 'unavailable']) | list | count == people | count }}
-        state: >
-          {% set people = label_entities('birthday') %}
-          {% set today = now().date() %}
-          {% set ns = namespace(active=false) %}
-          {% for entity in people %}
-            {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
-            {% if d is not none %}
-                {% set next_birthday = d.replace(year=today.year) %}
-                {% if next_birthday < today %}
-                  {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
-                {% endif %}
-                {% if (next_birthday - today).days <= 4 %}
-                  {% set ns.active = true %}
-                {% endif %}
-            {%endif %}
-          {% endfor %}
-          {{ ns.active }}
+        - name: "Upcoming Birthdays"
+          unique_id: upcoming_birthdays
+          icon: mdi:cake-variant-outline
+          variables:
+            today_str: "{{ now().date() }}"
+            birthday_entities_json: "{{ label_entities('birthday') | list }}"
+            birthday_states_json: "{{ label_entities('birthday') | map('states') | list }}"
+          availability: >
+            {% set entities = birthday_entities_json %}
+            {% set states_list = birthday_states_json %}
+            {% set valid = states_list | reject('in', ['unknown','unavailable','none']) | list %}
+            {{ valid | length == entities | length }}
+          state: >
+            {% set today = strptime(today_str, '%Y-%m-%d').date() %}
+            {% set entities = birthday_entities_json %}
+            {% set states_list = birthday_states_json %}
+            {% set active = false %}
     
-        attributes:
-          upcoming: >
-            {% set people = label_entities('birthday') %}
-            {% set today = now().date() %}
-            {% set ns = namespace(lines=[]) %}
-            {% for entity in people %}
-              {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
-              {% if d is not none %}
-                  {% set next_birthday = d.replace(year=today.year) %}
-                  {% if next_birthday < today %}
-                    {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
-                  {% endif %}
-                  {% set days = (next_birthday - today).days %}
-                  {% if days <= 4 %}
-                    {% set turning = next_birthday.year - d.year %}
-                    {% set name = state_attr(entity, 'friendly_name') %}
-                    {% set label = '🎉 HEUTE' if days == 0 else days ~ ' Tage' %}
-                    {% set ns.lines = ns.lines + ['🎂 ' ~ name ~ ': ' ~ label ~ ' – wird ' ~ turning] %}
-                  {% endif %}
+            {% for i in range(entities | length) %}
+              {% set raw = states_list[i] %}
+              {% if raw and raw | length >= 10 %}
+                {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
+                {% set next_birthday = dob.replace(year=today.year) %}
+                {% if next_birthday < today %}
+                  {% set next_birthday = next_birthday.replace(year=today.year + 1) %}
+                {% endif %}
+                {% set days_until = (next_birthday - today).days %}
+                {% if days_until <= 4 %}
+                  {% set active = true %}
+                {% endif %}
               {% endif %}
             {% endfor %}
-            {{ ns.lines }}
+            {{ active }}
+          attributes:
+            upcoming: >
+              {% set today = strptime(today_str, '%Y-%m-%d').date() %}
+              {% set entities = birthday_entities_json %}
+              {% set states_list = birthday_states_json %}
+              {% set lines = [] %}
+    
+              {% for i in range(entities | length) %}
+                {% set raw = states_list[i] %}
+                {% if raw and raw | length >= 10 %}
+                  {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
+                  {% set next_birthday = dob.replace(year=today.year) %}
+                  {% if next_birthday < today %}
+                    {% set next_birthday = next_birthday.replace(year=today.year + 1) %}
+                  {% endif %}
+                  {% set days_until = (next_birthday - today).days %}
+                  {% if days_until <= 4 %}
+                    {% set age = today.year - dob.year %}
+                    {% if today < dob.replace(year=today.year) %}
+                      {% set age = age - 1 %}
+                    {% endif %}
+                    {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
+                    {% set lines = lines + ['🎂 ' ~ state_attr(entities[i], 'friendly_name') ~ ': ' ~ label ~ ' – Alter: ' ~ age] %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+    
+              {{ lines }}
+            ages: >
+              {% set today = strptime(today_str, '%Y-%m-%d').date() %}
+              {% set entities = birthday_entities_json %}
+              {% set states_list = birthday_states_json %}
+              {% set ns = namespace(ages={}) %}
+    
+              {% for i in range(entities | length) %}
+                {% set raw = states_list[i] %}
+                {% if raw and raw | length >= 10 %}
+                  {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
+                  {% set age = today.year - dob.year %}
+                  {% if today < dob.replace(year=today.year) %}
+                    {% set age = age - 1 %}
+                  {% endif %}
+                  {% set ns.ages = ns.ages | combine({state_attr(entities[i], 'friendly_name'): age}) %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.ages }}
 
   - cover:
       - device_class: WINDOW

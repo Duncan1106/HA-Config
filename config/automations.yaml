@@ -9697,8 +9697,12 @@
     für **zuverlässiges Ein-/Ausschalten**, selbst bei transienten Fehlern.  \n- Nachtmodus
     / Außentemperatur schützt vor unnötigem Lüften im Winter."
   triggers:
-  - entity_id: binary_sensor.heizraum_zuluft_trigger
+  - entity_id:
+    - binary_sensor.heizraum_zuluft_trigger
     trigger: state
+    to:
+    - 'on'
+    - 'off'
   - event: start
     trigger: homeassistant
   - minutes: /30
@@ -9710,12 +9714,11 @@
 
       '
   - condition: template
-    value_template: "{{ now() - (state_attr('binary_sensor.heizraum_zuluft_trigger',
-      'last_triggered')\n            | default(as_datetime('1970-01-01T00:00:00'),
-      true)) > timedelta(minutes=5) }}\n"
+    value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered')\n            |
+      default(as_datetime('1970-01-01T00:00:00'), true)) > timedelta(minutes=5) }}\n"
   - condition: template
-    value_template: '{% set hour = now().hour %} l {% set outdoor = states(''sensor.gw1100a_outdoor_temperature'')
-      | float(0) %} {{ (hour < 22 or hour > 6) or (outdoor > 10) }}
+    value_template: '{% set hour = now().hour %} {% set outdoor = states(''sensor.gw1100a_outdoor_temperature'')
+      | float(0) %}  {{ (6 < hour < 22) or (outdoor > 10) }}
 
       '
   actions:
@@ -10670,8 +10673,11 @@
     on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
     to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
-    saved cost into `input_number.save_through_night_battery_charging`\n\n  2) Stop
-    Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
+    saved cost into `input_number.save_through_night_battery_charging`\n     - Call
+    `script.retry_action_with_backoff` to turn on `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
+    \    - Update `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
+    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  2)
+    Stop Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
     to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n     -
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
     `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`
@@ -10761,29 +10767,41 @@
       - action: notify.duncan
         data:
           title: "\U0001F319 Night Battery Charging Decision"
-          message: "Charging started at {{ now().strftime('%H:%M') }}\nSOC: {{ state_attr('binary_sensor.charge_battery_at_night','soc_percent')|round(0)
-            }}% ({{ state_attr('binary_sensor.charge_battery_at_night','usable_kwh')|round(2)
-            }} kWh usable), Solar: {{ state_attr('binary_sensor.charge_battery_at_night','forecast_selected_kwh')|round(2)
-            }} kWh -> Available Energy: {{ (state_attr('binary_sensor.charge_battery_at_night','total_energy_kwh')
-            + state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh'))
-            | round(2) }} kWh\nSoC Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','minimum_soc_kwh')|round(2)
-            }} kWh, Solar Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','dynamic_margin_kwh')|round(2)
-            }} kWh -> Used Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh')|round(2)
-            }} kWh\nTarget: {{ state_attr('binary_sensor.charge_battery_at_night','effective_target_kwh')|round(2)
-            }} kWh, wanted: {{(state_attr('binary_sensor.charge_battery_at_night',
-            'target_kwh') | float(0)) | round(1)\n}} kWh + {{ state_attr('binary_sensor.charge_battery_at_night','charge_offset_kwh')}}
-            kWh (+{{ state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')
-            | default(states('input_number.battery_charge_percent_offset'), true)
-            | float(0) | round(0) }}% SoC) -> missing {{ state_attr('binary_sensor.charge_battery_at_night','charge_needed_kwh')|round(2)
-            }} kWh\n{% set remaining_sec = (state_attr('binary_sensor.charge_battery_at_night','remaining_hours')
-            | default(4.83, true) | float) * 3600 %}\n{% set ts = time_since(now()
-            - timedelta(seconds=remaining_sec), 2) %}\n{% set parts = ts | regex_findall('(\\d+)\\s*(\\w+)')
-            %}\n{% set ns_shorts = namespace(short_parts=[]) %}\n{% for p in parts
-            %}\n  {% set ns_shorts.short_parts = ns_shorts.short_parts + [p[0] ~ p[1][:1]]
-            %}\n{% endfor %}\nCharging to {{ state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')|round(0)
-            }}% @ {{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps')|round(0)
-            }}A in {{ ns_shorts.short_parts | join(' ') }} -> saving {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')|float(0))
-            }} €"
+          message: 'Charging started at {{ now().strftime(''%H:%M'') }}
+
+            SOC: {{ state_attr(''binary_sensor.charge_battery_at_night'',''soc_percent'')|round(0)
+            }}% ({{ state_attr(''binary_sensor.charge_battery_at_night'',''usable_kwh'')|round(2)
+            }} kWh usable), Solar: {{ state_attr(''binary_sensor.charge_battery_at_night'',''forecast_selected_kwh'')|round(2)
+            }} kWh -> Available Energy: {{ (state_attr(''binary_sensor.charge_battery_at_night'',''total_energy_kwh'')
+            + state_attr(''binary_sensor.charge_battery_at_night'',''applied_buffer_kwh''))
+            | round(2) }} kWh
+
+            SoC Buffer: {{ state_attr(''binary_sensor.charge_battery_at_night'',''minimum_soc_kwh'')|round(2)
+            }} kWh, Solar Buffer: {{ state_attr(''binary_sensor.charge_battery_at_night'',''dynamic_margin_kwh'')|round(2)
+            }} kWh -> Used Buffer: {{ state_attr(''binary_sensor.charge_battery_at_night'',''applied_buffer_kwh'')|round(2)
+            }} kWh
+
+            Target: {{ state_attr(''binary_sensor.charge_battery_at_night'',''effective_target_kwh'')|round(2)
+            }} kWh, wanted: {{(state_attr(''binary_sensor.charge_battery_at_night'',
+            ''target_kwh'') | float(0)) | round(1)
+
+            }} kWh + {{ state_attr(''binary_sensor.charge_battery_at_night'',''charge_offset_kwh'')}}
+            kWh (+{{ state_attr(''binary_sensor.charge_battery_at_night'',''battery_charge_percent_offset'')
+            | default(states(''input_number.battery_charge_percent_offset''), true)
+            | float(0) | round(0) }}% SoC) -> missing {{ state_attr(''binary_sensor.charge_battery_at_night'',''charge_needed_kwh'')|round(2)
+            }} kWh
+
+            {% set remaining_sec = (state_attr(''binary_sensor.charge_battery_at_night'',''remaining_hours'')
+            | default(4.83, true) | float) * 3600 %}{% set ts = time_since(now() -
+            timedelta(seconds=remaining_sec), 2) %}{% set parts = ts | regex_findall(''(\d+)\s*(\w+)'')
+            %}{% set ns_shorts = namespace(short_parts=[]) %}{% for p in parts %}{%
+            set ns_shorts.short_parts = ns_shorts.short_parts + [p[0] ~ p[1][:1]]
+            %}{% endfor %}
+
+            Charging to {{ state_attr(''binary_sensor.charge_battery_at_night'',''offset_charge_target_percent'')|round(0)
+            }}% @ {{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')|round(0)
+            }}A in {{ ns_shorts.short_parts | join('' '') }} -> saving {{ "{:.2f}".format(state_attr(''binary_sensor.charge_battery_at_night'',''saved_cost_eur'')|float(0))
+            }} €'
           data:
             tag: night_battery_charge1
       - action: script.retry_action_with_backoff
@@ -10822,6 +10840,26 @@
             | float(0)) }}'
         target:
           entity_id: input_number.save_through_night_battery_charging
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current
+        data:
+          value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
+            | default(30, true) | int }}'
     - conditions:
       - condition: trigger
         id:
