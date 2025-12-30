@@ -400,10 +400,6 @@ template:
         event_type: event_template_reloaded
       - platform: time_pattern
         minutes: "/1"
-    #   - platform: state
-    #     entity_id: 
-    #       - sensor.daily_luftbefeuchter
-    #       - input_number.max_humidifier_activations_per_day
     binary_sensor:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
@@ -529,6 +525,79 @@ template:
               {% set out.times = ["No valid trigger times"] %}
             {% endif %}
             {{ out.times }}
+
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: state
+        entity_id:
+          - sensor.inverter_temperature
+          - sensor.heizraum_lufter_abluft_power
+          - sensor.esphome_az_envy_1_temperature_heizraum
+          - sensor.gw1100a_outdoor_temperature
+    binary_sensor:
+      - name: Heizraum Zuluft Trigger
+        unique_id: heizraum_zuluft_trigger
+        variables:
+          inverter_temp: "{{ states('sensor.inverter_temperature') | float(0) }}"
+          abluft_power: "{{ states('sensor.heizraum_lufter_abluft_power') | float(0) }}"
+          heizraum_temp: "{{ states('sensor.esphome_az_envy_1_temperature_heizraum') | float(0) }}"
+          outdoor_temp: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) }}"
+          inverter_level: >
+            {% if inverter_temp|float >= 55 %}
+              notfall
+            {% elif inverter_temp|float >= 50 %}
+              aktiv
+            {% elif inverter_temp|float >= 40 %}
+              okay
+            {% else %}
+              normal
+            {% endif %}
+          abluft_level: >
+            {% if abluft_power|float >= 6 %}
+              hoch
+            {% elif abluft_power|float >= 4 %}
+              normal
+            {% else %}
+              niedrig
+            {% endif %}
+          zuluft_needed: >
+              {% if outdoor_temp|float < 15 %}
+                false
+              {% elif inverter_level == 'notfall' %}
+                true
+              {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
+                true
+              {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
+                true
+              {% else %}
+                false
+              {% endif %}
+        state: "{{ iif(zuluft_needed|bool, 'on', 'off', none) }}"
+        availability: >
+          {{ states('sensor.inverter_temperature') not in ['unknown','unavailable']
+             and states('sensor.heizraum_lufter_abluft_power') not in ['unknown','unavailable']
+             and states('sensor.gw1100a_outdoor_temperature') not in ['unknown','unavailable'] }}
+        attributes:
+          inverter_temp: "{{ inverter_temp }}"
+          inverter_level: "{{ inverter_level }}"
+          abluft_power: "{{ abluft_power }}"
+          abluft_level: "{{ abluft_level }}"
+          heizraum_temp: "{{ heizraum_temp }}"
+          outdoor_temp: "{{ outdoor_temp }}"
+          zuluft_needed: "{{ zuluft_needed }}"
+          decision_reason: >
+            {% if inverter_level == 'notfall' %}
+              Inverter Notfall >55°C
+            {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
+              Aktiv helfen: Inverter 50°C+, Abluft hoch
+            {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
+              Okay: Inverter 40°C+, Abluft >= normal
+            {% else %}
+              Keine Zuluft nötig
+            {% endif %}
 
   - trigger:
       - platform: event
