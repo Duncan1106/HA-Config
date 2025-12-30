@@ -10639,38 +10639,63 @@
   mode: single
 - id: '1763164752006'
   alias: Night Battery Charging
-  description: "# \U0001F319 Night Battery Charging Automation\n\n## ⚙️ Purpose\nThis
-    automation automatically manages the charging of the battery during the night
-    tariff.  \nIt ensures that charging **starts only when conditions are met** and
-    **stops reliably** at 04:55 or 05:00, even if Home Assistant restarts.\n\n---\n\n##
-    ⏰ Triggers\n\n| Trigger ID                 | Type       | Details                                                              |\n|-----------------------------|------------|----------------------------------------------------------------------|\n|
-    On                          | State      | `binary_sensor.charge_battery_at_night`
-    turns `on`                   |\n| Off                         | Time       | At
-    `04:55:00`                                                        |\n| Off                         |
-    Time       | At `05:00:00`                                                        |\n\n---\n\n##
-    \U0001F4CB Conditions\nThe automation runs if **either** of the following is true:\n\n1.
-    **Nighttime Charging Window**  \n   - Time is between `00:05:00` and `04:30:00`
-    \ \n   - `binary_sensor.charge_battery_at_night` is `on`  \n   - Trigger is `On`
-    \ \n   - Battery charger switch is `off`\n\n2. **Scheduled Stop / Forced Off**
-    \ \n   - Trigger is `Off` (04:55 or 05:00)  \n   - Trigger is `Battery Off in
-    cheap hours`\n\n---\n\n## \U0001F527 Actions\n\n### 1️⃣ Start Charging\n- **Conditions:**
-    \ \n  - `binary_sensor.charge_battery_at_night` is `on`  \n  - Trigger is `On`\n-
-    **Action:**  \n  - Calls the **retry script** to turn on the battery charger  \n
-    \ - Updates `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto` with the
-    `charge_target_percent` attribute (details in Notes)\n\n### 2️⃣ Stop Charging\n-
-    **Conditions:**  \n  - Trigger is `Off`\n- **Action:**  \n  - Calls the **retry
-    script** to turn off the battery charger  \n  - Sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"7000\"` (details in Notes)\n  \n---\n\n## ✅ Notes\n- **Retry Script Details:**
-    Both start and stop actions use the `script.retry_action_with_backoff` for reliability:\n
-    \ - Maximum retries: 10  \n  - Base delay: 5 seconds  \n  - Max delay: 60 seconds
-    \ \n  - Backoff type: simple  \n  - Notifies `notify.duncan` on failure  \n  -
-    Target entity: `switch.esp32_s3_zero_deye8k_battery_charge_grid`  \n  - Target
-    state: `on` or `off` depending on the action\n\n- **Number Adjustments:**  \n
-    \ - Start charging sets `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
-    from the `charge_target_percent` attribute  \n  - Stop charging sets `number.esp32_s3_zero_deye8k_time_point_1_power`
-    to `\"7000\"`  \n\n- Ensures charging stops reliably at the scheduled times, preventing
-    overcharge and avoiding tariff issues.  \n- Designed to be resilient even if Home
-    Assistant restarts."
+  description: "  # \U0001F319 Night Battery Charging Automation\n\n  ## ⚙️ Purpose\n\n
+    \ Automatically manage battery charging during cheap night tariff windows.\n  Starts
+    charging when allowed and needed, adjusts max charge current when a\n  requested-amps
+    attribute changes, and ensures charging reliably stops at the\n  scheduled times
+    (04:55 / 05:00), including after Home Assistant restarts.\n\n  ---\n\n  ## ⏰ Triggers\n\n
+    \ | Trigger ID | Type   | Details                                                                 |\n
+    \ |------------|--------|-------------------------------------------------------------------------|\n
+    \ | On         | State  | `binary_sensor.charge_battery_at_night` turns `on`                      |\n
+    \ | On         | Time   | Time at `00:05:00` (helper to evaluate start conditions)
+    \               |\n  | Off        | Time   | Time at `04:55:00` (scheduled stop)
+    \                                    |\n  | Off        | Time   | Time at `05:00:00`
+    (scheduled stop fallback)                            |\n  | amps       | State
+    \ | Attribute change: `binary_sensor.charge_battery_at_night.required_charge_amps`
+    |\n\n  ---\n\n  ## \U0001F4CB Conditions (overview)\n\n  The automation proceeds
+    when ANY of these branches is true:\n\n  1) Night charging start branch\n     -
+    Current time is in the night charging window (after 00:04:55 and\n       before
+    04:30:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
+    trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
+    switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
+    `off`\n\n  2) Scheduled stop branch\n     - The trigger was one of the \"Off\"
+    time triggers (04:55 or 05:00)\n\n  3) Required-amps update branch\n     - The
+    trigger was the attribute change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
+    \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
+    \    - Current time is in the night charging window (after 00:04:55 and before\n
+    \      04:30:00)\n\n  ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start
+    Charging (trigger id: \"On\" with sensor on)\n     - Notify `notify.duncan` with
+    decision summary\n     - Call `script.retry_action_with_backoff` to turn on\n
+    \      `switch.esp32_s3_zero_deye8k_battery_charge_grid` (retries/backoff,\n       notify
+    on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
+    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
+    saved cost into `input_number.save_through_night_battery_charging`\n\n  2) Stop
+    Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
+    to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n     -
+    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
+    `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`
+    (uses\n       a linear backoff variant; longer max_delay)\n\n  3) Adjust Max Charge
+    Current (trigger id: attribute change \"amps\")\n     - When `binary_sensor.charge_battery_at_night`
+    is `on`, call\n       `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
+    \    - Update\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
+    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  ---\n\n
+    \ ## ✅ Retry / Reliability\n\n  - Both start/stop/external-amp operations use
+    `script.retry_action_with_backoff`\n    to ensure the switch actions succeed (configurable
+    retries, base/max\n    delays, backoff type).\n  - Scheduled stop triggers at
+    04:55 and 05:00 guarantee charging is turned\n    off even after restarts or missed
+    events.\n  - Time window checks prevent starting outside the intended cheap-tariff\n
+    \   night window.\n\n  ---\n\n  ## \U0001F50E Entities referenced\n\n  - binary_sensor.charge_battery_at_night
+    (attributes: soc_percent,\n    usable_kwh, target_kwh, total_energy_kwh, charge_needed_kwh,\n
+    \   offset_charge_target_percent, required_charge_amps, forecast_heute_kwh,\n
+    \   saved_cost_eur)\n  - switch.esp32_s3_zero_deye8k_battery_charge_grid\n  -
+    switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll\n  - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto\n
+    \ - number.esp32_s3_zero_deye8k_time_point_1_power\n  - number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current\n
+    \ - input_number.save_through_night_battery_charging\n  - script.retry_action_with_backoff\n
+    \ - notify.duncan\n\n  ---\n\n  Summary: starts charging only when allowed and
+    beneficial during the\n  night window, adjusts external amp control and max-current
+    when requested,\n  and always attempts to stop charging reliably at the scheduled
+    times."
   triggers:
   - entity_id: binary_sensor.charge_battery_at_night
     to: 'on'
@@ -10736,22 +10761,31 @@
       - action: notify.duncan
         data:
           title: "\U0001F319 Night Battery Charging Decision"
-          message: "Night charging started at {{ now().strftime('%H:%M') }}.\nThe
-            battery is currently at {{\n  (state_attr('binary_sensor.charge_battery_at_night',
-            'soc_percent') | float(0)) | round()\n}}%  ({{ \n  (state_attr('binary_sensor.charge_battery_at_night',
-            'usable_kwh') | float(0)) | round(2)\n}} kWh usable).\nForecasted PV generation
-            today: {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'forecast_heute_kwh')
-            | float(0)) | round(2)\n}} kWh\nTarget energy for tonight: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
-            'target_kwh') | float(0)) | round(2)\n}} kWh. \nTotal energy available
-            (usable + forecast): {{\n  (state_attr('binary_sensor.charge_battery_at_night',
-            'total_energy_kwh') | float(0)) | round(2)\n}} kWh.\n⚠️ Missing energy
-            to reach target: {{\n  (state_attr('binary_sensor.charge_battery_at_night',
-            'charge_needed_kwh') | float(0)) | round(2)\n}} kWh.\nAction: Charging
-            to {{\n  (state_attr('binary_sensor.charge_battery_at_night', 'offset_charge_target_percent')
-            | float(0)) | round(0)\n}}%.\nSaved cost by charging tonight: {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')
-            | float(0)) }} €\n"
+          message: "Charging started at {{ now().strftime('%H:%M') }}\nSOC: {{ state_attr('binary_sensor.charge_battery_at_night','soc_percent')|round(0)
+            }}% ({{ state_attr('binary_sensor.charge_battery_at_night','usable_kwh')|round(2)
+            }} kWh usable), Solar: {{ state_attr('binary_sensor.charge_battery_at_night','forecast_selected_kwh')|round(2)
+            }} kWh -> Available Energy: {{ (state_attr('binary_sensor.charge_battery_at_night','total_energy_kwh')
+            + state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh'))
+            | round(2) }} kWh\nSoC Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','minimum_soc_kwh')|round(2)
+            }} kWh, Solar Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','dynamic_margin_kwh')|round(2)
+            }} kWh -> Used Buffer: {{ state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh')|round(2)
+            }} kWh\nTarget: {{ state_attr('binary_sensor.charge_battery_at_night','effective_target_kwh')|round(2)
+            }} kWh, wanted: {{(state_attr('binary_sensor.charge_battery_at_night',
+            'target_kwh') | float(0)) | round(1)\n}} kWh + {{ state_attr('binary_sensor.charge_battery_at_night','charge_offset_kwh')}}
+            kWh (+{{ state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')
+            | default(states('input_number.battery_charge_percent_offset'), true)
+            | float(0) | round(0) }}% SoC) -> missing {{ state_attr('binary_sensor.charge_battery_at_night','charge_needed_kwh')|round(2)
+            }} kWh\n{% set remaining_sec = (state_attr('binary_sensor.charge_battery_at_night','remaining_hours')
+            | default(4.83, true) | float) * 3600 %}\n{% set ts = time_since(now()
+            - timedelta(seconds=remaining_sec), 2) %}\n{% set parts = ts | regex_findall('(\\d+)\\s*(\\w+)')
+            %}\n{% set ns_shorts = namespace(short_parts=[]) %}\n{% for p in parts
+            %}\n  {% set ns_shorts.short_parts = ns_shorts.short_parts + [p[0] ~ p[1][:1]]
+            %}\n{% endfor %}\nCharging to {{ state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')|round(0)
+            }}% @ {{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps')|round(0)
+            }}A in {{ ns_shorts.short_parts | join(' ') }} -> saving {{ \"{:.2f}\".format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')|float(0))
+            }} €"
           data:
-            tag: night_battery_charge
+            tag: night_battery_charge1
       - action: script.retry_action_with_backoff
         metadata: {}
         data:
