@@ -1,0 +1,1205 @@
+template:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: state
+        entity_id:
+          - binary_sensor.workday_sensor
+          - sun.sun
+      - platform: time
+        at:
+          - "04:30:01"
+          - "06:00:01"
+          - "11:00:01"
+          - "22:30:01"
+          - "23:00:01"
+      - platform: sun
+        event: sunrise
+        offset: "+00:15:01"
+      - platform: sun
+        event: sunset
+        offset: "-00:29:59"
+      - platform: sun
+        event: sunset
+        offset: "-00:44:59"
+    binary_sensor:
+      - name: Christmas Tree
+        unique_id: christmas_tree_schedule
+        icon: mdi:pine-tree
+        variables:
+          # 1. Basic states
+          time: "{{ now().strftime('%H:%M') }}"
+          workday: "{{ is_state('binary_sensor.workday_sensor', 'on') }}"
+          
+          # 2. Raw Sun Attributes (to check for availability)
+          next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
+          next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
+          
+          # 3. Calculated Offsets (Doing conversion and math in one step to avoid String errors)
+          sunrise_15_hhmm: >
+            {% set dt = next_rising | as_datetime %}
+            {{ (dt | as_local + timedelta(minutes=15)).strftime('%H:%M') if dt is not none else '00:00' }}
+          sunset_30_hhmm: >
+            {% set dt = next_setting | as_datetime %}
+            {{ (dt | as_local - timedelta(minutes=30)).strftime('%H:%M') if dt is not none else '00:00' }}
+          sunset_45_hhmm: >
+            {% set dt = next_setting | as_datetime %}
+            {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
+
+        availability: >
+          {{ 
+            states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
+            and states('sun.sun') not in ['unknown', 'unavailable']
+            and next_rising is not none 
+            and next_setting is not none 
+          }}
+        state: >
+          {% if workday %}
+            {% set morning_on = '04:30' <= time < sunrise_15_hhmm %}
+            {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
+          {% else %}
+            {% set morning_on = '06:00' <= time < '11:00' %}
+            {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
+          {% endif %}
+          {{ morning_on or evening_on }}
+        attributes:
+          schedule_type: "{{ 'workday' if workday else 'weekend' }}"
+          period: >
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_15_hhmm %} morning
+              {% elif sunset_30_hhmm <= time < '22:30' %} evening
+              {% else %} off {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %} morning
+              {% elif sunset_45_hhmm <= time < '23:00' %} evening
+              {% else %} off {% endif %}
+            {% endif %}
+          reason: >
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_15_hhmm %} Workday morning window: 04:30 - {{ sunrise_15_hhmm }}
+              {% elif sunset_30_hhmm <= time < '22:30' %} Workday evening window: {{ sunset_30_hhmm }} - 22:30
+              {% else %} Outside workday schedule {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %} Weekend morning window: 06:00 - 11:00
+              {% elif sunset_45_hhmm <= time < '23:00' %} Weekend evening window: {{ sunset_45_hhmm }} - 23:00
+              {% else %} Outside weekend schedule {% endif %}
+            {% endif %}
+          updated: "{{ time }}"
+          updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
+
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: state
+        entity_id:
+          - sensor.felicity_ess_soc_avg
+          - input_number.night_charge_target
+          - input_number.night_charge_minimum_soc_percent
+          - input_number.night_charge_dynamic_margin_percent
+    binary_sensor:
+      - name: Charge Battery at Night (dynamically)
+        unique_id: charge_battery_at_night
+        variables:
+          # Basic Inputs
+          soc: "{{ states('sensor.felicity_ess_soc_avg') | float(0) }}"
+          cap: "{{ states('sensor.inverter_battery_capacity') | float(0) }}"
+          target_kwh: "{{ states('input_number.night_charge_target') | float(0) }}"
+          
+          # Forecast Selection Logic
+          f_today: "{{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) }}"
+          f_tomorrow: "{{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) }}"
+          forecast_kwh: "{{ f_today if now().hour < 5 else f_tomorrow }}"
+          
+          # Margin & Buffer Calculations
+          margin_pct: "{{ states('input_number.night_charge_dynamic_margin_percent') | float(0) }}"
+          min_soc_pct: "{{ states('input_number.night_charge_minimum_soc_percent') | float(0) }}"
+          
+          usable_kwh: "{{ cap * (soc / 100.0) }}"
+          dyn_margin_kwh: "{{ forecast_kwh * (margin_pct / 100) }}"
+          min_soc_kwh: "{{ cap * (min_soc_pct / 100) }}"
+          buffer_kwh: "{{ [dyn_margin_kwh, min_soc_kwh] | max }}"
+          
+          # Resulting Energy State
+          net_energy: "{{ usable_kwh + forecast_kwh - buffer_kwh }}"
+          charge_needed: "{{ (target_kwh - net_energy) | clamp(0, target_kwh) }}"
+                    
+          # Offset
+          charge_offset: "{{ states('input_number.battery_charge_percent_offset') | float(0) }}"
+          charge_offset_kwh: "{{ cap|float * (charge_offset|float / 100) }}"
+          effective_target_kwh: "{{ target_kwh|float + charge_offset_kwh|float }}"
+          effective_charge_needed: "{{ (charge_needed | float(0)) + charge_offset_kwh }}"
+
+          # Charging Power Calculation Inputs
+          battery_voltage: 51.2
+          efficiency: 0.95
+          min_amps: 30
+          max_amps: 120
+
+          # Night charge window (today)
+          window_start_ts: "{{ as_timestamp(today_at('00:05')) }}"
+          window_end_ts: "{{ as_timestamp(today_at('04:55')) }}"
+          now_ts: "{{ as_timestamp(now()) }}"
+
+          # Remaining hours inside the night window
+          remaining_hours: >
+            {% set now_val = now_ts | float %}
+            {% set start_val = window_start_ts | float %}
+            {% set end_val = window_end_ts | float %}
+            {% set full_window = (end_val - start_val) / 3600 %}
+        
+            {% if now_val < start_val %}
+              {{ full_window }}
+            {% elif now_val <= end_val %}
+              {{ (end_val - now_val) / 3600 }}
+            {% else %}
+              {{ full_window }}
+            {% endif %}
+          raw_amps: >
+            {% set charge_kwh = effective_charge_needed | float(0) %}
+            {% if charge_kwh > 0 %}
+              {% set voltage = battery_voltage | float %}
+              {% set efficiency_val = efficiency | float %}
+              {% set hours = remaining_hours | float(0) | clamp(0.1, 5) %}
+              {{ (charge_kwh * 1000) / (voltage * hours * efficiency_val) }}
+            {% else %}
+              0
+            {% endif %}
+          actual_amps: >
+            {{ ((raw_amps | float(0) // 5 + 1) * 5) | clamp(min_amps|int(30), max_amps|int(120)) }}
+
+        state: "{{ net_energy|float < effective_target_kwh|float }}"
+        availability: >
+          {% set f_entity = 'sensor.solcast_pv_forecast_prognose_heute' if now().hour < 5 else 'sensor.solcast_pv_forecast_prognose_morgen' %}
+          {{ states('sensor.felicity_ess_soc_avg') not in ['unknown','unavailable']
+             and states(f_entity) not in ['unknown','unavailable'] }}
+        attributes:
+          decision_formula: "usable_kwh + forecast_kwh - buffer_kwh < target_kwh + charge_offset_kwh"
+          battery_state: ''
+          soc_percent: "{{ soc }}"
+          usable_kwh: "{{ usable_kwh | round(2) }}"
+          forecast: ''
+          forecast_selected_kwh: "{{ forecast_kwh | round(2) }}"
+          forecast_heute_kwh: "{{ f_today | round(2) }}"
+          forecast_morgen_kwh: "{{ f_tomorrow | round(2) }}"
+          target: ''
+          target_kwh: "{{ target_kwh }}"
+          effective_target_kwh: "{{ effective_target_kwh | round(2) }}"
+          total_energy_kwh: "{{ [net_energy, 0] | max | round(2) }}"
+          charge_kwh: ''
+          charge_needed_kwh: "{{ charge_needed | round(2) }}"
+          charge_needed_effective_kwh: "{{ effective_charge_needed }}"
+          charge_target_percent: >
+            {% set target_pct = ((usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
+            {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
+          offset: ''
+          battery_charge_percent_offset: "{{ charge_offset }}"
+          offset_charge_target_percent: >
+            {% set target_pct = (((usable_kwh + charge_needed) / cap) * 100) + charge_offset if cap > 0 else 0 %}
+            {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
+          charge_offset_kwh: "{{ charge_offset_kwh | round(2) }}"
+          buffer: ''
+          dynamic_margin_kwh: "{{ dyn_margin_kwh | round(2) }}"
+          minimum_soc_kwh: "{{ min_soc_kwh | round(2) }}"
+          applied_buffer_kwh: "{{ buffer_kwh | round(2) }}"
+          saved_cost_eur: >
+            {% set night_tariff = 0.187425 %}
+            {% set day_tariff = 0.302379 %}
+            {{ ((day_tariff - night_tariff) * charge_needed) | round(2) }}
+          charging_window: ''
+          remaining_hours: "{{ remaining_hours | round(2) }}"
+          amps: ''
+          required_charge_amps_raw: "{{ raw_amps | round(1) }}"
+          required_charge_amps: "{{ actual_amps }}"
+          updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
+
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: time_pattern
+        minutes: "/1"
+    binary_sensor:
+      - name: "Luftbefeuchter On-Windows"
+        unique_id: humidifier_trigger_window
+        state: >
+          {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+          {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+          {% if nr > ns %}
+            {% set nr = nr - timedelta(hours=24) %}
+          {% endif %}
+          {% set current_time = now() %}
+          {% set actual_triggers_today = states('sensor.daily_luftbefeuchter') | int(0) %}
+          {% set max_activations_per_day = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+          {% set remaining_activations = [0, max_activations_per_day - actual_triggers_today] | max %}
+          {% set match_window_seconds = 120 %}
+          {% set ns_test_output = namespace(trigger_times = [], current_match = false) %}
+    
+          {% if actual_triggers_today == 0 %}
+            {% set distribution_anchor_time = nr %}
+          {% else %}
+            {% set last_changed_utility_meter = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+            {% set distribution_anchor_time = [last_changed_utility_meter, nr] | max %}
+          {% endif %}
+    
+          {% if remaining_activations > 0 and current_time < ns %}
+            {% set duration_for_all_remaining_slots = (ns - distribution_anchor_time) %}
+            {% if duration_for_all_remaining_slots.total_seconds() > 0 %}
+              {% set interval_duration = duration_for_all_remaining_slots / (remaining_activations + 1) %}
+              {% for i in range(remaining_activations) %}
+                {% set potential_trigger_time = distribution_anchor_time + ((i + 1) * interval_duration) %}
+                {% if potential_trigger_time > current_time and potential_trigger_time <= ns %}
+                  {% if ((potential_trigger_time - timedelta(seconds=match_window_seconds)) <= current_time)
+                     and (current_time <= (potential_trigger_time + timedelta(seconds=match_window_seconds))) %}
+                    {% set ns_test_output.current_match = true %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+          {{ ns_test_output.current_match }}
+        attributes:
+          next_sunrise_offset_start: >
+             {% set nr = (as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2)) %}
+             {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+             {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+             {% endif %}
+             {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
+          next_sunset_offset_end: "{{ (as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25)).strftime('%Y-%m-%d %H:%M:%S') }}"
+          actual_triggers_today: "{{ states('sensor.daily_luftbefeuchter') | int(0) }}"
+          max_activations_per_day: "{{ states('input_number.max_humidifier_activations_per_day') | int(15) }}"
+          remaining_activations: >
+            {% set max = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+            {% set current = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {{ [0, max - current] | max }}
+          distribution_anchor_time: >
+            {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+            {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+            {% if nr > ns %}{% set nr = nr - timedelta(hours=24) %}{% endif %}
+            {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {% if actual == 0 %}
+              {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
+            {% else %}
+              {% set last_changed = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+              {{ ([last_changed, nr] | max).strftime('%Y-%m-%d %H:%M:%S') }}
+            {% endif %}
+          window_duration: >
+              {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+              {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+              {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+              {% endif %}
+              {% set diff = ns - nr %}
+              {% set hours = (diff.total_seconds() // 3600) | int %}
+              {% set minutes = ((diff.total_seconds() % 3600) // 60) | int %}
+              {{ '{}h {}m'.format(hours, minutes) }}
+          trigger_interval: >
+              {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+              {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+              {% if nr > ns %}
+                {% set nr = nr - timedelta(hours=24) %}
+              {% endif %}
+              {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+              {% set max = states('input_number.max_humidifier_activations_per_day') | int(15) %}
+              {% set remaining = [0, max - actual] | max %}
+              {% set anchor = nr if actual == 0 else [as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local, nr] | max %}
+              {% set span = ns - anchor %}
+              {% if remaining > 0 and span.total_seconds() > 0 %}
+                {% set interval = span.total_seconds() / (remaining + 1) %}
+                {% set hours = (interval // 3600) | int %}
+                {% set minutes = ((interval % 3600) // 60) | int %}
+                {% set seconds = (interval % 60) | round(0) | int %}
+                {{ '{}h {}m {}s'.format(hours, minutes, seconds) }}
+              {% else %}
+                'N/A'
+              {% endif %}
+          trigger_times: >
+            {% set nr = as_datetime(state_attr('sun.sun','next_rising')) | as_local + timedelta(hours=2) %}
+            {% set ns = as_datetime(state_attr('sun.sun','next_setting')) | as_local - timedelta(hours=1.25) %}
+            {% if nr > ns %}{% set nr = nr - timedelta(hours=24) %}{% endif %}
+            {% set current_time = now() %}
+            {% set actual = states('sensor.daily_luftbefeuchter') | int(0) %}
+            {% set max = 15 %}
+            {% set remaining = [0, max - actual] | max %}
+            {% set out = namespace(times=[]) %}
+            {% if actual == 0 %}
+              {% set anchor = nr %}
+            {% else %}
+              {% set changed = as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local %}
+              {% set anchor = [changed, nr] | max %}
+            {% endif %}
+            {% if remaining > 0 and current_time < ns %}
+              {% set span = ns - anchor %}
+              {% if span.total_seconds() > 0 %}
+                {% set interval = span / (remaining + 1) %}
+                {% for i in range(remaining) %}
+                  {% set t = anchor + ((i + 1) * interval) %}
+                  {% if t > current_time and t <= ns %}
+                    {% set out.times = out.times + [t.strftime('%H:%M:%S')] %}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            {% else %}
+              {% set out.times = ["No valid trigger times"] %}
+            {% endif %}
+            {{ out.times }}
+
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: state
+        entity_id:
+          - sensor.inverter_temperature
+          - sensor.heizraum_lufter_abluft_power
+          - sensor.esphome_az_envy_1_temperature_heizraum
+          - sensor.gw1100a_outdoor_temperature
+    binary_sensor:
+      - name: Heizraum Zuluft Trigger
+        unique_id: heizraum_zuluft_trigger
+        variables:
+          inverter_temp: "{{ states('sensor.inverter_temperature') | float(0) }}"
+          abluft_power: "{{ states('sensor.heizraum_lufter_abluft_power') | float(0) }}"
+          heizraum_temp: "{{ states('sensor.esphome_az_envy_1_temperature_heizraum') | float(0) }}"
+          outdoor_temp: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) }}"
+          inverter_level: >
+            {% if inverter_temp|float >= 55 %}
+              notfall
+            {% elif inverter_temp|float >= 50 %}
+              aktiv
+            {% elif inverter_temp|float >= 40 %}
+              okay
+            {% else %}
+              normal
+            {% endif %}
+          abluft_level: >
+            {% if abluft_power|float >= 6 %}
+              hoch
+            {% elif abluft_power|float >= 4 %}
+              normal
+            {% else %}
+              niedrig
+            {% endif %}
+          zuluft_needed: >
+              {% if outdoor_temp|float < 15 %}
+                false
+              {% elif inverter_level == 'notfall' %}
+                true
+              {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
+                true
+              {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
+                true
+              {% else %}
+                false
+              {% endif %}
+        state: "{{ iif(zuluft_needed|bool, 'on', 'off', none) }}"
+        availability: >
+          {{ states('sensor.inverter_temperature') not in ['unknown','unavailable']
+             and states('sensor.heizraum_lufter_abluft_power') not in ['unknown','unavailable']
+             and states('sensor.gw1100a_outdoor_temperature') not in ['unknown','unavailable'] }}
+        attributes:
+          inverter_temp: "{{ inverter_temp }}"
+          inverter_level: "{{ inverter_level }}"
+          abluft_power: "{{ abluft_power }}"
+          abluft_level: "{{ abluft_level }}"
+          heizraum_temp: "{{ heizraum_temp }}"
+          outdoor_temp: "{{ outdoor_temp }}"
+          zuluft_needed: "{{ zuluft_needed }}"
+          decision_reason: >
+            {% if inverter_level == 'notfall' %}
+              Inverter Notfall >55°C
+            {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
+              Aktiv helfen: Inverter 50°C+, Abluft hoch
+            {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
+              Okay: Inverter 40°C+, Abluft >= normal
+            {% else %}
+              Keine Zuluft nötig
+            {% endif %}
+
+  - trigger:
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: homeassistant
+        event: start
+    sensor:
+      - name: "Todo Lists Config"
+        unique_id: todo_lists_config
+        state: "static"
+        attributes:
+          todo_lists: >-
+            {{ ['todo.kellervorrate', 'todo.kellervorrate_katzenfutter', 'todo.kellervorrate_safe', 'todo.kellervorrate_marmelade_selbstgemachtes', 'todo.kuhltruhe_keller', 'todo.kuhltruhe_garage'] }}
+  - trigger:
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: homeassistant
+        event: start
+      - platform: state
+        entity_id: input_text.search_todo_list
+      - platform: state
+        entity_id: &todo_lists
+          - todo.kellervorrate
+          - todo.kellervorrate_katzenfutter
+          - todo.kellervorrate_safe
+          - todo.kellervorrate_marmelade_selbstgemachtes
+          - todo.kuhltruhe_keller
+          - todo.kuhltruhe_garage
+    action:
+      - action: todo.get_items
+        data:
+          status: needs_action
+        target:
+          entity_id: *todo_lists
+        response_variable: all_todo_items
+    sensor:
+      - name: "Kellervorrate Combined Filtered Items"
+        unique_id: kellervorrate_combined_filtered_items
+        state: >
+            {% set input = states('input_text.search_todo_list') | default('') | lower %}
+            {% set has_filter = 'todo:' in input %}
+            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
+            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
+            
+            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
+            
+            {% set filtered_lists = lists  
+              | select('search', filter_key)  
+              | list if filter_key else lists %}  
+            
+            {% if filtered_lists | length == 0 %}
+              {% set filtered_lists = lists %}
+            {% endif %}
+            
+            {% if all_todo_items is defined %}
+              {% set count = namespace(total=0) %}
+              {% for list_id in filtered_lists %}
+                {% set items = all_todo_items[list_id]['items'] | default([], true) %}
+                {% for item in items %}
+                  {% set terms = search_term.split() %}
+                  {% if search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count) %}
+                    {% set count.total = count.total + 1 %}
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+              
+              {{ count.total }}
+            {% else %}
+              0
+            {% endif %}
+        attributes:
+          source_map: >
+            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
+
+            {% set ns = namespace(source_map={}) %}
+
+            {% for entity_id in lists %}
+              {# get raw friendly name (or build fallback from entity_id) #}
+              {% set fn_raw = state_attr(entity_id, 'friendly_name')
+                | default(entity_id.split('.')[-1] | replace('_', ' ') | title, true) %}
+
+              {# remove straight and smart quotes, collapse double spaces and trim #}
+              {% set fn = fn_raw
+                | replace('"', '')
+                | replace("'", '')
+                | replace('“', '')
+                | replace('”', '')
+                | replace('’', '')
+                | regex_replace('\\s+', ' ')
+                | trim %}
+
+              {% set ns.source_map = ns.source_map | combine({
+                (loop.index|string): {
+                  'entity_id': entity_id,
+                  'friendly_name': fn
+                }
+              }) %}
+            {% endfor %}
+
+            {{ ns.source_map | to_json }}
+          filtered_items: >
+            {% set input = states('input_text.search_todo_list') | default('') | lower %}
+            {% set has_filter = 'todo:' in input %}
+            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
+            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
+
+            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
+            
+            {% set ns2 = namespace(index_map={}) %}
+            {% for entity_id in lists %}
+              {% set ns2.index_map = ns2.index_map | combine({ (entity_id): loop.index }) %}
+            {% endfor %}
+            {% set list_index = ns2.index_map %}
+
+            {% set filtered_lists = lists
+              | select('search', filter_key)
+              | list if filter_key else lists %}
+            
+            {% if filtered_lists | length == 0 %}
+              {% set filtered_lists = lists %}
+            {% endif %}
+                        
+            {% set combined = namespace(items=[]) %}
+            
+            {% if all_todo_items is defined %}
+              {% for list_id in filtered_lists %}
+                {% set items = all_todo_items[list_id]['items'] | default([], true) %}
+                {% for item in items %}
+                  {% if item.summary is defined and item.summary is string %}
+                    {% set terms = search_term.split() %}
+                    {% if (search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count)) %}
+                      {% set minimal_item = {
+                        'u': item.uid,
+                        's': item.summary,
+                        'd': item.description,
+                        'c': list_index[list_id]
+                      } %}
+                      {% set combined.items = combined.items + [minimal_item] %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              {% endfor %}
+            
+              {# combined.items #}
+              
+              {# ---- SORTING STEP ---- #}
+              {% set sorted_items = combined.items | sort(attribute='s', case_sensitive=False) %}
+              {{ sorted_items | to_json}}
+              
+            {% else %}
+              []
+            {% endif %}
+  - trigger: 
+      - platform: state
+        entity_id: sensor.kellervorrate_combined_filtered_items
+      - platform: state
+        entity_id: sensor.kellervorrate_combined_filtered_items
+        attribute: filtered_items
+      - platform: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+    sensor:
+      - name: "Kellervorrate Combined Filtered Items Hash"
+        unique_id: kellervorrate_combined_filtered_items_hash
+        state: >-
+            {{ 
+                (
+                  (state_attr('sensor.kellervorrate_combined_filtered_items', 'filtered_items') | default([]) | to_json) 
+                    ~
+                  (state_attr('sensor.kellervorrate_combined_filtered_items', 'source_map') | default({}) | to_json) 
+                ) | md5
+            }}
+
+  - triggers:
+      - platform: state
+        entity_id: input_boolean.rollo_summer_override
+      - platform: state
+        entity_id: sensor.sun_solar_azimuth
+      - platform: state
+        entity_id: sensor.sun_solar_elevation
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: homeassistant
+        event: start
+    binary_sensor:
+      - name: "Rollo Summer Should Close"
+        unique_id: rollo_summer_should_close
+        state: >
+            {# Safety-Check: Wenn this.attributes nicht existiert oder leer ist → None #}
+            {% if this is not defined or this.attributes is not defined or this.attributes | length == 0 %}
+              None
+            {% else %}
+
+              {% set manual = this.attributes.manual_mode | default(0) | int %}
+              {% set summer = this.attributes.summer | default(0) | int %}
+              {% set within_daylight = this.attributes.within_daylight | default(0) | int %}
+              {% set sun_hits_window = this.attributes.sun_hits_window | default(0) | int %}
+              {% set not_raining = this.attributes.not_raining | default(0) | int %}
+
+              {% if manual > 0 or summer < 1 %}
+                None
+              {% elif (summer + within_daylight + sun_hits_window + not_raining) < 4 %}
+                false
+              {% else %}
+                {% set strong_uv_index = this.attributes.strong_uv_index | default(0) | float %}
+                {% set strong_uv_lux = this.attributes.strong_uv_lux | default(0) | float %}
+                {% set high_temp_diff = this.attributes.high_temp_diff | default(0) | float %}
+                {% set extreme_temp = this.attributes.extreme_temp | default(0) | float %}
+
+                {% set sum = strong_uv_index + strong_uv_lux + high_temp_diff + extreme_temp %}
+
+                {% if sum >= 1.9 %}
+                  true
+                {% else %}
+                  false
+                {% endif %}
+              {% endif %}
+
+            {% endif %}
+        attributes:
+          manual_mode: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
+          
+          first_blockers: ''
+          summer: >
+            {% set summer_months = [5,6,7,8,9] %}
+            {% set month = now().month %}
+            {{ 1 if (month in summer_months) else 0 }}
+          within_daylight: >
+            {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
+            {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime %}
+            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime %}
+            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
+            {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1)) %}
+            {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1)) %}
+            {% set open_after = relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES) %}
+            {% set close_before = relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES) %}
+            {{ 1 if ((current_time > open_after) and (current_time < close_before)) else 0 }}
+          sun_hits_window: >
+            {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
+            {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
+            {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
+            {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
+            {{ 1 if ((azimuth > SUN_WINDOW_AZIMUTH_THRESHOLD) and (elevation > SUN_WINDOW_ELEVATION_THRESHOLD)) else 0 }}
+          not_raining: >
+              {% set RAIN_RATE_THRESHOLD = 0.1 %}
+              {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
+            
+              {% set rain_rate = states('sensor.gw1100a_rain_rate') | float(0) %}
+              {% set sunflower_wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
+              {% set weather_condition = states('weather.irauen33') | lower | default('') %}
+              {% set weather_says_rain = RAIN_KEYWORDS | select('in', weather_condition) | list | count > 0 %}
+            
+              {% set rain_conditions = [
+                rain_rate > RAIN_RATE_THRESHOLD,
+                sunflower_wet,
+                weather_says_rain
+              ] %}
+            
+              {% set count_true = rain_conditions | select('equalto', true) | list | count %}
+            
+              {{ 1 if (count_true < 2) else 0 }}
+          
+          heat_reasons: ''
+          strong_uv_index: >
+            {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
+            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
+            {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
+            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                0.0
+            {% else %}
+                {% set ratio = uv_index / UV_INDEX_THRESHOLD_STRONG if UV_INDEX_THRESHOLD_STRONG > 0 else 0 %}
+                {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
+          strong_uv_lux: >
+            {% set UV_THRESHOLD_STRONG = 60000.0 %}
+            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
+            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+            0.0
+            {% else %}
+            {% set ratio = uv / UV_THRESHOLD_STRONG if UV_THRESHOLD_STRONG > 0 else 0 %}
+            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
+          high_temp_diff: >
+            {% set TEMP_DIFF_THRESHOLD = 2.5 %}
+            {% set TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF = 22.0 %}
+            {% set UV_THRESHOLD_TEMP_DIFF = 25000.0 %}
+            {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+            {% set diff = temp_outside - temp_inside %}
+            {# Require outside temp and uv gate; if they pass, scale by diff/threshold #}
+            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF or uv <= UV_THRESHOLD_TEMP_DIFF %}
+            0.0
+            {% else %}
+            {% set ratio = diff / TEMP_DIFF_THRESHOLD if TEMP_DIFF_THRESHOLD > 0 else 0 %}
+            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
+          extreme_temp: >
+            {% set BASELINE = 20.0 %}
+            {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
+            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+            {% set denom = (EXTREME_TEMP_THRESHOLD - BASELINE) if (EXTREME_TEMP_THRESHOLD - BASELINE) != 0 else 1 %}
+            {% set ratio = (temp_outside - BASELINE) / denom %}
+            {% if ratio <= 0 %}
+              0.0
+            {% elif ratio >= 1 %}
+              1.0
+            {% else %}
+              {{ ratio }}
+            {% endif %}
+
+          Reason: ''
+          reason: >
+              {% set ns = namespace(reasons=[]) %}
+            
+              {# Manual override #}
+              {% if is_state('input_boolean.rollo_summer_override', 'on') %}
+                {% set ns.reasons = ns.reasons + ['Manual override active, auto close disabled.'] %}
+              {% else %}
+                {# Summer check #}
+                {% set summer_months = [5,6,7,8,9] %}
+                {% if now().month not in summer_months %}
+                  {% set ns.reasons = ns.reasons + ['Not summer month'] %}
+                {% endif %}
+            
+                {# Within daylight #}
+                {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
+                {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
+                {% set current_time = now() | as_timestamp | timestamp_local | as_datetime %}
+                {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime %}
+                {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
+                {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1)) %}
+                {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1)) %}
+                {% set open_after = relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES) %}
+                {% set close_before = relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES) %}
+                {% if not (current_time > open_after and current_time < close_before) %}
+                  {% set ns.reasons = ns.reasons + ['Outside daylight window'] %}
+                {% endif %}
+            
+                {# Sun hits window #}
+                {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
+                {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
+                {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
+                {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
+                {% if not ((azimuth > SUN_WINDOW_AZIMUTH_THRESHOLD) and (elevation > SUN_WINDOW_ELEVATION_THRESHOLD)) %}
+                  {% set ns.reasons = ns.reasons + ['Sun not hitting window'] %}
+                {% endif %}
+            
+                {# Not raining - require fewer than 2 positive rain signals #}
+                {% set RAIN_RATE_THRESHOLD = 0.1 %}
+                {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
+                {% set rain_rate = states('sensor.gw1100a_rain_rate') | float(0) %}
+                {% set sunflower_wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
+                {% set weather_condition = states('weather.irauen33') | lower | default('') %}
+                {% set weather_says_rain = RAIN_KEYWORDS | select('in', weather_condition) | list | count > 0 %}
+                {% set rain_conditions = [ rain_rate > RAIN_RATE_THRESHOLD, sunflower_wet, weather_says_rain ] %}
+                {% set count_true = rain_conditions | select('equalto', true) | list | count %}
+                {% if count_true >= 2 %}
+                  {% set ns.reasons = ns.reasons + ['Raining detected (' ~ count_true ~ ' of 3)'] %}
+                {% endif %}
+            
+                {# Heat risks: compute percentages directly from sensors (same logic as attributes) #}
+                {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
+                {% set UV_THRESHOLD_STRONG = 60000.0 %}
+                {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
+                {% set TEMP_DIFF_THRESHOLD = 2.5 %}
+                {% set UV_THRESHOLD_TEMP_DIFF = 25000.0 %}
+                {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
+            
+                {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
+                {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
+                {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+                {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+                {% set diff = temp_outside - temp_inside %}
+            
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                  {% set s_uv_index = 0.0 %}
+                {% else %}
+                  {% set s_uv_index = uv_index / UV_INDEX_THRESHOLD_STRONG %}
+                  {% if s_uv_index < 0 %}{% set s_uv_index = 0.0 %}{% endif %}
+                  {% if s_uv_index > 1 %}{% set s_uv_index = 1.0 %}{% endif %}
+                {% endif %}
+            
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
+                  {% set s_uv_lux = 0.0 %}
+                {% else %}
+                  {% set s_uv_lux = uv / UV_THRESHOLD_STRONG %}
+                  {% if s_uv_lux < 0 %}{% set s_uv_lux = 0.0 %}{% endif %}
+                  {% if s_uv_lux > 1 %}{% set s_uv_lux = 1.0 %}{% endif %}
+                {% endif %}
+            
+                {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD or uv <= UV_THRESHOLD_TEMP_DIFF %}
+                  {% set h_temp_diff = 0.0 %}
+                {% else %}
+                  {% set h_temp_diff = diff / TEMP_DIFF_THRESHOLD %}
+                  {% if h_temp_diff < 0 %}{% set h_temp_diff = 0.0 %}{% endif %}
+                  {% if h_temp_diff > 1 %}{% set h_temp_diff = 1.0 %}{% endif %}
+                {% endif %}
+            
+                {# Extreme temp scaled from baseline 20 up to EXTREME_TEMP_THRESHOLD #}
+                {% set BASELINE = 20.0 %}
+                {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
+                {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+                {% set denom = (EXTREME_TEMP_THRESHOLD - BASELINE) if (EXTREME_TEMP_THRESHOLD - BASELINE) != 0 else 1 %}
+                {% set e_temp = (temp_outside - BASELINE) / denom %}
+                {% if e_temp < 0 %}{% set e_temp = 0.0 %}{% endif %}
+                {% if e_temp > 1 %}{% set e_temp = 1.0 %}{% endif %}
+            
+                {% set sum = (s_uv_index + s_uv_lux + h_temp_diff + e_temp) %}
+                {% set count_nonzero = [s_uv_index, s_uv_lux, h_temp_diff, e_temp] | select('gt', 0) | list | count %}
+            
+                {% set ns.reasons = ns.reasons + ['Heat risk score: ' ~ (sum | round(2)) ~ ' (components: ' ~ count_nonzero ~ '/4)'] %}
+                {% set ns.reasons = ns.reasons + [
+                  'UV index: ' ~ (s_uv_index | round(2)),
+                  'UV lux: ' ~ (s_uv_lux | round(2)),
+                  'Temp diff: ' ~ (h_temp_diff | round(2)),
+                  'Extreme temp: ' ~ (e_temp | round(2))
+                ] %}
+              {% endif %}
+            
+              {{ ns.reasons | join(',\n') }}
+
+          Time: ''
+          open_after: >
+            {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
+            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+
+            {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt is not none and next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1) if next_rising_raw_dt is not none else none) %}
+
+            {{ (relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES)).strftime('%H:%M') if relevant_sunrise_dt is not none else 'unavailable' }}
+          close_before: >
+            {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
+            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
+            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
+
+            {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt is not none and next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1) if next_setting_raw_dt is not none else none) %}
+
+            {{ (relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES)).strftime('%H:%M') if relevant_sunset_dt is not none else 'unavailable' }}
+
+          Sensors: ''
+          temp_inside: >
+              {% set val = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+              {{ val | round(1) }}
+          temp_outside: >
+              {% set val = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+              {% set threshold = 28 %}
+              {{ val | round(1) }} (> {{ threshold }})
+          temp_diff: >
+              {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
+              {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
+              {% set diff = temp_outside - temp_inside %}
+              {% set threshold = 2.5 %}
+              {{ diff| round(1) }} (> {{ threshold }})
+          rain_rate: >
+              {% set val = states('sensor.gw1100a_rain_rate') | float(0) %}
+              {% set threshold = 0.1 %}
+              {{ val }} (> {{ threshold }})
+          rain_sunflower: >
+            {% set wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
+            {{ 'Wet' if wet else 'Dry' }} (== Wet)
+          weather: >
+            {{ states('weather.irauen33') | lower | default('') }} 
+          uv_lux: >
+            {% set val = states('sensor.gw1100a_solar_lux') | float(0) %}
+            {% set threshold = 60000 %}
+            {{ val | round(0) }} (> {{ threshold }})
+          uv_index: >
+            {% set val = states('sensor.gw1100a_uv_index') | float(0) %}
+            {% set threshold = 4 %}
+            {{ val | round(0) }} (> {{ threshold }})
+          elevation: >
+            {% set val = states('sensor.sun_solar_elevation') | float(0) %}
+            {% set threshold = 16 %}
+            {{ val | round(0) }} (> {{ threshold }})
+          azimuth: >
+            {% set val = states('sensor.sun_solar_azimuth') | float(0) %}
+            {% set threshold = 150 %}
+            {{ val | round(0) }} (> {{ threshold }})
+
+  - trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    sensor:
+      - name: "Gesamt Kosten Pv Active Moving"
+        unique_id: gesamtkosten_pv
+        unit_of_measurement: "€"
+        state_class: measurement
+        state: |
+          {% set solar_home = states('sensor.solar_to_home_daily_energy_cost') | float(0) %}
+          {% set solar_bat = states('sensor.battery_charge_from_solar_daily_energy_cost') | float(0) %}
+          {% set bat_home = states('sensor.inverter_total_battery_discharge_daily_energy_cost') | float(0) %}
+          {% set solar_grid = states('sensor.daily_money_generated_solar') | float(0) %}
+          {% set bkw = states('sensor.bkw_outlet_1_total_daily_energy_cost') | float(0) %}
+          {% set gesamt = states('input_number.gesamte_pv_kosten') | float(0) %}
+          {{ (gesamt - solar_home - solar_bat - bat_home - solar_grid - bkw) | round(2) }}
+        attributes:
+          daily_change: >
+            {% set before = states('input_number.after_gesamt_pv_kosten') | float(0) %}
+            {% set after = states('sensor.gesamt_kosten_pv_active_moving') | float(0) %}
+            {{ (before - after) | round(2) }}€
+
+  - trigger:
+      - platform: time_pattern
+        seconds: "/10"
+    sensor:
+      - name: "Home Power"
+        unique_id: home_power
+        unit_of_measurement: "W"
+        state_class: measurement
+        device_class: power
+        state: |
+          {% set grid_import = states('sensor.grid_import') | float(0) %}
+          {% set grid_export = states('sensor.grid_export') | float(0) %}
+          {% set battery_charge = states('sensor.battery_charge') | float(0) %}
+          {% set battery_discharge = states('sensor.battery_discharge') | float(0) %}
+          {% set losses = states('sensor.inverter_power_losses') | float(0) %}
+          {% set deye = states('sensor.inverter_pv_power') | float(0) %}
+          {% set kostal = states('sensor.scb_ac_power') | float(0) %}
+          {% set solar = (deye + kostal) | round(2) %}
+          {% set bkw = states('sensor.bkw_outlet_1_energy_power') | float(0) %}
+          {% set known_power = states('sensor.known_power') | float(0) %}
+          {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
+          {{ home | clamp(known_power, 33000) }}
+
+      - name: "Home Consumption Total Day"
+        unique_id: home_consumption_total_day
+        unit_of_measurement: "kWh"
+        state_class: total
+        device_class: energy
+        state: |
+            {% set pv = states('sensor.daily_solar_production') | float(0) %}
+            {% set bkw = states('sensor.bkw_outlet_1_energy_today') | float(0) %}
+            {% set bat_charge = states('sensor.inverter_today_battery_charge') | float(0) %}
+            {% set bat_discharge = states('sensor.daily_battery_discharged_energy') | float(0) %}
+            {% set grid_import = states('sensor.daily_netzbezug') | float(0) %}
+            {% set grid_export = states('sensor.daily_netzeinspeisung') | float(0) %}
+            {% set loss_deye= states('sensor.inverter_today_energy_losses') | float(0) %}
+            {% set losses = loss_deye %} 
+            {% set total= ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) %}
+            {{ total if total > 0 else 0 }}
+
+      - name: "Unmonitored"
+        unique_id: unmonitored
+        state: >
+          {% set known = states('sensor.known_power') | float(0) %}
+          {% set home = states('sensor.home_power') | float(0) %}
+          {% set diff = (home - known) | round(2) %}
+          {{ diff if diff > 0 else 0 }}
+        availability: >
+          {{ states('sensor.known_power') not in ['unavailable','unknown'] and states('sensor.home_power') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash-outline
+
+      - name: "Unmonitored Consumption"
+        unique_id: unmonitored_consumption
+        state: >
+          {% set home = states('sensor.home_consumption_total_day') | float(0) %}
+          {% set known = states('sensor.known_energy') | float(0) %}
+          {% set unmetered = (home - known) | round(3) %}
+          {{ unmetered if unmetered > 0 else 0 }}
+        availability: >
+          {{ states('sensor.home_consumption_total_day') not in ['unavailable','unknown'] and states('sensor.known_energy') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        icon: mdi:power-plug-off
+
+      - name: "Battery Charge Power from Solar"
+        unique_id: battery_charge_power_from_solar
+        state: >
+          {% set bat_charge = states('sensor.battery_charge') | float(0) | round(0) %}
+          {% set charge_from_solar = is_state('binary_sensor.battery_charging_from_solar','on') %}
+          {{ iif(charge_from_solar, bat_charge, 0, 0)}}
+        availability: >
+          {{ states('sensor.battery_charge') not in ['unavailable','unknown'] and states('binary_sensor.battery_charging_from_solar') not in ['unavailable','unknown'] }}
+        device_class: power
+        unit_of_measurement: "W"
+        state_class: measurement
+        icon: mdi:solar-power
+        
+  - trigger:
+      - platform: time_pattern
+        seconds: "/5"
+    sensor:
+      - name: "Grid Power"
+        unique_id: grid_power
+        state: >
+          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
+          {% if tibber not in ['unavailable', 'unknown'] %}
+            {{ tibber | float(0) }}
+          {% else %}
+            {{ states('sensor.smart_meter_mqtt_grid_power') | float(0) }}
+          {% endif %}
+        availability: >
+          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
+          {% set smart  = states('sensor.smart_meter_mqtt_grid_power') %}
+          {{ tibber not in ['unavailable', 'unknown'] or smart not in ['unavailable', 'unknown'] }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:transmission-tower
+
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - trigger: state
+        entity_id:
+         - input_button.update_beta_release_notes
+    actions:
+      - action: multiscrape.scrape
+        response_variable: beta_scrape
+        data:
+          name: beta_release_scraper
+          resource: https://rc.home-assistant.io/latest-release-notes/
+          sensor:
+            - unique_id: beta_url
+              name: Beta Release URL
+              select: link[rel='canonical']
+              attribute: href
+              value_template: |
+                {!{ value | trim | replace('www.home','rc.home') }!}
+            - unique_id: beta_notes_content
+              name: Beta Notes Content
+              select: body
+              value_template: |
+                {!{ value | trim | replace('\\n', ' ') }!}
+      - action: conversation.process
+        response_variable: agent
+        data:
+          text: >-
+            You are an expert software release notes summarizer.
+
+            The release notes below are for the Home Assistant release found at
+            this URL: {{ beta_scrape.beta_url.value }}
+
+            Based on the following raw release notes text, please:
+
+            1. Extract and list **New Features** introduced in this release. 2.
+            Identify and list any **Breaking Changes** (features or behaviors
+            that require user attention because they may break existing setups).
+            3. Highlight **Backward-Incompatible Changes** or deprecations. 4.
+            Optionally include other important notes, like bug fixes or notable
+            improvements.
+
+            Structure your output in a clear, organized format with headings
+            like this:
+
+            **New Features:**   \n- Feature 1   \n- Feature 2 ...
+
+            **Breaking Changes:**   \n- Change 1   \n- Change 2 ...
+
+            **Backward-Incompatible Changes:**   \n- Change 1   \n- Change 2 ...
+
+            **Other Notes:**   \n- Note 1   \n- Note 2 ...
+
+            Only include points actually mentioned in the release notes. Be
+            concise but informative, avoid filler.
+            The summary is intended to be used in a markdown display.
+            Only provide the summary and nothing else like heres the summary or any other form of introduction.
+
+            Here is the release notes text:   
+            
+            {{ beta_scrape.beta_notes_content }}
+            
+          agent_id: conversation.z_ai_glm_4_5_air_free
+    
+    sensor:
+      - unique_id: home_assistant_beta_release_notes
+        name: Home Assistant Beta Release Notes
+        icon: mdi:home-assistant
+        state: >
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
+              {% set url = beta_scrape.beta_url.value|string|trim %}
+              {% if 'release-' in url %}
+                {% set build = url.split('/')[-2]|trim %}
+                {% set year = build.split('-')[1][0:4] %}
+                {% set month = build.split('-')[1][4:]|int %}
+                {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
+              {% else %}
+                Invalid URL
+              {% endif %}
+            {% else %}
+              Unknown
+            {% endif %}
+        attributes:
+          beta_url: > 
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
+              {{beta_scrape.beta_url.value|string }}
+            {% endif %}
+          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
+
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: time_pattern
+        hours: "/12"
+    binary_sensor:
+      - name: "Upcoming Birthdays"
+        icon: mdi:cake-variant-outline
+        unique_id: upcoming_birthdays
+        availability: >
+          {% set people = label_entities('birthday') %}
+          {{ people | map('states') | reject('in', ['unknown', 'unavailable']) | list | count == people | count }}
+        state: >
+          {% set people = label_entities('birthday') %}
+          {% set today = now().date() %}
+          {% set ns = namespace(active=false) %}
+          {% for entity in people %}
+            {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
+            {% if d is not none %}
+                {% set next_birthday = d.replace(year=today.year) %}
+                {% if next_birthday < today %}
+                  {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+                {% endif %}
+                {% if (next_birthday - today).days <= 4 %}
+                  {% set ns.active = true %}
+                {% endif %}
+            {%endif %}
+          {% endfor %}
+          {{ ns.active }}
+    
+        attributes:
+          upcoming: >
+            {% set people = label_entities('birthday') %}
+            {% set today = now().date() %}
+            {% set ns = namespace(lines=[]) %}
+            {% for entity in people %}
+              {% set d = strptime(states(entity)[:10], '%Y-%m-%d').date() if states(entity) | length >= 10 else none %}
+              {% if d is not none %}
+                  {% set next_birthday = d.replace(year=today.year) %}
+                  {% if next_birthday < today %}
+                    {% set next_birthday = next_birthday.replace(year=next_birthday.year + 1) %}
+                  {% endif %}
+                  {% set days = (next_birthday - today).days %}
+                  {% if days <= 4 %}
+                    {% set turning = next_birthday.year - d.year %}
+                    {% set name = state_attr(entity, 'friendly_name') %}
+                    {% set label = '🎉 HEUTE' if days == 0 else days ~ ' Tage' %}
+                    {% set ns.lines = ns.lines + ['🎂 ' ~ name ~ ': ' ~ label ~ ' – wird ' ~ turning] %}
+                  {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.lines }}
+
+  - cover:
+      - device_class: WINDOW
+        unique_id: wintergarten_dachfenster
+        optimistic: false
+        open_cover:
+        - action: script.wintergarten_dachfenster_open
+        close_cover:
+        - action: script.wintergarten_dachfenster_close
+        stop_cover:
+        - action: script.wintergarten_dachfenster_stop
+        default_entity_id: cover.wintergarten_dachfenster
+        name: Wintergarten Dachfenster
+        state: '{{ is_state(''binary_sensor.dachfenster_wintergarten'',''on'')  }}'
+
+      - device_class: BLIND
+        unique_id: wintergarten_rolladen_dachfenster
+        optimistic: true
+        open_cover:
+        - action: script.wintergarten_dachfenster_rolladen_open
+        close_cover:
+        - action: script.wintergarten_dachfenster_rolladen_close
+        stop_cover:
+        - action: script.wintergarten_dachfenster_rolladen_stop
+        default_entity_id: cover.wintergarten_rolladen_dachfenster
+        name: Wintergarten Rolladen Dachfenster
+        state: '{{ is_state(''input_boolean.rollo_state'', ''off'') }}'

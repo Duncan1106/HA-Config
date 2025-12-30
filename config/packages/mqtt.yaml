@@ -1,0 +1,185 @@
+mqtt:
+  switch:
+    - name: "Tasmota Rule 1"
+      unique_id: tasmota_157F88_rule1_switch
+      command_topic: "cmnd/tasmota_157F88/Rule1"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_topic: "stat/tasmota_157F88/RESULT"
+      value_template: >
+        {% if value_json.Rule1 is defined and value_json.Rule1.State in ['ON','OFF'] %}
+          {{ value_json.Rule1.State }}
+        {% endif %}
+      optimistic: false
+      icon: mdi:script
+      availability_topic: "tele/tasmota_157F88/LWT"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+      device:
+        connections:
+          - ["mac", "C8C9A3157F88"]
+        identifiers:
+          - "C8C9A3157F88"
+
+    - name: "Tasmota Rule 2"
+      unique_id: tasmota_157F88_rule2_switch
+      command_topic: "cmnd/tasmota_157F88/Rule2"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_topic: "stat/tasmota_157F88/RESULT"
+      value_template: >
+        {% if value_json.Rule2 is defined and value_json.Rule2.State in ['ON','OFF'] %}
+          {{ value_json.Rule2.State }}
+        {% endif %}
+      optimistic: false
+      icon: mdi:script
+      availability_topic: "tele/tasmota_157F88/LWT"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+      device:
+        connections:
+          - ["mac", "C8C9A3157F88"]
+        identifiers:
+          - "C8C9A3157F88"
+
+    - name: "Tasmota Rule 3"
+      unique_id: tasmota_157F88_rule3_switch
+      command_topic: "cmnd/tasmota_157F88/Rule3"
+      payload_on: "ON"
+      payload_off: "OFF"
+      state_topic: "stat/tasmota_157F88/RESULT"
+      value_template: >
+        {% if value_json.Rule3 is defined and value_json.Rule3.State in ['ON','OFF'] %}
+          {{ value_json.Rule3.State }}
+        {% endif %}
+      optimistic: false
+      icon: mdi:script
+      availability_topic: "tele/tasmota_157F88/LWT"
+      payload_available: "Online"
+      payload_not_available: "Offline"
+      device:
+        connections:
+          - ["mac", "C8C9A3157F88"]
+        identifiers:
+          - "C8C9A3157F88"
+
+  sensor:
+    - name: "Tibber Node Pulse Battery Voltage"
+      unique_id: tibber_node_battery_voltage
+      state_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      value_template: "{{ value_json.node_status.node_battery_voltage | float(0) | round(3) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      icon: mdi:battery
+      json_attributes_topic: "tibber/out/TFD01/50325ffffe29475c/metric"
+      json_attributes_template: >
+        {% set ns = value_json.node_status | default({}) %}
+        {% set ha = value_json.hub_attachments | default({}) %}
+        {% if ns %}
+          {% set uptime_ms = ns.node_uptime_ms | float(0) / 1000 %}
+          {% set ts = (now() - timedelta(seconds=uptime_ms)) | time_since(4) %}
+          {% set parts = ts | regex_findall('(\d+)\\s*(\\w+)') %}
+          {% set ns_shorts = namespace(short_parts=[]) %}
+          {% for p in parts %}
+            {% set ns_shorts.short_parts = ns_shorts.short_parts + [p[0] ~ p[1][:1]] %}
+          {% endfor %}
+          {% set uptime_human = ns_shorts.short_parts | join(' ') %}
+          {% set lqi = ns.node_avg_lqi | float(-1) %}
+          {% set lqi_quality = (
+              "Unknown" if lqi < 0 else
+              "Excellent" if lqi >= 200 else
+              "Good" if lqi >= 175 else
+              "Fair" if lqi >= 150 else
+              "Weak"
+          ) %}
+          {{ (ns | combine(ha) | combine({"uptime_human": uptime_human, "lqi_quality": lqi_quality})) | tojson }}
+        {% else %}
+          "{}"
+        {% endif %}
+      force_update: true
+
+    - name: "Tibber Node Bridge Status"
+      unique_id: "tibber_bridge_status_sensor"
+      state_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      value_template: "{{ value_json.status.vcc | float(0) | round(3) }}"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+      json_attributes_topic: "tibber/out/TJH01/4091511e1b100/metric"
+      json_attributes_template: >
+        {% set s = value_json.status | default({}) %}
+        {% set ota = s.ota | default([]) %}
+        {% if s %}
+          {% set uptime_sec = s.uptime | float(0) %}
+          {% set ts = (now() - timedelta(seconds=uptime_sec)) | time_since(4) %}
+          {% set parts = ts | regex_findall('(\d+)\\s*(\\w+)') %}
+          {% set ns_shorts = namespace(short_parts=[]) %}
+          {% for p in parts %}
+            {% set ns_shorts.short_parts = ns_shorts.short_parts + [p[0] ~ p[1][:1]] %}
+          {% endfor %}
+          {% set uptime_human = ns_shorts.short_parts | join(' ') %}
+          {% set uptime_days = ((s.uptime | float(0)) / 86400) | round(2)%}
+          {# ---- WiFi quality ---- #}
+          {% set rssi = s.rssi | int(-100) %}
+          {% set wifi_quality = (
+              "Excellent" if rssi > -55 else
+              "Good" if rssi > -67 else
+              "Fair" if rssi > -75 else
+              "Weak"
+          ) %}
+
+          {# ---- Combine everything ---- #}
+          {{ s | combine({"uptime_human": uptime_human, "uptime_days": uptime_days, "wifi_quality": wifi_quality, "ota": ota}) | tojson }}
+        {% else %}
+          "{}"
+        {% endif %}
+      force_update: true
+
+    - state_topic: fully-single-app/deviceInfo/a9641507-a9641507
+      name: Fully Kiosk Device Info
+      unique_id: fully_kiosk_device_info
+      json_attributes_topic: fully-single-app/deviceInfo/a9641507-a9641507
+      force_update: true
+      value_template: "{{ value_json['deviceName'] }}"
+
+    - name: "Smart Meter MQTT Data"
+      state_topic: "smartmeter-em420/"
+      value_template: "{{ value_json['smart-meter']['status'] }}"
+      unique_id: smart_meter_mqtt_data
+      json_attributes_topic: "smartmeter-em420/"
+      json_attributes_template: "{{ value_json['smart-meter'] | tojson }}"
+      device:
+        name: "Smart Meter"
+        identifiers: 
+         - "em420"
+  
+    - name: "MQTT_Stats_Messages_Received"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/messages/received"
+      state_class: total
+      unit_of_measurement: messages
+      unique_id: mqtt_stats_messages_received
+    - name: "MQTT_Stats_Messages_Sent"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/messages/sent"
+      state_class: total
+      unit_of_measurement: messages
+      unique_id: mqtt_stats_messages_sent
+    - name: "MQTT_Stats_Bytes_Received"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/bytes/received"
+      device_class: data_size
+      state_class: total
+      unit_of_measurement: B
+      unique_id: mqtt_stats_bytes_received
+    - name: "MQTT_Stats_Bytes_Sent"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/bytes/sent"
+      device_class: data_size
+      state_class: total
+      unit_of_measurement: B
+      unique_id: mqtt_stats_bytes_sent
+    - name: "MQTT_Stats_Uptime"
+      state_topic: "$SYS/brokers/emqx@homeassistant.local/uptime"
+      state_class: total
+      device_class: duration
+      unit_of_measurement: ms
+      unique_id: mqtt_stats_uptime
+      
