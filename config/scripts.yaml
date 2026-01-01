@@ -1336,59 +1336,6 @@ wintergarten_dachfenster_stop:
       - text.white_ir_sender_ir_code_to_send
   alias: Wintergarten Dachfenster Stop
   description: ''
-wohnzimmer_radio:
-  sequence:
-  - alias: ON/OFF
-    action: text.set_value
-    metadata: {}
-    data:
-      value: B+YjqhFoAg4C4BUDAXIG4B0DQEdAK0AH4AsDwBtAB+ADAw+jneYjzAhoAv//5iPMCGgC
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Vol+
-    action: text.set_value
-    metadata: {}
-    data:
-      value: B9MjqhFnAhcC4BUDAXIG4BkDQEPAJ0AL4AcDQBvAE0ALAnIGFyADQAcJZwK2ndMjtQhnAg==
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Vol-
-    action: text.set_value
-    metadata: {}
-    data:
-      value: B9AjqBFsAicC4AcDQAHgARMBdAbAAwAnoAvgBQcAJyABAnQGbOAAAwEnAsADQAEJbAJ0BicCJwJsAsADAXQG4AUDB5ud0CPPCCcC
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Play/Pause
-    action: text.set_value
-    metadata: {}
-    data:
-      value: B8cjrBFrAjIC4AMDQAFAD0ABQAcDawJ2BuADAwAyoA/AB4AbADIgAUALADJgAYAH4AMPBXYGMgIyAoAHAXYGgAcBMgKABweMnccjuAhrAg==
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Mute/Unmute
-    action: text.set_value
-    metadata: {}
-    data:
-      value: BuMjsRFoAhtgAUAH4AsDBBsCcQZo4BQDARsC4AUDQC/gAxNAD+ADA0Ab4AMPB5Sd4yO6CGgC
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Next
-    action: text.set_value
-    metadata: {}
-    data:
-      value: BbIjthE+AuAXAQGYBuAVA+AXAeAXPw+EnbIj/wg+Av//siP/CD4C
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  - alias: Previous
-    action: text.set_value
-    metadata: {}
-    data:
-      value: Bcwj3hFCAuAXAQGPBuAZA+AXAeATQwd4ncwj3AhCAg==
-    target:
-      entity_id: text.white_ir_sender_ir_code_to_send
-  alias: Wohnzimmer Radio
-  description: ''
 boiler_save_energy_script:
   sequence:
   - action: script.retry_action_with_backoff
@@ -2056,3 +2003,49 @@ retry_action_with_backoff:
           data:
             tag: '{{ tag_value }}'
   max: 256
+send_ir_remote_command:
+  alias: Send IR Remote Command
+  description: Sends an IR code based on a label and then clears the entity
+  icon: mdi:remote
+  fields:
+    button_label:
+      name: Button Label
+      description: The name of the button to trigger (e.g., power, play_pause)
+      example: power
+      required: true
+  sequence:
+  - variables:
+      code_map:
+        power: B+YjqhFoAg4C4BUDAXIG4B0DQEdAK0AH4AsDwBtAB+ADAw+jneYjzAhoAv//5iPMCGgC
+        play_pause: B8cjrBFrAjIC4AMDQAFAD0ABQAcDawJ2BuADAwAyoA/AB4AbADIgAUALADJgAYAH4AMPBXYGMgIyAoAHAXYGgAcBMgKABweMnccjuAhrAg==
+        previous: Bcwj3hFCAuAXAQGPBuAZA+AXAeATQwd4ncwj3AhCAg==
+        next: BbIjthE+AuAXAQGYBuAVA+AXAeAXPw+EnbIj/wg+Av//siP/CD4C
+        volume_mute: BuMjsRFoAhtgAUAH4AsDBBsCcQZo4BQDARsC4AUDQC/gAxNAD+ADA0Ab4AMPB5Sd4yO6CGgC
+        volume_up: B9MjqhFnAhcC4BUDAXIG4BkDQEPAJ0AL4AcDQBvAE0ALAnIGFyADQAcJZwK2ndMjtQhnAg==
+        volume_down: B9AjqBFsAicC4AcDQAHgARMBdAbAAwAnoAvgBQcAJyABAnQGbOAAAwEnAsADQAEJbAJ0BicCJwJsAsADAXQG4AUDB5ud0CPPCCcC
+        fm: Bf0jpxFCAuAXAQGPBuAZA8ABQCvgCwFAF0ADQAFAB+ADAw9+nf0j5ghCAv///SPmCEIC
+        cd: B/kjsRFmAjUC4AsDQAFAFwM1Ao0G4A8DAGZgG4ABAmYCNSABBY0GNQI1AkAL4AEDQBOAAwhmAjUCZgKNBjXgAgMRZgJTnfkjwwhmAv//+SPDCDUC
+        usb: Be0joxFHAuABAQJ2AkfgCgEBfAbgIQPgFwHgC0sPip3tI74IdgL//+0jvghHAg==
+        bluetooth: BdwjpxE/AuAXAQGYBuAVA0ABQCNAAcAH4AMBwBPgAwdAC8ADD4Wd3CPbCD8C///cI9sIPwI=
+        eject: BdojoBE/AuAXAQGYBuAVA0ABQCPAAeADC0ABwA9AB0ADQAFAB8ADD4yd2iPVCD8C///aI9UIPwI=
+      selected_code: '{{ code_map.get(button_label) }}'
+  - if:
+    - condition: template
+      value_template: '{{ selected_code != None }}'
+    then:
+    - action: text.set_value
+      target:
+        entity_id: text.white_ir_sender_ir_code_to_send
+      data:
+        value: '{{ selected_code }}'
+    - delay:
+        milliseconds: 500
+    - action: text.set_value
+      target:
+        entity_id: text.white_ir_sender_ir_code_to_send
+      data:
+        value: ''
+    else:
+    - stop: Unknown button label provided.
+  mode: queued
+  max: 10
