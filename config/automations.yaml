@@ -6908,19 +6908,19 @@
     or air-quality text.  \n   - **To-Do Prompt:** Embeds the random task *unaltered*
     and adds practical, helpful suggestions for completing it today.  \n   - **Main
     Prompt:** Instructs the AI to produce a short, clean, readable message (in **German**,
-    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `conversation.google_ai_conversation_2_5_pro`.
-    \ \n   - Retries up to **10 times**, but waits **only when a failure occurs**.
-    \ \n   - Recognizes failure phrases such as:  \n     - `\"Unable to get response\"`
-    \ \n     - `\"Sorry, I had a problem getting a response from Google Generative
-    AI.\"`  \n     - `\"The message got blocked due to content violations\"`  \n\n4.
-    **AI Fallback (Secondary Agent)**  \n   - If the primary agent fails after retries,
-    switches to  \n     `conversation.google_ai_conversation_2_5_flash`.  \n   - Applies
-    the same conditional retry logic and 5s delay on failed attempts.  \n   \n5. **Send
-    Notification**  \n   - **Success:** Sends the generated message to `notify.duncan`,
-    with title including today’s weekday.  \n   - **Failure (after all retries):**
-    Sends a fallback message  \n     *“Heute konnte leider keine Nachricht generiert
-    werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do Entity:**
-    `todo.to_do_duncan`  \n- **Primary AI Agent:** `conversation.google_ai_conversation_2_5_pro`
+    max **255 words**).  \n\n3. **AI Processing (Primary Agent)**  \n   - Uses `{{
+    states('input_select.conversation_agents') }}`.  \n   - Retries up to **10 times**,
+    but waits **only when a failure occurs**.  \n   - Recognizes failure phrases such
+    as:  \n     - `\"Unable to get response\"`  \n     - `\"Sorry, I had a problem
+    getting a response from Google Generative AI.\"`  \n     - `\"The message got
+    blocked due to content violations\"`  \n\n4. **AI Fallback (Secondary Agent)**
+    \ \n   - If the primary agent fails after retries, switches to  \n     `conversation.google_ai_conversation_2_5_flash`.
+    \ \n   - Applies the same conditional retry logic and 5s delay on failed attempts.
+    \ \n   \n5. **Send Notification**  \n   - **Success:** Sends the generated message
+    to `notify.duncan`, with title including today’s weekday.  \n   - **Failure (after
+    all retries):** Sends a fallback message  \n     *“Heute konnte leider keine Nachricht
+    generiert werden.”*  \n\n---\n\n### \U0001F527 **Technical Specs**  \n\n- **To-Do
+    Entity:** `todo.to_do_duncan`  \n- **Primary AI Agent:** `states('input_select.conversation_agents')`
     \ \n- **Fallback AI Agent:** `conversation.google_ai_conversation_2_5_flash`  \n-
     **Notification Target:** `notify.duncan`  \n- **Retries:** Up to 10 per agent
     \ \n- **Retry Delay:** 5 seconds  \n- **AI Token Limit:** 300 tokens  \n- **Pollen
@@ -6981,15 +6981,16 @@
         please. i dont want to build resistance against this anti allergy medication!!!
         keep in mind the schema: ''base amount: additional amount'' nothing else about
         pollen.'
-      todo_prompt: 'Also heres a random task from my todo list:  {% set length = to_do_duncan[''todo.to_do_duncan''][''items'']
-        | length %}  {{ to_do_duncan[''todo.to_do_duncan''][''items''][range(0,length)|random][''summary'']}}
-        feel free to make suggestions on how to do this in today.  Also keep the task
-        it self as is and only add helpful instructions or informations.  Also keep
-        it in the language it is and dont translate it, the rest needs to be translated
-        as requested later. Very important add the task as it is only the task and
-        nothing more to the message youre generating.  Only add helpful instructions
-        or informations never replace, translate or manipulate the task in any way!
-        make good suggestions on how to do it '
+      todo_prompt: "{% set items = to_do_duncan['todo.to_do_duncan']['items'] | default([],
+        true) %} {% if items | length > 0 %}\n  Also here’s a random task from my
+        todo list:\n  \"\" {% set task = items | random %} \"\"\n  {{ task.summary
+        }}\n  feel free to make suggestions on how to do this today. Also keep the
+        task\n  itself as is and only add helpful instructions or information. Also
+        keep\n  it in the language it is and don’t translate it. The rest will be
+        translated\n  later as requested. Very important: add the task exactly as-is
+        and nothing\n  more to the generated message. Only add helpful instructions
+        or information,\n  never replace, translate, or manipulate the task in any
+        way. make good suggestions on how to do the task.\n{% endif %}"
   - repeat:
       sequence:
       - alias: Conversation Agent Notification Text
@@ -7001,17 +7002,16 @@
 
 
             {{ prompt }}'
-          agent_id: conversation.google_ai_conversation_2_5_pro
+          agent_id: '{{ states(''input_select.conversation_agents'') }}'
         response_variable: agent_gemini
         action: conversation.process
       - alias: Wait only if failed
         if:
         - condition: template
           value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
-            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
-            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
-            | select('in', agent_gemini.response.speech.plain.speech) | list | count
-            > 0) }}"
+            \ \"Sorry, I had a problem getting a response\",\n  \"The message got
+            blocked due to content violations\"\n] %}\n{{ (bad_phrases | select('in',
+            agent_gemini.response.speech.plain.speech) | list | count > 0) }}"
         then:
         - delay:
             hours: 0
