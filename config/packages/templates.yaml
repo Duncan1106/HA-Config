@@ -1179,80 +1179,64 @@ template:
           icon: mdi:cake-variant-outline
           variables:
             today_str: "{{ now().date() }}"
-            birthday_entities_json: "{{ label_entities('birthday') | list }}"
-            birthday_states_json: "{{ label_entities('birthday') | map('states') | list }}"
-          availability: >
-            {% set entities = birthday_entities_json %}
-            {% set states_list = birthday_states_json %}
-            {% set valid = states_list | reject('in', ['unknown','unavailable','none']) | list %}
-            {{ valid | length == entities | length }}
+            birthday_entities: "{{ label_entities('birthday') | list }}"
+          availability: "{{ label_entities('birthday') | count > 0 }}"
           state: >
-            {% set today = strptime(today_str, '%Y-%m-%d').date() %}
-            {% set entities = birthday_entities_json %}
-            {% set states_list = birthday_states_json %}
-            {% set active = false %}
-    
-            {% for i in range(entities | length) %}
-              {% set raw = states_list[i] %}
-              {% if raw and raw | length >= 10 %}
-                {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
-                {% set next_birthday = dob.replace(year=today.year) %}
-                {% if next_birthday < today %}
-                  {% set next_birthday = next_birthday.replace(year=today.year + 1) %}
-                {% endif %}
-                {% set days_until = (next_birthday - today).days %}
-                {% if days_until <= 4 %}
-                  {% set active = true %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {{ active }}
-          attributes:
-            upcoming: >
               {% set today = strptime(today_str, '%Y-%m-%d').date() %}
-              {% set entities = birthday_entities_json %}
-              {% set states_list = birthday_states_json %}
-              {% set lines = [] %}
-    
-              {% for i in range(entities | length) %}
-                {% set raw = states_list[i] %}
-                {% if raw and raw | length >= 10 %}
-                  {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
-                  {% set next_birthday = dob.replace(year=today.year) %}
+              {% set ns = namespace(active=false) %}
+              {% for entity in birthday_entities %}
+                {% set s = states(entity) %}
+                {% if s and s | length >= 10 %}
+                  {% set dob = strptime(s[:10], '%Y-%m-%d').date() %}
+                  {# Handle Feb 29: if today's year isn't a leap year, treat it as Feb 28 #}
+                  {% set b_day = dob.day if not (dob.month == 2 and dob.day == 29) else 28 %}
+                  {% set next_birthday = dob.replace(year=today.year, month=dob.month, day=b_day) %}
                   {% if next_birthday < today %}
                     {% set next_birthday = next_birthday.replace(year=today.year + 1) %}
                   {% endif %}
-                  {% set days_until = (next_birthday - today).days %}
-                  {% if days_until <= 4 %}
-                    {% set age = today.year - dob.year %}
-                    {% if today < dob.replace(year=today.year) %}
-                      {% set age = age - 1 %}
+                  {% if (next_birthday - today).days <= 4 %}
+                    {% set ns.active = true %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.active }}
+          attributes:
+              upcoming: >
+                {% set today = strptime(today_str, '%Y-%m-%d').date() %}
+                {% set ns = namespace(lines=[]) %}
+                {% for entity in birthday_entities %}
+                  {% set s = states(entity) %}
+                  {% if s and s | length >= 10 %}
+                    {% set dob = strptime(s[:10], '%Y-%m-%d').date() %}
+                    {% set b_day = dob.day if not (dob.month == 2 and dob.day == 29) else 28 %}
+                    {% set next_birthday = dob.replace(year=today.year, month=dob.month, day=b_day) %}
+                    {% if next_birthday < today %}
+                      {% set next_birthday = next_birthday.replace(year=today.year + 1) %}
                     {% endif %}
-                    {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
-                    {% set lines = lines + ['🎂 ' ~ state_attr(entities[i], 'friendly_name') ~ ': ' ~ label ~ ' – Alter: ' ~ age] %}
+                    {% set days_until = (next_birthday - today).days %}
+                    {% if days_until <= 4 %}
+                      {# Accurate age: subtract 1 if today is before the birth month/day #}
+                      {% set age = today.year - dob.year - (1 if (today.month, today.day) < (dob.month, dob.day) else 0) %}
+                      {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
+                      {% set friendly = state_attr(entity, 'friendly_name') or entity %}
+                      {% set ns.lines = ns.lines + ['🎂 ' ~ friendly ~ ': ' ~ label ~ ' – Alter: ' ~ age] %}
+                    {% endif %}
                   {% endif %}
-                {% endif %}
-              {% endfor %}
-    
-              {{ lines }}
-            ages: >
-              {% set today = strptime(today_str, '%Y-%m-%d').date() %}
-              {% set entities = birthday_entities_json %}
-              {% set states_list = birthday_states_json %}
-              {% set ns = namespace(ages={}) %}
-    
-              {% for i in range(entities | length) %}
-                {% set raw = states_list[i] %}
-                {% if raw and raw | length >= 10 %}
-                  {% set dob = strptime(raw[:10], '%Y-%m-%d').date() %}
-                  {% set age = today.year - dob.year %}
-                  {% if today < dob.replace(year=today.year) %}
-                    {% set age = age - 1 %}
+                {% endfor %}
+                {{ ns.lines }}
+              ages: >
+                {% set today = strptime(today_str, '%Y-%m-%d').date() %}
+                {% set ns = namespace(dict={}) %}
+                {% for entity in birthday_entities %}
+                  {% set s = states(entity) %}
+                  {% if s and s | length >= 10 %}
+                    {% set dob = strptime(s[:10], '%Y-%m-%d').date() %}
+                    {% set age = today.year - dob.year - (1 if (today.month, today.day) < (dob.month, dob.day) else 0) %}
+                    {% set name = state_attr(entity, 'friendly_name') or entity %}
+                    {% set ns.dict = dict(ns.dict, **{name: age}) %}
                   {% endif %}
-                  {% set ns.ages = ns.ages | combine({state_attr(entities[i], 'friendly_name'): age}) %}
-                {% endif %}
-              {% endfor %}
-              {{ ns.ages }}
+                {% endfor %}
+                {{ ns.dict }}
 
   - cover:
       - device_class: WINDOW
