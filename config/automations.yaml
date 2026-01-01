@@ -10768,9 +10768,13 @@
         id:
         - amps
       - condition: template
-        value_template: '{{ (state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
-          | default(30, true) | int) != states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
-          | default(0, true) | int }}'
+        value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
+          ''required_charge_amps'') | default(30, true) | int %}
+
+          {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
+          | default(0, true) | int %}
+
+          {{ req != current }}'
       - condition: time
         after: 00:04:55
         before: 04:30:00
@@ -11566,7 +11570,8 @@
             choose:
             - conditions:
               - condition: template
-                value_template: '{{ wait.trigger.event.data.action == turn_off }}'
+                value_template: '{{ wait.trigger is not none and wait.trigger.event
+                  is not none and wait.trigger.event.data.action == turn_off }}'
               sequence:
               - action: input_boolean.turn_off
                 metadata: {}
