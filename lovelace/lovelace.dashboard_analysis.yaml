@@ -160,16 +160,16 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_ha_uptime
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.uptime'')), 2) }}'
-        secondary: 'Homeassistent Uptime
+        secondary: 'Home Assistant Uptime
 
           '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           align_header: center
           align_state: center
@@ -374,21 +374,21 @@ config:
           service: script.1707895746671
           target: {}
         entity: input_boolean.show_speedtest_details
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
-        primary: '{% set unavailable_data = is_state(''sensor.speedtest_download'',''unknown'')
-          %} {% set text = "Ping: " + states(''sensor.speedtest_ping'') + "ms, " +
-          states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
-          + " Mbps" %} {{ "" if unavailable_data else text }}'
-        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %} {%
-          set unavailable_data = is_state(''sensor.speedtest_download'',''unknown'')
-          %} {% set last_run = states(''sensor.speedtest_last_run'') %} {{ "Start
+        primary: '{% set unavailable_data = states(''sensor.speedtest_download'')
+          in[''unknown'',''unavailable''] %} {% set text = "Ping: " + states(''sensor.speedtest_ping'')
+          + "ms, " + states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
+          + " Mbps" %}  {{ "" if unavailable_data else text }}'
+        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}   {%
+          set unavailable_data = states(''sensor.speedtest_download'') in [''unknown'',''unavailable'']
+          %} {% set last_run = states(''sensor.speedtest_last_run'') %}  {{ "Start
           SpeedTest, Last: " + last_run + " ago" if not script else ("Testing" if
           unavailable_data else "Wrapping up") }}'
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - cards:
@@ -442,14 +442,13 @@ config:
         type: conditional
       type: vertical-stack
     - entity: sensor.backup_state
-      fill_container: true
+      features_position: bottom
       icon: mdi:clipboard-check-multiple-outline
-      layout: vertical
       multiline_secondary: true
-      primary: 'Last Backup Size: {{ state_attr(entity, ''backups'')[-1][''size'']
-        }}'
+      primary: '{% set backups = state_attr(entity, ''backups'') | default([], true)
+        %}  Last Backup Size: {{ backups[-1][''size''] if backups else ''N/A'' }}'
       secondary: '{% set uptime = (now().timestamp() - as_timestamp(state_attr(entity,
-        ''backups'')[-1][''date''])) %} {% set months = (uptime % 31536000) // 2592000
+        ''backups'')[-1][''date''])) %}  {% set months = (uptime % 31536000) // 2592000
         %} {% set days = (uptime % 2592000) // 86400 %} {% set hours = (uptime % 86400)
         // 3600 %} {% set minutes = (uptime % 3600) // 60 %} {% set percent = state_attr(entity,
         ''backups'')[-1][''state''] %} Last Backup {{ ''%dm '' % months if months
@@ -464,19 +463,18 @@ config:
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
+      vertical: true
     - entity: sensor.onedrivefilesync
-      fill_container: true
+      features_position: bottom
       icon: ''
-      layout: vertical
       multiline_secondary: true
-      primary: '{% set status_backup = states(entity) | string %} {% set percent =
-        state_attr(entity, ''Current file upload percentage'') %} {% set speed = state_attr(entity,''Current
-        file upload speed (KB/s)'')%} Onedrive Filesync: {{ "Uploaded" if status_backup
-        == "Synced" else "Syncing" }}'
+      primary: '{% set status_backup = states(entity) | string %} Onedrive Filesync:
+        {{  "Uploaded" if status_backup == "Synced" else "Syncing" }}'
       secondary: ''
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
+      vertical: true
     - color: blue
       entity: sensor.tibber_node_battery_voltage
       features_position: bottom
