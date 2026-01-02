@@ -395,18 +395,15 @@ template:
               niedrig
             {% endif %}
           zuluft_needed: >
-              {% if outdoor_temp|float < 15 %}
-                false
-              {% elif inverter_level == 'notfall' %}
-                true
-              {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
-                true
-              {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
-                true
-              {% else %}
-                false
-              {% endif %}
-        state: "{{ iif(zuluft_needed|bool, 'on', 'off', none) }}"
+            {{
+              (outdoor_temp | float(0)) >= 15
+              and (
+                inverter_level == 'notfall'
+                or (inverter_level == 'aktiv' and abluft_level == 'hoch')
+                or (inverter_level == 'okay' and abluft_level in ['normal', 'hoch'])
+              )
+            }}
+        state: "{{ iif(zuluft_needed, 'on', 'off', none) }}"
         availability: >
           {{ states('sensor.inverter_temperature') not in ['unknown','unavailable']
              and states('sensor.heizraum_lufter_abluft_power') not in ['unknown','unavailable']
@@ -422,14 +419,18 @@ template:
           outdoor_temp: "{{ outdoor_temp }}"
           zuluft_needed: "{{ zuluft_needed }}"
           decision_reason: >
-            {% if inverter_level == 'notfall' %}
-              Inverter Notfall >55°C
+            {% if outdoor_temp < 15 %}
+              Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C)
+            {% elif inverter_level == 'notfall' %}
+              KRITISCH: Inverter Überhitzung ({{ inverter_temp }}°C)
             {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
-              Aktiv helfen: Inverter 50°C+, Abluft hoch
+              Unterstützung: Inverter warm ({{ inverter_temp }}°C) & Abluft Maximum
             {% elif inverter_level == 'okay' and abluft_level in ['normal','hoch'] %}
-              Okay: Inverter 40°C+, Abluft >= normal
+              Standard: Inverter okay & Abluft aktiv
+            {% elif not zuluft_needed %}
+              Standby: Grenzwerte nicht erreicht
             {% else %}
-              Keine Zuluft nötig
+              Unbekannter Status
             {% endif %}
   
   # Kellervorraete
