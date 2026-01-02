@@ -3,16 +3,16 @@ config:
   - badges: []
     cards:
     - cards:
-      - double_tap_action:
-          action: more-info
-        entity: input_boolean.show_cudy_router_details
+      - entity: input_boolean.show_cudy_router_details
         features_position: bottom
         hold_action:
           action: more-info
         icon: ''
         primary: '{{ time_since(now() - timedelta(seconds=(states(''sensor.cudy_router_betriebszeit'')
           | int(0))), 2) }}'
-        secondary: Cudy Uptime
+        secondary: 'Cudy Uptime
+
+          '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -102,9 +102,7 @@ config:
         type: conditional
       type: vertical-stack
     - cards:
-      - double_tap_action:
-          action: more-info
-        entity: input_boolean.show_server_details
+      - entity: input_boolean.show_server_details
         fill_container: true
         hold_action:
           action: more-info
@@ -166,7 +164,9 @@ config:
         icon: ''
         layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.uptime'')), 2) }}'
-        secondary: 'Homeassistent Uptime '
+        secondary: 'Homeassistent Uptime
+
+          '
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -310,7 +310,7 @@ config:
         icon: ''
         primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
           2)}}'
-        secondary: 'MQTT Uptime '
+        secondary: MQTT Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -377,15 +377,15 @@ config:
         fill_container: true
         icon: ''
         layout: vertical
-        primary: '{% set unavailable = is_state(''sensor.speedtest_download'',''unknown'')
+        primary: '{% set unavailable_data = is_state(''sensor.speedtest_download'',''unknown'')
           %} {% set text = "Ping: " + states(''sensor.speedtest_ping'') + "ms, " +
           states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
-          + " Mbps" %} {{ "" if unavailable else text }}'
+          + " Mbps" %} {{ "" if unavailable_data else text }}'
         secondary: '{% set script = is_state(''script.1707895746671'',''on'') %} {%
-          set unavailable = is_state(''sensor.speedtest_download'',''unknown'') %}
-          {% set last_run = states(''sensor.speedtest_last_run'') %} {{ "Start SpeedTest,
-          Last: " + last_run + " ago" if not script else ("Testing" if unavailable
-          else "Wrapping up") }}'
+          set unavailable_data = is_state(''sensor.speedtest_download'',''unknown'')
+          %} {% set last_run = states(''sensor.speedtest_last_run'') %} {{ "Start
+          SpeedTest, Last: " + last_run + " ago" if not script else ("Testing" if
+          unavailable_data else "Wrapping up") }}'
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -446,31 +446,21 @@ config:
       icon: mdi:clipboard-check-multiple-outline
       layout: vertical
       multiline_secondary: true
-      primary: 'Last Backup Size: {{ state_attr(''sensor.backup_state'', ''backups'')[-1][''size'']
+      primary: 'Last Backup Size: {{ state_attr(entity, ''backups'')[-1][''size'']
         }}'
-      secondary: '{% set uptime = (now().timestamp() - as_timestamp(state_attr(''sensor.backup_state'',
-        ''backups'')[-1][''date''])) %}
-
-        {% set months = (uptime % 31536000) // 2592000 %}
-
-        {% set days = (uptime % 2592000) // 86400 %}
-
-        {% set hours = (uptime % 86400) // 3600 %}
-
-        {% set minutes = (uptime % 3600) // 60 %}
-
-        {% set percent = state_attr(''sensor.backup_state'', ''backups'')[-1][''state'']
-        %}
-
-        Last Backup {{ ''%dm '' % months if months else '''' }}{{ ''%dd '' % days
-        if days else '''' }}{{ ''%dh '' % hours if hours else '''' }}{{ ''%dm'' %
-        minutes if minutes else '''' }} ago
+      secondary: '{% set uptime = (now().timestamp() - as_timestamp(state_attr(entity,
+        ''backups'')[-1][''date''])) %} {% set months = (uptime % 31536000) // 2592000
+        %} {% set days = (uptime % 2592000) // 86400 %} {% set hours = (uptime % 86400)
+        // 3600 %} {% set minutes = (uptime % 3600) // 60 %} {% set percent = state_attr(entity,
+        ''backups'')[-1][''state''] %} Last Backup {{ ''%dm '' % months if months
+        else '''' }}{{ ''%dd '' % days if days else '''' }}{{ ''%dh '' % hours if
+        hours else '''' }}{{ ''%dm'' % minutes if minutes else '''' }} ago
 
         State: {{ "Uploaded" if percent == "Drive Only" else percent }}
 
-        Total Space in Google Drive: {{state_attr(''sensor.backup_state'', ''size_in_google_drive'')}}
+        Total Space in Google Drive: {{state_attr(entity, ''size_in_google_drive'')}}
 
-        Total Backups in Google Drive: {{state_attr(''sensor.backup_state'', ''backups_in_google_drive'')}}'
+        Total Backups in Google Drive: {{state_attr(entity, ''backups_in_google_drive'')}}'
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
