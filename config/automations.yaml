@@ -9164,6 +9164,10 @@
       seconds: 10
     id: Display
   conditions:
+  - condition: state
+    entity_id: switch.energy_monitoring_smartplug
+    state:
+    - 'on'
   - condition: not
     conditions:
     - condition: state
@@ -10964,37 +10968,33 @@
   max: 10
 - id: '1763753257619'
   alias: Notify on Terrarium Sensor Failure
-  description: "## ⚡ Terrarium DHT Sensor Failure Notification\n\n### \U0001F4CB **Intelligent
-    DHT Sensor Monitoring**\n\nThis automation monitors the three DHT22 sensors in
-    the terrarium (**Left**, **Middle**, **Right**) for both **temperature** and **humidity**.
-    \ \n\nIf any sensor fails to provide a valid reading for **more than 30 seconds**,
-    it triggers a notification to Duncan, clearly identifying which sensors are affected
-    and reminding to **check the wiring**.  \n\nThis ensures **early detection of
-    disconnected or malfunctioning sensors** and prevents unnoticed temperature or
-    humidity issues in the terrarium.\n\n---\n\n### ⏰ **Trigger Overview**\n\n| Type
-    | Entity / Condition | Purpose |\n|------|------------------|---------|\n| `state`
-    | `sensor.esp32_c3_mini_terra_dht_status` | Triggered when the status changes
-    from `\"All Good\"` to any other state for 30 seconds. |\n\n---\n\n### \U0001F9E9
-    **Conditions**\n\n| Condition Type | Entity / Requirement | Purpose |\n|----------------|--------------------|---------|\n|
-    `state` | `sensor.esp32_c3_mini_terra_dht_status` != `\"All Good\"` | Ensures
-    the automation only fires if at least one sensor is actually failing, preventing
-    false positives. |\n\n---\n\n### ⚡ **Actions & Notifications**\n\n| Action Type
-    | Description |\n|-------------|-------------|\n| `notify.duncan` | Sends a notification
-    with the title **\"DHT Sensor Problem\"**. The message dynamically reflects which
-    sensors are broken: |\n| **Message Examples** | - **Single sensor broken:** `The
-    Middle DHT sensor is broken. Check the wiring.`<br>- **Multiple sensors broken:**
-    `The Left & Middle DHT sensors are broken. Check the wiring.`<br>- **All sensors
-    working:** `All DHT sensors are working fine.` |\n\n**Logic Overview:**\n\n- Reads
-    `sensor.esp32_c3_mini_terra_dht_status` text sensor.\n- Splits the sensor names
-    if multiple are failing.\n- Properly formats singular/plural in notification.\n-
-    Adds a friendly `\"Check the wiring.\"` reminder.\n\n---\n\n### ⚙️ **Technical
-    Overview**\n\n- **Mode:** `single` — ensures only one notification at a time.\n-
-    **Update interval:** 5 seconds for the status sensor.\n- **Failure detection:**
-    Any sensor returning `NaN` for temperature or humidity is marked broken.\n- **Notification
-    delay:** Only fires after 30 seconds of continuous failure to avoid false alerts.\n\n---\n\n###
-    \U0001F4A1 **Notes**\n\n- Works for all three sensors (**Left, Middle, Right**),
-    grouped by sensor.\n- Designed to integrate cleanly with Home Assistant notifications
-    and future a\n"
+  description: "  ## ⚡ Terrarium DHT Sensor Failure & Recovery Monitoring\n\n  ###
+    \U0001F4CB **Intelligent DHT Sensor Monitoring**\n\n  This automation monitors
+    the three DHT22 sensors in the terrarium (**Left**,\n  **Middle**, **Right**)
+    via a central status sensor. \n\n  It manages the full lifecycle of the alert:
+    triggering a notification when sensors\n  fail and **automatically clearing**
+    that notification once the issue is resolved.\n\n  ---\n\n  ### ⏰ **Trigger Overview**\n\n
+    \ | ID | Entity | Condition | Purpose |\n  |:---|:---|:---|:---|\n  | `Error`
+    | `sensor.esp32_c3_mini_terra_dht_status` | From `\"All Good\"` for 30s | Detects
+    when one or more sensors fail. |\n  | `Clear` | `sensor.esp32_c3_mini_terra_dht_status`
+    | To `\"All Good\"` for 30s | Detects when all sensors are back online. |\n\n
+    \ ---\n\n  ### ⚡ **Actions & Logic**\n\n  The automation uses a `choose` block
+    to handle the two trigger IDs:\n\n  **1. Trigger: `Error`**\n  * **Action:** Sends
+    a notification to Duncan with the title **\"DHT Sensor Problem\"**.\n  * **Dynamic
+    Logic:** * Splits the status string to identify specific broken sensors.\n      *
+    Formats the message for singular (*\"The Left DHT sensor...\"*) or plural (*\"The
+    Left & Middle DHT sensors...\"*).\n  * **Tracking:** Uses the tag `dht_sensor_problem`
+    to group the notification.\n\n  **2. Trigger: `Clear`**\n  * **Action:** Sends
+    the `clear_notification` command using the `dht_sensor_problem` tag.\n  * **Result:**
+    Removes the existing error notification from Duncan's device once the sensors
+    are fixed.\n\n  ---\n\n  ### ⚙️ **Technical Overview**\n\n  * **Mode:** `single`
+    — prevents overlapping execution logic.\n  * **Persistence:** Uses `tag: dht_sensor_problem`
+    to ensure the recovery trigger knows exactly which notification to dismiss.\n
+    \ * **Reliability:** A 30-second sustained state is required for both error and
+    recovery to prevent \"flapping\" notifications due to momentary signal drops.\n\n
+    \ ---\n\n  ### \U0001F4A1 **Status Mapping**\n  The logic expects `sensor.esp32_c3_mini_terra_dht_status`
+    to report:\n  * `All Good` when healthy.\n  * Space-separated names (e.g., `Left
+    Middle`) when failing."
   triggers:
   - trigger: state
     entity_id:
@@ -11013,6 +11013,10 @@
     to:
     - All Good
     id: Clear
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   conditions: []
   actions:
   - choose:
