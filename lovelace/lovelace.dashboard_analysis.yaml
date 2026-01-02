@@ -498,17 +498,23 @@ config:
       hide_completed: true
       type: todo-list
     - cards:
-      - entity: sensor.home_assistant_beta_release_notes
-        tap_action:
-          action: perform-action
-          perform_action: input_button.press
-          target:
-            entity_id: input_button.update_beta_release_notes
-        type: custom:mushroom-entity-card
-      - content: '## [Beta Release]({{ state_attr("sensor.home_assistant_beta_release_notes",''beta_url'')}}):
-          {{states("sensor.home_assistant_beta_release_notes")}}
+      - entities:
+        - attribute: beta_version
+          entity: binary_sensor.home_assistant_beta_release_notes
+          hold_action:
+            action: more-info
+          tap_action:
+            action: perform-action
+            perform_action: input_button.press
+            target:
+              entity_id: input_button.update_beta_release_notes
+          type: attribute
+        type: entities
+      - content: '## [Beta Release]({{ state_attr("binary_sensor.home_assistant_beta_release_notes",''beta_url'')}}):
+          {{state_attr("binary_sensor.home_assistant_beta_release_notes", "beta_version")
+          }}
 
-          {{ state_attr("sensor.home_assistant_beta_release_notes","ai_summary")
+          {{ state_attr("binary_sensor.home_assistant_beta_release_notes","ai_summary")
 
           }}'
         type: markdown
@@ -516,6 +522,10 @@ config:
         secondary_info: none
         type: custom:mushroom-select-card
       type: vertical-stack
+      visibility:
+      - condition: state
+        entity: binary_sensor.home_assistant_beta_release_notes
+        state: 'True'
     - card_mod:
         style:
           ha-markdown:

@@ -1140,11 +1140,21 @@ template:
             {{ beta_scrape.beta_notes_content }}
             
           agent_id: "{{ states('input_select.conversation_agents')}}"
-    sensor:
+    binary_sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
         state: >
+            {% set today = now().date() %}
+            {% if today.day <= 7 %}
+              {% set fdom = today.replace(day=1) %}
+            {% else %}
+              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
+            {% endif %}
+            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
+            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
+        attributes:
+          beta_version: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {% set url = beta_scrape.beta_url.value|string|trim %}
               {% if 'release-' in url %}
@@ -1158,8 +1168,7 @@ template:
             {% else %}
               Unknown
             {% endif %}
-        attributes:
-          beta_url: > 
+          beta_url: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {{beta_scrape.beta_url.value|string }}
             {% endif %}
