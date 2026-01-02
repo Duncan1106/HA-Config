@@ -1474,7 +1474,7 @@ config:
             show_conditions: true
             show_temp: true
           position: both
-      - disable_debounce: false
+      - disable_debounce: true
         filter_entity: input_text.search_todo_list
         filter_items_entity: sensor.kellervorrate_combined_filtered_items
         filter_key_buttons:
@@ -7842,7 +7842,9 @@ config:
             \ }}%):** {{ (state_attr('binary_sensor.charge_battery_at_night','minimum_soc_kwh')\
             \ | default(0,true) | float(0)) | round(2) }} kWh\n- **\U0001F9F0 Applied\
             \ Buffer (PV/SoC):** {{ (state_attr('binary_sensor.charge_battery_at_night','applied_buffer_kwh')\
-            \ | default(0,true) | float(0)) | round(2) }} kWh\n\n\n## \U0001F3AF Targets\n\
+            \ | default(0,true) | float(0)) | round(2) }} kWh\n\n**\u2705 Available\
+            \ (usable + forecast \u2212 buffer):** {{ (state_attr('binary_sensor.charge_battery_at_night','total_energy_kwh')\
+            \ | default(0, true) | float(0)) | round(2) }} kWh\n\n## \U0001F3AF Targets\n\
             - **Base Target (planner):** {{ (state_attr('binary_sensor.charge_battery_at_night','target_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh  \n- **\u2795 Offset\
             \ Margin:** {{ (state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')\
@@ -7850,9 +7852,7 @@ config:
             \ | float(0)) | round(0) }}% / {{ (state_attr('binary_sensor.charge_battery_at_night','charge_offset_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh\n- **\U0001F3C1 Effective\
             \ Stop Target (base + offset):** {{ (state_attr('binary_sensor.charge_battery_at_night','effective_target_kwh')\
-            \ | default(0, true) | float(0)) | round(2) }} kWh\n- **\u2705 Available\
-            \ (usable + forecast \u2212 buffer):** {{ (state_attr('binary_sensor.charge_battery_at_night','total_energy_kwh')\
-            \ | default(0, true) | float(0)) | round(2) }} kWh\n\n\n{% if (state_attr('binary_sensor.charge_battery_at_night','charge_needed_effective_kwh')\n\
+            \ | default(0, true) | float(0)) | round(2) }} kWh\n\n\n\n{% if (state_attr('binary_sensor.charge_battery_at_night','charge_needed_effective_kwh')\n\
             \   | default(0, true) | float(0)) > 0\n   or is_state('switch.esp32_s3_zero_deye8k_battery_charge_grid','on')\
             \ %}\n\n**Remaining charge needed:** {{ (state_attr('binary_sensor.charge_battery_at_night','charge_needed_effective_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh\n**Charge Target (SoC):**\
@@ -7860,9 +7860,9 @@ config:
             \ | default(0, true) | float(0)) | round(0) }}%\n\n**Required charge current:**\
             \ {{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps')\
             \ | default(0, true) | int(0) }} A ({{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps_raw')\
-            \ | default(0, true) | float(0) }}A, real: {{ states('sensor.inverter_battery_current')\
-            \ | default(0, true) | float(0) }})\n**Remaining charge window:** {{ time_until(now()\
-            \ + timedelta(hours=state_attr('binary_sensor.charge_battery_at_night','remaining_hours')\
+            \ | default(0, true) | float(0) }}A, real: {{ (states('sensor.inverter_battery_current')\
+            \ | default(0, true) | float(0) | round(1)) * -1}}A)\n**Remaining charge\
+            \ indow:** {{ time_until(now() + timedelta(hours=state_attr('binary_sensor.charge_battery_at_night','remaining_hours')\
             \ | default(4.83, true) | float), 2)}}\n{% endif %}\n\n## \U0001F4B8 Cost\
             \ Savings\n- **\U0001F4B6 Savings Tonight:** {{ '%.2f' | format(state_attr('binary_sensor.charge_battery_at_night','saved_cost_eur')\
             \ | default(0, true) | float(0))}} \u20AC\n- **\U0001F4B0 Total Savings:**\
