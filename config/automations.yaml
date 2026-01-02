@@ -7019,17 +7019,17 @@
             milliseconds: 0
       until:
       - condition: template
-        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\",\n  \"The
-          message got blocked due to content violations\"\n] %}\n{{ (bad_phrases |
-          select('in', agent_gemini.response.speech.plain.speech) | list | count ==
-          0)\n   or repeat.index >= 10 }}"
+        value_template: "{% set bad_phrases = [\n      \"Unable to get response\",\n
+          \     \"Sorry, I had a problem getting a response\",\n      \"The message
+          got blocked due to content violations\"\n] %}\n{{ (bad_phrases | select('in',
+          agent_gemini.response.speech.plain.speech) | list | count == 0)\n   or repeat.index
+          >= 10 }}"
   - if:
     - condition: template
-      value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-        I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-        (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) | list
-        | count) > 0 }}"
+      value_template: "{% set bad_phrases = [\n        \"Unable to get response\",\n
+        \       \"Sorry, I had a problem getting a response\",\n        \"The message
+        got blocked due to content violations\"\n] %}\n{{ (bad_phrases | select('in',
+        agent_gemini.response.speech.plain.speech) | list | count) > 0 }}"
     then:
     - repeat:
         sequence:
@@ -7049,10 +7049,9 @@
           if:
           - condition: template
             value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
-              \ \"Sorry, I had a problem getting a response from Google Generative
-              AI.\",\n  \"The message got blocked due to content violations\"\n] %}\n{{
-              (bad_phrases | select('in', agent_gemini.response.speech.plain.speech)
-              | list | count > 0) }}"
+              \ \"Sorry, I had a problem getting a response\",\n  \"The message got
+              blocked due to content violations\"\n] %}\n{{ (bad_phrases | select('in',
+              agent_gemini.response.speech.plain.speech) | list | count > 0) }}"
           then:
           - delay:
               hours: 0
@@ -7062,17 +7061,17 @@
         until:
         - condition: template
           value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n
-            \ \"Sorry, I had a problem getting a response from Google Generative AI.\",\n
-            \ \"The message got blocked due to content violations\"\n] %}\n{{ (bad_phrases
-            | select('in', agent_gemini.response.speech.plain.speech) | list | count
-            == 0)\n   or repeat.index >= 10 }}"
+            \ \"Sorry, I had a problem getting a response\",\n  \"The message got
+            blocked due to content violations\"\n] %}\n{{ (bad_phrases | select('in',
+            agent_gemini.response.speech.plain.speech) | list | count == 0)\n   or
+            repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
-        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count) > 0 }}"
+        value_template: "{% set bad_phrases = [\n    \"Unable to get response\",\n
+          \   \"Sorry, I had a problem getting a response\",\n    \"The message got
+          blocked due to content violations\"\n  ] %}\n\n{{ (bad_phrases | select('in',
+          agent_gemini.response.speech.plain.speech) | list | count) > 0 }}"
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -9990,7 +9989,7 @@
 
 
             {{ prompt }}'
-          agent_id: conversation.google_ai_conversation_2_5_flash
+          agent_id: '{{ states(''input_select.conversation_agents'')}}'
         response_variable: agent_gemini
         action: conversation.process
       - delay:
@@ -10000,17 +9999,16 @@
           milliseconds: 0
       until:
       - condition: template
-        value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count == 0)\n   or repeat.index >= 10 }}"
+        value_template: "{% set bad_phrases = [\n    \"Unable to get response\",\n
+          \   \"Sorry, I had a problem getting a response\"\n] %}\n{{ (bad_phrases
+          | select('in', agent_gemini.response.speech.plain.speech) | list | count
+          == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
         value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response from Google Generative AI.\"\n] %}\n{{
-          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
-          list | count) > 0 }}"
+          I had a problem getting a response\"\n] %}\n{{ (bad_phrases | select('in',
+          agent_gemini.response.speech.plain.speech) | list | count) > 0 }}"
       sequence:
       - variables:
           fallback_text: "{%- for cal in calendars -%}\n  {%- set agenda = agendas[cal.entity]
@@ -10366,19 +10364,16 @@
     entity_id:
     - binary_sensor.home_assistant_beta_release_notes
   conditions:
-  - condition: template
-    value_template: "{% set today = now().date() %}\n\n{# Determine which month's
-      first Wednesday can still matter #}\n{% if today.day <= 7 %}\n  {% set fdom
-      = today.replace(day=1) %}\n{% else %}\n  {% set fdom = (today.replace(day=28)
-      + timedelta(days=5)).replace(day=1) %}\n{% endif %}\n\n{# First Wednesday of
-      the relevant month #}\n{% set first_wed = fdom + timedelta(days=(2 - fdom.weekday()
-      + 7) % 7) %}\n\n{{ first_wed - timedelta(days=7) <= today <= first_wed }}"
+  - condition: state
+    entity_id: binary_sensor.home_assistant_beta_release_notes
+    state:
+    - 'on'
   actions:
   - action: notify.duncan
     metadata: {}
     data:
-      title: Beta Release {{ states('binary_sensor.home_assistant_beta_release_notes')
-        }}
+      title: Beta Release {{ state_attr('binary_sensor.home_assistant_beta_release_notes',
+        'beta_version') }}
       message: '{{ state_attr(''binary_sensor.home_assistant_beta_release_notes'',''ai_summary'')}}'
       data:
         clickAction: '{{ state_attr(''binary_sensor.home_assistant_beta_release_notes'',''beta_url'')}}'
