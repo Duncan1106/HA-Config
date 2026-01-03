@@ -232,7 +232,7 @@ template:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
         variables:
-          current_time: "{{ now() | local}}"
+          current_time: "{{ now() | as_local }}"
           match_window_seconds: 65
           nr_offset_hours: 2
           ns_offset_hours: 1.25
@@ -251,7 +251,7 @@ template:
           remaining_activations: "{{ [0, max_activations_per_day|int - actual_triggers_today|int] | max }}"
           last_changed_utility_meter: "{{ as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local }}"
           distribution_anchor_time_str: >
-            {% set nr = as_datetime(nr_str, now()) | as_local %}
+            {% set nr = as_datetime(nr_str) | as_local %}
             {% if actual_triggers_today|int == 0 %}
               {{ nr }}
             {% else %}
@@ -270,7 +270,7 @@ template:
             {% if count > 0 and span|float > 0 %}
               {% for i in range(count) %}
                 {% set ptt = distribution_anchor_time_str + timedelta(seconds=(i + 1) * interval|float) %}
-                {% set out.items = out.items + [ptt] %}
+                {% set out.items = out.items + [ptt.isoformat()] %}
               {% endfor %}
             {% endif %}
             {{ out.items }}
@@ -317,7 +317,13 @@ template:
               {% endif %}
             {% endfor %}
             {{ out.times if out.times|length > 0 else ["No future slots"] }}
-          all_ptts: "{{ all_ptts }}"
+          all_trigger_times: >
+            {% set out = namespace(times=[]) %}
+            {% for t_str in all_ptts %}
+              {% set ptt = as_datetime(t_str) | as_local %}
+              {% set out.times = out.times + [ptt.strftime('%H:%M:%S')] %}
+            {% endfor %}
+            {{ out.times if out.times|length > 0 else [" No Slots Today"] }}
           updated_at: "{{ as_datetime(current_time).strftime('%H:%M:%S') }} by {{ trigger.description | default('manual') }}"
 
   # Heizraum Lüftung
