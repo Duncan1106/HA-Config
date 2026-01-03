@@ -9759,7 +9759,7 @@
       default(as_datetime('1970-01-01T00:00:00'), true)) > timedelta(minutes=5) }}\n"
   - condition: template
     value_template: '{% set hour = now().hour %} {% set outdoor = states(''sensor.gw1100a_outdoor_temperature'')
-      | float(0) %}  {{ (6 < hour < 22) or (outdoor > 10) }}
+      | float(0) %}  {{ (6 <= hour < 22) or (outdoor > 10) }}
 
       '
   actions:
@@ -11306,11 +11306,6 @@
     id: reset
   - trigger: numeric_state
     entity_id:
-    - sensor.gw1100a_humidity
-    above: 60
-    id: wet
-  - trigger: numeric_state
-    entity_id:
     - sensor.gw1100a_rain_rate
     above: 0.1
     id: wet
@@ -11320,6 +11315,9 @@
     to:
     - 'on'
     id: wet
+  - trigger: time_pattern
+    minutes: /30
+    id: 30m
   conditions:
   - condition: sun
     after: sunset
@@ -11331,10 +11329,14 @@
       - condition: trigger
         id:
         - temp low
+        - 30m
       - condition: state
         entity_id: input_boolean.rollo_was_cold
         state:
         - 'off'
+      - condition: numeric_state
+        entity_id: sensor.gw1100a_outdoor_temperature
+        below: 2
       sequence:
       - action: input_boolean.turn_on
         metadata: {}
@@ -11346,10 +11348,20 @@
       - condition: trigger
         id:
         - wet
+        - 30m
       - condition: state
         entity_id: input_boolean.rollo_was_wet
         state:
         - 'off'
+      - condition: or
+        conditions:
+        - condition: numeric_state
+          entity_id: sensor.gw1100a_rain_rate
+          above: 0.1
+        - condition: state
+          entity_id: binary_sensor.rain_sun_flower_rain
+          state:
+          - 'on'
       sequence:
       - action: input_boolean.turn_on
         metadata: {}
