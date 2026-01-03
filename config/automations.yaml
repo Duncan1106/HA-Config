@@ -10397,25 +10397,22 @@
     each state change until success, with exponential retry delays for resilience.\n\n###
     \U0001F553 **Schedule Overview**\n\n- **\U0001F305 Sunrise:** Turns **all configured
     lights ON**, providing early light exposure.   \n- **\U0001F307 Sunset:** Turns
-    **all lights OFF**, simulating natural daylight cycles.\n- **\U0001F557 20:00:**
-    Turns **lights OFF** *only if the sun has already set*, ensuring no unnecessary
-    evening illumination.\n- **\U0001F6AB Manual ON after hours:** Turn **OFF** the
-    plant lights if accidentally turned on after the configured hours,  preventing
-    the plants from getting their earned rest/dark period\n\n### ⚙️ **Reliability
-    Features**\n\nEach light entity is processed individually with up to **5 retry
-    attempts**,   using a **5-second exponential backoff** between attempts to guarantee
-    the final desired state is reached.\n\n--- \n\n*Entities managed:*  \n\n\n  -
-    `switch.plant_tent`\n  \n  - `switch.tisch`"
+    **all lights OFF**, simulating natural daylight cycles.\n\n- **\U0001F6AB Manual
+    ON after hours:** Turn **OFF** the plant lights if accidentally turned on after
+    the configured hours,  preventing the plants from getting their earned rest/dark
+    period\n\n### ⚙️ **Reliability Features**\n\nEach light entity is processed individually
+    with up to **5 retry attempts**,   using a **5-second exponential backoff** between
+    attempts to guarantee the final desired state is reached.\n\n--- \n\n*Entities
+    managed:*  \n\n\n  - `switch.plant_tent`\n  \n  - `switch.tisch`"
   triggers:
   - trigger: sun
     event: sunrise
     id: sunrise
+    offset: +00:15:00
   - trigger: sun
     event: sunset
     id: sunset
-  - trigger: time
-    at: '20:00:00'
-    id: time_20
+    offset: +00:15:00
   - trigger: state
     entity_id:
     - switch.plant_tent
@@ -10464,8 +10461,6 @@
     - conditions:
       - condition: trigger
         id: sunset
-      - condition: time
-        after: '19:59:59'
       sequence:
       - repeat:
           for_each: '{{ entities }}'
@@ -10481,27 +10476,6 @@
               base_delay: 5
               backoff_type: exponential
               notify_on_failure: true
-              notify_service: notify.duncan
-    - conditions:
-      - condition: trigger
-        id: time_20
-      - condition: state
-        entity_id: sun.sun
-        state: below_horizon
-      sequence:
-      - repeat:
-          for_each: '{{ entities }}'
-          sequence:
-          - action: script.retry_action_with_backoff
-            continue_on_error: true
-            data:
-              entity_id: '{{ repeat.item }}'
-              target_state: 'off'
-              action_domain: switch
-              action_type: turn_off
-              max_retries: 5
-              base_delay: 5
-              backoff_type: exponential
               notify_service: notify.duncan
     - conditions:
       - condition: trigger
@@ -10710,16 +10684,16 @@
     to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
     saved cost into `input_number.save_through_night_battery_charging`\n     - Call
-    `script.retry_action_with_backoff` to turn on `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
+    `script.retry_action_with_backoff` to turn on `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
     \    - Update `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
     to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  2)
     Stop Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
     to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n     -
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
-    `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`
+    `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`
     (uses\n       a linear backoff variant; longer max_delay)\n\n  3) Adjust Max Charge
     Current (trigger id: attribute change \"amps\")\n     - Call `script.retry_action_with_backoff`
-    to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
+    to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
     \    - Update\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
     to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  ---\n\n
     \ ## ✅ Retry / Reliability\n\n  - Both start/stop/external-amp operations use
@@ -10731,7 +10705,7 @@
     (attributes: soc_percent,\n    usable_kwh, target_kwh, total_energy_kwh, charge_needed_kwh,\n
     \   offset_charge_target_percent, required_charge_amps, forecast_heute_kwh,\n
     \   saved_cost_eur)\n  - switch.esp32_s3_zero_deye8k_battery_charge_grid\n  -
-    switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll\n  - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto\n
+    switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control\n  - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto\n
     \ - number.esp32_s3_zero_deye8k_time_point_1_power\n  - number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current\n
     \ - input_number.save_through_night_battery_charging\n  - script.retry_action_with_backoff\n
     \ - notify.duncan\n\n  ---\n\n  Summary: starts charging only when allowed and
@@ -10896,7 +10870,7 @@
           notify_on_failure: true
           notify_service: notify.duncan
           target_state: 'on'
-          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control
       - action: number.set_value
         metadata: {}
         target:
@@ -10938,7 +10912,7 @@
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control
           target_state: 'off'
           max_delay: 120
     - conditions:
@@ -10958,7 +10932,7 @@
           notify_on_failure: true
           notify_service: notify.duncan
           target_state: 'on'
-          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll
+          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control
       - action: number.set_value
         metadata: {}
         target:
