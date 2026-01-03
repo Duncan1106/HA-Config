@@ -625,6 +625,18 @@ template:
       - name: "Rollo Summer Should Close"
         unique_id: rollo_summer_should_close
         variables:
+          sunrise_open_delay_minutes: "15"
+          sunset_close_delay_minutes: "15"
+          sun_window_azimuth_threshold: "150"
+          sun_window_elevation_threshold: "16"
+          rait_rate_threshold: "0.1"
+          uv_index_threshold_strong: "4.0"
+          temp_outside_threshold: "22.0"
+          uv_threshold_temp_diff: "25000.0"
+          uv_threshold_strong: "60000.0"
+          temp_diff_threshold: "2.5"
+          baseline: "20.0"
+          extreme_temp_threshold: "28.0"
           current_time: "{{ now() | as_timestamp | timestamp_local | as_datetime }}"
           relevant_sunrise_dt: >
             {% set current_time_dt = as_datetime(current_time) %}
@@ -634,18 +646,66 @@ template:
             {% set current_time_dt = as_datetime(current_time) %}
             {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
             {{ next_setting_raw_dt if next_setting_raw_dt.day == current_time_dt.day else (next_setting_raw_dt - timedelta(days=1)) }}
+          open_after: "{{ (as_datetime(relevant_sunrise_dt) + timedelta(minutes=sunrise_open_delay_minutes|int(15))).strftime('%H:%M') if as_datetime(relevant_sunrise_dt) is not none else 'unavailable' }}"
+          close_before: "{{ (as_datetime(relevant_sunset_dt) - timedelta(minutes=sunset_close_delay_minutes|int(15))).strftime('%H:%M') if as_datetime(relevant_sunset_dt) is not none else 'unavailable' }}"
+          azimuth: "{{ states('sensor.sun_solar_azimuth') | default(0, true) | float }}"
+          elevation: "{{ states('sensor.sun_solar_elevation') | default(0, true) | float }}"
+          temp_inside: "{{ states('sensor.gw1100a_indoor_temperature') | float(0) }}"
+          temp_outside: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) }}"
+          temp_diff: "{{ (temp_outside|float - temp_inside|float) | round(2)}}"
+          rain_rate: "{{states('sensor.gw1100a_rain_rate') | float(0) }}"
+          rain_sunflower: "{{ is_state('binary_sensor.rain_sun_flower_rain', 'on') }}"
+          weather: "{{ states('weather.irauen33') | lower | default('') }}"
+          weather_says_rain: >
+            {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
+            {{ RAIN_KEYWORDS | select('in', weather) | list | count > 0 }}
+          uv_lux: "{{ states('sensor.gw1100a_solar_lux') | float(0) }}"
+          uv_index: "{{ states('sensor.gw1100a_uv_index') | float(0) }}"
           manual: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
           summer: >
             {% set summer_months = [5,6,7,8,9] %}
             {% set month = now().month %}
             {{ 1 if (month in summer_months) else 0 }}
-          sunrise_open_delay_minutes: "15"
-          sunset_close_delay_minutes: "15"
           within_daylight: >
             {% set current_time_dt = as_datetime(current_time) %}
-            {% set open_after = as_datetime(relevant_sunrise_dt) + timedelta(minutes=sunrise_open_delay_minutes|int(15)) %}
-            {% set close_before = as_datetime(relevant_sunset_dt) - timedelta(minutes=sunset_close_delay_minutes|int(15)) %}
-            {{ 1 if ((current_time_dt > open_after) and (current_time_dt < close_before)) else 0 }}
+            {% set open_after_dt = as_datetime(open_after) %}
+            {% set close_before_dt = as_datetime(close_before) %}
+            {{ 1 if ((current_time_dt > open_after_dt) and (current_time_dt < close_before_dt)) else 0 }}
+          sun_hits_window: "{{ 1 if ((azimuth|float > sun_window_azimuth_threshold|float) and (  |float > sun_window_elevation_threshold|float)) else 0 }}"
+          not_raining: >
+              {% set rain_conditions = [
+                rain_rate|float > rait_rate_threshold|float,
+                rain_sunflower|bool,
+                weather_says_rain|bool
+              ] %}
+            
+              {% set count_true = rain_conditions | select('equalto', true) | list | count %}
+            
+              {{ 1 if (count_true < 2) else 0 }}
+          strong_uv_index: >
+            {% if temp_outside|float <= temp_outside_threshold|float %}
+              0.0
+            {% else %}
+              {% set ratio = uv_index|float / uv_index_threshold_strong|float if uv_index_threshold_strong|float > 0 else 0 %}
+              {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
+            {% endif %}
+          strong_uv_lux: >
+            {% if temp_outside|float <= temp_outside_threshold|float %}
+              0.0
+            {% else %}
+              {% set ratio = uv_lux|float / uv_threshold_strong|float if uv_threshold_strong|float > 0 else 0 %}
+              {{ ratio | clamp(0.0, 1.0) }}
+            {% endif %}
+          high_temp_diff: >
+            {% if temp_outside|float <= temp_outside_threshold or uv_lux|float <= uv_threshold_temp_diff|float %}
+              0.0
+            {% else %}
+              {% set ratio = temp_diff|float / temp_diff_threshold|float if temp_diff_threshold|float > 0 else 0 %}
+              {{ ratio | clamp(0.0, 1.0) }}
+            {% endif %}
+          extreme_temp: >
+            {% set denom = (extreme_temp_threshold|float - baseline|float) if (extreme_temp_threshold|float - baseline|float) != 0 else 1 %}
+            {{ ((temp_outside|float - baseline|float) / denom) | clamp(0.0, 1.0)}}
         state: >
             {# Safety-Check: Wenn this.attributes nicht existiert oder leer ist → None #}
             {% if this is not defined or this.attributes is not defined or this.attributes | length == 0 %}
@@ -684,130 +744,40 @@ template:
           first_blockers: ''
           summer: "{{ summer }}"
           within_daylight: "{{ within_daylight }}"
-          sun_hits_window: >
-            {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
-            {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
-            {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
-            {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
-            {{ 1 if ((azimuth > SUN_WINDOW_AZIMUTH_THRESHOLD) and (elevation > SUN_WINDOW_ELEVATION_THRESHOLD)) else 0 }}
-          not_raining: >
-              {% set RAIN_RATE_THRESHOLD = 0.1 %}
-              {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
-            
-              {% set rain_rate = states('sensor.gw1100a_rain_rate') | float(0) %}
-              {% set sunflower_wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
-              {% set weather_condition = states('weather.irauen33') | lower | default('') %}
-              {% set weather_says_rain = RAIN_KEYWORDS | select('in', weather_condition) | list | count > 0 %}
-            
-              {% set rain_conditions = [
-                rain_rate > RAIN_RATE_THRESHOLD,
-                sunflower_wet,
-                weather_says_rain
-              ] %}
-            
-              {% set count_true = rain_conditions | select('equalto', true) | list | count %}
-            
-              {{ 1 if (count_true < 2) else 0 }}
-          
+          sun_hits_window: "{{ sun_hits_window }}"
+          not_raining: "{{ not_raining }}"
           heat_reasons: ''
-          strong_uv_index: >
-            {% set UV_INDEX_THRESHOLD_STRONG = 4.0 %}
-            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
-            {% set uv_index = states('sensor.gw1100a_uv_index') | float(0) %}
-            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
-                0.0
-            {% else %}
-                {% set ratio = uv_index / UV_INDEX_THRESHOLD_STRONG if UV_INDEX_THRESHOLD_STRONG > 0 else 0 %}
-                {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
-            {% endif %}
-          strong_uv_lux: >
-            {% set UV_THRESHOLD_STRONG = 60000.0 %}
-            {% set TEMP_OUTSIDE_THRESHOLD = 22.0 %}
-            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
-            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD %}
-            0.0
-            {% else %}
-            {% set ratio = uv / UV_THRESHOLD_STRONG if UV_THRESHOLD_STRONG > 0 else 0 %}
-            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
-            {% endif %}
-          high_temp_diff: >
-            {% set TEMP_DIFF_THRESHOLD = 2.5 %}
-            {% set TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF = 22.0 %}
-            {% set UV_THRESHOLD_TEMP_DIFF = 25000.0 %}
-            {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
-            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {% set uv = states('sensor.gw1100a_solar_lux') | float(0) %}
-            {% set diff = temp_outside - temp_inside %}
-            {# Require outside temp and uv gate; if they pass, scale by diff/threshold #}
-            {% if temp_outside <= TEMP_OUTSIDE_THRESHOLD_TEMP_DIFF or uv <= UV_THRESHOLD_TEMP_DIFF %}
-            0.0
-            {% else %}
-            {% set ratio = diff / TEMP_DIFF_THRESHOLD if TEMP_DIFF_THRESHOLD > 0 else 0 %}
-            {{ 1.0 if ratio >= 1 else (0.0 if ratio <= 0 else ratio) }}
-            {% endif %}
-          extreme_temp: >
-            {% set BASELINE = 20.0 %}
-            {% set EXTREME_TEMP_THRESHOLD = 28.0 %}
-            {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-            {% set denom = (EXTREME_TEMP_THRESHOLD - BASELINE) if (EXTREME_TEMP_THRESHOLD - BASELINE) != 0 else 1 %}
-            {% set ratio = (temp_outside - BASELINE) / denom %}
-            {% if ratio <= 0 %}
-              0.0
-            {% elif ratio >= 1 %}
-              1.0
-            {% else %}
-              {{ ratio }}
-            {% endif %}
-
+          strong_uv_index: "{{ strong_uv_index }}"
+          strong_uv_lux: "{{ strong_uv_lux }}"
+          high_temp_diff: "{{ high_temp_diff }}"
+          extreme_temp: "{{ extreme_temp }}"
           Reason: ''
           reason: >
               {% set ns = namespace(reasons=[]) %}
             
               {# Manual override #}
-              {% if is_state('input_boolean.rollo_summer_override', 'on') %}
+              {% if manual %}
                 {% set ns.reasons = ns.reasons + ['Manual override active, auto close disabled.'] %}
               {% else %}
                 {# Summer check #}
-                {% set summer_months = [5,6,7,8,9] %}
-                {% if now().month not in summer_months %}
+                {% if summer %}
                   {% set ns.reasons = ns.reasons + ['Not summer month'] %}
                 {% endif %}
-            
+                
                 {# Within daylight #}
-                {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
-                {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
-                {% set current_time = now() | as_timestamp | timestamp_local | as_datetime %}
-                {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime %}
-                {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
-                {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1)) %}
-                {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1)) %}
-                {% set open_after = relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES) %}
-                {% set close_before = relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES) %}
-                {% if not (current_time > open_after and current_time < close_before) %}
+                {% if not within_daylight %}
                   {% set ns.reasons = ns.reasons + ['Outside daylight window'] %}
                 {% endif %}
             
                 {# Sun hits window #}
-                {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
-                {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
-                {% set azimuth = states('sensor.sun_solar_azimuth') | float(0) %}
-                {% set elevation = states('sensor.sun_solar_elevation') | float(0) %}
-                {% if not ((azimuth > SUN_WINDOW_AZIMUTH_THRESHOLD) and (elevation > SUN_WINDOW_ELEVATION_THRESHOLD)) %}
+                {% if not sun_hits_window %}
                   {% set ns.reasons = ns.reasons + ['Sun not hitting window'] %}
                 {% endif %}
             
                 {# Not raining - require fewer than 2 positive rain signals #}
-                {% set RAIN_RATE_THRESHOLD = 0.1 %}
-                {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
-                {% set rain_rate = states('sensor.gw1100a_rain_rate') | float(0) %}
-                {% set sunflower_wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
-                {% set weather_condition = states('weather.irauen33') | lower | default('') %}
-                {% set weather_says_rain = RAIN_KEYWORDS | select('in', weather_condition) | list | count > 0 %}
-                {% set rain_conditions = [ rain_rate > RAIN_RATE_THRESHOLD, sunflower_wet, weather_says_rain ] %}
+                {% set rain_conditions = [ rain_rate|float > rait_rate_threshold|float, rain_sunflower|bool, weather_says_rain|bool ] %}
                 {% set count_true = rain_conditions | select('equalto', true) | list | count %}
-                {% if count_true >= 2 %}
+                {% if not not_raining %}
                   {% set ns.reasons = ns.reasons + ['Raining detected (' ~ count_true ~ ' of 3)'] %}
                 {% endif %}
             
@@ -871,64 +841,20 @@ template:
               {% endif %}
             
               {{ ns.reasons | join(',\n') }}
-
           Time: ''
-          open_after: >
-            {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
-            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
-            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
-
-            {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt is not none and next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1) if next_rising_raw_dt is not none else none) %}
-
-            {{ (relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES)).strftime('%H:%M') if relevant_sunrise_dt is not none else 'unavailable' }}
-          close_before: >
-            {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
-            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime | default(now(), true) %}
-            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime | default(none, true) %}
-
-            {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt is not none and next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1) if next_setting_raw_dt is not none else none) %}
-
-            {{ (relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES)).strftime('%H:%M') if relevant_sunset_dt is not none else 'unavailable' }}
-
+          open_after: "{{ open_after }}"
+          close_before: "{{ close_before }}"
           Sensors: ''
-          temp_inside: >
-              {% set val = states('sensor.gw1100a_indoor_temperature') | float(0) %}
-              {{ val | round(1) }}
-          temp_outside: >
-              {% set val = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-              {% set threshold = 28 %}
-              {{ val | round(1) }} (> {{ threshold }})
-          temp_diff: >
-              {% set temp_outside = states('sensor.gw1100a_outdoor_temperature') | float(0) %}
-              {% set temp_inside = states('sensor.gw1100a_indoor_temperature') | float(0) %}
-              {% set diff = temp_outside - temp_inside %}
-              {% set threshold = 2.5 %}
-              {{ diff| round(1) }} (> {{ threshold }})
-          rain_rate: >
-              {% set val = states('sensor.gw1100a_rain_rate') | float(0) %}
-              {% set threshold = 0.1 %}
-              {{ val }} (> {{ threshold }})
-          rain_sunflower: >
-            {% set wet = is_state('binary_sensor.rain_sun_flower_rain', 'on') %}
-            {{ 'Wet' if wet else 'Dry' }} (== Wet)
-          weather: >
-            {{ states('weather.irauen33') | lower | default('') }} 
-          uv_lux: >
-            {% set val = states('sensor.gw1100a_solar_lux') | float(0) %}
-            {% set threshold = 60000 %}
-            {{ val | round(0) }} (> {{ threshold }})
-          uv_index: >
-            {% set val = states('sensor.gw1100a_uv_index') | float(0) %}
-            {% set threshold = 4 %}
-            {{ val | round(0) }} (> {{ threshold }})
-          elevation: >
-            {% set val = states('sensor.sun_solar_elevation') | float(0) %}
-            {% set threshold = 16 %}
-            {{ val | round(0) }} (> {{ threshold }})
-          azimuth: >
-            {% set val = states('sensor.sun_solar_azimuth') | float(0) %}
-            {% set threshold = 150 %}
-            {{ val | round(0) }} (> {{ threshold }})
+          temp_inside: "{{ temp_inside }}"
+          temp_outside: "{{ temp_outside | round(1) }} (> {{ extreme_temp_threshold }})"
+          temp_diff: "{{ temp_diff| round(1) }} (> {{ temp_diff_threshold }})"
+          rain_rate: "{{ rain_rate }} (> {{ rait_rate_threshold }})"
+          rain_sunflower: "{{ 'Wet' if rain_sunflower|bool else 'Dry' }} (== Wet)"
+          weather: "{{ weather }}"
+          uv_lux: "{{ uv_lux | round(0) }} (> {{ uv_threshold_strong }})"
+          uv_index: "{{ uv_index | round(0) }} (> {{ uv_index_threshold_strong }})"
+          elevation: "{{ elevation | round(0) }} (> {{ sun_window_elevation_threshold }})"
+          azimuth: "{{ azimuth | round(0) }} (> {{ sun_window_azimuth_threshold }})"
   
   # PV Kosten
   - trigger:
