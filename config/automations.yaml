@@ -10695,16 +10695,17 @@
     04:30:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
     trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
     switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
-    `off`\n\n  2) Scheduled stop branch\n     - The trigger was one of the \"Off\"
-    time triggers (04:55 or 05:00)\n\n  3) Required-amps update branch\n     - The
-    trigger was the attribute change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
+    `off`\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n  2) Scheduled
+    stop branch\n     - The trigger was one of the \"Off\" time triggers (04:55 or
+    05:00)\n\n  3) Required-amps update branch\n     - The trigger was the attribute
+    change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
     \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
     \    - Current time is in the night charging window (after 00:04:55 and before\n
-    \      04:30:00)\n\n  ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start
-    Charging (trigger id: \"On\" with sensor on)\n     - Notify `notify.duncan` with
-    decision summary\n     - Call `script.retry_action_with_backoff` to turn on\n
-    \      `switch.esp32_s3_zero_deye8k_battery_charge_grid` (retries/backoff,\n       notify
-    on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    \      04:50:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
+    \ ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start Charging (trigger id:
+    \"On\" with sensor on)\n     - Notify `notify.duncan` with decision summary\n
+    \    - Call `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`
+    (retries/backoff,\n       notify on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
     to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
     saved cost into `input_number.save_through_night_battery_charging`\n     - Call
@@ -10716,8 +10717,8 @@
     Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
     `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`
     (uses\n       a linear backoff variant; longer max_delay)\n\n  3) Adjust Max Charge
-    Current (trigger id: attribute change \"amps\")\n     - When `binary_sensor.charge_battery_at_night`
-    is `on`, call\n       `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
+    Current (trigger id: attribute change \"amps\")\n     - Call `script.retry_action_with_backoff`
+    to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_controll`\n
     \    - Update\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
     to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  ---\n\n
     \ ## ✅ Retry / Reliability\n\n  - Both start/stop/external-amp operations use
@@ -10773,6 +10774,9 @@
         entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
         state:
         - 'off'
+      - condition: state
+        entity_id: binary_sensor.charge_battery_at_night
+        state: 'on'
     - condition: trigger
       id:
       - 'Off'
@@ -10791,13 +10795,14 @@
           {{ req != current }}'
       - condition: time
         after: 00:04:55
-        before: 04:30:00
+        before: 04:50:00
+      - condition: state
+        entity_id: binary_sensor.charge_battery_at_night
+        state:
+        - 'on'
   actions:
   - choose:
     - conditions:
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state: 'on'
       - condition: trigger
         id:
         - 'On'
@@ -10939,10 +10944,6 @@
       - condition: trigger
         id:
         - amps
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state:
-        - 'on'
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
