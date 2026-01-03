@@ -624,6 +624,28 @@ template:
     binary_sensor:
       - name: "Rollo Summer Should Close"
         unique_id: rollo_summer_should_close
+        variables:
+          current_time: "{{ now() | as_timestamp | timestamp_local | as_datetime }}"
+          relevant_sunrise_dt: >
+            {% set current_time_dt = as_datetime(current_time) %}
+            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime %}
+            {{ next_rising_raw_dt if next_rising_raw_dt.day == current_time_dt.day else (next_rising_raw_dt - timedelta(days=1)) }}
+          relevant_sunset_dt: >
+            {% set current_time_dt = as_datetime(current_time) %}
+            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
+            {{ next_setting_raw_dt if next_setting_raw_dt.day == current_time_dt.day else (next_setting_raw_dt - timedelta(days=1)) }}
+          manual: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
+          summer: >
+            {% set summer_months = [5,6,7,8,9] %}
+            {% set month = now().month %}
+            {{ 1 if (month in summer_months) else 0 }}
+          sunrise_open_delay_minutes: "15"
+          sunset_close_delay_minutes: "15"
+          within_daylight: >
+            {% set current_time_dt = as_datetime(current_time) %}
+            {% set open_after = as_datetime(relevant_sunrise_dt) + timedelta(minutes=sunrise_open_delay_minutes|int(15)) %}
+            {% set close_before = as_datetime(relevant_sunset_dt) - timedelta(minutes=sunset_close_delay_minutes|int(15)) %}
+            {{ 1 if ((current_time_dt > open_after) and (current_time_dt < close_before)) else 0 }}
         state: >
             {# Safety-Check: Wenn this.attributes nicht existiert oder leer ist → None #}
             {% if this is not defined or this.attributes is not defined or this.attributes | length == 0 %}
@@ -657,24 +679,11 @@ template:
 
             {% endif %}
         attributes:
-          manual_mode: "{{ 1 if is_state('input_boolean.rollo_summer_override', 'on') else 0 }}"
+          manual_mode: "{{ manual }}"
           
           first_blockers: ''
-          summer: >
-            {% set summer_months = [5,6,7,8,9] %}
-            {% set month = now().month %}
-            {{ 1 if (month in summer_months) else 0 }}
-          within_daylight: >
-            {% set SUNRISE_OPEN_DELAY_MINUTES = 15 %}
-            {% set SUNSET_CLOSE_DELAY_MINUTES = 15 %}
-            {% set current_time = now() | as_timestamp | timestamp_local | as_datetime %}
-            {% set next_rising_raw_dt = states('sensor.sun_next_rising') | as_timestamp | timestamp_local | as_datetime %}
-            {% set next_setting_raw_dt = states('sensor.sun_next_setting') | as_timestamp | timestamp_local | as_datetime %}
-            {% set relevant_sunrise_dt = next_rising_raw_dt if next_rising_raw_dt.day == current_time.day else (next_rising_raw_dt - timedelta(days=1)) %}
-            {% set relevant_sunset_dt = next_setting_raw_dt if next_setting_raw_dt.day == current_time.day else (next_setting_raw_dt - timedelta(days=1)) %}
-            {% set open_after = relevant_sunrise_dt + timedelta(minutes=SUNRISE_OPEN_DELAY_MINUTES) %}
-            {% set close_before = relevant_sunset_dt - timedelta(minutes=SUNSET_CLOSE_DELAY_MINUTES) %}
-            {{ 1 if ((current_time > open_after) and (current_time < close_before)) else 0 }}
+          summer: "{{ summer }}"
+          within_daylight: "{{ within_daylight }}"
           sun_hits_window: >
             {% set SUN_WINDOW_AZIMUTH_THRESHOLD = 150 %}
             {% set SUN_WINDOW_ELEVATION_THRESHOLD = 16 %}
