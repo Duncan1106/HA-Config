@@ -232,7 +232,7 @@ template:
       - name: "Luftbefeuchter On-Windows"
         unique_id: humidifier_trigger_window
         variables:
-          current_time: "{{ now() }}"
+          current_time: "{{ now() | local}}"
           match_window_seconds: 65
           nr_offset_hours: 2
           ns_offset_hours: 1.25
@@ -240,7 +240,7 @@ template:
             {% set current_time_dt = as_datetime(current_time) %}
             {% set next_rising = as_datetime(state_attr('sun.sun','next_rising')) | as_local %}
             {% set nr_today = next_rising if next_rising.day == current_time_dt.day else next_rising - timedelta(days=1) %}
-            {{ nr_today + timedelta(hours=(nr_offset_hours|int)) }}
+            {{ nr_today + timedelta(hours=(nr_offset_hours|float)) }}
           ns_str: >
             {% set current_time_dt = as_datetime(current_time) %}
             {% set next_setting = as_datetime(state_attr('sun.sun','next_setting')) | as_local %}
@@ -251,13 +251,11 @@ template:
           remaining_activations: "{{ [0, max_activations_per_day|int - actual_triggers_today|int] | max }}"
           last_changed_utility_meter: "{{ as_datetime(states.sensor.daily_luftbefeuchter.last_changed) | as_local }}"
           distribution_anchor_time_str: >
-            {% set nr = as_datetime(nr_str) %}
-            {% set ns = as_datetime(ns_str) %}
-
+            {% set nr = as_datetime(nr_str, now()) | as_local %}
             {% if actual_triggers_today|int == 0 %}
-              {{ nr.strftime('%Y-%m-%d %H:%M:%S') }}
+              {{ nr }}
             {% else %}
-              {{ ([as_datetime(last_changed_utility_meter), nr] | max).strftime('%Y-%m-%d %H:%M:%S') }}
+              {{ [as_datetime(last_changed_utility_meter) | as_local, nr] | max }}
             {% endif %}
           span: >
             {% set ns = as_datetime(ns_str) | as_local %}
@@ -265,29 +263,33 @@ template:
             {% set span = ns - distribution_anchor_time %}
             {{ span.total_seconds() }}
           interval: "{{ span|int / (remaining_activations|int + 1) }}"
-            
+          all_ptts: >
+            {% set distribution_anchor_time_str = as_datetime(distribution_anchor_time_str) | as_local %}
+            {% set count = remaining_activations|int %}
+            {% set out = namespace(items=[]) %}
+            {% if count > 0 and span|float > 0 %}
+              {% for i in range(count) %}
+                {% set ptt = distribution_anchor_time_str + timedelta(seconds=(i + 1) * interval|float) %}
+                {% set out.items = out.items + [ptt] %}
+              {% endfor %}
+            {% endif %}
+            {{ out.items }}
         availability: >
           {{ states('sun.sun') not in ['unknown', 'unavailable']
              and state_attr('sun.sun', 'next_rising') is not none
              and state_attr('sun.sun', 'next_setting') is not none
              and states('sensor.daily_luftbefeuchter') not in ['unknown', 'unavailable'] }}
         state: >
-          {% set current_time_dt = as_datetime(current_time) %}
-          {% set nr = as_datetime(nr_str) %}
-          {% set ns = as_datetime(ns_str) %}
-          {% set distribution_anchor_time = as_datetime(distribution_anchor_time_str) %}
-          {% set result = namespace(current_match = false) %}
-
-          {% if remaining_activations|int > 0 and current_time_dt < ns and span|int > 0 %}
-              {% for i in range(remaining_activations|int) %}
-                {% set potential_trigger_time = distribution_anchor_time + ((i + 1) * interval|float) %}
-                {% if potential_trigger_time > current_time_dt and potential_trigger_time <= ns and ((potential_trigger_time - timedelta(seconds=match_window_seconds|int)) <= current_time)
-                     and (current_time_dt <= (potential_trigger_time + timedelta(seconds=match_window_seconds|int))) %}
-                    {% set result.current_match = true %}
-                {% endif %}
-              {% endfor %}
-          {% endif %}
-          {{ result.current_match }}
+          {% set current_time_dt = as_datetime(current_time) | as_local%}
+          {% set match_window = timedelta(seconds=match_window_seconds|int) %}
+          {% set result = namespace(match=false) %}
+          {% for t_str in all_ptts %}
+            {% set ptt = as_datetime(t_str) | as_local %}
+            {% if (ptt - match_window) <= current_time_dt <= (ptt + match_window) %}
+              {% set result.match = true %}
+            {% endif %}
+          {% endfor %}
+          {{ result.match }}
         attributes:
           status: >
             {% set curr = as_datetime(current_time) %}
@@ -303,30 +305,19 @@ template:
           max_activations_per_day: "{{ max_activations_per_day }}"
           remaining_activations: "{{ remaining_activations }}"
           distribution_anchor_time: "{{ distribution_anchor_time_str }}"
-          window_duration: >
-              {% set nr = as_datetime(nr_str) %}
-              {% set ns = as_datetime(ns_str) %}
-              {% set diff = (ns - nr).total_seconds() %}
-              {{ time_until(now() + timedelta(seconds=diff), 2) }}
-          trigger_interval: "{{ (time_until(now() + timedelta(seconds=interval|int), 3)) if remaining_activations|int > 0 else 'N/A'}}"
+          window_duration: "{{ time_until(now() + (as_datetime(ns_str) - as_datetime(nr_str)), 2) }}"
+          trigger_interval: "{{ (time_until(now() + timedelta(seconds=interval|int), 3)) if remaining_activations|int > 0 else 'N/A' }}"
           trigger_times: >
-            {% set current_time_dt = as_datetime(current_time) %}
-            {% set nr = as_datetime(nr_str) | as_local %}
-            {% set ns = as_datetime(ns_str) | as_local %}
+            {% set current_time_dt = as_datetime(current_time) | as_local %}
             {% set out = namespace(times=[]) %}
-            {% if remaining_activations|int > 0 and current_time_dt < ns %}
-              {% if span|int > 0 %}
-                {% for i in range(remaining_activations|int) %}
-                  {% set t = as_datetime(distribution_anchor_time_str)|as_local + ((i + 1) * interval|float) %}
-                  {% if t > current_time_dt and t <= ns %}
-                    {% set out.times = out.times + [t.strftime('%H:%M:%S')] %}
-                  {% endif %}
-                {% endfor %}
+            {% for t_str in all_ptts %}
+              {% set ptt = as_datetime(t_str) | as_local %}
+              {% if ptt > current_time_dt %}
+                {% set out.times = out.times + [ptt.strftime('%H:%M:%S')] %}
               {% endif %}
-            {% else %}
-              {% set out.times = ["No valid trigger times"] %}
-            {% endif %}
-            {{ out.times }}
+            {% endfor %}
+            {{ out.times if out.times|length > 0 else ["No future slots"] }}
+          all_ptts: "{{ all_ptts }}"
           updated_at: "{{ as_datetime(current_time).strftime('%H:%M:%S') }} by {{ trigger.description | default('manual') }}"
 
   # Heizraum Lüftung
