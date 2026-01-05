@@ -342,10 +342,10 @@ template:
       - name: Heizraum Zuluft Trigger
         unique_id: heizraum_zuluft_trigger
         variables:
-          inverter_temp: "{{ states('sensor.inverter_temperature') | float(0) }}"
-          abluft_power: "{{ states('sensor.heizraum_lufter_abluft_power') | float(0) }}"
-          heizraum_temp: "{{ states('sensor.esphome_az_envy_1_temperature_heizraum') | float(0) }}"
-          outdoor_temp: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) }}"
+          inverter_temp: "{{ states('sensor.inverter_temperature') | float(0) | round(1) }}"
+          abluft_power: "{{ states('sensor.heizraum_lufter_abluft_power') | float(0) | round(1) }}"
+          heizraum_temp: "{{ states('sensor.esphome_az_envy_1_temperature_heizraum') | float(0) | round(1) }}"
+          outdoor_temp: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) | round(1) }}"
           inverter_level: >
             {% if inverter_temp|float >= 55 %}
               notfall
@@ -357,16 +357,16 @@ template:
               normal
             {% endif %}
           abluft_level: >
-            {% if abluft_power|float >= 6 %}
+            {% if abluft_power|float >= 5.0 %}
               hoch
-            {% elif abluft_power|float >= 4 %}
+            {% elif abluft_power|float >= 3.0 %}
               normal
             {% else %}
               niedrig
             {% endif %}
           zuluft_needed: >
             {{
-              (outdoor_temp | float(0)) >= 15
+              (outdoor_temp | float(0)) >= (heizraum_temp | float(0))
               and (
                 inverter_level == 'notfall'
                 or (inverter_level == 'aktiv' and abluft_level == 'hoch')
@@ -389,8 +389,8 @@ template:
           outdoor_temp: "{{ outdoor_temp }}"
           zuluft_needed: "{{ zuluft_needed }}"
           decision_reason: >
-            {% if outdoor_temp < 15 %}
-              Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C)
+            {% if outdoor_temp < heizraum_temp | float(0) %}
+              Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C < {{ heizraum_temp }}°C)
             {% elif inverter_level == 'notfall' %}
               KRITISCH: Inverter Überhitzung ({{ inverter_temp }}°C)
             {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
