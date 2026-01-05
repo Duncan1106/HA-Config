@@ -11993,3 +11993,107 @@
         '
     action: notify.duncan
   mode: single
+- id: '1767622395757'
+  alias: 'Garden House: Freeze Protection Heating'
+  description: Emergency + solar-based heating with Tuya countdown safety
+  triggers:
+  - minutes: /5
+    trigger: time_pattern
+  - entity_id: sensor.solar_power_total
+    above: 2000
+    trigger: numeric_state
+  conditions:
+  - condition: or
+    conditions:
+    - condition: template
+      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
+        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) <=
+        1.5 or states(''sensor.bme280_temperature_min'') | float(99) <= 1.0) }}'
+      alias: Emergency heating needed
+    - condition: template
+      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
+        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) >
+        1.5 and states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
+        < 5.0 and states(''sensor.solar_power_total'') | float(0) >= 2000) }}'
+      alias: Solar opportunistic heating
+    - condition: template
+      value_template: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') and states(''sensor.esp32_c3_zero_epever_bme280_temperature'')
+        | float(99) >= 6.0 }}'
+      alias: Hard OFF
+  actions:
+  - variables:
+      temp_now: '{{ states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
+        }}'
+      temp_min_24h: '{{ states(''sensor.bme280_temperature_min'') | float(99) }}'
+      solar_power: '{{ states(''sensor.solar_power_total'') | float(0) }}'
+      heater_on: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <=
+          1.0) }}
+
+          '
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
+      - target:
+          entity_id: number.gartenhaus_heizlufter_countdown
+        data:
+          value: 900
+        action: number.set_value
+    - conditions:
+      - condition: template
+        value_template: "{{ not heater_on\n   and temp_now > 1.5\n   and temp_now
+          < 5.0\n   and solar_power >= 2000 }}\n"
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
+      - target:
+          entity_id: number.gartenhaus_heizlufter_countdown
+        data:
+          value: 900
+        action: number.set_value
+    - conditions:
+      - condition: template
+        value_template: '{{ heater_on and temp_now >= 6.0 }}
+
+          '
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'off'
+  mode: single
+  max_exceeded: silent
