@@ -12236,16 +12236,15 @@
     resets them at specific times. It also handles real-time conditions like temperature
     and rain to update the rollo status.
   triggers:
-  - event: sunset
-    offset: -00:15:00
-    trigger: sun
-    id: sunset-15m
-    alias: Forecast Calculate at Sunset - 15m
   - trigger: sun
     event: sunrise
     offset: +02:00:00
     id: sunrise+2h
     alias: Reset at Sunrise + 2h
+  - alias: Forecast Calculate at Sunset - 15m
+    event: sunset
+    trigger: sun
+    id: sunset
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_outdoor_temperature
@@ -12267,140 +12266,142 @@
     id: 30m
   conditions: []
   actions:
-  - alias: forecast booleans based on forecast
-    if:
-    - condition: sun
-      after: sunset
-    - condition: trigger
-      id:
-      - sunset-15m
-    then:
-    - sequence:
-      - data:
-          type: hourly
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - sunrise+2h
+      - condition: sun
+        after: sunset
+        before: sunrise
+        before_offset: +02:00:01
+      sequence:
+      - action: input_boolean.turn_off
         target:
           entity_id:
-          - weather.micro_weather_station
-          - weather.forecast_home
-        response_variable: weather_data
-        action: weather.get_forecasts
-      - variables:
-          weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
-            set next_sunrise = states('sensor.sun_next_rising') | as_datetime() |
-            as_local %} {% for entity_id, entity_data in weather_data.items() %}\n
-            \   {% set forecast = entity_data.forecast %}\n    {% for item in forecast
-            %}\n        {% set item_time = item.datetime | as_datetime() | as_local
-            %}\n        {% if item_time < next_sunrise %}\n            {% set current_temp
-            = item.temperature %}\n            {% set low_temp = item.templow | default(current_temp)
-            %}\n            {% if current_temp < 10 or low_temp < 10 %}\n              {%
-            set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
-            = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
-            'snowy-rainy'] %}\n            {% set is_cold = current_temp < 2 or low_temp
-            < 2 %}\n            {% if is_precip and is_cold %}\n              {% set
-            ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n        {%
-            if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
-            %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
-            break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
-            }}\n"
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ weather_results.low }}'
-          sequence:
+          - input_boolean.forecast_temp_low
+          - input_boolean.forecast_wet
+        alias: Reset Forecast
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - input_boolean.rollo_was_cold
+          - input_boolean.rollo_was_wet
+        alias: Reset Real
+      alias: Reset to off at sunrise +2h
+    - conditions:
+      - condition: trigger
+        id:
+        - sunset
+      sequence:
+      - sequence:
+        - data:
+            type: hourly
+          target:
+            entity_id:
+            - weather.micro_weather_station
+            - weather.forecast_home
+          response_variable: weather_data
+          action: weather.get_forecasts
+        - variables:
+            weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %}
+              {% set next_sunrise = states('sensor.sun_next_rising') | as_datetime()
+              | as_local %} {% for entity_id, entity_data in weather_data.items()
+              %}\n    {% set forecast = entity_data.forecast %}\n    {% for item in
+              forecast %}\n        {% set item_time = item.datetime | as_datetime()
+              | as_local %}\n        {% if item_time < next_sunrise %}\n            {%
+              set current_temp = item.temperature %}\n            {% set low_temp
+              = item.templow | default(current_temp) %}\n            {% if current_temp
+              < 10 or low_temp < 10 %}\n              {% set ns.is_low = true %}\n
+              \           {% endif %}\n            {% set is_precip = item.condition
+              in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy', 'snowy-rainy']
+              %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
+              \           {% if is_precip and is_cold %}\n              {% set ns.is_wet
+              = true %}\n            {% endif %}\n        {% endif %}\n        {%
+              if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
+              %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
+              break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet':
+              ns.is_wet} }}\n"
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ weather_results.low }}'
+            sequence:
+            - target:
+                entity_id: input_boolean.forecast_temp_low
+              action: input_boolean.turn_on
+          default:
           - target:
               entity_id: input_boolean.forecast_temp_low
-            action: input_boolean.turn_on
-        default:
-        - target:
-            entity_id: input_boolean.forecast_temp_low
-          action: input_boolean.turn_off
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ weather_results.wet }}'
-          sequence:
+            action: input_boolean.turn_off
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ weather_results.wet }}'
+            sequence:
+            - target:
+                entity_id: input_boolean.forecast_wet
+              action: input_boolean.turn_on
+          default:
           - target:
               entity_id: input_boolean.forecast_wet
-            action: input_boolean.turn_on
-        default:
-        - target:
-            entity_id: input_boolean.forecast_wet
-          action: input_boolean.turn_off
-  - alias: Reset to off at sunrise +2h
-    if:
-    - condition: sun
-      after: sunset
-      before: sunrise
-      before_offset: +02:00:01
-    - condition: trigger
-      id:
-      - sunrise+2h
-    then:
-    - action: input_boolean.turn_off
-      target:
-        entity_id:
-        - input_boolean.forecast_temp_low
-        - input_boolean.forecast_wet
-  - if:
-    - condition: sun
-      after: sunset
-      before: sunrise
-      before_offset: +02:00:01
-    then:
-    - choose:
-      - conditions:
-        - condition: trigger
-          id:
-          - temp below 2
-          - 30m
-        - condition: state
-          entity_id: input_boolean.rollo_was_cold
-          state:
-          - 'off'
-        - condition: numeric_state
-          entity_id: sensor.gw1100a_outdoor_temperature
-          below: 2
-        sequence:
-        - action: input_boolean.turn_on
-          metadata: {}
-          data: {}
-          target:
-            entity_id:
-            - input_boolean.rollo_was_cold
-      - conditions:
-        - condition: trigger
-          id:
-          - wet
-          - 30m
-        - condition: state
-          entity_id: input_boolean.rollo_was_wet
-          state:
-          - 'off'
-        - condition: or
-          conditions:
-          - condition: numeric_state
-            entity_id: sensor.gw1100a_rain_rate
-            above: 0.1
+            action: input_boolean.turn_off
+      alias: forecast booleans based on forecast
+    - conditions:
+      - condition: trigger
+        id:
+        - wet
+        - temp below 2
+        - 30m
+      - condition: sun
+        after: sunset
+        before: sunrise
+        before_offset: +02:00:01
+      sequence:
+      - choose:
+        - conditions:
+          - condition: trigger
+            id:
+            - temp below 2
+            - 30m
           - condition: state
-            entity_id: binary_sensor.rain_sun_flower_rain
+            entity_id: input_boolean.rollo_was_cold
             state:
-            - 'on'
-        sequence:
-        - action: input_boolean.turn_on
-          metadata: {}
-          data: {}
-          target:
+            - 'off'
+          - condition: numeric_state
+            entity_id: sensor.gw1100a_outdoor_temperature
+            below: 2
+          sequence:
+          - action: input_boolean.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id:
+              - input_boolean.rollo_was_cold
+        - conditions:
+          - condition: trigger
+            id:
+            - wet
+            - 30m
+          - condition: state
             entity_id: input_boolean.rollo_was_wet
-      - conditions:
-        - condition: trigger
-          id:
-          - sunrise+2h
-        sequence:
-        - action: input_boolean.turn_off
-          metadata: {}
-          data: {}
-          target:
-            entity_id:
-            - input_boolean.rollo_was_cold
-            - input_boolean.rollo_was_wet
+            state:
+            - 'off'
+          - condition: or
+            conditions:
+            - condition: numeric_state
+              entity_id: sensor.gw1100a_rain_rate
+              above: 0.1
+            - condition: state
+              entity_id: binary_sensor.rain_sun_flower_rain
+              state:
+              - 'on'
+          sequence:
+          - action: input_boolean.turn_on
+            metadata: {}
+            data: {}
+            target:
+              entity_id: input_boolean.rollo_was_wet
   mode: single
