@@ -404,7 +404,7 @@ template:
             {% else %}
               Unbekannter Status
             {% endif %}
-  
+
   # Kellervorraete
   - trigger:
       - platform: event
@@ -770,12 +770,53 @@ template:
           uv_index: "{{ uv_index | round(0) }} (> {{ uv_index_threshold_strong }})"
           elevation: "{{ elevation | round(0) }} (> {{ sun_window_elevation_threshold }})"
           azimuth: "{{ azimuth | round(0) }} (> {{ sun_window_azimuth_threshold }})"
-  
-  # PV Kosten
+
+  # Known Energy, Unmonitored Energy, PV Kosten
   - trigger:
       - platform: time_pattern
         minutes: "/1"
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: homeassistant
+        event: start
     sensor:
+      - name: "Known Energy"
+        unique_id: known_energy
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: measurement
+        state: >
+          {{ label_entities('known_energy')
+             | map('states')
+             | map('float', 0)
+             | sum
+             | round(3) }}
+        availability: >
+          {{ label_entities('known_energy') | list | length > 0 }}
+        attributes:
+          total_entity_count: >
+            {{ label_entities('known_energy') | list | length }}
+          active_entity_count: >
+            {{ label_entities('known_energy')
+               | map('states')
+               | select('is_number')
+               | map('float')
+               | select('>', 0)
+               | list
+               | length }}
+      - name: "Unmonitored Consumption"
+        unique_id: unmonitored_consumption
+        state: >
+          {% set home = states('sensor.home_consumption_total_day') | float(0) %}
+          {% set known = states('sensor.known_energy') | float(0) %}
+          {% set unmetered = (home - known) | round(3) %}
+          {{ unmetered if unmetered > 0 else 0 }}
+        availability: >
+          {{ states('sensor.home_consumption_total_day') not in ['unavailable','unknown'] and states('sensor.known_energy') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: total
+        icon: mdi:power-plug-off
       - name: "Gesamt Kosten Pv Active Moving"
         unique_id: gesamtkosten_pv
         unit_of_measurement: "€"
@@ -794,7 +835,7 @@ template:
             {% set after = states('sensor.gesamt_kosten_pv_active_moving') | float(0) %}
             {{ (before - after) | round(2) }}€
 
-  # Home Power, Home Energy, Unmonitored Power, Unmonitored Energy
+  # Home Power, Home Energy, Battery Charge Power from Solar
   - trigger:
       - platform: time_pattern
         seconds: "/10"
@@ -831,7 +872,6 @@ template:
           {% set known_power = states('sensor.known_power') | float(0) %}
           {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
           {{ home | clamp(known_power, 33000) }}
-
       - name: "Home Consumption Total Day"
         unique_id: home_consumption_total_day
         unit_of_measurement: "kWh"
@@ -859,21 +899,6 @@ template:
             {% set losses = loss_deye %} 
             {% set total= ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) %}
             {{ total if total > 0 else 0 }}
-
-      - name: "Unmonitored Consumption"
-        unique_id: unmonitored_consumption
-        state: >
-          {% set home = states('sensor.home_consumption_total_day') | float(0) %}
-          {% set known = states('sensor.known_energy') | float(0) %}
-          {% set unmetered = (home - known) | round(3) %}
-          {{ unmetered if unmetered > 0 else 0 }}
-        availability: >
-          {{ states('sensor.home_consumption_total_day') not in ['unavailable','unknown'] and states('sensor.known_energy') not in ['unavailable','unknown'] }}
-        unit_of_measurement: "kWh"
-        device_class: energy
-        state_class: total
-        icon: mdi:power-plug-off
-
       - name: "Battery Charge Power from Solar"
         unique_id: battery_charge_power_from_solar
         state: >
@@ -887,7 +912,7 @@ template:
         state_class: measurement
         icon: mdi:solar-power
 
-  # Grid Power
+  # Known Power, Unmonitored Power, Grid Power
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -916,7 +941,6 @@ template:
                | select('>', 0)
                | list
                | length }}
-
       - name: "Unmonitored"
         unique_id: unmonitored
         state: >
@@ -930,7 +954,6 @@ template:
         device_class: power
         state_class: measurement
         icon: mdi:flash-outline
-
       - name: "Grid Power"
         unique_id: grid_power
         state: >
@@ -1048,8 +1071,8 @@ template:
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {{beta_scrape.beta_url.value|string }}
             {% endif %}
-          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}"
-  
+          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}" 
+
   # Birthdays
   - triggers:
     - trigger: homeassistant

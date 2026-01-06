@@ -4895,9 +4895,51 @@
   max_exceeded: silent
 - id: '1736353991047'
   alias: Papa kommt heim
-  description: 'Notify when Stephan leaves work, enters the home area, and clear the
-    alert on arrival. Steps: restart iCloud3, locate device, send ETA notification,
-    then clear on home entry.'
+  description: "\U0001F3E0 **Papa kommt heim**\n\n---\n\n### \U0001F4CB Intelligent
+    Commute Tracking & Notification Control\n\nThis automation manages the notification
+    lifecycle for **Stephan's** commute from work to home. It ensures family members
+    receive timely updates regarding his estimated time of arrival (ETA) and automatically
+    cleans up stale notifications upon his arrival.\n\nThe system utilizes a multi-stage
+    operational strategy:\n* **Initialization:** Restarts the **iCloud3** tracking
+    engine to ensure high-accuracy location data upon departure.\n* **Proactive Updates:**
+    Sends notifications with real-time ETA when the vehicle starts moving or enters
+    a secondary proximity zone (**Big Home 2**).\n* **Cleanup:** Automatically clears
+    the notification from the target device once the **Home** zone is reached to maintain
+    a clutter-free UI.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
+    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.wvgzzze2zpe005371_vehicle_moving`
+    | `Arbeit` | Detects when the vehicle starts moving to initiate the departure
+    sequence. |\n| **Zone** | `person.stephan` (Enters `zone.big_home_2`) | `Enter`
+    | Triggers a mid-commute ETA update when entering the outer perimeter. |\n| **Zone**
+    | `person.stephan` (Enters `zone.home`) | `Home` | Detects final arrival to clear
+    existing notifications. |\n\n---\n\n### Operational Logic Sections\n\n#### Leave
+    Arbeit (Departure)\n* **Purpose:** Initializes tracking and sends the first ETA
+    alert.\n* **Logic Overview:** Triggered by vehicle movement between **17:00 -
+    18:30** (Mon-Thu) or **13:00 - 16:00** (Fri), provided **person.stephan** is not
+    already **home**.\n* **Effect:** Commands **iCloud3** to **Restart**, waits 30
+    seconds, and sends a notification to **notify.duncan** with the value of `sensor.stephans_iphone_travel_time`.\n\n####
+    Proximity Alert (Enter)\n* **Purpose:** Provides a secondary ETA update as the
+    commute nears completion.\n* **Logic Overview:** Triggered when **person.stephan**
+    enters the **Big Home 2** zone.\n* **Effect:** Sends a refreshed ETA notification
+    to **notify.duncan** using the same `home_arrival_papa` tag to overwrite previous
+    alerts.\n\n#### Arrival (Home)\n* **Purpose:** Housekeeping and alert termination.\n*
+    **Logic Overview:** Triggered when **person.stephan** enters the **Home** zone.\n*
+    **Effect:** Sends a `clear_notification` command to **notify.duncan** for the
+    specific tag `home_arrival_papa`, removing the alert from the device.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode:** `single` (Prevents overlapping execution
+    during the 30s restart delay).\n* **Execution Method:** Direct action calls to
+    **icloud3.action** and **notify.duncan**.\n* **Key Inputs:** `sensor.stephans_iphone_travel_time`,
+    `sensor.uptime`.\n* **Controlled Entities:** `notify.duncan`, `icloud3` integration.\n*
+    **Safety Mechanisms:** * **Uptime Guard:** Template condition ensures the automation
+    only runs if the Home Assistant system has been stable for at least **120 seconds**.\n
+    \   * **Tagging:** Uses the `home_arrival_papa` tag to ensure notifications are
+    updated/cleared rather than duplicated.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Logic
+    Rationale:** The Friday departure window is specifically shifted earlier (**13:00
+    - 16:00**) to account for a shorter work day.\n* **iCloud3 Refresh:** The 30-second
+    delay after the **iCloud3** restart is critical to allow the tracking integration
+    to re-initialize and fetch a fresh location before the first notification is sent.\n*
+    **Automated Cleanup:** The use of `clear_notification` ensures that family members
+    aren't left with an \"incoming\" alert on their phones after the arrival has already
+    occurred."
   triggers:
   - trigger: state
     entity_id:
@@ -4916,18 +4958,6 @@
     event: enter
     id: Home
   conditions:
-  - condition: or
-    conditions:
-    - condition: state
-      entity_id: person.stephan
-      state: Arbeit
-    - condition: state
-      entity_id: person.stephan
-      state: not_home
-    - condition: state
-      entity_id: person.stephan
-      state:
-      - home
   - alias: restart finished
     condition: template
     value_template: "    {% set boot = as_timestamp(states('sensor.uptime')) %}\n
@@ -4966,16 +4996,6 @@
         metadata: {}
         data:
           command: Restart iCloud3
-          device_name: 3675fe049f5a257fe6eebb6533252e74
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 15
-          milliseconds: 0
-      - action: icloud3.action
-        metadata: {}
-        data:
-          command: Locate Device(s) using iCloud
           device_name: 3675fe049f5a257fe6eebb6533252e74
       - delay:
           hours: 0
@@ -9096,17 +9116,24 @@
     entity_id: device_tracker.renault_zoe_standort
     state: Arbeit
   - condition: template
-    value_template: '
-
-
-      {{ (trigger.from_state.state | float(0)) - (trigger.to_state.state | float(400))
-      > 2 }}'
+    value_template: '{{ (trigger.from_state.state | float(0)) - (trigger.to_state.state
+      | float(400)) > 2 }}'
   - condition: template
     value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
       default( as_datetime(''0''), true)) > timedelta(minutes=45) }}'
   - condition: time
     after: 08:00:00
+    before: '22:00:00'
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
   actions:
+  - action: notify.mobile_app_fp4
+    data:
+      message: request_location_update
   - action: notify.duncan
     data:
       title: Mama kommt heim
@@ -12069,7 +12096,7 @@
     that even if a network command fails, the heater state is synchronized through
     repeated attempts and administrative notifications.\n\n---\n\n### Trigger Overview
     Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
-    :--- |\n| Time Pattern | Every **5 minutes** | N/A | Periodic heartbeat to check
+    :--- |\n| Time Pattern | Every **15 minutes** | N/A | Periodic heartbeat to check
     thermal conditions and apply logic. |\n| Numeric State | **sensor.solar_power_total**
     > **2000** | N/A | Immediate activation of opportunistic heating when solar yield
     is high. |\n\n---\n\n### Operational Logic Sections\n\n#### \U0001F6A8 Emergency
@@ -12100,10 +12127,10 @@
     the coldest daily troughs.\n* **Hysteresis & Efficiency:** The system targets
     a wide gap between activation (**1.5°C**) and deactivation (**11.0°C**) to prevent
     rapid cycling of the heating hardware and to store thermal energy during solar
-    peaks.\n* **Resilience:** By using a 5-minute time pattern, the automation self-heals
+    peaks.\n* **Resilience:** By using a 15-minute time pattern, the automation self-heals
     if a state change was missed or manually overridden.\n"
   triggers:
-  - minutes: /5
+  - minutes: /15
     trigger: time_pattern
   - entity_id: sensor.solar_power_total
     above: 2000
