@@ -11947,11 +11947,49 @@
   mode: single
 - id: '1766920317036'
   alias: Heizungsverteiler EG Überstrom dynamisch
-  description: 'Überwacht den Strom des Heizungsverteilers EG mit gestaffelten numeric_state
-    Triggern, nutzt dein Retry-Script zum Abschalten und sendet eine klare Notification
-    je Zone.
-
-    '
+  description: "⚡ **Heizungsverteiler EG Überstrom dynamisch**\n\n### \U0001F4CB Intelligent
+    Overcurrent Protection Control\n\nThis automation provides a multi-tiered safety
+    layer for the **Heizungsverteiler EG** by monitoring electrical current in real-time.
+    It acts as a digital circuit breaker, responding dynamically to different load
+    intensities to prevent hardware damage or electrical hazards.\n\n**Operational
+    Strategy:**\n* **Proactive Monitoring:** Uses staggered `numeric_state` thresholds
+    to identify escalating power draws.\n* **Risk-Based Response:** Implements an
+    inverse-time characteristic where higher currents trigger faster shutdown responses.\n*
+    **Reliability Mechanism:** Utilizes a robust retry script with linear backoff
+    to ensure the **turn_off** command is successfully executed and verified, even
+    during transient interference.\n\n---\n\n### Trigger Overview Table\n\n| Type
+    | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Numeric
+    State | **Current** 1A - 2A for 30s | `zone_1` | Low-level overload detection
+    (sustained) |\n| Numeric State | **Current** 2A - 4A for 15s | `zone_2` | Moderate
+    overload detection |\n| Numeric State | **Current** > 4A for 5s | `zone_3` | High-level/Critical
+    overload (rapid response) |\n\n---\n\n### Operational Logic Sections\n\n#### ####
+    Zone 1: Sustained Low Overload\n* **Purpose:** Protects against minor but persistent
+    overcurrent conditions.\n* **Logic Overview:** Triggered when current stays between
+    **1A** and **2A** for at least **30 seconds**.\n* **Effect:** Executes the retry-based
+    shutdown and sends a Zone 1 specific notification to **notify.duncan**.\n\n####
+    #### Zone 2: Moderate Overload\n* **Purpose:** Responds to significant load increases
+    that exceed normal operating parameters.\n* **Logic Overview:** Triggered when
+    current stays between **2A** and **4A** for **15 seconds**.\n* **Effect:** Executes
+    the retry-based shutdown and sends a Zone 2 specific notification to **notify.duncan**.\n\n####
+    #### Zone 3: Critical Overload\n* **Purpose:** Immediate safety intervention for
+    high-current spikes or faults.\n* **Logic Overview:** Triggered when current exceeds
+    **4A** for only **5 seconds**.\n* **Effect:** Executes the retry-based shutdown
+    and sends a high-priority \"Immediate\" notification to **notify.duncan**.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode:** `single` (Prevents overlapping execution
+    during a single event)\n* **Execution Method:** `script.retry_action_with_backoff`\n*
+    **Key Inputs:** `sensor.heizungsverteiler_eg_current`\n* **Controlled Entities:**
+    `switch.heizungsverteiler_eg`\n* **Safety Mechanisms:** * **Verified Shutdown:**
+    10 retries with linear backoff (5s to 60s delay).\n    * **State Condition:**
+    Only runs if the switch is currently **on**.\n    * **Failure Notification:**
+    Direct alert if the retry script fails to confirm the \"off\" state.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Inverse-Time Logic:** The automation mimics professional
+    circuit breakers where the time-to-trip decreases as the current increases, providing
+    a balance between avoiding nuisance trips and ensuring safety.\n* **Retry Script:**
+    By using `script.retry_action_with_backoff`, the system accounts for potential
+    Zigbee/Z-Wave mesh congestion that might otherwise cause a single \"off\" command
+    to fail.\n* **Informative Alerts:** Templates are used to provide the exact amperage
+    that triggered the shutdown, allowing for faster troubleshooting of the connected
+    load.\n"
   triggers:
   - entity_id: sensor.heizungsverteiler_eg_current
     above: 1
@@ -12004,7 +12042,49 @@
   mode: single
 - id: '1767622395757'
   alias: 'Garden House: Freeze Protection Heating'
-  description: Emergency + solar-based heating with Tuya countdown safety
+  description: "❄️ **Garden House: Freeze Protection Heating**\n\n---\n\n### \U0001F4CB
+    Intelligent Garden House Thermal Control\n\nThis automation manages the climate
+    of the Garden House through a dual-strategy approach: **Emergency Freeze Protection**
+    and **Opportunistic Solar Heating**. It ensures the structure remains above critical
+    freezing thresholds while intelligently utilizing excess solar production to maintain
+    a buffer temperature. \n\nTo ensure high availability in remote environments,
+    the system employs a **retry-with-backoff** reliability mechanism. This ensures
+    that even if a network command fails, the heater state is synchronized through
+    repeated attempts and administrative notifications.\n\n---\n\n### Trigger Overview
+    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
+    :--- |\n| Time Pattern | Every **5 minutes** | N/A | Periodic heartbeat to check
+    thermal conditions and apply logic. |\n| Numeric State | **sensor.solar_power_total**
+    > **2000** | N/A | Immediate activation of opportunistic heating when solar yield
+    is high. |\n\n---\n\n### Operational Logic Sections\n\n#### \U0001F6A8 Emergency
+    Freeze Protection\n* **Purpose:** Prevent structural damage by maintaining temperatures
+    above freezing.\n* **Logic Overview:** Triggered if the heater is **off** and
+    current temperature is **≤ 1.5°C** or the 24h minimum temperature is **≤ -0.5°C**.\n*
+    **Effect:** Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
+    to **3600** (if before 05:00) or **900** (if after 05:00).\n\n#### ☀️ Opportunistic
+    Solar Heating\n* **Purpose:** Utilize free energy to warm the interior during
+    the day.\n* **Logic Overview:** Triggered if the heater is **off**, temperature
+    is between **1.5°C and 10.0°C**, and solar power is **≥ 2000W**.\n* **Effect:**
+    Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
+    to **900**.\n\n#### \U0001F6D1 Thermal Cut-off (Hard OFF)\n* **Purpose:** Prevent
+    overheating and energy waste once target temperature is reached.\n* **Logic Overview:**
+    Triggered if the heater is **on** and current temperature is **≥ 11.0°C**.\n*
+    **Effect:** Deactivates **switch.gartenhaus_heizlufter**.\n\n---\n\n### Technical
+    Overview\n\n* **Automation Mode:** `single` (Silent suppression of concurrent
+    runs).\n* **Execution Method:** Utilizes `script.retry_action_with_backoff` (10
+    retries, linear backoff, notification via `notify.duncan`).\n* **Key Inputs:**
+    * **sensor.esp32_c3_zero_epever_bme280_temperature** (Current Temp)\n    * **sensor.bme280_temperature_min**
+    (24h Low)\n    * **sensor.solar_power_total** (Solar Yield)\n* **Controlled Entities:**
+    * **switch.gartenhaus_heizlufter**\n    * **number.gartenhaus_heizlufter_countdown**\n*
+    **Safety Mechanisms:** Fail-safe `float(99)` values prevent accidental heating
+    on sensor failure; 10-step retry logic for command reliability.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Dynamic Countdown:** The automation intelligently adjusts
+    the heater duration based on the time of day during emergency events; longer runs
+    (**1 hour**) are prioritized in the early morning hours (pre-05:00) to combat
+    the coldest daily troughs.\n* **Hysteresis & Efficiency:** The system targets
+    a wide gap between activation (**1.5°C**) and deactivation (**11.0°C**) to prevent
+    rapid cycling of the heating hardware and to store thermal energy during solar
+    peaks.\n* **Resilience:** By using a 5-minute time pattern, the automation self-heals
+    if a state change was missed or manually overridden.\n"
   triggers:
   - minutes: /5
     trigger: time_pattern
@@ -12060,7 +12140,7 @@
       - target:
           entity_id: number.gartenhaus_heizlufter_countdown
         data:
-          value: '{{ 1800 if now().hour < 5 else 900 }}'
+          value: '{{ 3600 if now().hour < 5 else 900 }}'
         action: number.set_value
     - conditions:
       - condition: template
