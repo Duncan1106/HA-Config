@@ -858,20 +858,6 @@ template:
             {% set total= ((pv + bkw + grid_import + bat_discharge) - (grid_export + bat_charge + losses )) | round(3) %}
             {{ total if total > 0 else 0 }}
 
-      - name: "Unmonitored"
-        unique_id: unmonitored
-        state: >
-          {% set known = states('sensor.known_power') | float(0) %}
-          {% set home = states('sensor.home_power') | float(0) %}
-          {% set diff = (home - known) | round(2) %}
-          {{ diff if diff > 0 else 0 }}
-        availability: >
-          {{ states('sensor.known_power') not in ['unavailable','unknown'] and states('sensor.home_power') not in ['unavailable','unknown'] }}
-        unit_of_measurement: "W"
-        device_class: power
-        state_class: measurement
-        icon: mdi:flash-outline
-
       - name: "Unmonitored Consumption"
         unique_id: unmonitored_consumption
         state: >
@@ -904,6 +890,45 @@ template:
       - platform: time_pattern
         seconds: "/5"
     sensor:
+      - name: "Known Power"
+        unique_id: known_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ label_entities('known_power')
+             | map('states')
+             | map('float', 0)
+             | sum
+             | round(3) }}
+        availability: >
+          {{ label_entities('known_power') | list | length > 0 }}
+        attributes:
+          total_entity_count: >
+            {{ label_entities('known_power') | list | length }}
+          active_entity_count: >
+            {{ label_entities('known_power')
+               | map('states')
+               | select('is_number')
+               | map('float')
+               | select('>', 0)
+               | list
+               | length }}
+
+      - name: "Unmonitored"
+        unique_id: unmonitored
+        state: >
+          {% set known = states('sensor.known_power') | float(0) %}
+          {% set home = states('sensor.home_power') | float(0) %}
+          {% set diff = (home - known) | round(2) %}
+          {{ diff if diff > 0 else 0 }}
+        availability: >
+          {{ states('sensor.known_power') not in ['unavailable','unknown'] and states('sensor.home_power') not in ['unavailable','unknown'] }}
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        icon: mdi:flash-outline
+
       - name: "Grid Power"
         unique_id: grid_power
         state: >
