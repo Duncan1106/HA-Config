@@ -12297,60 +12297,66 @@
         entity_id:
         - input_boolean.forecast_temp_low
         - input_boolean.forecast_wet
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - temp below 2
-        - 30m
-      - condition: state
-        entity_id: input_boolean.rollo_was_cold
-        state:
-        - 'off'
-      - condition: numeric_state
-        entity_id: sensor.gw1100a_outdoor_temperature
-        below: 2
-      sequence:
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - input_boolean.rollo_was_cold
-    - conditions:
-      - condition: trigger
-        id:
-        - wet
-        - 30m
-      - condition: state
-        entity_id: input_boolean.rollo_was_wet
-        state:
-        - 'off'
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.gw1100a_rain_rate
-          above: 0.1
+  - if:
+    - condition: sun
+      after: sunset
+      before: sunrise
+      before_offset: +02:00:01
+    then:
+    - choose:
+      - conditions:
+        - condition: trigger
+          id:
+          - temp below 2
+          - 30m
         - condition: state
-          entity_id: binary_sensor.rain_sun_flower_rain
+          entity_id: input_boolean.rollo_was_cold
           state:
-          - 'on'
-      sequence:
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
+          - 'off'
+        - condition: numeric_state
+          entity_id: sensor.gw1100a_outdoor_temperature
+          below: 2
+        sequence:
+        - action: input_boolean.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id:
+            - input_boolean.rollo_was_cold
+      - conditions:
+        - condition: trigger
+          id:
+          - wet
+          - 30m
+        - condition: state
           entity_id: input_boolean.rollo_was_wet
-    - conditions:
-      - condition: trigger
-        id:
-        - sunrise+2h
-      sequence:
-      - action: input_boolean.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - input_boolean.rollo_was_cold
-          - input_boolean.rollo_was_wet
+          state:
+          - 'off'
+        - condition: or
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.gw1100a_rain_rate
+            above: 0.1
+          - condition: state
+            entity_id: binary_sensor.rain_sun_flower_rain
+            state:
+            - 'on'
+        sequence:
+        - action: input_boolean.turn_on
+          metadata: {}
+          data: {}
+          target:
+            entity_id: input_boolean.rollo_was_wet
+      - conditions:
+        - condition: trigger
+          id:
+          - sunrise+2h
+        sequence:
+        - action: input_boolean.turn_off
+          metadata: {}
+          data: {}
+          target:
+            entity_id:
+            - input_boolean.rollo_was_cold
+            - input_boolean.rollo_was_wet
   mode: single
