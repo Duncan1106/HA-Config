@@ -110,7 +110,8 @@ template:
           soc: "{{ states('sensor.felicity_ess_soc_avg') | float(0) }}"
           cap: "{{ states('sensor.inverter_battery_capacity') | float(0) }}"
           target_kwh: "{{ states('input_number.night_charge_target') | float(0) }}"
-          
+          potential_target: "{{ (((states('sensor.home_consumption_total_day') | float(0)) - (states('sensor.daily_energy_goe_11kw') | float(0) + states('sensor.daily_energy_goe_22kw') | float(0))) + 1.25) | clamp(15, state_attr('input_number.night_charge_target','max') | float(999)) | round(2) }}"
+
           # Forecast Selection Logic
           f_today: "{{ states('sensor.solcast_pv_forecast_prognose_heute') | float(0) }}"
           f_tomorrow: "{{ states('sensor.solcast_pv_forecast_prognose_morgen') | float(0) }}"
@@ -191,6 +192,7 @@ template:
           total_energy_kwh: "{{ [net_energy, 0] | max | round(2) }}"
           target_kwh: "{{ target_kwh }}"
           effective_target_kwh: "{{ effective_target_kwh | round(2) }}"
+          potential_target: "{{ potential_target | round(2) }}"
           charge_kwh: ''
           charge_needed_kwh: "{{ charge_needed | round(2) }}"
           charge_offset_kwh: "{{ charge_offset_kwh | round(2) }}"

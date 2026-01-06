@@ -3059,7 +3059,7 @@
   - action: hassio.addon_restart
     metadata: {}
     data:
-      addon: bf995ce7_saic_python_mqtt_gateway
+      addon: bf995ce7_saic_python_mqtt_gateway-pre
   mode: single
 - id: '1723675237746'
   alias: 3D Printer Timelapse
@@ -6466,15 +6466,40 @@
   mode: single
 - id: '1744046298527'
   alias: Enya kommt heim
-  description: When Enya leaves work (vehicle starts), restart iCloud3 and request
-    a fresh location; when she enters the big_home_2 zone, send ETA home; when she
-    arrives home, clear the arrival notification.
+  description: "\U0001F3E0 **Enya Arrival Tracking**\n\n### \U0001F4CB Intelligent
+    Presence & Notification Control\n\nThis automation manages proximity-based notifications
+    to provide real-time updates on Enya's arrival. It utilizes geofencing to alert
+    household members of an estimated time of arrival (ETA) when she enters an outer
+    perimeter, then automatically cleans up stale notifications once she successfully
+    arrives at home.\n\nThe operational strategy is **notification-centric**, ensuring
+    that information is delivered when relevant and removed when no longer needed
+    to maintain a clean device notification tray.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Zone**
+    | **person.enya** entering **zone.big_home_2** | `Enter` | Trigger arrival alert
+    and ETA calculation. |\n| **Zone** | **person.enya** entering **zone.home** |
+    `Home` | Trigger notification dismissal upon arrival. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### Proximity Alert (Outer Zone)\n* **Purpose**: Notify that
+    Enya is approaching and provide a travel time estimate.\n* **Logic Overview**:
+    Triggered when **person.enya** enters the **Big Home 2** zone, provided the system
+    has been stable for at least **120 seconds**.\n* **Effect**: Sends a notification
+    to **notify.duncan** containing the current value of **sensor.enyas_iphone_travel_time**.\n\n####
+    Arrival Cleanup (Home Zone)\n* **Purpose**: Remove the now-obsolete arrival notification.\n*
+    **Logic Overview**: Triggered when **person.enya** enters the **Home** zone.\n*
+    **Effect**: Issues a `clear_notification` command to **notify.duncan** targeting
+    the specific tag `home_arrival_enya`.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode**: `queued` (Max 3)\n* **Execution Method**: Direct Action / Notification
+    Service\n* **Key Inputs**: `person.enya`, `sensor.enyas_iphone_travel_time`\n*
+    **Controlled Entities**: `notify.duncan`\n* **Safety Mechanisms**: A **Template
+    Condition** ensures the automation does not fire during the first **120 seconds**
+    of system uptime to prevent false triggers during Home Assistant restarts.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Notification Tagging**: By using the `home_arrival_enya`
+    tag, the automation can overwrite or dismiss the specific arrival message without
+    affecting other notifications on the recipient's device.\n* **Uptime Guard**:
+    The logic includes a safety check against `sensor.uptime` to ensure that geofence
+    \"flapping\" during a reboot doesn't trigger accidental notifications.\n* **Contextual
+    Links**: The notification includes a `clickAction` that directs the user straight
+    to the **Maps** dashboard for visual tracking."
   triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.lsjwh4097rn105299_vehicle_running
-    from:
-    id: Arbeit
   - trigger: zone
     entity_id: person.enya
     zone: zone.big_home_2
@@ -6492,27 +6517,6 @@
       \   {{ boot is number and (as_timestamp(now()) - boot) >= 120 }}"
   actions:
   - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Arbeit
-      sequence:
-      - action: icloud3.action
-        metadata: {}
-        data:
-          command: Restart iCloud3
-          device_name: e146d7ea7dd792848fa6d8090a91ff6c
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 15
-          milliseconds: 0
-      - action: icloud3.action
-        metadata: {}
-        data:
-          command: Locate Device(s) using iCloud
-          device_name: e146d7ea7dd792848fa6d8090a91ff6c
-      alias: Leave Arbeit
     - conditions:
       - condition: trigger
         id:
@@ -10457,9 +10461,11 @@
         id:
         - switch.plant_tent
         - switch.tisch
-      - condition: time
-        before: sensor.sun_next_rising
-        after: '20:00:00'
+      - condition: sun
+        before: sunrise
+        before_offset: +00:15:01
+        after: sunset
+        after_offset: +00:15:01
       sequence:
       - action: script.retry_action_with_backoff
         continue_on_error: true
@@ -11097,27 +11103,37 @@
   mode: single
 - id: '1764102977901'
   alias: Adjust Battery Energy Target based on Today's Consumption
-  description: "# \U0001F50B Adjust Battery Energy Target Based on Today's Consumption\n\n##
-    \U0001F3AF Zweck\n\nDiese Automation berechnet jeden Abend um **23:59:55**, wie
-    viel Energie in der kommenden Nacht mindestens nachgeladen werden soll.  \nSie
-    gleicht dafür den **gesamten heutigen Hausverbrauch** mit der **heute geladenen
-    Energie der beiden Wallboxen** ab.\n\nDer Wert wird anschließend in `input_number.night_charge_target`
-    gespeichert.  \nDamit bestimmt die Automation, wie viel Energie in der Nacht bereitgestellt
-    werden soll, falls der kommende Tag wenig PV-Ertrag bringt.\n\n---\n\n## ⏰ Trigger\n\nDie
-    Automation läuft **ein einziges Mal pro Tag**, ausgelöst durch:\n\n| Zeit | Beschreibung
-    |\n|------|--------------|\n| 23:59:55 | Tagesabschluss, Berechnung des Nachtladeziels
-    |\n\n---\n\n## \U0001F9E0 Berechnungslogik\n\nDie Formel arbeitet wie ein kleiner
-    Energiebuchhalter:\n\n- Heutiger Hausverbrauch (`sensor.home_consumption_total_day`)
-    \ \n- minus heutige Ladung an der 11 kW Wallbox (`sensor.daily_energy_goe_11kw`)
-    \ \n- minus heutige Ladung an der 22 kW Wallbox (`sensor.daily_energy_goe_22kw`)
-    \ \n\nDas Ergebnis wird auf **mindestens 15 kWh** begrenzt.  \nFalls der Tagesverbrauch
-    besonders niedrig war, schützt dieser Mindestwert vor einer zu konservativen Nachladung.\n\nBeispielhaft
-    gesprochen:  \nWenn das Haus heute 20 kWh verbraucht hat und die Autos 10 kWh
-    gezogen haben, ist der Nettobedarf 10 kWh → aber da das kleiner als 15 ist, wird
-    auf **15 kWh** gesetzt.\n\n---\n\n## \U0001F527 Actions\n\nDie berechnete Energiemenge
-    wird in  \n`input_number.night_charge_target`  \ngeschrieben und kann von anderen
-    Automationen genutzt werden, um das nächtliche Laden oder die Batterieziele dynamisch
-    anzupassen.\n\n---"
+  description: "\U0001F50B **Battery Target Optimization**\n\n---\n\n### \U0001F4CB
+    Intelligent Energy Storage Control\n\nThis automation dynamically calculates and
+    sets the required energy storage target for the upcoming overnight charging cycle.
+    By analyzing the day's consumption patterns and potential requirements, it ensures
+    the battery is provisioned with exactly enough energy to meet the household's
+    needs while minimizing unnecessary grid reliance.\n\n* **High-level intent:**
+    Synchronize overnight charging targets with actual consumption trends.\n* **Operational
+    strategy:** Data-driven adjustment performed at the end of the daily cycle.\n*
+    **Reliability mechanisms:** Uses a robust templating engine with defined `clamp`
+    boundaries (15–1000) and fail-safe defaults to prevent invalid input states.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **Time** | 23:59:55 | N/A | Finalizes the daily calculation
+    just before the calendar date rolls over. |\n\n---\n\n### Operational Logic Sections\n\n####
+    End-of-Day Calculation\n* **Purpose:** To update the **Night Charge Target** based
+    on the calculated potential requirement of the residence.\n* **Logic Overview:**
+    Evaluates the `potential_target` attribute of the **Charge Battery at Night**
+    sensor. If the value is missing or invalid, it defaults to **0** before being
+    passed to safety clamping.\n* **Effect:** Updates the **input_number.night_charge_target**
+    with a value between **15** and **1000**.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode:** `single` (Prevents overlapping execution during the state
+    update).\n* **Execution method:** Direct state service call to `input_number.set_value`.\n*
+    **Key Inputs:** `binary_sensor.charge_battery_at_night` (Specifically the `potential_target`
+    attribute).\n* **Controlled Entities:** `input_number.night_charge_target`.\n*
+    **Safety Mechanisms:** Employs a `clamp(15, 1000)` filter to ensure the target
+    never drops below a critical floor or exceeds the maximum physical storage capacity/logic
+    limit.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Threshold Rationale:** The minimum
+    clamp of **15** ensures a baseline reserve is always maintained, even if the daily
+    consumption sensor reports negligible usage.\n* **Precision Timing:** Executing
+    at **23:59:55** allows the automation to capture the most complete dataset for
+    the current day without conflicting with \"Daily\" sensor resets that typically
+    occur at exactly 00:00:00."
   triggers:
   - trigger: time
     at: '23:59:55'
@@ -11126,10 +11142,11 @@
   - action: input_number.set_value
     metadata: {}
     data:
-      value: "{% set target = states('sensor.home_consumption_total_day')|float(0)
-        \n                - (states('sensor.daily_energy_goe_11kw')|float(0) \n                -
-        states('sensor.daily_energy_goe_22kw')|float(0)) %}\n\n{% set cap = state_attr('input_number.night_charge_target',
-        'max') | float(999) %}\n{{ target | clamp(15, cap) | round(2) }}\n\n"
+      value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''potential_target'')
+        | default(0, true) | float(0) | clamp(15, 1000) }}
+
+
+        '
     target:
       entity_id: input_number.night_charge_target
   mode: single
