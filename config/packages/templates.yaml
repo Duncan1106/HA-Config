@@ -912,7 +912,7 @@ template:
         state_class: measurement
         icon: mdi:solar-power
 
-  # Known Power, Unmonitored Power, Grid Power
+  # Known Power, Unmonitored Power, Grid Power, Power Consumption Ranking
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -971,7 +971,28 @@ template:
         device_class: power
         state_class: measurement
         icon: mdi:transmission-tower
+      - name: "Power Consumption Ranking"
+        unique_id: power_consumption_ranking
+        icon: mdi:flash
+        variables:
+          ranked_power: >
+            {% set exclude = expand('sensor.exclude_from_power_ranking') | map(attribute='entity_id') | list %}
+            {% set sensors = label_entities('known_power') | reject('in', exclude) | list %}
+            {% set ns = namespace(items=[]) %}
+            {% for s in sensors %}
+              {% set v = states(s) | float(0) %}
+              {% if v > 0 %}
+                {% set ns.items = ns.items + [ {'id': s, 'v': v} ] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.items | sort(attribute='v', reverse=true) }}
 
+        state: "ok"
+        availability: "{{ ranked_power | count > 0 }}"
+        attributes:
+          top_1: "{{ ranked_power[0].id if ranked_power | count > 0 else none }}"
+          top_2: "{{ iif((ranked_power | count > 1 and states(ranked_power[1].id) | float(0) > 10), ranked_power[1].id, none) }}"
+  
   # AI Beta Release Notes Summary
   - triggers:
       - trigger: homeassistant
