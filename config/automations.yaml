@@ -153,9 +153,56 @@
   max: 10
 - id: '1702826722550'
   alias: Presence DESK Controller
-  description: This automation controls the power to your desk setup based on occupancy
-    sensors. It turns off the laptop and monitor after a period of inactivity, while
-    ensuring all connected devices are back on when someone arrives.
+  description: "# \U0001F5A5️ **Presence DESK Controller**\n\n---\n\n### \U0001F4CB
+    Intelligent Desk Presence Control\n\nThis automation manages the power state of
+    a comprehensive desk and paludarium setup. Its **high-level intent** is to maximize
+    energy efficiency by deactivating hardware during periods of inactivity while
+    ensuring a seamless, ready-to-work environment upon arrival. \n\nThe **operational
+    strategy** utilizes a multi-stage standby approach, scaling down power based on
+    the duration of absence. It integrates **environmental awareness** (Sun and Time
+    conditions) to adjust peripheral lighting and uses a **queued execution mode**
+    to ensure sequential processing of state changes, preventing command collisions
+    during rapid presence transitions.\n\n---\n\n### Trigger Overview Table\n\n| Type
+    | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Presence
+    | `binary_sensor.schreibtisch` (**ON**) | ON | Detects active occupancy to restore
+    full power. |\n| Time | `binary_sensor.schreibtisch` (**OFF** for 1m) | Monitor
+    off | Initiates short-term power save (Monitor standby). |\n| Time | `binary_sensor.schreibtisch`
+    (**OFF** for 10m) | laptop off | Initiates medium-term power save (Laptop standby).
+    |\n| Occupancy | `binary_sensor` (**Not Occupied** for 20s) | Monitor off | Device-specific
+    trigger for rapid monitor shutdown. |\n| Occupancy | `binary_sensor` (**Not Occupied**
+    for 30m) | laptop off | Long-term deep power save for the laptop setup. |\n\n---\n\n####
+    ☀️ Daytime / Arrival Mode\n- **Purpose**: Restores the workspace to an active
+    state when occupancy is confirmed.\n- **Logic Overview**: Triggered by **ON**
+    ID; requires **person.duncan** to be **home** and time to be between **07:00**
+    and **23:00**.\n- **Effect**: Switches **ON** all desk power strips (L1-L5) and
+    Paludarium lighting/pumps. Includes a 15-second multi-stage \"Retry\" logic to
+    ensure all connected entities successfully receive the power command.\n\n####
+    \U0001F319 Monitor Standby (Short-term Absence)\n- **Purpose**: Reduces power
+    consumption during brief breaks.\n- **Logic Overview**: Triggered by **Monitor
+    off** ID (either 20s or 1m of inactivity).\n- **Effect**: Switches **OFF** **switch.schreibtisch_rechts_power_strip_l2**.
+    If the sun is below the horizon (**Sunset to Sunrise**), it also deactivates Paludarium
+    lighting and secondary power strips after a 15-second delay.\n\n#### \U0001F4A4
+    Laptop Standby (Extended Absence)\n- **Purpose**: Deep power saving for extended
+    periods away from the desk.\n- **Logic Overview**: Triggered by **laptop off**
+    ID (10m or 30m inactivity); verifies `binary_sensor.schreibtisch` remains **off**.\n-
+    **Effect**: Deactivates main laptop power (**L2**, **L3**). During nighttime hours,
+    it executes a full sweep of all Paludarium peripherals and auxiliary desk power
+    (L5, L1) to ensure zero light pollution and minimal idle draw.\n\n---\n\n### Technical
+    Overview\n\n* **Automation Mode**: `queued` (Max 15)\n* **Execution Method**:
+    Direct action blocks with integrated delays and condition checks.\n* **Key Inputs**:
+    `binary_sensor.schreibtisch`, `person.duncan`, `sun.sun`.\n* **Controlled Entities**:
+    \n    * Desk Power Strips (Links/Rechts L1-L5)\n    * Paludarium Systems (Turm
+    Links/Rechts L1-L3)\n* **Safety Mechanisms**: Time-of-day constraints (07:00-23:00)
+    prevent accidental power-on during sleeping hours; presence-of-user check ensures
+    power only restores when the specific resident is home.\n\n---\n\n### \U0001F4A1
+    Notes\n\n* **Reliability Strategy**: The \"All ON\" sequence repeats the turn_on
+    command for Paludarium entities twice after staggered delays (10s and 5s) to act
+    as a software-level retry mechanism for Zigbee/Wi-Fi reliability.\n* **Smart Night
+    Logic**: The automation distinguishes between day and night for shutdown; if you
+    leave the desk at night, it aggressively clears all lighting (Paludarium) that
+    would otherwise stay on during the day.\n* **Safety Threshold**: The 20-second
+    delay on arrival prevents \"ghost\" triggers from turning the whole system on
+    if someone is just passing by the desk.\n"
   triggers:
   - type: not_occupied
     device_id: 561b2fddd9cec3889faf18b8ccf214a0
@@ -11836,13 +11883,16 @@
       - delay:
           hours: 0
           minutes: 0
-          seconds: 5
+          seconds: 15
           milliseconds: 0
-      - action: notify.admin
+      - action: notify.duncan
         data:
           message: clear_notification
           data:
             tag: bat1_breaker
+      - action: notify.mobile_app_stephan_iphone
+        data:
+          message: clear_notification
   mode: restart
 - id: '1766701693252'
   alias: Rollo Winter Control (All-in-One)
