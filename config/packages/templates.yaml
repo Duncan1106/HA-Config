@@ -1137,7 +1137,7 @@ template:
           attributes:
               upcoming: >
                 {% set today = as_datetime(today_str).date() %}
-                {% set ns = namespace(lines=[]) %}
+                {% set ns = namespace(data=[]) %}
                 {% for entity in birthday_entities %}
                   {% set s = states(entity) %}
                   {% if s and s | length >= 10 %}
@@ -1148,16 +1148,22 @@ template:
                       {% set nb_day = dob.day if not (dob.month == 2 and dob.day == 29 and not n_is_leap | bool) else 28 %}
                       {% set next_birthday = dob.replace(year=nyr|int, month=dob.month, day=nb_day) %}
                     {% endif %}
+                    
                     {% set days_until = (next_birthday - today).days %}
-                    {% if days_until <= 340 %}
-                      {# set age = yr|int - dob.year - (1 if (today.month, today.day) < (eff_m, eff_d) else 0) #}
-                      {% set age = next_birthday.year - dob.year %}
-                      {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
-                      {% set ns.lines = ns.lines + ['🎂 ' ~ (state_attr(entity, 'friendly_name') or entity) ~ ': ' ~ label ~ ' – Alter: ' ~ age] %}
-                    {% endif %}
+                    {% set age = next_birthday.year - dob.year %}
+                    {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
+                    {% set name = state_attr(entity, 'friendly_name') or entity %}
+                    
+                    {# Store as a list: [days_remaining, formatted_string] #}
+                    {% set ns.data = ns.data + [[days_until, '🎂 ' ~ name ~ ': ' ~ label ~ ' – Alter: ' ~ age]] %}
                   {% endif %}
                 {% endfor %}
-                {{ ns.lines }}
+                
+                {# Sort by days, take the first one, and extract the string #}
+                {% set sorted_list = ns.data | sort(attribute=0) %}
+                {{ sorted_list[0][1] if sorted_list | count > 0 else 'Keine Geburtstage' }}
+
+          
               ages: >
                 {% set today = as_datetime(today_str).date() %}
                 {% set ns = namespace(dict={}) %}
