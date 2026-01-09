@@ -122,6 +122,7 @@ template:
           min_soc_pct: "{{ states('input_number.night_charge_minimum_soc_percent') | float(0) }}"
           
           battery_usable_kwh: "{{ cap * (soc / 100.0) }}"
+          battery_missing_kwh: "{{ cap - battery_usable_kwh }}"
           dyn_margin_kwh: "{{ forecast_kwh * (margin_pct / 100) }}"
           min_soc_kwh: "{{ cap * (min_soc_pct / 100) }}"
           buffer_kwh: "{{ [dyn_margin_kwh, min_soc_kwh] | max }}"
@@ -134,12 +135,12 @@ template:
           charge_offset: "{{ states('input_number.battery_charge_percent_offset') | float(0) }}"
           charge_offset_kwh: "{{ (cap|float(0)) * (charge_offset|float(0) / 100) }}"
           effective_target_kwh: "{{ (target_kwh|float(0)) + (charge_offset_kwh|float(0)) }}"
-          effective_charge_needed: "{{ (charge_needed | float(0)) + (charge_offset_kwh | float(0)) }}"
+          effective_charge_needed: "{{ ((charge_needed | float(0)) + (charge_offset_kwh | float(0))) | clamp(0, battery_missing_kwh) }}"
 
           # Charging Power Calculation Inputs
           battery_voltage: 51.2
           efficiency: 0.95
-          min_amps: 30
+          min_amps: 20
           max_amps: 120
 
           # Night charge window (today)
@@ -172,7 +173,7 @@ template:
               0
             {% endif %}
           actual_amps: >
-            {{ ((raw_amps | float(0) // 10 + 1) * 10) | clamp(min_amps|int(30), max_amps|int(120)) }}
+            {{ ((raw_amps | float(0) // 10 + 1) * 10) | clamp(min_amps|int(20), max_amps|int(120)) }}
 
         state: "{{ net_energy|float < effective_target_kwh|float }}"
         availability: >
@@ -184,6 +185,7 @@ template:
           battery_state: ''
           soc_percent: "{{ soc }}"
           usable_kwh: "{{ battery_usable_kwh | round(2) }}"
+          battery_missing_kwh: "{{ battery_missing_kwh | round(2) }}"
           forecast: ''
           forecast_heute_kwh: "{{ f_today | round(2) }}"
           forecast_morgen_kwh: "{{ f_tomorrow | round(2) }}"
@@ -211,7 +213,7 @@ template:
           saved_cost_eur: >
             {% set night_tariff = 0.187425 %}
             {% set day_tariff = 0.302379 %}
-            {{ ((day_tariff - night_tariff) * charge_needed) | round(2) }}
+            {{ ((day_tariff - night_tariff) * charge_needed_effective_kwh|float(0)) | round(2) }}
           charging_window: ''
           remaining_hours: "{{ remaining_hours | round(2) }}"
           amps: ''
@@ -784,7 +786,7 @@ template:
         unique_id: known_energy
         unit_of_measurement: "kWh"
         device_class: energy
-        state_class: measurement
+        state_class: total
         state: >
           {{ label_entities('known_energy')
              | map('states')

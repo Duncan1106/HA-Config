@@ -6276,7 +6276,7 @@ config:
           icon: mdi:bed-outline
           type: heading
         - cards:
-          - entity: switch.tisch
+          - entity: switch.paludarien_left
             fill_container: true
             icon: ''
             primary_info: name
@@ -6284,7 +6284,15 @@ config:
             tap_action:
               action: toggle
             type: custom:mushroom-entity-card
-          - entity: switch.paludarien
+          - entity: switch.paludarien_right
+            fill_container: true
+            icon: ''
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: toggle
+            type: custom:mushroom-entity-card
+          - entity: switch.paludarien_center
             fill_container: true
             icon: ''
             primary_info: name
@@ -6430,7 +6438,17 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
-        - entity: switch.paludarien
+        - entity: switch.paludarien_left
+          fill_container: false
+          tap_action:
+            action: toggle
+          type: custom:mushroom-entity-card
+        - entity: switch.paludarien_right
+          fill_container: false
+          tap_action:
+            action: toggle
+          type: custom:mushroom-entity-card
+        - entity: switch.paludarien_center
           fill_container: false
           tap_action:
             action: toggle
@@ -7556,6 +7574,22 @@ config:
         - entity: script.restart_internet
         show_header_toggle: false
         type: entities
+      - collapsed_sections:
+        - switches
+        device_id: f25566ea435365c5d4c37837584d186c
+        entity_order:
+        - sensor.adguard_home_anzahl_regeln
+        - sensor.daily_dns_abfragen
+        exclude_entities:
+        - sensor.adguard_home_durch_jugendschutz_blockiert
+        - sensor.adguard_home_durch_safe_browsing_blockiert
+        type: custom:adguard-card
+        visibility:
+        - condition: user
+          users:
+          - 4f7767cac0c342edb25e991662a2f56c
+          - 2950af301cff4dbfa321eb69a51307b0
+          - 690f4c6bedc44a9daad30c216f237d1d
       type: grid
     subview: true
     title: Internet
@@ -7734,16 +7768,17 @@ config:
             \ | default(0, true) | float(0)) | round(2) }} kWh\n\n## \U0001F3AF Targets\n\
             - **Base Target (planner):** {{ (state_attr('binary_sensor.charge_battery_at_night','target_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh  \n- **\u2795 Offset\
-            \ Margin:** {{ (state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')\
-            \ | default(states('input_number.battery_charge_percent_offset'), true)\
-            \ | float(0)) | round(0) }}% / {{ (state_attr('binary_sensor.charge_battery_at_night','charge_offset_kwh')\
+            \ Margin:** {{ (state_attr('binary_sensor.charge_battery_at_night','charge_offset_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh\n- **\U0001F3C1 Effective\
             \ Stop Target (base + offset):** {{ (state_attr('binary_sensor.charge_battery_at_night','effective_target_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh\n\n\n\n{% if (state_attr('binary_sensor.charge_battery_at_night','charge_needed_effective_kwh')\n\
             \   | default(0, true) | float(0)) > 0\n   or is_state('switch.esp32_s3_zero_deye8k_battery_charge_grid','on')\
             \ %}\n\n**Remaining charge needed:** {{ (state_attr('binary_sensor.charge_battery_at_night','charge_needed_effective_kwh')\
             \ | default(0, true) | float(0)) | round(2) }} kWh\n**Charge Target (SoC):**\
-            \ {{ (state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')\
+            \ {{ (state_attr('binary_sensor.charge_battery_at_night','charge_target_percent')\
+            \ | default(0, true) | float(0)) | round(0) }}% + {{ (state_attr('binary_sensor.charge_battery_at_night','battery_charge_percent_offset')\
+            \ | default(states('input_number.battery_charge_percent_offset'), true)\
+            \ | float(0)) | round(0) }}% -> {{ (state_attr('binary_sensor.charge_battery_at_night','offset_charge_target_percent')\
             \ | default(0, true) | float(0)) | round(0) }}%\n\n**Required charge current:**\
             \ {{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps')\
             \ | default(0, true) | int(0) }} A ({{ state_attr('binary_sensor.charge_battery_at_night','required_charge_amps_raw')\

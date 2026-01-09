@@ -584,9 +584,7 @@
       exclude:
         entity_id:
         - sensor.fp4_battery_level
-        - sensor.ipad_air_2_battery_level
         - sensor.iphone_von_enya_battery_level
-        - sensor.ipad_von_stephan_battery_level
         - sensor.poco_f7_battery_level
         - sensor.mi_9t_battery_level
       actions:
@@ -6346,6 +6344,7 @@
     target:
       entity_id: number.herd_ct_klemme_zigbee_update_frequency
   mode: single
+  max_exceeded: silent
 - id: '1741102167233'
   alias: Publish Energy Data to MQTT
   description: "## \U0001F4E1 Publish Energy Data to MQTT  \n\n### \U0001F4CB **Real-Time
@@ -9098,6 +9097,7 @@
 
             '
   mode: single
+  max_exceeded: silent
 - id: '1752180300729'
   alias: 'Alert: SMART Status Problem'
   description: "## \U0001F4BE SMART Drive Status Alert Automation\n\n### \U0001F4CB
@@ -9823,10 +9823,8 @@
     value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered')\n            |
       default(as_datetime('1970-01-01T00:00:00'), true)) > timedelta(minutes=5) }}\n"
   - condition: template
-    value_template: '{% set hour = now().hour %} {% set outdoor = states(''sensor.gw1100a_outdoor_temperature'')
-      | float(0) %}  {{ (6 <= hour < 22) or (outdoor > 10) }}
-
-      '
+    value_template: "{% set hour = now().hour %} \n{% set outdoor = states('sensor.gw1100a_outdoor_temperature')
+      | float(0) %}\n{{ (6 <= hour < 22) or (outdoor > 10) }}\n"
   actions:
   - choose:
     - conditions:
@@ -11364,6 +11362,7 @@
           entity_id: switch.treppe_led_lichterkette_zigbee
           target_state: 'off'
       alias: Treppenlicht LED OFF
+    enabled: false
   mode: parallel
   max: 5
 - id: '1764434672349'
@@ -12201,7 +12200,7 @@
       condition: template
       value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
         (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) <=
-        1.5 or states(''sensor.bme280_temperature_min'') | float(99) <= -0.5) }}'
+        1.5 or states(''sensor.bme280_temperature_min'') | float(99) <= 0.5) }}'
     - condition: template
       value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
         (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) >
@@ -12225,7 +12224,7 @@
     - conditions:
       - condition: template
         value_template: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <=
-          -0.5) }}
+          0.5) }}
 
           '
       sequence:
