@@ -1,94 +1,94 @@
 template:
   # Christmas Tree
-#   - trigger:
-#       - trigger: homeassistant
-#         event: start
-#       - platform: event
-#         event_type: event_template_reloaded
-#       - platform: state
-#         entity_id:
-#           - binary_sensor.workday_sensor
-#           - sun.sun
-#       - platform: time
-#         at:
-#           - "04:30:01"
-#           - "06:00:01"
-#           - "11:00:01"
-#           - "22:30:01"
-#           - "23:00:01"
-#       - platform: sun
-#         event: sunrise
-#         offset: "+00:15:01"
-#       - platform: sun
-#         event: sunset
-#         offset: "-00:29:59"
-#       - platform: sun
-#         event: sunset
-#         offset: "-00:44:59"
-#     binary_sensor:
-#       - name: Christmas Tree
-#         unique_id: christmas_tree_schedule
-#         icon: mdi:pine-tree
-#         variables:
-#           # 1. Basic states
-#           time: "{{ now().strftime('%H:%M') }}"
-#           workday: "{{ is_state('binary_sensor.workday_sensor', 'on') }}"
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: state
+        entity_id:
+          - binary_sensor.workday_sensor
+          - sun.sun
+      - platform: time
+        at:
+          - "04:30:01"
+          - "06:00:01"
+          - "11:00:01"
+          - "22:30:01"
+          - "23:00:01"
+      - platform: sun
+        event: sunrise
+        offset: "+00:15:01"
+      - platform: sun
+        event: sunset
+        offset: "-00:29:59"
+      - platform: sun
+        event: sunset
+        offset: "-00:44:59"
+    binary_sensor:
+      - name: Christmas Tree
+        unique_id: christmas_tree_schedule
+        icon: mdi:pine-tree
+        variables:
+          # 1. Basic states
+          time: "{{ now().strftime('%H:%M') }}"
+          workday: "{{ is_state('binary_sensor.workday_sensor', 'on') }}"
           
-#           # 2. Raw Sun Attributes (to check for availability)
-#           next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
-#           next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
+          # 2. Raw Sun Attributes (to check for availability)
+          next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
+          next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
           
-#           # 3. Calculated Offsets (Doing conversion and math in one step to avoid String errors)
-#           sunrise_15_hhmm: >
-#             {% set dt = next_rising | as_datetime %}
-#             {{ (dt | as_local + timedelta(minutes=15)).strftime('%H:%M') if dt is not none else '00:00' }}
-#           sunset_30_hhmm: >
-#             {% set dt = next_setting | as_datetime %}
-#             {{ (dt | as_local - timedelta(minutes=30)).strftime('%H:%M') if dt is not none else '00:00' }}
-#           sunset_45_hhmm: >
-#             {% set dt = next_setting | as_datetime %}
-#             {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
+          # 3. Calculated Offsets (Doing conversion and math in one step to avoid String errors)
+          sunrise_15_hhmm: >
+            {% set dt = next_rising | as_datetime %}
+            {{ (dt | as_local + timedelta(minutes=15)).strftime('%H:%M') if dt is not none else '00:00' }}
+          sunset_30_hhmm: >
+            {% set dt = next_setting | as_datetime %}
+            {{ (dt | as_local - timedelta(minutes=30)).strftime('%H:%M') if dt is not none else '00:00' }}
+          sunset_45_hhmm: >
+            {% set dt = next_setting | as_datetime %}
+            {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
 
-#         availability: >
-#           {{ 
-#             states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
-#             and states('sun.sun') not in ['unknown', 'unavailable']
-#             and next_rising is not none 
-#             and next_setting is not none 
-#           }}
-#         state: >
-#           {% if workday %}
-#             {% set morning_on = '04:30' <= time < sunrise_15_hhmm %}
-#             {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
-#           {% else %}
-#             {% set morning_on = '06:00' <= time < '11:00' %}
-#             {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
-#           {% endif %}
-#           {{ morning_on or evening_on }}
-#         attributes:
-#           schedule_type: "{{ 'workday' if workday else 'weekend' }}"
-#           period: >
-#             {% if workday %}
-#               {% if '04:30' <= time < sunrise_15_hhmm %} morning
-#               {% elif sunset_30_hhmm <= time < '22:30' %} evening
-#               {% else %} off {% endif %}
-#             {% else %}
-#               {% if '06:00' <= time < '11:00' %} morning
-#               {% elif sunset_45_hhmm <= time < '23:00' %} evening
-#               {% else %} off {% endif %}
-#             {% endif %}
-#           reason: >
-#             {% if workday %}
-#               {% if '04:30' <= time < sunrise_15_hhmm %} Workday morning window: 04:30 - {{ sunrise_15_hhmm }}
-#               {% elif sunset_30_hhmm <= time < '22:30' %} Workday evening window: {{ sunset_30_hhmm }} - 22:30
-#               {% else %} Outside workday schedule {% endif %}
-#             {% else %}
-#               {% if '06:00' <= time < '11:00' %} Weekend morning window: 06:00 - 11:00
-#               {% elif sunset_45_hhmm <= time < '23:00' %} Weekend evening window: {{ sunset_45_hhmm }} - 23:00
-#               {% else %} Outside weekend schedule {% endif %}
-#             {% endif %}
-#           updated: "{{ time }}"
-#           updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
+        availability: >
+          {{ 
+            states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
+            and states('sun.sun') not in ['unknown', 'unavailable']
+            and next_rising is not none 
+            and next_setting is not none 
+          }}
+        state: >
+          {% if workday %}
+            {% set morning_on = '04:30' <= time < sunrise_15_hhmm %}
+            {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
+          {% else %}
+            {% set morning_on = '06:00' <= time < '11:00' %}
+            {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
+          {% endif %}
+          {{ morning_on or evening_on }}
+        attributes:
+          schedule_type: "{{ 'workday' if workday else 'weekend' }}"
+          period: >
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_15_hhmm %} morning
+              {% elif sunset_30_hhmm <= time < '22:30' %} evening
+              {% else %} off {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %} morning
+              {% elif sunset_45_hhmm <= time < '23:00' %} evening
+              {% else %} off {% endif %}
+            {% endif %}
+          reason: >
+            {% if workday %}
+              {% if '04:30' <= time < sunrise_15_hhmm %} Workday morning window: 04:30 - {{ sunrise_15_hhmm }}
+              {% elif sunset_30_hhmm <= time < '22:30' %} Workday evening window: {{ sunset_30_hhmm }} - 22:30
+              {% else %} Outside workday schedule {% endif %}
+            {% else %}
+              {% if '06:00' <= time < '11:00' %} Weekend morning window: 06:00 - 11:00
+              {% elif sunset_45_hhmm <= time < '23:00' %} Weekend evening window: {{ sunset_45_hhmm }} - 23:00
+              {% else %} Outside weekend schedule {% endif %}
+            {% endif %}
+          updated: "{{ time }}"
+          updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
 
   # Battery
   - trigger:
