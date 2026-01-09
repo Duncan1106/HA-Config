@@ -9543,25 +9543,68 @@
   mode: parallel
   max: 10
 - id: '1755587220350'
-  alias: GitHub Exporter addon start every hour
-  description: "## ⏱ GitHub Exporter Add-on Scheduler\n\n### \U0001F4CB Purpose\nEnsures
-    the `git-exporter` Home Assistant add-on runs consistently every hour\nto export
-    and update GitHub repository data automatically.\n\n---\n\n### ⏰ Trigger\n- Fires
-    on a repeating hourly schedule (`time_pattern` with `/1` hour).\n\n---\n\n###
-    ✅ Conditions\n- None. The add-on starts unconditionally every hour.\n\n---\n\n###
-    \U0001F3AF Actions / Workflow\n- Starts the `git-exporter` add-on via `hassio.addon_start`\n-
-    Add-on identifier: `68413af6_git-exporter`\n\n---\n\n### \U0001F527 Technical
-    Specs\n- Mode: `single` to prevent overlapping executions."
+  alias: GitHub Exporter addon start every hour or after reloads
+  description: "  ☀️ **GitHub Exporter Sync Manager**\n\n  ---\n\n  ### \U0001F4CB
+    Intelligent GitHub Exporter Control\n\n  This automation manages the operational
+    lifecycle of the **GitHub Exporter**\n  add-on. It ensures that data remains synchronized
+    by executing a start command\n  on a fixed schedule and reacting dynamically to
+    system configuration changes.\n\n  The operational strategy focuses on **high
+    availability** and **context-aware\n  delays**. By monitoring system events like
+    MQTT and Template reloads, the\n  automation prevents duplicate exports while
+    ensuring the system has reached\n  a stable state before attempting to launch
+    the exporter service.\n\n  ---\n\n  ### Trigger Overview Table\n\n  | Type | Entity
+    / Condition | ID | Purpose |\n  | :--- | :--- | :--- | :--- |\n  | **Time Pattern**
+    | Every **1 hour** | `hourly` | Periodic synchronization of GitHub data. |\n  |
+    **Event** | `event_mqtt_reloaded` | `reload` | Start export due to changes in
+    MQTT. |\n  | **Event** | `event_template_reloaded` | `reload` | Start export due
+    to changes in Templates. |\n\n  ---\n\n  #### \U0001F504 Scheduled Maintenance
+    Mode\n\n  - **Purpose**: Regular, periodic export intervals.\n  - **Logic Overview**:
+    Triggered at the start of every hour (e.g., 1:00, 2:00)\n    regardless of system
+    state.\n  - **Effect**: Immediately calls the start service for the **GitHub Exporter**\n
+    \   add-on.\n\n  #### ⏳ Delayed Export After Reload\n\n  - **Purpose**: Trigger
+    an export after system configuration changes while avoiding duplicate runs.\n
+    \ - **Logic Overview**: Triggered by internal Home Assistant reload events\n    (`event_mqtt_reloaded`
+    or `event_template_reloaded`). The automation waits for\n    **5 minutes** after
+    the last reload event to allow the system to stabilize.\n  - **Effect**: After
+    the 5-minute delay, the **GitHub Exporter** add-on is started.\n    Multiple reloads
+    during the wait reset the timer, ensuring only one export\n    runs after the
+    system is stable.\n\n  ---\n\n  ### Technical Overview\n\n  - **Automation Mode**:
+    `restart` (Aborts current wait period if a new reload\n    trigger occurs, prioritizing
+    the most recent event).\n  - **Execution Method**: Direct service call to start
+    the **GitHub Exporter** add-on.\n  - **Key Inputs**: System events (`event_mqtt_reloaded`,
+    `event_template_reloaded`).\n  - **Controlled Entities**: `68413af6_git-exporter`.\n
+    \ - **Safety Mechanisms**: The **5-minute delay** serves as a buffer to prevent\n
+    \   multiple overlapping export starts during consecutive reloads.\n\n  ---\n\n
+    \ ### \U0001F4A1 Notes\n\n  - **Restart Logic**: Using `mode: restart` ensures
+    that if a second reload\n    occurs during the 5-minute wait, the timer resets.
+    The add-on only starts\n    once the system has been stable for a full 5 minutes.\n
+    \ - **Add-on Identification**: Uses the specific internal slug\n    **68413af6_git-exporter**
+    to ensure precise targeting of the service.\n  - **Efficiency**: The automation
+    uses `hassio.addon_start`, which is\n    idempotent; if the add-on is already
+    running, the call ensures it remains\n    in a healthy, running state."
   triggers:
   - trigger: time_pattern
     hours: /1
+    id: hourly
+  - trigger: event
+    event_type: event_mqtt_reloaded
+    id: reload
+  - trigger: event
+    event_type: event_template_reloaded
+    id: reload
   conditions: []
   actions:
-  - action: hassio.addon_start
-    metadata: {}
-    data:
+  - if:
+    - condition: trigger
+      id: reload
+    then:
+    - delay:
+        minutes: 5
+    alias: Wait when reloaded
+  - data:
       addon: 68413af6_git-exporter
-  mode: single
+    action: hassio.addon_start
+  mode: restart
 - id: '1757084399628'
   alias: Turn Off Bett Plug Right Over 30W
   description: ''
