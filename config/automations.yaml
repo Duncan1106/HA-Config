@@ -11675,23 +11675,50 @@
   max: 3
 - id: '1765713065237'
   alias: Ambient Lights Scheduler
-  description: "## \U0001F384 Ambient Lights Scheduler\n\nControls the Ambient Light
-    based on the\nschedule (`binary_sensor.ambient_lights`) and home presence\n(`binary_sensor.anyone_home`).
-    \ \n\nThe tree turns ON only when the schedule is active and at least one\nperson
-    is home. It turns OFF if either condition fails.  \n\n---\n\n### ⏰ **Triggers**
-    \ \n\n| Trigger Entity | Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
-    `binary_sensor.ambient_lights` | State changes | \"Schedule\" |\n| `binary_sensor.anyone_home`
-    | State changes | \"Presence\" |\n| Home Assistant | Start | \"HA_Start\" |\n\n>
-    **Note:** Any trigger ensures the tree state is correctly set immediately.\n\n---\n\n###
-    ✅ **Conditions**  \n\n- None; all triggers evaluate the current state of the sensors
-    in the actions.\n\n---\n\n### \U0001F3AF **Actions / Workflow**  \n\n1. **Turn
-    ON tree**  \n   - Triggered when both sensors are `on`  \n   - Uses retry logic
-    for reliability  \n\n2. **Turn OFF tree**  \n   - Triggered when either sensor
-    is `off`  \n   - Uses retry logic for reliability  \n\n---\n\n### \U0001F527 **Technical
-    Specs**  \n\n- **Mode:** `restart` (ensures latest state wins)  \n- **Device Controlled:**
-    `switch.weihnachtsbaum_zigbee`  \n\n---\n\n### ⚡ **Notes / Best Practices**  \n\n-
-    Modular logic: schedule and presence are independent  \n- Safe on HA restart  \n-
-    Scales well for future overrides or extra conditions"
+  description: "\U0001F4A1 **Ambient Lights Scheduler**\n\n### \U0001F4CB Intelligent
+    Ambient Lighting Control\n\nThis automation manages the home's decorative and
+    atmospheric lighting based on a combination of time-of-day scheduling and occupancy.
+    By integrating both standard and seasonal lighting, it ensures the home environment
+    is properly illuminated only when necessary.\n\n**Operational Strategy:**\nThe
+    system follows a **Presence-Aware & Conditional** strategy. Lights are only activated
+    if the lighting schedule is active **and** the home is occupied. If either condition
+    becomes false, the lights are deactivated to conserve energy.\n\n**Reliability
+    Mechanisms:**\nTo combat potential Zigbee mesh interference or hardware unavailability,
+    this automation utilizes a **recursive retry script** with **exponential backoff**.
+    Each command is attempted up to 5 times, ensuring state consistency even in unreliable
+    network conditions.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity /
+    Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.ambient_lights`
+    | `Schedule` | Detects changes in the programmed lighting window. |\n| **State**
+    | `binary_sensor.anyone_home` | `Presence` | Responds to arrival or departure
+    of residents. |\n| **Event** | `Home Assistant Start` | `HA_Start` | Synchronizes
+    light states immediately after a system reboot. |\n\n---\n\n#### Active Lighting
+    Mode\n* **Purpose**: Illuminates the home during scheduled hours when residents
+    are present.\n* **Logic Overview**: Requires both `binary_sensor.ambient_lights`
+    to be **on** AND `binary_sensor.anyone_home` to be **on**.\n* **Effect**: Switches
+    `switch.fenster_licht_vorne_zigbee` and `switch.fenster_licht_hinten_zigbee` to
+    **on**. If `input_boolean.enable_seasonal_ambient_lights` is active, it also enables
+    seasonal entities.\n\n#### Inactive / Economy Mode\n* **Purpose**: Turns off lighting
+    when out of schedule or when the house is empty.\n* **Logic Overview**: Triggered
+    if `binary_sensor.ambient_lights` is **off** OR `binary_sensor.anyone_home` is
+    **off**.\n* **Effect**: Switches all primary and seasonal (if enabled) entities
+    to **off**.\n\n---\n\n### Technical Overview\n\n* **Automation Mode**: `restart`
+    (Ensures the latest trigger state takes immediate precedence).\n* **Execution
+    Method**: Utilizes `script.retry_action_with_backoff` for robust device communication.\n*
+    **Key Inputs**: \n    * `binary_sensor.ambient_lights` (Schedule)\n    * `binary_sensor.anyone_home`
+    (Occupancy)\n    * `input_boolean.enable_seasonal_ambient_lights` (Feature Flag)\n*
+    **Controlled Entities**: \n    * **Primary**: `switch.fenster_licht_vorne_zigbee`,
+    `switch.fenster_licht_hinten_zigbee`\n    * **Seasonal**: `switch.weihnachtsbaum_zigbee`,
+    `switch.treppe_led_lichterkette_zigbee`\n* **Safety Mechanisms**: \n    * **Exponential
+    Backoff**: Prevents network congestion during retries.\n    * **Failure Notification**:
+    Alerts the user via `notify.duncan` if a device fails to reach the target state
+    after all retries.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Network Stability**:
+    The use of `continue_on_error: true` ensures that if one Zigbee device is physically
+    disconnected, the rest of the loop continues to process other lights.\n* **Presence
+    Priority**: The logic acts as a \"Gatekeeper\"—even if the schedule says the lights
+    should be on, they will remain off if the house is empty, effectively reducing
+    energy waste.\n* **Seasonal Flexibility**: The seasonal toggle allows for permanent
+    YAML configuration of holiday lights that only participate in the logic when the
+    specific toggle is enabled.\n"
   triggers:
   - trigger: state
     entity_id:
@@ -11716,6 +11743,9 @@
       entities:
       - switch.fenster_licht_vorne_zigbee
       - switch.fenster_licht_hinten_zigbee
+      entities_seasonal:
+      - switch.weihnachtsbaum_zigbee
+      - switch.treppe_led_lichterkette_zigbee
   - choose:
     - conditions:
       - condition: and
@@ -11742,6 +11772,28 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
+      - if:
+        - condition: state
+          entity_id: input_boolean.enable_seasonal_ambient_lights
+          state:
+          - 'on'
+        then:
+        - repeat:
+            for_each: '{{ entities_seasonal }}'
+            sequence:
+            - action: script.retry_action_with_backoff
+              continue_on_error: true
+              data:
+                entity_id: '{{ repeat.item }}'
+                target_state: 'on'
+                action_domain: switch
+                action_type: turn_on
+                max_retries: 5
+                base_delay: 5
+                backoff_type: exponential
+                notify_on_failure: true
+                notify_service: notify.duncan
+        alias: Seasonal Ambient Lights ON
     - conditions:
       - condition: or
         conditions:
@@ -11767,6 +11819,28 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
+      - if:
+        - condition: state
+          entity_id: input_boolean.enable_seasonal_ambient_lights
+          state:
+          - 'on'
+        then:
+        - repeat:
+            for_each: '{{ entities_seasonal }}'
+            sequence:
+            - action: script.retry_action_with_backoff
+              continue_on_error: true
+              data:
+                entity_id: '{{ repeat.item }}'
+                target_state: 'off'
+                action_domain: switch
+                action_type: turn_on
+                max_retries: 5
+                base_delay: 5
+                backoff_type: exponential
+                notify_on_failure: true
+                notify_service: notify.duncan
+        alias: Seasonal Ambient Lights OFF
   mode: restart
 - id: '1766573948427'
   alias: Bat1 Circuit Breaker Failure
