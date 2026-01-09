@@ -11674,14 +11674,13 @@
   mode: queued
   max: 3
 - id: '1765713065237'
-  alias: Christmas Tree Scheduler
-  description: "## \U0001F384 Christmas Tree Scheduler  \n\nControls the Christmas
-    Tree (`switch.weihnachtsbaum_zigbee`) based on the\nschedule (`binary_sensor.christmas_tree`)
-    and home presence\n(`binary_sensor.anyone_home`).  \n\nThe tree turns ON only
-    when the schedule is active and at least one\nperson is home. It turns OFF if
-    either condition fails.  \n\n---\n\n### ⏰ **Triggers**  \n\n| Trigger Entity |
-    Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
-    `binary_sensor.christmas_tree` | State changes | \"Schedule\" |\n| `binary_sensor.anyone_home`
+  alias: Ambient Lights Scheduler
+  description: "## \U0001F384 Ambient Lights Scheduler\n\nControls the Ambient Light
+    based on the\nschedule (`binary_sensor.ambient_lights`) and home presence\n(`binary_sensor.anyone_home`).
+    \ \n\nThe tree turns ON only when the schedule is active and at least one\nperson
+    is home. It turns OFF if either condition fails.  \n\n---\n\n### ⏰ **Triggers**
+    \ \n\n| Trigger Entity | Event / Condition | Trigger ID |\n|----------------|-----------------|------------|\n|
+    `binary_sensor.ambient_lights` | State changes | \"Schedule\" |\n| `binary_sensor.anyone_home`
     | State changes | \"Presence\" |\n| Home Assistant | Start | \"HA_Start\" |\n\n>
     **Note:** Any trigger ensures the tree state is correctly set immediately.\n\n---\n\n###
     ✅ **Conditions**  \n\n- None; all triggers evaluate the current state of the sensors
@@ -11696,7 +11695,7 @@
   triggers:
   - trigger: state
     entity_id:
-    - binary_sensor.christmas_tree
+    - binary_sensor.ambient_lights
     id: Schedule
     to:
     - 'on'
@@ -11713,53 +11712,61 @@
     id: HA_Start
   conditions: []
   actions:
+  - variables:
+      entities:
+      - switch.fenster_licht_vorne_zigbee
+      - switch.fenster_licht_hinten_zigbee
   - choose:
     - conditions:
       - condition: and
         conditions:
         - condition: state
-          entity_id: binary_sensor.christmas_tree
+          entity_id: binary_sensor.ambient_lights
           state: 'on'
         - condition: state
           entity_id: binary_sensor.anyone_home
           state: 'on'
       sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.weihnachtsbaum_zigbee
-          target_state: 'on'
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            continue_on_error: true
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'on'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: or
         conditions:
         - condition: state
-          entity_id: binary_sensor.christmas_tree
+          entity_id: binary_sensor.ambient_lights
           state: 'off'
         - condition: state
           entity_id: binary_sensor.anyone_home
           state: 'off'
       sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.weihnachtsbaum_zigbee
-          target_state: 'off'
+      - repeat:
+          for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            continue_on_error: true
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
   mode: restart
 - id: '1766573948427'
   alias: Bat1 Circuit Breaker Failure

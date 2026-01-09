@@ -1,5 +1,5 @@
 template:
-  # Christmas Tree
+  # Ambient Lights
   - trigger:
       - trigger: homeassistant
         event: start
@@ -26,19 +26,14 @@ template:
         event: sunset
         offset: "-00:44:59"
     binary_sensor:
-      - name: Christmas Tree
-        unique_id: christmas_tree_schedule
-        icon: mdi:pine-tree
+      - name: Ambient Lights
+        unique_id: ambient_lights_schedule
+        icon: mdi:led-strip
         variables:
-          # 1. Basic states
           time: "{{ now().strftime('%H:%M') }}"
           workday: "{{ is_state('binary_sensor.workday_sensor', 'on') }}"
-          
-          # 2. Raw Sun Attributes (to check for availability)
           next_rising: "{{ state_attr('sun.sun', 'next_rising') }}"
           next_setting: "{{ state_attr('sun.sun', 'next_setting') }}"
-          
-          # 3. Calculated Offsets (Doing conversion and math in one step to avoid String errors)
           sunrise_15_hhmm: >
             {% set dt = next_rising | as_datetime %}
             {{ (dt | as_local + timedelta(minutes=15)).strftime('%H:%M') if dt is not none else '00:00' }}
@@ -48,7 +43,6 @@ template:
           sunset_45_hhmm: >
             {% set dt = next_setting | as_datetime %}
             {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
-
         availability: >
           {{ 
             states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
@@ -88,7 +82,7 @@ template:
               {% else %} Outside weekend schedule {% endif %}
             {% endif %}
           updated: "{{ time }}"
-          updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
+          updated_by: "{{ trigger.description | default('manual') }}"
 
   # Battery
   - trigger:
@@ -219,7 +213,7 @@ template:
           amps: ''
           required_charge_amps_raw: "{{ raw_amps | round(1) }}"
           required_charge_amps: "{{ actual_amps }}"
-          updated_by: "{{ trigger.platform }}: {{ trigger.description }}"
+          updated_by: "{{ trigger.description | default('manual') }}"
 
   # Humidifier
   - trigger:
@@ -406,6 +400,7 @@ template:
             {% else %}
               Unbekannter Status
             {% endif %}
+          updated_by: "{{ trigger.description | default('manual') }}"
 
   # Kellervorraete
   - trigger:
@@ -772,6 +767,7 @@ template:
           uv_index: "{{ uv_index | round(0) }} (> {{ uv_index_threshold_strong }})"
           elevation: "{{ elevation | round(0) }} (> {{ sun_window_elevation_threshold }})"
           azimuth: "{{ azimuth | round(0) }} (> {{ sun_window_azimuth_threshold }})"
+          updated_by: "{{ trigger.description | default('manual') }}"
 
   # Known Energy, Unmonitored Energy, PV Kosten
   - trigger:
@@ -993,7 +989,7 @@ template:
         availability: "{{ ranked_power | count > 0 }}"
         attributes:
           top_1: "{{ ranked_power[0].id if ranked_power | count > 0 else none }}"
-          top_2: "{{ iif((ranked_power | count > 1 and states(ranked_power[1].id) | float(0) > 10), ranked_power[1].id, none) }}"
+          top_2: "{{ iif((ranked_power | count > 1 and states(ranked_power[1].id) | float(0) > 10), ranked_power[1].id, none, none) }}"
   
   # AI Beta Release Notes Summary
   - triggers:
@@ -1095,6 +1091,7 @@ template:
               {{beta_scrape.beta_url.value|string }}
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}" 
+          updated_by: "{{ trigger.description | default('manual') }}"
 
   # Birthdays
   - triggers:
