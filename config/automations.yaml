@@ -4078,12 +4078,6 @@
       id:
       - PowerSave
     then:
-    - action: switch.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - switch.schedule_paludarien
     - action: homeassistant.turn_off
       metadata: {}
       data: {}
@@ -4104,11 +4098,6 @@
       data: {}
       target:
         label_id: optional_off_power_save
-    - action: switch.turn_on
-      target:
-        entity_id:
-        - switch.schedule_paludarien
-      data: {}
     - action: notify.duncan
       metadata: {}
       data:
@@ -10504,7 +10493,12 @@
     period\n\n### ⚙️ **Reliability Features**\n\nEach light entity is processed individually
     with up to **5 retry attempts**,   using a **5-second exponential backoff** between
     attempts to guarantee the final desired state is reached.\n\n--- \n\n*Entities
-    managed:*  \n\n\n  - `switch.plant_tent`\n  \n  - `switch.tisch`"
+    managed:*  \n\n\n  - `switch.plant_tent`\n  \n  - `switch.tisch`\n\n*Paludarien
+    managed:*\n\n\n  - `switch.paludarien_left`\n  \n  - `switch.paludarien_right`\n
+    \ \n  - `switch.paludarien_center`\n  \n  - `switch.kallax_plant_light_zigbee_l3`\n
+    \ \n  - `switch.kallax_plant_light_zigbee_l2`\n  \n  - `switch.regal_planzen_1`\n\n
+    \ - `switch.schreibtisch_links_power_strip_l1`\n  \n  - `switch.schreibtisch_rechts_power_strip_l5`\n
+    \ "
   triggers:
   - trigger: sun
     event: sunrise
@@ -10539,6 +10533,15 @@
       entities:
       - switch.plant_tent
       - switch.tisch
+      paludarium:
+      - switch.paludarien_left
+      - switch.paludarien_right
+      - switch.paludarien_center
+      - switch.kallax_plant_light_zigbee_l3
+      - switch.kallax_plant_light_zigbee_l2
+      - switch.regal_planzen_1
+      - switch.schreibtisch_links_power_strip_l1
+      - switch.schreibtisch_rechts_power_strip_l5
   - choose:
     - conditions:
       - condition: trigger
@@ -10559,12 +10562,42 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
+      - repeat:
+          for_each: '{{ paludarium }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            continue_on_error: true
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'on'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: sunset
       sequence:
       - repeat:
           for_each: '{{ entities }}'
+          sequence:
+          - action: script.retry_action_with_backoff
+            continue_on_error: true
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'off'
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+              notify_on_failure: true
+              notify_service: notify.duncan
+      - repeat:
+          for_each: '{{ paludarium }}'
           sequence:
           - action: script.retry_action_with_backoff
             continue_on_error: true
@@ -12700,3 +12733,104 @@
         data:
           message: clear_notification
   mode: restart
+- id: '1768047602515'
+  alias: Bad Spiegellicht
+  description: "☀️ **Mirror Light: Sun-Based Automation**\n\n---\n\n### \U0001F4CB
+    Intelligent Mirror Light Control\n\nThis automation manages the **switch.bad_spiegellicht**
+    based on the solar cycle to ensure optimal bathroom lighting without manual intervention.
+    \n\n* **High-Level Intent**: Automatically activate the mirror light as dusk approaches
+    and deactivate it at sunrise.\n* **Operational Strategy**: Solar-driven logic
+    utilizing specific offsets to preempt darkness, combined with a state-synchronization
+    check upon system boot.\n* **Reliability Mechanisms**: Employs a robust retry
+    script with a linear backoff strategy. This ensures that even if the hardware
+    is momentarily unreachable, the system will attempt to enforce the correct state
+    up to 10 times before alerting the administrator.\n\n---\n\n### Trigger Overview
+    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
+    :--- |\n| **Sun** | 15 min before sunset | `turn_on` | Proactively light the room
+    before total darkness. |\n| **Sun** | At sunrise | `turn_off` | Conserve energy
+    by disabling light during daylight. |\n| **System** | Home Assistant Start | `sync`
+    | Ensure the light matches the sun state after a reboot. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### Evening Mode\n* **Purpose**: Illuminate the bathroom for
+    nighttime use.\n* **Logic Overview**: Triggered by the sunset offset or a system
+    sync when the sun is **after 15 minutes before sunset**.\n* **Effect**: Activates
+    **switch.bad_spiegellicht** via retry script.\n\n#### Daylight Mode\n* **Purpose**:
+    Ensure the light is extinguished during the day.\n* **Logic Overview**: Triggered
+    by sunrise or a system sync when the sun is **between sunrise and 15 minutes before
+    sunset**.\n* **Effect**: Deactivates **switch.bad_spiegellicht** via retry script.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode**: `single`\n* **Execution Method**:
+    External script (`script.retry_action_with_backoff`)\n* **Key Inputs**: Solar
+    position, System uptime\n* **Controlled Entities**: `switch.bad_spiegellicht`\n*
+    **Safety Mechanisms**: \n    * **Linear Backoff**: 5s base delay scaling to 60s.\n
+    \   * **Failure Notification**: Dispatches a notification to `notify.duncan` if
+    the state cannot be verified after **10 retries**.\n\n---\n\n### \U0001F4A1 Notes\n\n*
+    **Pre-emptive Lighting**: The **-00:15:00** offset is used to bridge the gap between
+    natural light fading and official sunset, providing better utility in windowed
+    environments.\n* **State Sync**: The inclusion of the `homeassistant` start event
+    prevents the light from remaining in the wrong state if a power outage or restart
+    occurs during a solar transition.\n* **Resilience**: Using `script.retry_action_with_backoff`
+    instead of a simple `switch.turn_on` command makes this automation highly resilient
+    against Zigbee/Wi-Fi mesh instability.\n"
+  triggers:
+  - alias: Trigger 15 minutes before sunset
+    event: sunset
+    offset: -00:15:00
+    id: turn_on
+    trigger: sun
+  - alias: Trigger at sunrise
+    event: sunrise
+    id: turn_off
+    trigger: sun
+  - alias: Trigger on Home Assistant startup
+    event: start
+    id: sync
+    trigger: homeassistant
+  actions:
+  - choose:
+    - alias: 'Condition: It is sunset or night-time'
+      conditions:
+      - condition: trigger
+        id:
+        - turn_on
+        - sync
+      - condition: sun
+        after: sunset
+        after_offset: -00:15:00
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.bad_spiegellicht
+    - alias: 'Condition: It is sunrise or daytime'
+      conditions:
+      - condition: trigger
+        id:
+        - sync
+        - turn_off
+      - condition: sun
+        before: sunset
+        before_offset: -00:15:00
+        after: sunrise
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.bad_spiegellicht
+  mode: single
