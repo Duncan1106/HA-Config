@@ -40,7 +40,20 @@ mqtt:
           {{ value_json.Rule3.State if value_json.Rule3.State in ['ON','OFF'] else None }}
         {% endif %}
       <<: *tasmota_rule_base
-      
+
+  binary_sensor:
+    - name: "Smart Meter MQTT Data"
+      state_topic: "smartmeter-em420/"
+      value_template: "{{ value_json.get('smart-meter', {}).get('status', 'None') | bool }}"
+      unique_id: smart_meter_mqtt_data
+      expire_after: 30
+      json_attributes_topic: "smartmeter-em420/"
+      json_attributes_template: "{{ value_json.get('smart-meter', {}) | tojson }}"
+      device:
+        name: "Smart Meter"
+        identifiers: 
+         - "em420"
+
   sensor:
     - name: "Tibber Node Pulse Battery Voltage"
       unique_id: tibber_node_battery_voltage
@@ -134,18 +147,6 @@ mqtt:
           - ["mac", "0838E60CA328"]
         identifiers:
           - "fully_kiosk_a9641507"
-
-    - name: "Smart Meter MQTT Data"
-      state_topic: "smartmeter-em420/"
-      value_template: "{{ value_json.get('smart-meter', {}).get('status', 'Unknown') }}"
-      unique_id: smart_meter_mqtt_data
-      expire_after: 30
-      json_attributes_topic: "smartmeter-em420/"
-      json_attributes_template: "{{ value_json.get('smart-meter', {}) | tojson }}"
-      device:
-        name: "Smart Meter"
-        identifiers: 
-         - "em420"
   
     - name: "MQTT_Stats_Messages_Received"
       state_topic: "$SYS/brokers/emqx@homeassistant.local/metrics/messages/received"
