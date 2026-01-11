@@ -373,7 +373,7 @@ config:
         features_position: bottom
         icon: ''
         primary: '{% set unavailable_data = states(''sensor.speedtest_download'')
-          in[''unknown'',''unavailable''] %} {% set text = "Ping: " + states(''sensor.speedtest_ping'')
+          in [''unknown'',''unavailable''] %} {% set text = "Ping: " + states(''sensor.speedtest_ping'')
           + "ms, " + states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
           + " Mbps" %}  {{ "" if unavailable_data else text }}'
         secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}   {%
@@ -443,19 +443,21 @@ config:
       multiline_secondary: true
       primary: '{% set backups = state_attr(entity, ''backups'') | default([], true)
         %}  Last Backup Size: {{ backups[-1][''size''] if backups else ''N/A'' }}'
-      secondary: '{% set uptime = (now().timestamp() - as_timestamp(state_attr(entity,
-        ''backups'')[-1][''date''])) %}  {% set months = (uptime % 31536000) // 2592000
-        %} {% set days = (uptime % 2592000) // 86400 %} {% set hours = (uptime % 86400)
-        // 3600 %} {% set minutes = (uptime % 3600) // 60 %} {% set percent = state_attr(entity,
-        ''backups'')[-1][''state''] %} Last Backup {{ ''%dm '' % months if months
-        else '''' }}{{ ''%dd '' % days if days else '''' }}{{ ''%dh '' % hours if
-        hours else '''' }}{{ ''%dm'' % minutes if minutes else '''' }} ago
+      secondary: '{% set backups = state_attr(entity, ''backups'') | default([], true)
+        %} {% if backups %} {% set uptime = (now().timestamp() - as_timestamp(backups[-1][''date'']))
+        %} {% set months = (uptime % 31536000) // 2592000 %} {% set days = (uptime
+        % 2592000) // 86400 %} {% set hours = (uptime % 86400) // 3600 %} {% set minutes
+        = (uptime % 3600) // 60 %} {% set percent = backups[-1][''state''] %} Last
+        Backup {{ ''%dm '' % months if months else '''' }}{{ ''%dd '' % days if days
+        else '''' }}{{ ''%dh '' % hours if hours else '''' }}{{ ''%dm'' % minutes
+        if minutes else '''' }} ago
 
         State: {{ "Uploaded" if percent == "Drive Only" else percent }}
 
         Total Space in Google Drive: {{state_attr(entity, ''size_in_google_drive'')}}
 
-        Total Backups in Google Drive: {{state_attr(entity, ''backups_in_google_drive'')}}'
+        Total Backups in Google Drive: {{state_attr(entity, ''backups_in_google_drive'')}}
+        {% else %} No backups available {% endif %}'
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
