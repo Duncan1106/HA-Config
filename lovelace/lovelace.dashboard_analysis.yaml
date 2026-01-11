@@ -372,10 +372,12 @@ config:
         entity: input_boolean.show_speedtest_details
         features_position: bottom
         icon: ''
-        primary: '{% set unavailable_data = states(''sensor.speedtest_download'')
-          in [''unknown'',''unavailable''] %} {% set text = "Ping: " + states(''sensor.speedtest_ping'')
-          + "ms, " + states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
-          + " Mbps" %}  {{ "" if unavailable_data else text }}'
+        primary: "{% set x = ['unknown','unavailable'] %} {% set unavailable_data\
+          \ =\n  states('sensor.speedtest_ping') in x or\n  states('sensor.speedtest_upload')\
+          \ in x or\n  states('sensor.speedtest_download') in x\n%} {% set text =\n\
+          \  \"Ping: \" ~ states('sensor.speedtest_ping') ~ \"ms, \" ~\n  states('sensor.speedtest_upload')\
+          \ ~ \" Mbps, \" ~\n  states('sensor.speedtest_download') ~ \" Mbps\"\n%}\
+          \ {{ \"\" if unavailable_data else text }}"
         secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}   {%
           set unavailable_data = states(''sensor.speedtest_download'') in [''unknown'',''unavailable'']
           %} {% set last_run = states(''sensor.speedtest_last_run'') %}  {{ "Start
@@ -466,8 +468,8 @@ config:
       features_position: bottom
       icon: ''
       multiline_secondary: true
-      primary: '{% set status_backup = states(entity) | string %} Onedrive Filesync:
-        {{  "Uploaded" if status_backup == "Synced" else "Syncing" }}'
+      primary: '{% set s = states(entity) %} Onedrive Filesync: {% if s in [''unknown'',''unavailable'']
+        %}Unknown{% elif s == ''Synced'' %}Uploaded{% else %}Syncing{% endif %}'
       secondary: ''
       tap_action:
         action: more-info
