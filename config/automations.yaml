@@ -9323,83 +9323,6 @@
           entity_id: switch.153931628718174_screen_display
   mode: parallel
   max: 4
-- id: '1754256267209'
-  alias: UGREEN NAS Power Management
-  description: "## \U0001F4BE UGREEN NAS Power Management\n\nAutomates turning the
-    **UGREEN NAS** on and off based on time, sunrise, and power consumption.  \nThe
-    goal is to run the NAS only when needed, save energy, and protect the hardware.\n\n---\n\n###
-    \U0001F4CB Logic\n\n- **\U0001F305 Day start / Sunrise + 1h30:** Turns the NAS
-    on if it is not already running.  \n- **⏰ 10:00 AM:** Daily on trigger as a backup
-    to ensure the NAS is active.  \n  - Both triggers use the **retry logic** (`script.retry_action_with_backoff`)
-    for reliable activation.\n\n- **\U0001F4C9 Automatic Shutdown:** If the NAS power
-    consumption remains below **0.1 W** for more than 1 minute, it will be turned
-    off.  \n  - The **retry logic** ensures the NAS actually powers down.\n\n---\n\n###
-    \U0001F527 Conditions\n\n- No additional conditions.  \n  - NAS turns on at `On`
-    triggers and off at the `Off` trigger.\n\n---\n\n### ⚡ Actions / Workflow\n\n####
-    \U0001F31E **Turn On (On Trigger)**\n- Trigger: `On` (Sunrise +1h30 or 10:00 AM)
-    \ \n- Action: \n  - Turns **on** `switch.ugreen_nas`.\n  - Executes `script.retry_action_with_backoff`
-    (max 10 retries, base delay 5 s, max delay 60 s, simple backoff) for reliable
-    activation.\n\n#### \U0001F319 **Turn Off (Off Trigger)**\n- Trigger: `Off` (NAS
-    power < 0.1 W for ≥ 1 minute)  \n- Action: \n  - Turns **off** `switch.ugreen_nas`.\n
-    \ - Executes `script.retry_action_with_backoff` (max 10 retries, base delay 5
-    s, max delay 60 s, simple backoff) for reliable shutdown.\n\n---\n\n### ⚡ Notes
-    / Best Practices\n\n- Retry logic ensures the NAS is reliably turned on/off even
-    under network delays.  \n- Daily 10:00 AM activation guarantees the NAS is available
-    regardless of sunrise.  \n- Shutdown based on power consumption saves energy and
-    prevents unnecessary continuous operation."
-  triggers:
-  - trigger: sun
-    event: sunrise
-    offset: +01:30:00
-    id: 'On'
-  - trigger: time
-    at: '10:00:00'
-    id: 'On'
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ugreen_nas_power
-    for:
-      hours: 0
-      minutes: 1
-      seconds: 0
-    below: 0.1
-    id: 'Off'
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - 'On'
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          entity_id: switch.ugreen_nas
-          target_state: 'on'
-    - conditions:
-      - condition: trigger
-        id:
-        - 'Off'
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          target_state: 'off'
-          entity_id: switch.ugreen_nas
-  mode: single
 - id: '1754293444382'
   alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
   description: "## \U0001F33F Paludarium Pump & Fan Cycle (Daytime, Combined Zones)\n\n###
@@ -11521,181 +11444,6 @@
     enabled: false
   mode: parallel
   max: 5
-- id: '1764434672349'
-  alias: Rollo Winter Helper Night State
-  description: "Sets boolean helpers to track if it was cold or wet overnight. \nResets
-    the flags one hour after sunrise."
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.gw1100a_outdoor_temperature
-    id: temp low
-    below: 2
-  - trigger: sun
-    event: sunrise
-    offset: +01:00:00
-    id: reset
-  - trigger: numeric_state
-    entity_id:
-    - sensor.gw1100a_rain_rate
-    above: 0.1
-    id: wet
-  - trigger: state
-    entity_id:
-    - binary_sensor.rain_sun_flower_rain
-    to:
-    - 'on'
-    id: wet
-  - trigger: time_pattern
-    minutes: /30
-    id: 30m
-  conditions:
-  - condition: sun
-    after: sunset
-    before: sunrise
-    before_offset: +01:00:01
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - temp low
-        - 30m
-      - condition: state
-        entity_id: input_boolean.rollo_was_cold
-        state:
-        - 'off'
-      - condition: numeric_state
-        entity_id: sensor.gw1100a_outdoor_temperature
-        below: 2
-      sequence:
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - input_boolean.rollo_was_cold
-    - conditions:
-      - condition: trigger
-        id:
-        - wet
-        - 30m
-      - condition: state
-        entity_id: input_boolean.rollo_was_wet
-        state:
-        - 'off'
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.gw1100a_rain_rate
-          above: 0.1
-        - condition: state
-          entity_id: binary_sensor.rain_sun_flower_rain
-          state:
-          - 'on'
-      sequence:
-      - action: input_boolean.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.rollo_was_wet
-    - conditions:
-      - condition: trigger
-        id:
-        - reset
-      sequence:
-      - action: input_boolean.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - input_boolean.rollo_was_cold
-          - input_boolean.rollo_was_wet
-  mode: single
-- id: '1764435549773'
-  alias: 'Weather: Set Low Temp and Wet Flags (Sunset to Sunrise)'
-  description: Checks forecast from sunset until sunrise using multiple weather providers.
-  triggers:
-  - event: sunset
-    offset: -00:15:00
-    trigger: sun
-    id: sunset
-  - trigger: sun
-    event: sunrise
-    offset: +02:00:00
-    id: sunrise
-  actions:
-  - alias: forecast booleans based on forecast
-    if:
-    - condition: trigger
-      id:
-      - sunset
-    then:
-    - sequence:
-      - data:
-          type: hourly
-        target:
-          entity_id:
-          - weather.micro_weather_station
-          - weather.forecast_home
-        response_variable: weather_data
-        action: weather.get_forecasts
-      - variables:
-          weather_results: "{% set ns = namespace(is_low=false, is_wet=false) %} {%
-            set next_sunrise = states('sensor.sun_next_rising') | as_datetime() |
-            as_local %} {% for entity_id, entity_data in weather_data.items() %}\n
-            \   {% set forecast = entity_data.forecast %}\n    {% for item in forecast
-            %}\n        {% set item_time = item.datetime | as_datetime() | as_local
-            %}\n        {% if item_time < next_sunrise %}\n            {% set current_temp
-            = item.temperature %}\n            {% set low_temp = item.templow | default(current_temp)
-            %}\n            {% if current_temp < 10 or low_temp < 10 %}\n              {%
-            set ns.is_low = true %}\n            {% endif %}\n            {% set is_precip
-            = item.condition in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy',
-            'snowy-rainy'] %}\n            {% set is_cold = current_temp < 2 or low_temp
-            < 2 %}\n            {% if is_precip and is_cold %}\n              {% set
-            ns.is_wet = true %}\n            {% endif %}\n        {% endif %}\n        {%
-            if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
-            %}\n    {% endfor %}\n    {% if ns.is_low and ns.is_wet %}\n        {%
-            break %}\n    {% endif %}\n{% endfor %} {{ {'low': ns.is_low, 'wet': ns.is_wet}
-            }}\n"
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ weather_results.low }}'
-          sequence:
-          - target:
-              entity_id: input_boolean.forecast_temp_low
-            action: input_boolean.turn_on
-        default:
-        - target:
-            entity_id: input_boolean.forecast_temp_low
-          action: input_boolean.turn_off
-      - choose:
-        - conditions:
-          - condition: template
-            value_template: '{{ weather_results.wet }}'
-          sequence:
-          - target:
-              entity_id: input_boolean.forecast_wet
-            action: input_boolean.turn_on
-        default:
-        - target:
-            entity_id: input_boolean.forecast_wet
-          action: input_boolean.turn_off
-  - if:
-    - condition: trigger
-      id:
-      - sunrise
-    then:
-    - action: input_boolean.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - input_boolean.forecast_temp_low
-        - input_boolean.forecast_wet
-    alias: Reset to off at sunrise +2h
-  mode: single
 - id: '1760998194743'
   alias: Bett Powerbank Ladezeit
   description: "## \U0001F50B Bett Powerbank Ladezeit\n\nAutomatisiert das **Laden
@@ -11933,7 +11681,13 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
-      - if:
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 3
+              milliseconds: 0
+      - alias: Seasonal Ambient Lights ON
+        if:
         - condition: state
           entity_id: input_boolean.enable_seasonal_ambient_lights
           state:
@@ -11954,7 +11708,11 @@
                 backoff_type: exponential
                 notify_on_failure: true
                 notify_service: notify.duncan
-        alias: Seasonal Ambient Lights ON
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 3
+                milliseconds: 0
     - conditions:
       - condition: or
         conditions:
@@ -11980,7 +11738,13 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
-      - if:
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 3
+              milliseconds: 0
+      - alias: Seasonal Ambient Lights OFF
+        if:
         - condition: state
           entity_id: input_boolean.enable_seasonal_ambient_lights
           state:
@@ -12001,7 +11765,11 @@
                 backoff_type: exponential
                 notify_on_failure: true
                 notify_service: notify.duncan
-        alias: Seasonal Ambient Lights OFF
+            - delay:
+                hours: 0
+                minutes: 0
+                seconds: 3
+                milliseconds: 0
   mode: restart
 - id: '1766573948427'
   alias: Bat1 Circuit Breaker Failure
