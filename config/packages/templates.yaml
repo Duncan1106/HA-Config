@@ -392,7 +392,7 @@ template:
           zuluft_needed: "{{ zuluft_needed }}"
           decision_reason: >
             {% if (outdoor_temp|float(0)) < (heizraum_temp | float(0)) %}
-              Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C < {{ heizraum_temp_offset }}°C)
+              Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C < {{ heizraum_temp_offset }}°C [{{(outdoor_temp_offset_percent|float(0.8) * 100)|int(80)}}% von {{ heizraum_temp }}°C])
             {% elif inverter_level == 'notfall' %}
               KRITISCH: Inverter Überhitzung ({{ inverter_temp }}°C)
             {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}
@@ -823,6 +823,13 @@ template:
         unique_id: gesamtkosten_pv
         unit_of_measurement: "€"
         state_class: measurement
+        availability: >
+          {{ states('sensor.solar_to_home_daily_energy_cost') not in ['unknown','unavailable']
+             and states('sensor.battery_charge_from_solar_daily_energy_cost') not in ['unknown','unavailable']
+             and states('sensor.inverter_total_battery_discharge_daily_energy_cost') not in ['unknown','unavailable']
+             and states('sensor.daily_money_generated_solar') not in ['unknown','unavailable']
+             and states('sensor.bkw_outlet_1_total_daily_energy_cost') not in ['unknown','unavailable']
+             and states('input_number.gesamte_pv_kosten') not in ['unknown','unavailable'] }}
         state: |
           {% set solar_home = states('sensor.solar_to_home_daily_energy_cost') | float(0) %}
           {% set solar_bat = states('sensor.battery_charge_from_solar_daily_energy_cost') | float(0) %}
