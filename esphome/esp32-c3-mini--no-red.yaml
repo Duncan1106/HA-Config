@@ -3,20 +3,6 @@ esphome:
   friendly_name: esp32 c3 mini - Terra
   platformio_options:
     board_build.flash_mode: dio
-  on_boot:
-    then:
-      # - lambda: !lambda 'id(esphome_ota).set_auth_password("6914Sim@duncanz");'
-      #- deep_sleep.prevent: deep
-      #- if: 
-      #    condition:
-      #      - switch.is_off: disable_deepsleep
-      #    then:
-      #      - delay: 60s
-      #      - if: 
-      #          condition:
-      #            - switch.is_off: disable_deepsleep
-      #          then:
-      #            - deep_sleep.allow: deep
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -43,11 +29,9 @@ ota:
   - platform: esphome
     id: esphome_ota 
     password: !secret ota_password
-    #on_state_change:
-    #  then:
-    #    - deep_sleep.prevent: deep
 
 wifi:
+  output_power: 10dB
   ssid: !secret wifi_ssid
   password: !secret wifi_password
   manual_ip: 
@@ -62,11 +46,6 @@ wifi:
     password: !secret ap_password
 
 captive_portal:
-
-#deep_sleep:
-  #run_duration: 30s
-  #sleep_duration: 4.5min
-  #id: deep
 
 output:
   - platform: gpio
@@ -99,6 +78,7 @@ binary_sensor:
     name: Status
 
 text_sensor:
+  
   - platform: template
     name: "DHT Status"
     id: dht_status
@@ -108,19 +88,20 @@ text_sensor:
       bool middle_broken = std::isnan(id(middle_temperature).state) || std::isnan(id(middle_humidity).state);
       bool right_broken  = std::isnan(id(right_temperature).state)  || std::isnan(id(right_humidity).state);
 
-      std::string out = "";
+      std::vector<std::string> parts;
+      if (left_broken)   parts.push_back("Left");
+      if (middle_broken) parts.push_back("Middle");
+      if (right_broken)  parts.push_back("Right");
 
-      if (left_broken)   out += "Left ";
-      if (middle_broken) out += "Middle ";
-      if (right_broken)  out += "Right ";
-
-      if (out.empty()) {
-        return std::string("All Good");
+      if (parts.empty()) {
+        return {"All Good"};
       }
 
-      // Trim trailing space
-      if (out[out.size() - 1] == ' ') {
-        out.pop_back();
+      // Join the parts with a space
+      std::string out = "";
+      for (size_t i = 0; i < parts.size(); i++) {
+        out += parts[i];
+        if (i < parts.size() - 1) out += " ";
       }
 
       return out;
@@ -128,20 +109,6 @@ text_sensor:
 one_wire:
   - platform: gpio
     pin: 10
-
-#switch:
-  #- platform: template
-   # assumed_state: False
-   # id: disable_deepsleep
-   # restore_mode: RESTORE_DEFAULT_OFF
-   # name: Disable Deepsleep
-   # optimistic: True
-    #on_turn_on: 
-    #  then:
-    #    - deep_sleep.prevent: deep
-    #on_turn_off: 
-    #  then:
-    #    - deep_sleep.allow: deep
 
 sensor:
   - platform: bh1750
@@ -166,7 +133,7 @@ sensor:
 
   - platform: dht
     model: DHT22
-    pin: 0
+    pin: 3
     temperature:
       name: "Right Temperature"
       id: right_temperature
@@ -206,7 +173,7 @@ sensor:
     update_interval: 3s
   - platform: dht
     model: DHT22
-    pin: 3
+    pin: 0
     temperature:
       name: "Left Temperature"
       id: left_temperature

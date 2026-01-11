@@ -3,9 +3,7 @@ config:
   - badges: []
     cards:
     - cards:
-      - double_tap_action:
-          action: more-info
-        entity: input_boolean.show_cudy_router_details
+      - entity: input_boolean.show_cudy_router_details
         features_position: bottom
         hold_action:
           action: more-info
@@ -102,20 +100,18 @@ config:
         type: conditional
       type: vertical-stack
     - cards:
-      - double_tap_action:
-          action: more-info
-        entity: input_boolean.show_server_details
-        fill_container: true
+      - entity: input_boolean.show_server_details
+        features_position: bottom
         hold_action:
           action: more-info
         icon: ''
-        layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.system_monitor_letzter_start'')),
           2)}}'
-        secondary: 'Server Uptime '
+        secondary: Server Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - bar_size: large
@@ -162,14 +158,14 @@ config:
       type: vertical-stack
     - cards:
       - entity: input_boolean.show_ha_uptime
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
         primary: '{{ time_since(as_datetime(states(''sensor.uptime'')), 2) }}'
-        secondary: 'Homeassistent Uptime '
+        secondary: Home Assistant Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           align_header: center
           align_state: center
@@ -198,7 +194,7 @@ config:
           | float(0)) * 1000000) | filesizeformat() }} @ {{ ''{:,.3f}''.format(rows
           / 1000).replace('','', ''.'') }} Rows @ {{ states(''sensor.db_purges_success_rate'',
           with_unit=true) }} Purge Success'
-        secondary: 'Maria DB Size '
+        secondary: Maria DB Size
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -310,7 +306,7 @@ config:
         icon: ''
         primary: '{{ time_since(now() - timedelta(days=states(''sensor.mqtt_stats_uptime'')|float(0)),
           2)}}'
-        secondary: 'MQTT Uptime '
+        secondary: MQTT Uptime
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
@@ -374,21 +370,23 @@ config:
           service: script.1707895746671
           target: {}
         entity: input_boolean.show_speedtest_details
-        fill_container: true
+        features_position: bottom
         icon: ''
-        layout: vertical
-        primary: '{% set unavailable = is_state(''sensor.speedtest_download'',''unknown'')
-          %} {% set text = "Ping: " + states(''sensor.speedtest_ping'') + "ms, " +
-          states(''sensor.speedtest_upload'') + " Mbps, " + states(''sensor.speedtest_download'')
-          + " Mbps" %} {{ "" if unavailable else text }}'
-        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %} {%
-          set unavailable = is_state(''sensor.speedtest_download'',''unknown'') %}
-          {% set last_run = states(''sensor.speedtest_last_run'') %} {{ "Start SpeedTest,
-          Last: " + last_run + " ago" if not script else ("Testing" if unavailable
-          else "Wrapping up") }}'
+        primary: "{% set x = ['unknown','unavailable'] %} {% set unavailable_data\
+          \ =\n  states('sensor.speedtest_ping') in x or\n  states('sensor.speedtest_upload')\
+          \ in x or\n  states('sensor.speedtest_download') in x\n%} {% set text =\n\
+          \  \"Ping: \" ~ states('sensor.speedtest_ping') ~ \"ms, \" ~\n  states('sensor.speedtest_upload')\
+          \ ~ \" Mbps, \" ~\n  states('sensor.speedtest_download') ~ \" Mbps\"\n%}\
+          \ {{ \"\" if unavailable_data else text }}"
+        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}   {%
+          set unavailable_data = states(''sensor.speedtest_download'') in [''unknown'',''unavailable'']
+          %} {% set last_run = states(''sensor.speedtest_last_run'') %}  {{ "Start
+          SpeedTest, Last: " + last_run + " ago" if not script else ("Testing" if
+          unavailable_data else "Wrapping up") }}'
         tap_action:
           action: toggle
         type: custom:mushroom-template-card
+        vertical: true
       - card:
           cards:
           - cards:
@@ -442,67 +440,48 @@ config:
         type: conditional
       type: vertical-stack
     - entity: sensor.backup_state
-      fill_container: true
+      features_position: bottom
       icon: mdi:clipboard-check-multiple-outline
-      layout: vertical
       multiline_secondary: true
-      primary: 'Last Backup Size: {{ state_attr(''sensor.backup_state'', ''backups'')[-1][''size'']
-        }}'
-      secondary: '{% set uptime = (now().timestamp() - as_timestamp(state_attr(''sensor.backup_state'',
-        ''backups'')[-1][''date''])) %}
-
-        {% set months = (uptime % 31536000) // 2592000 %}
-
-        {% set days = (uptime % 2592000) // 86400 %}
-
-        {% set hours = (uptime % 86400) // 3600 %}
-
-        {% set minutes = (uptime % 3600) // 60 %}
-
-        {% set percent = state_attr(''sensor.backup_state'', ''backups'')[-1][''state'']
-        %}
-
-        Last Backup {{ ''%dm '' % months if months else '''' }}{{ ''%dd '' % days
-        if days else '''' }}{{ ''%dh '' % hours if hours else '''' }}{{ ''%dm'' %
-        minutes if minutes else '''' }} ago
+      primary: '{% set backups = state_attr(entity, ''backups'') | default([], true)
+        %}  Last Backup Size: {{ backups[-1][''size''] if backups else ''N/A'' }}'
+      secondary: '{% set backups = state_attr(entity, ''backups'') | default([], true)
+        %} {% if backups %} {% set uptime = (now().timestamp() - as_timestamp(backups[-1][''date'']))
+        %} {% set months = (uptime % 31536000) // 2592000 %} {% set days = (uptime
+        % 2592000) // 86400 %} {% set hours = (uptime % 86400) // 3600 %} {% set minutes
+        = (uptime % 3600) // 60 %} {% set percent = backups[-1][''state''] %} Last
+        Backup {{ ''%dm '' % months if months else '''' }}{{ ''%dd '' % days if days
+        else '''' }}{{ ''%dh '' % hours if hours else '''' }}{{ ''%dm'' % minutes
+        if minutes else '''' }} ago
 
         State: {{ "Uploaded" if percent == "Drive Only" else percent }}
 
-        Total Space in Google Drive: {{state_attr(''sensor.backup_state'', ''size_in_google_drive'')}}
+        Total Space in Google Drive: {{state_attr(entity, ''size_in_google_drive'')}}
 
-        Total Backups in Google Drive: {{state_attr(''sensor.backup_state'', ''backups_in_google_drive'')}}'
+        Total Backups in Google Drive: {{state_attr(entity, ''backups_in_google_drive'')}}
+        {% else %} No backups available {% endif %}'
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
+      vertical: true
     - entity: sensor.onedrivefilesync
-      fill_container: true
+      features_position: bottom
       icon: ''
-      layout: vertical
       multiline_secondary: true
-      primary: 'Onedrive Filesync:
-
-        {% set status_backup = states(''sensor.onedrivefilesync'') | string %}
-
-        {% set percent = state_attr(''sensor.onedrivebackup'', ''Current file upload
-        percentage'') %}
-
-        {% set speed = state_attr(''sensor.onedrivebackup'',''Current file upload
-        speed (KB/s)'')%}
-
-        {{ "Uploaded" if status_backup == "Synced" else "Syncing" }}'
+      primary: '{% set s = states(entity) %} Onedrive Filesync: {% if s in [''unknown'',''unavailable'']
+        %}Unknown{% elif s == ''Synced'' %}Uploaded{% else %}Syncing{% endif %}'
       secondary: ''
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
+      vertical: true
     - color: blue
       entity: sensor.tibber_node_battery_voltage
       features_position: bottom
       icon: mdi:pulse
       multiline_secondary: false
-      primary: 'Tibber Pulse Uptime: {{ state_attr(''sensor.tibber_node_battery_voltage'',''uptime_human'')
-        }}'
-      secondary: '{{ states(''sensor.tibber_node_battery_voltage'', with_unit=True)
-        }}'
+      primary: 'Tibber Pulse Uptime: {{ state_attr(entity,''uptime_human'') }}'
+      secondary: '{{ states(entity, with_unit=True) }}'
       tap_action:
         action: more-info
       type: custom:mushroom-template-card
@@ -519,21 +498,34 @@ config:
       hide_completed: true
       type: todo-list
     - cards:
-      - entity: sensor.home_assistant_beta_release_notes
-        tap_action:
-          action: perform-action
-          perform_action: input_button.press
-          target:
-            entity_id: input_button.update_beta_release_notes
-        type: custom:mushroom-entity-card
-      - content: '## [Beta Release]({{ state_attr(''sensor.home_assistant_beta_release_notes'',''beta_url'')}}):
-          {{states(''sensor.home_assistant_beta_release_notes'')}}
+      - entities:
+        - attribute: beta_version
+          entity: binary_sensor.home_assistant_beta_release_notes
+          hold_action:
+            action: more-info
+          tap_action:
+            action: perform-action
+            perform_action: input_button.press
+            target:
+              entity_id: input_button.update_beta_release_notes
+          type: attribute
+        type: entities
+      - content: '## [Beta Release]({{ state_attr("binary_sensor.home_assistant_beta_release_notes",''beta_url'')}}):
+          {{state_attr("binary_sensor.home_assistant_beta_release_notes", "beta_version")
+          }}
 
-          {{ state_attr("sensor.home_assistant_beta_release_notes","ai_summary")
+          {{ state_attr("binary_sensor.home_assistant_beta_release_notes","ai_summary")
 
           }}'
         type: markdown
+      - entity: input_select.conversation_agents
+        secondary_info: none
+        type: custom:mushroom-select-card
       type: vertical-stack
+      visibility:
+      - condition: state
+        entity: binary_sensor.home_assistant_beta_release_notes
+        state: 'on'
     - card_mod:
         style:
           ha-markdown:
@@ -547,6 +539,32 @@ config:
         elif item.state=="unavail" -%}cloud-off-outline'' {%- else-%}cloud-question''
         {%- endif -%} ></ha-icon> {{ item.id }} [{{item.state}}] <a title="{{item.occurrences}}">
         {{item.occurrences.split(''/'')[-1]}}</a> </td></tr></table> {%- endfor %}'
+      type: markdown
+    - content: "I want you to act as a Home Assistant Documentation Expert.\n\nI will\
+        \ provide YAML for an automation. Your task is to generate a high-quality,\n\
+        professional Markdown description suitable for the Home Assistant automation\n\
+        description field.\n\n### Structural Requirements\n\n1. **Header & Intro**\n\
+        \   - Start with a single relevant emoji and a **bold title**\n   - Follow\
+        \ with a section titled: `\U0001F4CB Intelligent [System Name] Control`\n\
+        \   - Explain:\n     - High-level intent\n     - Operational strategy (e.g.\
+        \ solar-based, safety-first)\n     - Reliability mechanisms (e.g. retry scripts)\n\
+        \n2. **Trigger Overview Table**\n   - Markdown table with columns:\n     -\
+        \ Type\n     - Entity / Condition\n     - ID\n     - Purpose\n   - Translate\
+        \ technical triggers into human-readable goals\n   - Do not invent triggers\
+        \ or logic not present in the YAML\n\n3. **Operational Logic Sections**\n\
+        \   - Use `####` headers for each operational mode (e.g. Daytime, Night, Emergency)\n\
+        \   - For each mode include:\n     - **Purpose**\n     - **Logic Overview**\
+        \ (conditions required, summarized)\n     - **Effect** (entities switched,\
+        \ variables affected)\n\n4. **Technical Overview**\n   - Automation **Mode**\n\
+        \   - **Execution method** (scripts used)\n   - **Key Inputs**\n   - **Controlled\
+        \ Entities**\n   - **Safety Mechanisms**\n\n5. **\U0001F4A1 Notes**\n   -\
+        \ Highlight clever logic, fail-safes, and rationale behind thresholds\n  \
+        \ - Avoid speculation or invented reasoning\n\n### Tone & Formatting\n- Professional,\
+        \ clean, and technical\n- Bold entity names, states, and key values\n- Use\
+        \ horizontal rules (`---`) between major sections\n- Limit emojis to section\
+        \ headers only\n\n### Output Requirements\n- Output **only** the final documentation\n\
+        - Wrap everything in a **single Markdown code block**\n- Do not include commentary\
+        \ or analysis\n\n### YAML Input\n"
       type: markdown
     icon: mdi:home-analytics
     title: Analytics
@@ -576,6 +594,12 @@ config:
         sort:
           method: state
         type: custom:auto-entities
+        visibility:
+        - condition: state
+          entity: input_boolean.show_open_beken_updates
+          state: 'on'
+      - content: '{{ state_attr(''sensor.openbk7231t_app_newest_version'',''body'')}}'
+        type: markdown
         visibility:
         - condition: state
           entity: input_boolean.show_open_beken_updates
@@ -660,6 +684,7 @@ config:
           method: state
           numeric: true
         type: custom:auto-entities
+      column_span: 1
       type: grid
     - cards:
       - card_mod:
@@ -702,20 +727,22 @@ config:
         - content: "{% set search_term = states('input_text.batterie_suche') %}\n\
             {% set devices = states\n   | selectattr('entity_id', 'search', '_battery_plus$')\n\
             \   | selectattr('attributes.battery_type_and_quantity', 'defined')\n\
-            \   | list %}\n\n{% set ns = namespace(buffer=[]) %}\n\n{% for device\
-            \ in devices %}\n  {% set bt_raw = device.attributes.battery_type_and_quantity\
+            \   | list %}\n\n{% set ns = namespace(buffer=[], output=\"\") %}\n\n\
+            {% for device in devices %}\n  {% set bt_raw = device.attributes.battery_type_and_quantity\
             \ | replace('\xD7','x') %}\n  {% if search_term == \"\" or search_term|lower\
             \ in bt_raw|lower %}\n    {% set lvl = device.state | int(0) %}\n    {%\
-            \ set entry = {\n      'type': bt_raw,\n      'lvl': lvl,\n      'line':\
-            \ bt_raw ~ ': ' ~ device.name ~ ': ' ~ device.state ~ '%',\n      'sort_key':\
-            \ bt_raw ~ '-' ~ (\"%03d\"|format(lvl))\n    } %}\n    {% set ns.buffer\
-            \ = ns.buffer + [ entry ] %}\n  {% endif %}\n{% endfor %}\n\n{% if ns.buffer\
-            \ | length > 0 %}\n  {% if search_term != \"\" %}\n    {{ ns.buffer\n\
-            \       | sort(attribute='lvl')\n       | map(attribute='line')\n    \
-            \   | list\n       | join('\\n') }}\n  {% else %}\n    {{ ns.buffer\n\
-            \       | sort(attribute='sort_key')\n       | map(attribute='line')\n\
-            \       | list\n       | join('\\n') }}\n  {% endif %}\n{% else %}\n \
-            \ Keine Ger\xE4te gefunden.\n{% endif %}"
+            \ set entry = {\n      'type': bt_raw,\n      'line': (device.name | replace('Batterie+',''))\
+            \ ~ ': ' ~ device.state ~ '%',\n      'sort_key': bt_raw ~ '-' ~ (\"%03d\"\
+            |format(lvl))\n    } %}\n    {% set ns.buffer = ns.buffer + [ entry ]\
+            \ %}\n  {% endif %}\n{% endfor %}\n\n{% if ns.buffer | length > 0 %}\n\
+            \  {% set sorted_list = ns.buffer | sort(attribute='sort_key') %}\n  {%\
+            \ for i in range(sorted_list | length) %}\n    {% set current_item = sorted_list[i]\
+            \ %}\n    {% if i == 0 or current_item.type != sorted_list[i-1].type %}\n\
+            \      {% set prefix = '\\n\\n' if i > 0 else '' %}\n      {% set ns.output\
+            \ = ns.output ~ prefix ~ '**' ~ current_item.type ~ '**\\n' %}\n    {%\
+            \ endif %}\n    {% set ns.output = ns.output ~ current_item.line ~ '\\\
+            n' %}\n  {% endfor %}\n  {{ ns.output | trim }}\n{% else %}\n  Keine Ger\xE4\
+            te gefunden.\n{% endif %}"
           type: markdown
         type: vertical-stack
       type: grid
@@ -904,9 +931,6 @@ config:
             square: false
             type: grid
           parameters:
-            //# autoplay: true
-            //# delay: 10000
-            //# speed: 1500
             loop: true
           type: custom:swiper-card
         - type: custom:icloud3-event-log-card
@@ -1027,8 +1051,7 @@ config:
           action: more-info
         icon: ''
         layout: vertical
-        primary: '{{ states(''sensor.ankermake_m5c_job_name_2'') | string | replace(''_'',''
-          '')}}'
+        primary: '{{ states(entity) | string | replace(''_'','' '')}}'
         secondary: ''
         tap_action:
           action: more-info
@@ -1312,7 +1335,7 @@ config:
               options: {}
             - entity_id: '*.*battery_plus|battery_type|battery_replaced|battery_last_replaced*'
               options: {}
-            - entity_id: light.|switch.|number.|ai_task.|device_tracker.|person.|automation.|assist_satellite.|button.|calendar.|camera.|conversation.|datetime.|event.|image.|lock.|input_select.|input_text.|plant.|scene.|script.|select.|siren.|sun.|time.|todo.|update.|vacuum.|weather.|zone.|sensor.known_power|sensor.known_energy|sensor.unmonitored|sensor.unmonitored_consumption|sensor.grid_import|sensor.grid_export|sensor.grid_export_negative|sensor.smart_meter_mqtt_data|sensor.grid_consumption|sensor.grid_production|sensor.smart_meter_mqtt_grid_power|sensor.tibber_bridge_0100100700ff|sensor.energy_summary_1st_block|sensor.energy_summary_1st_block_2|sensor.appliance_used|sensor.id_4_remaining_charging_time|sensor.zoe_remaining_charging_time|sensor.vw_status|sensor.zoe_status|sensor.total_print_time|sensor.remaining_time|sensor.elapsed_time|sensor.finish_time|sensor.wind_direction|sensor.day_light_hours|sensor.speedtest_last_run|sensor.solar_forecast_text_tomorrow|sensor.solar_forecast_text_today|sensor.boiler_remaining_time|sensor.*uptime*|sensor.herd_ct_klemme_zigbee_power_a|sensor.herd_ct_klemme_zigbee_power_b|sensor.system_monitor_letzter_start|sensor.go_echarger_252682_nrg|sensor.go_echarger_270862_nrg|automation.publish_to_mqtt_grid_export|sensor.stephans_iphone_next_update|sensor.enyas_iphone_next_update|sensor.stephans_iphone_travel_time_hhmm|sensor.enyas_iphone_travel_time_hhmm|sensor.stephans_iphone_arrival_time|sensor.enyas_iphone_arrival_time|sensor.enyas_iphone_last_update|sensor.enyas_iphone_last_located|sensor.stephans_iphone_last_located|sensor.stephans_iphone_last_update|sensor.enyas_iphone_info|sensor.stephans_iphone_info|sensor.forecast_text|sensor.remainingtototalforecast|automation.15s_ping_update|sensor.pool_pumpe_energy_power|sensor.stadt_rauenberg_vorwarnstufe|sensor.stadt_rauenberg_aktuelle_warnstufe|sensor.evs_home_and_ready_to_charge|sensor.issues|sensor.ignored_issues|sensor.active_issues|sensor.icloud3_event_log|sensor.icloud3_wazehist_track|sensor.kellervorrate_combined_filtered_items|sensor.kellervorrate_combined_filtered_items_hash|switch.153931628718174_prompt_tone|binary_sensor.water_monitor_low_flow_leak|sensor.home_assistant_beta_release_notes|sensor.cudy_data_sent|sensor.cudy_data_received|sensor.cudy_router_betriebszeit|sensor.dreamebot_d10_plus_*.|sensor.d9_max_white_*.|sensor.dwd_weather_warnings_*.|sensor.192_168_2_205_*.|sensor.*_rssi|sensor.*signal|sensor.*_signal_db|sensor.1st_max*.|sensor.2nd_max_*.|sensor.m2101k6g*.|sensor.m2010j19cg*.|sensor.24069pc21g*.|sensor.redmi_note_8t*.|sensor.fp4*.|sensor.mi_9t*.|sensor.poco_f6_*.|sensor.iphone_von_*.|sensor.*_firmware_version|sensor.*build|sensor.irauen33*.|sensor.localhost_*.*|sensor.*uptime|sensor.*linkquality|sensor.everything_presence_lite_f1c0d0*
+            - entity_id: light.|switch.|number.|ai_task.|device_tracker.|person.|automation.|assist_satellite.|button.|calendar.|camera.|conversation.|datetime.|event.|image.|lock.|input_select.|input_text.|plant.|scene.|script.|select.|siren.|sun.|time.|todo.|update.|vacuum.|weather.|zone.|sensor.known_power|sensor.known_energy|sensor.unmonitored|sensor.unmonitored_consumption|sensor.exclude_from_power_ranking|sensor.power_consumption_ranking|sensor.grid_import|sensor.grid_export|sensor.grid_export_negative|sensor.smart_meter_mqtt_data|sensor.grid_consumption|sensor.grid_production|sensor.smart_meter_mqtt_grid_power|sensor.tibber_bridge_0100100700ff|sensor.energy_summary_1st_block|sensor.energy_summary_1st_block_2|sensor.appliance_used|sensor.id_4_remaining_charging_time|sensor.zoe_remaining_charging_time|sensor.vw_status|sensor.zoe_status|sensor.total_print_time|sensor.remaining_time|sensor.elapsed_time|sensor.finish_time|sensor.wind_direction|sensor.speedtest_last_run|sensor.solar_forecast_text_tomorrow|sensor.solar_forecast_text_today|sensor.boiler_remaining_time|sensor.*uptime*|sensor.herd_ct_klemme_zigbee_power_a|sensor.herd_ct_klemme_zigbee_power_b|sensor.system_monitor_letzter_start|sensor.go_echarger_252682_nrg|sensor.go_echarger_270862_nrg|automation.publish_to_mqtt_grid_export|sensor.stephans_iphone_next_update|sensor.enyas_iphone_next_update|sensor.stephans_iphone_travel_time_hhmm|sensor.enyas_iphone_travel_time_hhmm|sensor.stephans_iphone_arrival_time|sensor.enyas_iphone_arrival_time|sensor.enyas_iphone_last_update|sensor.enyas_iphone_last_located|sensor.stephans_iphone_last_located|sensor.stephans_iphone_last_update|sensor.enyas_iphone_info|sensor.stephans_iphone_info|sensor.papa_to_arbeit_travel_time|binary_sensor.show_papa_travel_dashboard|sensor.forecast_text|sensor.remainingtototalforecast|automation.15s_ping_update|sensor.pool_pumpe_energy_power|sensor.stadt_rauenberg_vorwarnstufe|sensor.stadt_rauenberg_aktuelle_warnstufe|sensor.evs_home_and_ready_to_charge|sensor.issues|sensor.ignored_issues|sensor.active_issues|sensor.icloud3_event_log|sensor.icloud3_wazehist_track|sensor.kellervorrate_combined_filtered_items|sensor.kellervorrate_combined_filtered_items_hash|switch.153931628718174_prompt_tone|binary_sensor.water_monitor_low_flow_leak|sensor.home_assistant_beta_release_notes|sensor.cudy_data_sent|sensor.cudy_data_received|sensor.cudy_router_betriebszeit|sensor.dreamebot_d10_plus_*.|sensor.d9_max_white_*.|sensor.dwd_weather_warnings_*.|sensor.192_168_2_205_*.|sensor.*_rssi|sensor.*signal|sensor.*_signal_db|sensor.1st_max*.|sensor.2nd_max_*.|sensor.m2101k6g*.|sensor.m2010j19cg*.|sensor.24069pc21g*.|sensor.redmi_note_8t*.|sensor.fp4*.|sensor.mi_9t*.|sensor.poco_f6_*.|sensor.iphone_von_*.|sensor.*_firmware_version|sensor.*build|sensor.irauen33*.|sensor.localhost_*.*|sensor.*uptime|sensor.*linkquality|sensor.everything_presence_lite_f1c0d0|sensor.tasmota_newest_version|sensor.openbk7231t_app_newest_version|binary_sensor.upcoming_birthdays|sensor.voltage_l*|sensor.local_ip*
               options: {}
             include:
             - entity_id: '*'
