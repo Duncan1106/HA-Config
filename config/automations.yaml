@@ -10564,11 +10564,13 @@
               backoff_type: exponential
               notify_on_failure: true
               notify_service: notify.duncan
-      - delay:
-          hours: 0
-          minutes: 5
-          seconds: 0
-          milliseconds: 0
+      - alias: Wait for paludarium light entities to be available
+        wait_template: '{% set ents = expand(paludarium_light) %} {{ (ents | selectattr(''state'',''in'',[''on'',''off''])
+          | list | length) == (ents | length) }}
+
+          '
+        timeout: 00:05:00
+        continue_on_timeout: true
       - repeat:
           for_each: '{{ paludarium_light }}'
           sequence:
