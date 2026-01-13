@@ -9272,7 +9272,7 @@
     Uses the `script.retry_action_with_backoff` for critical state changes, ensuring
     that intermittent Zigbee/Wi-Fi connectivity does not lead to failed environmental
     transitions.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
-    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time Pattern | Every **2 minute**
+    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time Pattern | Every **5 minute**
     | N/A | Periodic check of pump/fan durations and light states. |\n\n---\n\n###
     Operational Logic Sections\n\n#### #### Daytime Mode\n* **Purpose:** Active growth
     and display phase.\n* **Logic Overview:** Evaluated when the sun is between **sunrise**
@@ -9566,129 +9566,138 @@
       before: sunrise
       after: sunset
     then:
-    - sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_left }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_right }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_kallax }}'
-          target_state: 'off'
-      alias: Pumps
-    - sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_left }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_right }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_kallax }}'
-          target_state: 'off'
-      alias: Lights
-    - sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_left }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_right }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_kallax }}'
-          target_state: 'off'
-      alias: Lights
+    - alias: if any MAIN is ON, then switch ligths, Pumps and Fans OFF
+      if:
+      - condition: or
+        conditions:
+        - condition: template
+          value_template: '{{ is_state(main_left, ''on'') }}'
+        - condition: template
+          value_template: '{{ is_state(main_right, ''on'') }}'
+      then:
+      - sequence:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ pump_left }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ pump_right }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ pump_kallax }}'
+            target_state: 'off'
+        alias: Pumps
+      - sequence:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ light_left }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ light_right }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ light_kallax }}'
+            target_state: 'off'
+        alias: Lights
+      - sequence:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ fan_left }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ fan_right }}'
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: '{{ fan_kallax }}'
+            target_state: 'off'
+        alias: Lights
     - if:
       - condition: template
         value_template: '{{ is_state(main_left, ''on'') }}'
@@ -10693,8 +10702,7 @@
     managed:*\n\n\n  - `switch.paludarien_left`\n  \n  - `switch.paludarien_right`\n
     \ \n  - `switch.paludarien_center`\n  \n  - `switch.kallax_plant_light_zigbee_l3`\n
     \ \n  - `switch.kallax_plant_light_zigbee_l2`\n  \n  - `switch.regal_planzen_1`\n\n
-    \ - `switch.schreibtisch_links_power_strip_l1`\n  \n  - `switch.schreibtisch_rechts_power_strip_l5`
-    \  \n  "
+    \ "
   triggers:
   - trigger: sun
     event: sunrise
