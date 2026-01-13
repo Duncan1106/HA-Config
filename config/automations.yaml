@@ -10480,10 +10480,8 @@
     managed:*\n\n\n  - `switch.paludarien_left`\n  \n  - `switch.paludarien_right`\n
     \ \n  - `switch.paludarien_center`\n  \n  - `switch.kallax_plant_light_zigbee_l3`\n
     \ \n  - `switch.kallax_plant_light_zigbee_l2`\n  \n  - `switch.regal_planzen_1`\n\n
-    \ - `switch.schreibtisch_links_power_strip_l1`\n  \n  - `switch.schreibtisch_rechts_power_strip_l5`\n\n
-    \ *Paludarium Light managed:*\n  \n  \n  - `switch.desk_paludarium_links_l1`\n
-    \n  - `switch.desk_paludarium_turm_rechts_l3`\n\n  - `switch.desk_paludarium_turm_links_l2`\n
-    \ \n  "
+    \ - `switch.schreibtisch_links_power_strip_l1`\n  \n  - `switch.schreibtisch_rechts_power_strip_l5`
+    \  \n  "
   triggers:
   - trigger: sun
     event: sunrise
@@ -10527,10 +10525,6 @@
       - switch.regal_planzen_1
       - switch.schreibtisch_links_power_strip_l1
       - switch.schreibtisch_rechts_power_strip_l5
-      paludarium_light:
-      - switch.desk_paludarium_links_l1
-      - switch.desk_paludarium_turm_rechts_l3
-      - switch.desk_paludarium_turm_links_l2
   - choose:
     - conditions:
       - condition: trigger
@@ -10576,28 +10570,6 @@
               minutes: 0
               seconds: 0
               milliseconds: 500
-      - alias: Wait for paludarium light entities to be available
-        wait_template: '{% set ents = expand(paludarium_light) %} {{ (ents | selectattr(''state'',''in'',[''on'',''off''])
-          | list | length) == (ents | length) }}
-
-          '
-        timeout: 00:05:00
-        continue_on_timeout: true
-      - repeat:
-          for_each: '{{ paludarium_light }}'
-          sequence:
-          - action: script.retry_action_with_backoff
-            continue_on_error: true
-            data:
-              entity_id: '{{ repeat.item }}'
-              target_state: 'on'
-              action_domain: switch
-              action_type: turn_on
-              max_retries: 5
-              base_delay: 5
-              backoff_type: exponential
-              notify_on_failure: true
-              notify_service: notify.duncan
     - conditions:
       - condition: trigger
         id: sunset
