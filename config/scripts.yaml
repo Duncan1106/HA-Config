@@ -2070,3 +2070,45 @@ send_ir_remote_command:
       response_variable: error_msg
   mode: queued
   max: 10
+adjust_input_number:
+  alias: Adjust Input Number
+  description: Modify any numeric helper by a specific amount.
+  fields:
+    target_entity:
+      name: Target Entity
+      description: Select the input_number to modify.
+      required: true
+      selector:
+        entity:
+          domain: input_number
+    operation:
+      name: Operation
+      description: Add to or subtract from the current value.
+      default: add
+      selector:
+        select:
+          options:
+          - label: Add (+)
+            value: add
+          - label: Subtract (-)
+            value: subtract
+    amount:
+      name: Value
+      description: The amount to use for the adjustment.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1000000
+          step: 0.01
+          mode: box
+  sequence:
+  - action: input_number.set_value
+    target:
+      entity_id: '{{ target_entity }}'
+    data:
+      value: '{% set current = states(target_entity) | float(0) %} {% set val = amount
+        | float(0) %} {{ current + val if operation == ''add'' else current - val
+        }}
+
+        '
