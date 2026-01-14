@@ -5443,22 +5443,63 @@
   max: 10
 - id: '1738676581969'
   alias: Connectivity Ping Update
-  description: Keeps connectivity ping sensors updated in ‘Daily’ and ‘Vacation’ modes
-    by refreshing them every 3 seconds or 15 seconds respectively.
+  description: "\n  # \U0001F310 **Connectivity Ping Update**\n\n\n  ### \U0001F4CB
+    Adaptive Connectivity Sensor Update Controller\n\n\n  This automation enforces
+    deterministic update intervals for critical\n  ping-based connectivity binary
+    sensors by explicitly triggering\n  `homeassistant.update_entity`. It intentionally
+    bypasses the integration’s\n  internal polling cadence to provide predictable
+    and explainable update timing\n  for internet reachability monitoring.\n\n\n  Redundancy
+    is achieved through **multiple independent targets across different\n  DNS providers**,
+    rather than by sending multiple ICMP requests per update.\n  Each sensor is configured
+    with `count: 1`, favoring horizontal diversity\n  (provider and endpoint separation)
+    over vertical repetition.\n\n\n  ---\n\n\n  ### Trigger Overview\n\n\n  | Trigger
+    Type | Interval | Trigger ID | Operational Context |\n  | :----------- | :-------
+    | :--------- | :------------------ |\n  | **Time Pattern** | Every 5 seconds |
+    `5s` | High-resolution monitoring during normal occupancy |\n  | **Time Pattern**
+    | Every 30 seconds | `30s` | Low-impact background monitoring during absence |\n\n\n
+    \ ---\n\n\n  ### Operational Logic\n\n\n  #### Daily / Active Mode\n\n  - **Activation
+    Conditions**:\n    - Trigger ID: `5s`\n    - `input_select.smart_home_status`
+    = **Daily**\n\n  - **Behavior**:\n    - Forces an immediate update for all configured
+    connectivity sensors.\n    - Prioritizes fast and deterministic detection of total
+    internet loss.\n\n\n  #### Vacation Mode\n\n  - **Activation Conditions**:\n    -
+    Trigger ID: `30s`\n    - `input_select.smart_home_status` = **Vacation**\n\n  -
+    **Behavior**:\n    - Maintains baseline reachability awareness with substantially
+    reduced\n      scheduler, network, and radio overhead.\n\n\n  ---\n\n\n  ### Update
+    Frequency & Traffic Profile\n\n\n  **Assumptions**:\n  - 6 ping sensors total\n
+    \ - `count: 1` per sensor\n  - IPv4 ICMP Echo Request + Reply\n  - ~168 bytes
+    per sensor update (request + response)\n\n\n  | Mode | Interval | Update Calls
+    / Day | Update Calls / Month | ICMP Packets / Day | Traffic / Day | Traffic /
+    Month |\n  | :--- | :------- | ------------------ | -------------------- | -----------------
+    | ------------- | --------------- |\n  | **Daily** | 5 s | 103,680 | ~3.11 million
+    | 207,360 | ~16.6 MB | ~480 MB |\n  | **Vacation** | 30 s | 17,280 | ~518,400
+    | 34,560 | ~2.8 MB | ~83 MB |\n\n\n  ---\n\n\n  ### Technical Characteristics\n\n\n
+    \ - **Automation Mode**: `parallel` (maximum concurrent executions: 3)\n  - **Execution
+    Strategy**: Explicit `homeassistant.update_entity` calls\n  - **State Control
+    Input**:\n    - `input_select.smart_home_status`\n  - **Connectivity Targets**:\n
+    \   - Cloudflare: `1.1.1.1`, `1.0.0.1`\n    - Google: `8.8.8.8`, `8.8.4.4`\n    -
+    Quad9: `9.9.9.9`, `149.112.112.112`\n\n\n  ---\n\n\n  ### Notes and Design Rationale\n\n\n
+    \ - **Why `count: 1`**:\n    Reliability is achieved through multiple independent
+    endpoints and providers\n    rather than repeated ICMP bursts against a single
+    target. This significantly\n    reduces traffic while preserving failure-detection
+    accuracy.\n\n  - **Deterministic Scheduling**:\n    Explicit update calls ensure
+    predictable evaluation timing, which is critical\n    for downstream automations,
+    alerts, or failover logic.\n\n  - **Scalability**:\n    Additional operational
+    states or polling tiers can be introduced by adding\n    new trigger IDs without
+    restructuring the automation."
   triggers:
   - trigger: time_pattern
-    seconds: /3
-    id: 3s
+    seconds: /5
+    id: 5s
   - trigger: time_pattern
-    seconds: /15
-    id: 15s
+    seconds: /30
+    id: 30s
   conditions: []
   actions:
   - choose:
     - conditions:
       - condition: trigger
         id:
-        - 3s
+        - 5s
       - condition: state
         entity_id: input_select.smart_home_status
         state: Daily
@@ -5476,7 +5517,7 @@
     - conditions:
       - condition: trigger
         id:
-        - 15s
+        - 30s
       - condition: state
         entity_id: input_select.smart_home_status
         state: Vacation
