@@ -1,5 +1,4 @@
 #!/bin/bash
-
 time_now=$(date '+%d_%m_%Y_%X')
 
 # Sanitize the input: keep only alphanumeric, dash, underscore; replace spaces with underscores
