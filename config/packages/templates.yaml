@@ -529,18 +529,15 @@ template:
               {% else %}
                 {% set ns2 = namespace(index_map={}) %}
                 {% for entity_id in lists %}
-                  {% set ns2.index_map = ns2.index_map | combine({ (entity_id): loop.index }) %}
+                  {% set ns2.index_map = ns2.index_map | combine({ (entity_id): loop.index|string }) %}
                 {% endfor %}
                 {% set list_index = ns2.index_map %}
-    
                 {% set filtered_lists = lists
                   | select('search', filter_key)
                   | list if filter_key else lists %}
-                
                 {% if filtered_lists | length == 0 %}
                   {% set filtered_lists = lists %}
                 {% endif %}
-                            
                 {% set combined = namespace(items=[]) %}
                 {% set terms = search_term.split() %}
                 {% for list_id in filtered_lists %}
@@ -559,9 +556,7 @@ template:
                     {% endif %}
                   {% endfor %}
                 {% endfor %}
-            
                 {# combined.items #}
-              
                 {# ---- SORTING STEP ---- #}
                 {% set sorted_items = combined.items | sort(attribute='s', case_sensitive=False) %}
                 {{ sorted_items | to_json}}
