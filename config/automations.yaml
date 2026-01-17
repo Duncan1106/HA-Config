@@ -8730,14 +8730,21 @@
         data:
           called_by_automation: true
         alias: Router neu starten
-      - wait_for_trigger:
-        - trigger: state
+      - if:
+        - condition: state
           entity_id: binary_sensor.internet_connection
-          to: 'on'
-          for: 00:00:30
-        timeout: 00:05:00
-        continue_on_timeout: true
-        alias: Warte auf Internet nach Neustart
+          state:
+          - 'off'
+        then:
+        - wait_for_trigger:
+          - trigger: state
+            entity_id: binary_sensor.internet_connection
+            to: 'on'
+            for: 00:00:30
+          timeout: 00:05:00
+          continue_on_timeout: true
+          alias: Warte auf Internet nach Neustart
+        alias: Wait for reconnect if not already reconnected
       - if:
         - condition: state
           entity_id: binary_sensor.internet_connection
