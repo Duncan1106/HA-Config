@@ -8713,7 +8713,8 @@
     condition: template
     value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}'
   actions:
-  - repeat:
+  - alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
+    repeat:
       until:
       - condition: or
         conditions:
@@ -8725,29 +8726,29 @@
           value_template: '{{ repeat.index >= max_retries }}'
           alias: Maximale Anzahl Neustartversuche erreicht
       sequence:
-      - variables:
-          restart_result: {}
-        alias: Lokale Variable für Rückgabewert des Scripts setzen
       - action: script.restart_internet
         data:
           called_by_automation: true
-        response_variable: restart_result
-        alias: Starte Router-Neustart-Script mit Rückgabewert
+        alias: Router neu starten
+      - wait_for_trigger:
+        - trigger: state
+          entity_id: binary_sensor.internet_connection
+          to: 'on'
+          for: 00:00:30
+        timeout: 00:05:00
+        continue_on_timeout: true
+        alias: Warte auf Internet nach Neustart
       - if:
-        - condition: template
-          value_template: '{{ restart_result is defined and (restart_result.wait.completed
-            | default(true)) == false }}
-
-            '
+        - condition: state
+          entity_id: binary_sensor.internet_connection
+          state: 'off'
         then:
         - delay:
-            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %}  {{ [delay, 15]
+            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %} {{ [delay, 15]
               | min }}
 
               '
-          alias: Backoff-Delay vor nächstem Versuch
-        alias: Prüfe, ob Neustart fehlgeschlagen → dann warten
-    alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
+          alias: Backoff vor nächstem Versuch
   - alias: Benachrichtigung bei endgültigem Fehler
     sequence:
     - condition: not
