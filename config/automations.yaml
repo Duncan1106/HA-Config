@@ -574,10 +574,12 @@
       metadata: {}
       data:
         addon: de91e161_hassio_onedrive_backup
+      enabled: false
     - action: hassio.addon_restart
       metadata: {}
       data:
         addon: cebe7a76_hassio_google_drive_backup
+      enabled: false
     - delay:
         hours: 0
         minutes: 1
@@ -588,11 +590,6 @@
       data:
         command: Locate Device(s) using iCloud
         device_name: 3675fe049f5a257fe6eebb6533252e74
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 15
-        milliseconds: 0
     - action: icloud3.action
       metadata: {}
       data:
@@ -3108,6 +3105,15 @@
       target:
         entity_id:
         - camera.ankermake_m5c_camera_mainstream
+      action: camera.snapshot
+      enabled: false
+    - metadata: {}
+      data:
+        filename: /media/m5ccam/pictures/{{states('sensor.job_name_2') | string }}_{{
+          now().strftime("%Y%m%d-%H%M%S") }}.jpg
+      target:
+        entity_id:
+        - camera.autos_tapo
       action: camera.snapshot
       enabled: true
   - if:
@@ -7133,6 +7139,7 @@
         minutes: 1
         seconds: 0
         milliseconds: 0
+    alias: 'Delay when triggered by startup '
   - action: mqtt.publish
     metadata: {}
     data:
@@ -7454,7 +7461,7 @@
   - delay:
       hours: 0
       minutes: 0
-      seconds: 10
+      seconds: 30
       milliseconds: 0
   - action: number.set_value
     metadata: {}
@@ -7466,6 +7473,7 @@
     target:
       entity_id: number.inverter_battery_capacity
   mode: single
+  max_exceeded: silent
 - id: '1750196437853'
   alias: Octopus night usage, turn battery off
   description: "\n  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV &
@@ -9332,7 +9340,7 @@
     sub-device commands.\n* **Cooling Integration:** The fan is explicitly triggered
     by the end of a pump cycle, likely to manage humidity spikes or motor heat post-circulation."
   triggers:
-  - minutes: /5
+  - minutes: /15
     trigger: time_pattern
   conditions: []
   actions:
@@ -9777,13 +9785,13 @@
     ensuring the system has reached\n  a stable state before attempting to launch
     the exporter service.\n\n  ---\n\n  ### Trigger Overview Table\n\n  | Type | Entity
     / Condition | ID | Purpose |\n  | :--- | :--- | :--- | :--- |\n  | **Time Pattern**
-    | Every **1 hour** | `hourly` | Periodic synchronization of GitHub data. |\n  |
-    **Event** | `event_mqtt_reloaded` | `reload` | Start export due to changes in
-    MQTT. |\n  | **Event** | `event_template_reloaded` | `reload` | Start export due
-    to changes in Templates. |\n\n  ---\n\n  #### \U0001F504 Scheduled Maintenance
-    Mode\n\n  - **Purpose**: Regular, periodic export intervals.\n  - **Logic Overview**:
-    Triggered at the start of every hour (e.g., 1:00, 2:00)\n    regardless of system
-    state.\n  - **Effect**: Immediately calls the start service for the **GitHub Exporter**\n
+    | Every **3 hour** | `3h` | Periodic synchronization of GitHub data. |\n  | **Event**
+    | `event_mqtt_reloaded` | `reload` | Start export due to changes in MQTT. |\n
+    \ | **Event** | `event_template_reloaded` | `reload` | Start export due to changes
+    in Templates. |\n\n  ---\n\n  #### \U0001F504 Scheduled Maintenance Mode\n\n  -
+    **Purpose**: Regular, periodic export intervals.\n  - **Logic Overview**: Triggered
+    at the start of every hour (e.g., 1:00, 2:00)\n    regardless of system state.\n
+    \ - **Effect**: Immediately calls the start service for the **GitHub Exporter**\n
     \   add-on.\n\n  #### ⏳ Delayed Export After Reload\n\n  - **Purpose**: Trigger
     an export after system configuration changes while avoiding duplicate runs.\n
     \ - **Logic Overview**: Triggered by internal Home Assistant reload events\n    (`event_mqtt_reloaded`
@@ -9807,8 +9815,8 @@
     running, the call ensures it remains\n    in a healthy, running state."
   triggers:
   - trigger: time_pattern
-    hours: /1
-    id: hourly
+    hours: /3
+    id: 3h
   - trigger: event
     event_type: event_mqtt_reloaded
     id: reload
@@ -11415,9 +11423,43 @@
           message: clear_notification
   mode: single
 - id: '1763821325453'
-  alias: Terrarium Auto-Off
-  description: Automatically turns off the terrarium humidifier switch 10 minutes
-    after it's turned on, with a retry mechanism.
+  alias: Terrarium Humidifier Auto-Off
+  description: "\U0001F98E **Terrarium Humidifier Auto-Off**\n\n---\n\n### \U0001F4CB
+    Intelligent Humidification Safety Control\n\n**High-level intent**\nThis automation
+    serves as a safety watchdog for the terrarium environment, ensuring that the humidification
+    system does not run indefinitely. It monitors the active state of the hardware
+    and enforces a strict operational window.\n\n**Operational strategy**\nThe system
+    employs a polling-based safety check rather than a simple state-change trigger.
+    By evaluating conditions every two minutes, it ensures that even if a single event-based
+    trigger were missed, the \"off\" command would be issued shortly thereafter once
+    the duration threshold is met.\n\n**Reliability mechanisms**\nTo overcome potential
+    Zigbee mesh interference or \"popcorn effect\" command drops, this automation
+    utilizes a robust **retry script with backoff**. If the initial command fails,
+    the system will attempt to turn off the switch up to 10 times with increasing
+    delays.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition |
+    ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time Pattern** | Every **2
+    minutes** | N/A | Periodic heartbeat check to verify device state and runtime
+    duration. |\n\n---\n\n### Operational Logic Sections\n\n#### Normal Shutdown Mode\n**Purpose**\nEnforce
+    a maximum duty cycle for the humidification hardware to prevent over-saturation
+    of the terrarium and protect the motor from burnout.\n\n**Logic Overview**\nThe
+    automation executes only if **input_boolean.terrarium_on** is **on** (Global System
+    Enable) AND **switch.terrarium_zigbee_l1** has been continuously **on** for at
+    least **10 minutes**.\n\n**Effect**\nTriggers the **script.retry_action_with_backoff**
+    to transition **switch.terrarium_zigbee_l1** to the **off** state.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode**: `restart` (Ensures the most recent
+    trigger takes precedence during execution)\n* **Execution method**: External retry
+    script (**script.retry_action_with_backoff**)\n* **Key Inputs**: `input_boolean.terrarium_on`\n*
+    **Controlled Entities**: `switch.terrarium_zigbee_l1`\n* **Safety Mechanisms**:
+    \n    * **Max Retries**: 10 attempts\n    * **Backoff**: Simple increment (5s
+    to 60s)\n    * **Failure Notification**: Sends an alert via **notify.duncan**
+    if the device fails to turn off after all retries.\n\n---\n\n### \U0001F4A1 Notes\n\n*
+    **Polling Strategy**: Using a `/2` minute time pattern instead of a `state` trigger
+    provides an extra layer of redundancy. If the Home Assistant core restarts exactly
+    at the 10-minute mark of a cycle, the time pattern will catch the \"over-time\"
+    state on the next sweep.\n* **Retry Logic**: The use of a backoff algorithm (5s
+    base to 60s max) is specifically designed to bypass temporary Zigbee interference
+    or network congestion.\n* **Silent Throttling**: The `max_exceeded: silent` configuration
+    prevents logbook clutter during rapid state evaluations.\n"
   triggers:
   - trigger: time_pattern
     minutes: /2
