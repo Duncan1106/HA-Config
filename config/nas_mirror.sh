@@ -62,8 +62,7 @@ log "Deleted $DELETED obsolete snapshots"
 COPIED=0
 FAILED=0
 while read -r src_snap; do
-    rel="${src_snap#$"SOURCE"/}"
-
+    rel="${src_snap#"$SOURCE"/}"
     if [ ! -d "$DEST/$rel" ]; then
         log "Copying snapshot: $rel"
         mkdir -p "$(dirname "$DEST/$rel")"
