@@ -38,6 +38,13 @@ for s in "${SRC_SNAPS[@]}"; do
     SRC_SET["$s"]=1
 done
 
+# Guard: abort if no snapshots found
+SNAP_COUNT=$(echo "$SRC_SNAPS" | wc -l)
+if [ "$SNAP_COUNT" -eq 0 ]; then
+    log "ERROR: Source snapshot list empty ($SOURCE). Aborting."
+    exit 1
+fi
+
 # ---- Delete obsolete snapshots ----
 DELETED=0
 for snap in "${DEST_SNAPS[@]}"; do
