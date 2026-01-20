@@ -51,7 +51,7 @@ for snap in "${DEST_SNAPS[@]}"; do
     if [[ -z "${SRC_SET[$snap]:-}" ]]; then
         log "Deleting obsolete snapshot: $snap"
         rm -rf "${DEST:?}/${snap:?}"
-        ((DELETED++))
+        DELETED=$((DELETED + 1))
     fi
 done
 
