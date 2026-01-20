@@ -18,33 +18,33 @@ if [ ! -d "$DEST" ]; then
     exit 1
 fi
 
-# 2. Stateless Change Detection (checksums with relative paths)
-get_tree_hash() {
-    cd "$1"
-    find . -type f -exec md5sum {} + | sort | md5sum | awk '{print $1}'
-}
+# 2. Detect latest snapshot folder
+# TimeMachine uses /YEAR/MONTH/YYYY-MM-DD-HHMMSS structure
+latest_src=$(find "$SOURCE" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
+latest_dest=$(find "$DEST" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
 
-echo "$(date) Calculating checksums..."
-SRC_HASH=$(get_tree_hash "$SOURCE")
-DST_HASH=$(get_tree_hash "$DEST")
-
-if [ "$SRC_HASH" = "$DST_HASH" ]; then
+if [ "$latest_src" = "$latest_dest" ]; then
     echo "$(date) No changes detected. Skipping sync."
     exit 0
 fi
 
-# 3. Perform Mirror
 echo "$(date) Changes detected. Mirroring files..."
 
-# Delete orphaned files and directories in DEST that don't exist in SRC
+# 3. Delete orphaned files and directories in DEST
 cd "$DEST"
+DELETED_COUNT=0
 find . -depth ! -path . | while read -r item; do
     if [ ! -e "$SOURCE/$item" ]; then
+        echo "$(date) Deleting $(item)"
         rm -rf "$item"
+        DELETED_COUNT=$((DELETED_COUNT+1))
     fi
 done
+echo "$(date) Deleted $DELETED_COUNT orphaned files/directories"
 
-# Copy all files from SOURCE to DEST (preserve timestamps, permissions, symlinks)
-cp -a "$SOURCE/." "$DEST/"
+# 4. Copy all files from SOURCE to DEST
+echo "$(date) Starting copy task..."
+cp -au "$SOURCE/." "$DEST/"
+echo "$(date) Copy task completed"
 
 echo "$(date) Timemachine NAS sync completed"
