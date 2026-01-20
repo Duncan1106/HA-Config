@@ -39,7 +39,7 @@ for s in "${SRC_SNAPS[@]}"; do
 done
 
 # Guard: abort if no snapshots found
-if [ "${`#SRC_SNAPS`[@]}" -eq 0 ]; then
+if [ "${#SRC_SNAPS[@]}" -eq 0 ]; then
     log "ERROR: Source snapshot list empty ($SOURCE). Aborting."
     exit 1
 fi
