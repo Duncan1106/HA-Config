@@ -22,7 +22,7 @@ fi
 # TimeMachine uses /YEAR/MONTH/YYYY-MM-DD-HHMMSS structure
 latest_src=$(find "$SOURCE" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
 latest_dest=$(find "$DEST" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
-
+   
 if [ "$latest_src" = "$latest_dest" ]; then
     echo "$(date) No changes detected. Skipping sync."
     exit 0
