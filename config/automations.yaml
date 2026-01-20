@@ -13041,7 +13041,44 @@
   mode: single
 - id: '1768908825981'
   alias: Timemachine NAS Sync (Hourly with Notifications)
-  description: ''
+  description: "\U0001F4E6 **Timemachine NAS Sync (Hourly with Notifications)**\n\n###
+    \U0001F4CB Intelligent NAS Backup Control\n\nThis automation manages the synchronization
+    process between local storage and a Network Attached Storage (NAS) device. Its
+    primary intent is to ensure data redundancy by mirroring Timemachine backups on
+    a consistent, hourly basis.\n\nThe operational strategy utilizes a shell-level
+    mirror command followed by an intelligent evaluation of the return codes. This
+    ensures that the system doesn't just run blindly but actively monitors for script
+    execution errors and reports them via a dedicated notification channel, providing
+    a high level of reliability for critical data backups.\n\n---\n\n### Trigger Overview
+    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
+    :--- |\n| **Time Pattern** | Every hour at **10** minutes past | N/A | Initiates
+    the synchronization process on a fixed hourly schedule. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### \U0001F6E0️ Synchronization Execution\n- **Purpose**: Execute
+    the core data transfer logic.\n- **Logic Overview**: Triggered automatically by
+    the time pattern; no global conditions restrict execution.\n- **Effect**: Runs
+    **shell_command.mirror_timemachine_to_nas** and captures the output into the **nas_response**
+    variable.\n\n#### ⚠️ Error Handling & Failure Notification\n- **Purpose**: Alert
+    the administrator if the backup fails.\n- **Logic Overview**: Evaluates if the
+    **returncode** of the shell command is not **0**.\n- **Effect**: Sends a notification
+    to **notify.duncan** containing the specific **stderr** message and applies the
+    tag **nas_sync_error**.\n\n#### ✅ Success Reporting\n- **Purpose**: Provide confirmation
+    of data movement when requested.\n- **Logic Overview**: Requires the **returncode**
+    to be **0**, the output to contain actual file changes (ignoring \"No changes
+    detected\"), and the helper **input_boolean.notify_on_nas_sync_success** to be
+    **on**.\n- **Effect**: Sends a success notification to **notify.duncan** with
+    the tag **nas_sync_success**.\n\n---\n\n### Technical Overview\n\n- **Automation
+    Mode**: **single** (prevents overlapping sync processes)\n- **Execution Method**:
+    Shell Command with captured response variables\n- **Key Inputs**: **input_boolean.notify_on_nas_sync_success**\n-
+    **Controlled Entities**: **notify.duncan**\n- **Safety Mechanisms**: Return code
+    validation and error string capture (**stderr**) to diagnose script-level failures.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n- **Efficient Notifications**: The automation distinguishes
+    between a successful run with no data (quiet) and a successful run with actual
+    file transfers, preventing notification fatigue.\n- **Error Transparency**: By
+    passing the **stderr** directly into the notification message, troubleshooting
+    can begin immediately without needing to check Home Assistant logs.\n- **Collision
+    Prevention**: The **single** mode is critical here; it ensures that if a large
+    backup takes longer than an hour, a second sync process will not start and potentially
+    corrupt the transfer or over-tax the CPU."
   triggers:
   - minutes: '10'
     trigger: time_pattern

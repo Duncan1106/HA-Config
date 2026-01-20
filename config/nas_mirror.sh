@@ -1,50 +1,70 @@
 #!/bin/bash
 set -e
 
-# Configuration
 SOURCE="/media/timemachine"
 DEST="/share/NAS_Share/Timemachine"
 
-echo "$(date) Starting Timemachine NAS sync"
+log() {
+    echo "$(date) $*"
+}
 
-# 1. Safety Checks
-if [ ! -d "$SOURCE" ]; then
-    echo "$(date) Error: Source directory missing: $SOURCE"
-    exit 1
-fi
+log "Starting Timemachine NAS sync"
 
-if [ ! -d "$DEST" ]; then
-    echo "$(date) Error: Destination directory missing or NAS not mounted: $DEST"
-    exit 1
-fi
+# Safety checks
+[ -d "$SOURCE" ] || { log "ERROR: Source missing: $SOURCE"; exit 1; }
+[ -d "$DEST" ]   || { log "ERROR: Dest missing or not mounted: $DEST"; exit 1; }
 
-# 2. Detect latest snapshot folder
-# TimeMachine uses /YEAR/MONTH/YYYY-MM-DD-HHMMSS structure
-latest_src=$(find "$SOURCE" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
-latest_dest=$(find "$DEST" -mindepth 3 -maxdepth 3 -type d | sort | tail -1)
-   
-if [ "$latest_src" = "$latest_dest" ]; then
-    echo "$(date) No changes detected. Skipping sync."
-    exit 0
-fi
+# Build snapshot lists (relative paths)
+mapfile -t SRC_SNAPS < <(
+    find "$SOURCE" -mindepth 3 -maxdepth 3 -type d \
+    | sed "s|^$SOURCE/||" | sort
+)
 
-echo "$(date) Changes detected. Mirroring files..."
+mapfile -t DEST_SNAPS < <(
+    find "$DEST" -mindepth 3 -maxdepth 3 -type d \
+    | sed "s|^$DEST/||" | sort
+)
 
-# 3. Delete orphaned files and directories in DEST
-cd "$DEST"
-DELETED_COUNT=0
-find . -depth ! -path . | while read -r item; do
-    if [ ! -e "$SOURCE/$item" ]; then
-        echo "$(date) Deleting $(item)"
-        rm -rf "$item"
-        DELETED_COUNT=$((DELETED_COUNT+1))
+# Convert DEST snapshots to lookup table
+declare -A DEST_SET
+for s in "${DEST_SNAPS[@]}"; do
+    DEST_SET["$s"]=1
+done
+
+# Convert SRC snapshots to lookup table
+declare -A SRC_SET
+for s in "${SRC_SNAPS[@]}"; do
+    SRC_SET["$s"]=1
+done
+
+# ---- Delete obsolete snapshots ----
+DELETED=0
+for snap in "${DEST_SNAPS[@]}"; do
+    if [[ -z "${SRC_SET[$snap]:-}" ]]; then
+        log "Deleting obsolete snapshot: $snap"
+        rm -rf "$DEST/$snap"
+        ((DELETED++))
     fi
 done
-echo "$(date) Deleted $DELETED_COUNT orphaned files/directories"
 
-# 4. Copy all files from SOURCE to DEST
-echo "$(date) Starting copy task..."
-cp -au "$SOURCE/." "$DEST/"
-echo "$(date) Copy task completed"
+log "Deleted $DELETED obsolete snapshots"
 
-echo "$(date) Timemachine NAS sync completed"
+# ---- Copy snapshots missing in DEST ----
+COPIED=0
+while read -r src_snap; do
+    rel="${src_snap#$SOURCE/}"
+
+    if [ ! -d "$DEST/$rel" ]; then
+        log "Copying snapshot: $rel"
+        mkdir -p "$(dirname "$DEST/$rel")"
+
+        if cp -a "$src_snap" "$DEST/$rel"; then
+            COPIED=$((COPIED + 1))
+        else
+            log "WARNING: cp reported non-zero exit while copying $rel"
+            COPIED=$((COPIED + 1))
+        fi
+    fi
+done < <(find "$SOURCE" -mindepth 3 -maxdepth 3 -type d) # Feed find output here
+log "Copied $COPIED new snapshots"
+log "Timemachine NAS sync completed"
