@@ -14,6 +14,13 @@ log "Starting Timemachine NAS sync"
 [ -d "$SOURCE" ] || { log "ERROR: Source missing: $SOURCE"; exit 1; }
 [ -d "$DEST" ]   || { log "ERROR: Dest missing or not mounted: $DEST"; exit 1; }
 
+case "$SOURCE" in
+    ''|'/') log "ERROR: Unsafe source: $SOURCE"; exit 1 ;;
+esac
+case "$DEST" in
+    ''|'/') log "ERROR: Unsafe dest: $DEST"; exit 1 ;;
+esac
+
 # Build snapshot lists (relative paths)
 mapfile -t SRC_SNAPS < <(
     find "$SOURCE" -mindepth 3 -maxdepth 3 -type d \
