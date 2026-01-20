@@ -25,12 +25,6 @@ mapfile -t DEST_SNAPS < <(
     | sed "s|^$DEST/||" | sort
 )
 
-# Convert DEST snapshots to lookup table
-declare -A DEST_SET
-for s in "${DEST_SNAPS[@]}"; do
-    DEST_SET["$s"]=1
-done
-
 # Convert SRC snapshots to lookup table
 declare -A SRC_SET
 for s in "${SRC_SNAPS[@]}"; do
@@ -51,6 +45,7 @@ log "Deleted $DELETED obsolete snapshots"
 
 # ---- Copy snapshots missing in DEST ----
 COPIED=0
+FAILED=0
 while read -r src_snap; do
     rel="${src_snap#$SOURCE/}"
 
@@ -62,9 +57,14 @@ while read -r src_snap; do
             COPIED=$((COPIED + 1))
         else
             log "WARNING: cp reported non-zero exit while copying $rel"
-            COPIED=$((COPIED + 1))
+            FAILED=$((FAILED + 1))
         fi
     fi
 done < <(find "$SOURCE" -mindepth 3 -maxdepth 3 -type d) # Feed find output here
 log "Copied $COPIED new snapshots"
+if [ "$FAILED" -gt 0 ]; then
+    log "ERROR: $FAILED snapshot(s) failed to copy"
+    exit 1
+fi
+
 log "Timemachine NAS sync completed"
