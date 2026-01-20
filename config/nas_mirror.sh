@@ -39,8 +39,7 @@ for s in "${SRC_SNAPS[@]}"; do
 done
 
 # Guard: abort if no snapshots found
-SNAP_COUNT=$(echo "$SRC_SNAPS" | wc -l)
-if [ "$SNAP_COUNT" -eq 0 ]; then
+if [ "${`#SRC_SNAPS`[@]}" -eq 0 ]; then
     log "ERROR: Source snapshot list empty ($SOURCE). Aborting."
     exit 1
 fi
@@ -48,12 +47,14 @@ fi
 # ---- Delete obsolete snapshots ----
 DELETED=0
 for snap in "${DEST_SNAPS[@]}"; do
+    [ -n "$snap" ] || continue
     if [[ -z "${SRC_SET[$snap]:-}" ]]; then
         log "Deleting obsolete snapshot: $snap"
-        rm -rf "$DEST/$snap"
+        rm -rf "${DEST:?}/${snap:?}"
         ((DELETED++))
     fi
 done
+
 
 log "Deleted $DELETED obsolete snapshots"
 
@@ -61,7 +62,7 @@ log "Deleted $DELETED obsolete snapshots"
 COPIED=0
 FAILED=0
 while read -r src_snap; do
-    rel="${src_snap#$SOURCE/}"
+    rel="${src_snap#$"SOURCE"/}"
 
     if [ ! -d "$DEST/$rel" ]; then
         log "Copying snapshot: $rel"
