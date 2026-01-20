@@ -13039,3 +13039,41 @@
         tag: smart_meter_problem
     action: notify.duncan
   mode: single
+- id: '1768908825981'
+  alias: Timemachine NAS Sync (Hourly with Notifications)
+  description: ''
+  triggers:
+  - minutes: '10'
+    trigger: time_pattern
+  conditions: []
+  actions:
+  - action: shell_command.mirror_timemachine_to_nas
+    response_variable: nas_response
+    data: {}
+  - if:
+    - condition: template
+      value_template: '{{ nas_response[''returncode''] != 0 }}'
+    then:
+    - data:
+        title: Timemachine NAS Sync Failed
+        message: 'Something went wrong with the NAS mirror script!
+
+          Error: {{ nas_response[''stderr''] }}'
+        data:
+          tag: nas_sync_error
+      action: notify.duncan
+    alias: Failure Notification
+  - if:
+    - condition: template
+      value_template: "{{ nas_response['returncode'] == 0\n   and 'No changes detected'
+        not in nas_response['stdout']\n   and is_state('input_boolean.notify_on_nas_sync_success',
+        'on') }}\n"
+    then:
+    - data:
+        title: Timemachine NAS Sync Success
+        message: Files were successfully mirrored to NAS.
+        data:
+          tag: nas_sync_success
+      action: notify.duncan
+    alias: Success Notification
+  mode: single
