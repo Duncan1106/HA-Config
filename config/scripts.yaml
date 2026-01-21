@@ -2123,10 +2123,12 @@ notify_people_at_home_with_fallbacks:
         'Home Assistant' }}"
       final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
         }}"
-      notify_data: "{{\n  dict(\n    message = message,\n    title = final_title,\n
-        \   data = dict(\n      tag = final_tag\n    )\n  )\n  | combine(\n      dict(\n
-        \       data = dict(\n          color = color,\n          notification_icon
-        = notification_icon\n        )\n      ),\n      recursive=True\n    )\n}}"
+      notify_data: "{% set base_data = dict(tag=final_tag) %} {% if color is defined
+        and color %}\n  {% set base_data = base_data | combine(dict(color=color))
+        %}\n{% endif %} {% if notification_icon is defined and notification_icon %}\n
+        \ {% set base_data = base_data | combine(dict(notification_icon=notification_icon))
+        %}\n{% endif %} {{ dict(message=message, title=final_title, data=base_data)
+        }}"
   - if:
     - condition: template
       value_template: '{{ message == ''clear_notification'' }}'
