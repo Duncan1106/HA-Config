@@ -2093,3 +2093,58 @@ adjust_input_number:
         }}
 
         '
+notify_people_at_home_with_fallbacks:
+  alias: Notify People at Home (With Fallbacks)
+  description: Sends a notification to people home, with default values if fields
+    are missing.
+  fields:
+    message:
+      description: The main body of the notification
+      example: The garage is open
+      required: true
+    title:
+      description: 'Fallback: ''System Alert'''
+      example: Security
+    tag:
+      description: 'Fallback: ''general_notify'''
+      example: garage_status
+  sequence:
+  - variables:
+      final_title: '{{ title | default(''Home Assistant'') }}'
+      final_tag: '{{ tag | default(''general_notification'') }}'
+  - if:
+    - condition: state
+      entity_id: binary_sensor.anyone_home
+      state:
+      - 'on'
+    then:
+    - repeat:
+        for_each:
+        - person: person.stephan
+          service: mobile_app_stephan_iphone
+        - person: person.katalin
+          service: mobile_app_fp4
+        - person: person.enya
+          service: mobile_app_iphone_von_enya
+        - person: person.duncan
+          service: duncan
+        sequence:
+        - if:
+          - condition: template
+            value_template: '{{ is_state(repeat.item.person, ''home'') }}'
+          then:
+          - action: notify.{{ repeat.item.service }}
+            continue_on_error: true
+            data:
+              title: '{{ final_title }}'
+              message: '{{ message }}'
+              data:
+                tag: '{{ final_tag }}'
+    else:
+    - action: notify.familie
+      metadata: {}
+      data:
+        title: '{{ final_title }}'
+        message: '{{ message }}'
+        data:
+          tag: '{{ final_tag }}'
