@@ -4411,12 +4411,24 @@
       - condition: trigger
         id: send_notification
       sequence:
-      - action: script.notify_people_at_home_with_fallbacks
-        data:
-          title: '{{ custom_friendly_name }} offen'
-          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
-            | timestamp_custom('%H:%M', True) }}.
-          tag: '{{ notification_tag }}'
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
     - conditions:
       - condition: trigger
         id: delete_notification
@@ -5121,8 +5133,7 @@
       - repeat:
           until:
           - condition: template
-            value_template: '{{ is_state(trigger_entity, ''off'') or not repeat_notification
-              }}'
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
           sequence:
           - action: script.notify_people_at_home_with_fallbacks
             data:
@@ -5130,15 +5141,13 @@
               message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
                 | timestamp_custom(''%H:%M'', True) }}.'
               tag: '{{ notification_tag }}'
-          - variables:
-              repeat_notification: false
-              time_between_repeat_notification:
-                minutes: 10
-          - if:
-            - condition: template
-              value_template: '{{ repeat_notification }}'
-            then:
-            - delay: '{{ time_between_repeat_notification }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
     - conditions:
       - condition: trigger
         id: delete_notification
@@ -5153,7 +5162,6 @@
   variables:
     trigger_entity: binary_sensor.duncan_fenster_contact
     custom_friendly_name: Duncans Fenster
-    issue_state: 'on'
     notification_tag: duncan_window_alert
 - id: '1738024300699'
   alias: Notify When UPS Changes State
@@ -13131,12 +13139,24 @@
       - condition: trigger
         id: send_notification
       sequence:
-      - action: script.notify_people_at_home_with_fallbacks
-        data:
-          title: '{{ custom_friendly_name }} offen'
-          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
-            | timestamp_custom('%H:%M', True) }}.
-          tag: '{{ notification_tag }}'
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
     - conditions:
       - condition: trigger
         id: delete_notification

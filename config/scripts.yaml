@@ -2113,12 +2113,20 @@ notify_people_at_home_with_fallbacks:
     tag:
       description: 'Fallback: ''general_notify'''
       example: garage_status
+    color:
+      description: Optional notification color (e.g. red)
+    notification_icon:
+      description: Optional notification icon (e.g. mdi:alert)
   sequence:
   - variables:
       final_title: "{{ title if title is defined and title | trim | length > 0\n   else
         'Home Assistant' }}"
       final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
         }}"
+      notify_data: "{{\n  dict(\n    message = message,\n    title = final_title,\n
+        \   data = dict(\n      tag = final_tag\n    )\n  )\n  | combine(\n      dict(\n
+        \       data = dict(\n          color = color,\n          notification_icon
+        = notification_icon\n        )\n      ),\n      recursive=True\n    )\n}}"
   - if:
     - condition: template
       value_template: '{{ message == ''clear_notification'' }}'
@@ -2152,11 +2160,7 @@ notify_people_at_home_with_fallbacks:
             then:
             - action: notify.{{ repeat.item.service }}
               continue_on_error: true
-              data:
-                title: '{{ final_title }}'
-                message: '{{ message }}'
-                data:
-                  tag: '{{ final_tag }}'
+              data: '{{ notify_data }}'
       else:
       - action: notify.familie
         metadata: {}
@@ -2165,3 +2169,5 @@ notify_people_at_home_with_fallbacks:
           message: '{{ message }}'
           data:
             tag: '{{ final_tag }}'
+  mode: parallel
+  max: 50
