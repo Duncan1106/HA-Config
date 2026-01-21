@@ -1411,12 +1411,17 @@ restart_internet:
         milliseconds: 0
       continue_on_timeout: true
       alias: Warte auf Wiederherstellung der Internetverbindung
-    - alias: Benachrichtigung bei erfolgreichem Internet-Restore
-      action: notify.duncan
-      metadata: {}
-      data:
-        title: Internet
-        message: Verbindung wiederhergestellt
+    - if:
+      - condition: template
+        value_template: '{{ wait.completed }}'
+      then:
+      - alias: Benachrichtigung bei erfolgreichem Internet-Restore
+        action: notify.duncan
+        metadata: {}
+        data:
+          title: Internet
+          message: Verbindung wiederhergestellt
+      alias: notify only if wait is completed
     - action: automation.turn_on
       metadata: {}
       target:
@@ -2110,41 +2115,53 @@ notify_people_at_home_with_fallbacks:
       example: garage_status
   sequence:
   - variables:
-      final_title: '{{ title | default(''Home Assistant'') }}'
-      final_tag: '{{ tag | default(''general_notification'') }}'
+      final_title: "{{ title if title is defined and title | trim | length > 0\n   else
+        'Home Assistant' }}"
+      final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
+        }}"
   - if:
-    - condition: state
-      entity_id: binary_sensor.anyone_home
-      state:
-      - 'on'
+    - condition: template
+      value_template: '{{ message == ''clear_notification'' }}'
     then:
-    - repeat:
-        for_each:
-        - person: person.stephan
-          service: mobile_app_stephan_iphone
-        - person: person.katalin
-          service: mobile_app_fp4
-        - person: person.enya
-          service: mobile_app_iphone_von_enya
-        - person: person.duncan
-          service: duncan
-        sequence:
-        - if:
-          - condition: template
-            value_template: '{{ is_state(repeat.item.person, ''home'') }}'
-          then:
-          - action: notify.{{ repeat.item.service }}
-            continue_on_error: true
-            data:
-              title: '{{ final_title }}'
-              message: '{{ message }}'
-              data:
-                tag: '{{ final_tag }}'
-    else:
     - action: notify.familie
-      metadata: {}
       data:
-        title: '{{ final_title }}'
         message: '{{ message }}'
         data:
           tag: '{{ final_tag }}'
+    else:
+    - if:
+      - condition: state
+        entity_id: binary_sensor.anyone_home
+        state:
+        - 'on'
+      then:
+      - repeat:
+          for_each:
+          - person: person.stephan
+            service: mobile_app_stephan_iphone
+          - person: person.katalin
+            service: mobile_app_fp4
+          - person: person.enya
+            service: mobile_app_iphone_von_enya
+          - person: person.duncan
+            service: duncan
+          sequence:
+          - if:
+            - condition: template
+              value_template: '{{ is_state(repeat.item.person, ''home'') }}'
+            then:
+            - action: notify.{{ repeat.item.service }}
+              continue_on_error: true
+              data:
+                title: '{{ final_title }}'
+                message: '{{ message }}'
+                data:
+                  tag: '{{ final_tag }}'
+      else:
+      - action: notify.familie
+        metadata: {}
+        data:
+          title: '{{ final_title }}'
+          message: '{{ message }}'
+          data:
+            tag: '{{ final_tag }}'

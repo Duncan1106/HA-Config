@@ -614,31 +614,6 @@
         at {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True)
         }}.
       notification_title: The {{ friendly_name | default('Garage') }} was left open
-- id: '1706024033086'
-  alias: 'Waschküche Fenster Offen '
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.waschkuche_fenster_contact
-      friendly_name: 'Waschküche Fenster '
-      notification_click_url: /lovelace
-      duration_issue_state:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
-      notify_services_string: notify.mobile_app_poco_f7
-      notification_message: Das {{ friendly_name | default('Waschküche Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      notification_title: '{{ friendly_name | default(''Waschküche Fenster'') }} offen'
-      repeat_notification: true
-      time_between_repeat_notification:
-        hours: 3
-        minutes: 0
-        seconds: 0
-        days: 0
 - id: '1706398043305'
   alias: 'Spülmaschine fertig '
   description: ''
@@ -4414,75 +4389,98 @@
           - switch.schreibtisch_rechts_power_strip_l2
           - switch.schreibtisch_rechts_power_strip_l3
   mode: restart
-- id: '1733064187070'
-  alias: Kinderbad Fenster Open
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.kinderbad_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Kinderbad Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Kinderbad Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 10
-        seconds: 0
-        days: 0
-      repeat_notification: false
-      time_between_repeat_notification:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        days: 0
-- id: '1733907310581'
+- id: bad_window_monitor
   alias: Bad Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.bad_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Bad Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Bad Fenster') }} ist offen
-        seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 10
-        seconds: 0
-        days: 0
-      duration_from_issue_state:
-        hours: 0
-        minutes: 0
-        seconds: 5
-        days: 0
-      delete_notification: true
-- id: '1734198692426'
+  description: Monitors Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.bad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.bad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.bad_fenster_contact
+    custom_friendly_name: Bad Fenster
+    notification_tag: bad_window_alert
+- id: gasteklo_window_monitor
   alias: Gästeklo Fenster Offen
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.gasteklo_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Gästeklo Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        days: 0
-      notification_color: red
-      repeat_notification: true
-      time_between_repeat_notification:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
 - id: '1734549334887'
   alias: Nightly Battery Energy Charged
   description: ''
@@ -5056,36 +5054,107 @@
           filename: /media/Gesamt_Kosten.csv
           destination_folder: /Media/
   mode: single
-- id: '1737391740399'
+- id: hobbyraum_window_monitor
   alias: Hobbyraum kleines Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.hobbyraum_kleines_fenster_contact
-      duration_issue_state:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Hobbyraum Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Hobbyraum Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
+  description: Monitors Hobby Room window and notifies if left open for 1 hour.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
+    to: 'on'
+    for:
+      hours: 1
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.hobbyraum_kleines_fenster_contact
+    custom_friendly_name: Hobbyraum kleines Fenster
+    notification_tag: hobbyraum_window_alert
 - id: '1737391841418'
   alias: Duncan Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.duncan_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Duncans Fenster'') }} offen'
-      notification_message: '{{ friendly_name | default(''Duncans Fenster'') }} ist
-        offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom(''%T'',
-        True) }}.'
-      repeat_notification: false
+  description: Monitors Duncan's window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.duncan_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.duncan_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'') or not repeat_notification
+              }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+          - variables:
+              repeat_notification: false
+              time_between_repeat_notification:
+                minutes: 10
+          - if:
+            - condition: template
+              value_template: '{{ repeat_notification }}'
+            then:
+            - delay: '{{ time_between_repeat_notification }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: notify.familie
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Closed
+  mode: restart
+  max_exceeded: silent
+  variables:
+    trigger_entity: binary_sensor.duncan_fenster_contact
+    custom_friendly_name: Duncans Fenster
+    issue_state: 'on'
+    notification_tag: duncan_window_alert
 - id: '1738024300699'
   alias: Notify When UPS Changes State
   description: This automation sends a notification when the UPS changes its state,
@@ -13040,3 +13109,513 @@
           tag: nas_sync_success
       action: notify.duncan
   mode: single
+- id: gasteklo_window_monitor
+  alias: Gästeklo Fenster Offen
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: ''
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
+- id: gasteklo_window_monitor
+  alias: Gästeklo Fenster Offen
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
+- id: gasteklo_window_monitor
+  alias: Gästeklo Fenster Offen
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
+- id: gasteklo_window_monitor
+  alias: Gästeklo Fenster Offen
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
+- id: gasteklo_window_monitor
+  alias: Gästeklo Fenster Offen
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: waschkuche_window_monitor
+  alias: Waschküche Fenster Offen
+  description: Monitors Laundry Room window with a 1-hour delay and 3-hour repeat
+    cycle.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.waschkuche_fenster_contact
+    to: 'on'
+    for:
+      hours: 1
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.waschkuche_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 3
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.waschkuche_fenster_contact
+    custom_friendly_name: Waschküche Fenster
+    notification_tag: waschkuche_window_alert
