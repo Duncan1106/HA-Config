@@ -11057,7 +11057,7 @@
     |\n\n  ---\n\n  ## \U0001F4CB Conditions (overview)\n\n  The automation proceeds
     when ANY of these branches is true:\n\n  1) Night charging start branch\n     -
     Current time is in the night charging window (after 00:04:55 and\n       before
-    04:30:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
+    04:45:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
     trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
     switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
     `off`\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n  2) Scheduled
@@ -11066,7 +11066,7 @@
     change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
     \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
     \    - Current time is in the night charging window (after 00:04:55 and before\n
-    \      04:50:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
+    \      04:45:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
     \ ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start Charging (trigger id:
     \"On\" with sensor on)\n     - Notify `notify.duncan` with decision summary\n
     \    - Call `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`
@@ -11124,47 +11124,47 @@
   conditions:
   - condition: or
     conditions:
-    - condition: and
+    - alias: On / amp branch
+      condition: and
       conditions:
       - condition: time
         after: 00:04:55
-        before: 04:30:00
+        before: 04:45:00
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
-      - condition: trigger
-        id:
-        - 'On'
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
-        state:
-        - 'off'
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
+      - condition: or
+        conditions:
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - 'On'
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+            state:
+            - 'off'
+          alias: On branch specific
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - amps
+          - condition: template
+            value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
+              ''required_charge_amps'') | default(30, true) | int %}
+
+              {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
+              | default(0, true) | int %}
+
+              {{ req != current }}'
+          alias: 'Amp branch specific '
     - condition: trigger
       id:
       - 'Off'
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - amps
-      - condition: template
-        value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
-          ''required_charge_amps'') | default(30, true) | int %}
-
-          {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
-          | default(0, true) | int %}
-
-          {{ req != current }}'
-      - condition: time
-        after: 00:04:55
-        before: 04:50:00
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state:
-        - 'on'
   actions:
   - choose:
     - conditions:
