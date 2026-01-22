@@ -7569,9 +7569,9 @@
       if car_11kw else 0)) %}\n    {% set grid = states('sensor.grid_import') | float(0)
       %}\n    {% set octopus = is_state('binary_sensor.octopus_a_10a76963_volkswagen_id_4_intelligent_dispatching','on')
       or is_state('input_select.octopus_night_time','Dumb') %}\n    {% set battery_discharging
-      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {{ (car_22kw or
-      car_11kw) and octopus and power_goes > 50 and grid < power_goes and battery_discharging
-      }}"
+      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {% set night_time
+      = now().hour < 5 %}\n    {{ (car_22kw or car_11kw) and octopus and power_goes
+      > 50 and grid < power_goes and battery_discharging and night_time }}"
     for:
       hours: 0
       minutes: 0
@@ -11934,6 +11934,17 @@
     id: HA_Start
   conditions: []
   actions:
+  - if:
+    - condition: trigger
+      id:
+      - HA_Start
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    alias: Wait 30s to wrap up HA Startup
   - variables:
       entities:
       - switch.fenster_licht_vorne_zigbee
@@ -12930,6 +12941,17 @@
     id: sync
     trigger: homeassistant
   actions:
+  - alias: Wait 30s to wrap up HA Startup
+    if:
+    - condition: trigger
+      id:
+      - sync
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
   - choose:
     - alias: 'Condition: It is sunset or night-time'
       conditions:
