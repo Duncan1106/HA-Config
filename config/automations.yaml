@@ -12251,10 +12251,14 @@
         then:
         - repeat:
             until:
-            - condition: state
-              entity_id: cover.wintergarten_dachfenster
-              state:
-              - closed
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: cover.wintergarten_dachfenster
+                state:
+                - closed
+              - condition: template
+                value_template: '{{ repeat.index >= 3 }}'
             sequence:
             - action: cover.close_cover
               metadata: {}
@@ -12279,12 +12283,24 @@
             seconds: 10
             milliseconds: 0
           alias: 'Let it settle down: 10s'
-      - action: cover.close_cover
-        target:
-          entity_id: cover.wintergarten_rolladen_dachfenster
-      - action: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.rollo_state
+      - if:
+        - condition: state
+          entity_id: cover.wintergarten_dachfenster
+          state:
+          - closed
+        then:
+        - action: cover.close_cover
+          target:
+            entity_id: cover.wintergarten_rolladen_dachfenster
+        - action: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.rollo_state
+        else:
+        - action: notify.duncan
+          data:
+            title: "\U0001FA9F Rollo close blocked"
+            message: Window did not close after 3 attempts; skipping rollo close.
+        alias: Close Rollo only if window is closed
       alias: Close if forecast allows
     - conditions:
       - condition: trigger
