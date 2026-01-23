@@ -979,18 +979,20 @@ config:
             \ === 'on' ? 'green' : ''} !important;\n}\n* { \n  font-size: 16px !important;\n\
             }"
           sub_button:
-          - entity: sensor.speedtest_download
-            icon: mdi:download
-            show_background: false
-            show_state: true
-            tap_action:
-              action: none
-          - entity: sensor.speedtest_upload
-            icon: mdi:upload
-            show_background: false
-            show_state: true
-            tap_action:
-              action: none
+            bottom: []
+            main:
+            - entity: sensor.speedtest_download
+              icon: mdi:download
+              show_background: false
+              show_state: true
+              tap_action:
+                action: none
+            - entity: sensor.speedtest_upload
+              icon: mdi:upload
+              show_background: false
+              show_state: true
+              tap_action:
+                action: none
           tap_action:
             action: none
           type: custom:bubble-card
@@ -1030,180 +1032,27 @@ config:
           type: custom:uptime-card
           update_interval: 15
         - cards:
-          - entity: ''
-            icon: mdi:wifi-refresh
-            icon_color: grey
-            multiline_secondary: true
-            primary: Run speedtest
-            secondary: ''
-            tap_action:
-              action: perform-action
-              perform_action: script.1707895746671
+          - double_tap_action:
+              action: call-service
+              service: script.1707895746671
               target: {}
+            entity: sensor.speedtest_ping
+            features_position: bottom
+            icon: ''
+            primary: "{% set x = ['unknown','unavailable'] %} {% set unavailable_data\
+              \ =\n  states('sensor.speedtest_ping') in x or\n  states('sensor.speedtest_upload')\
+              \ in x or\n  states('sensor.speedtest_download') in x\n%} {% set text\
+              \ =\n  \"Ping: \" ~ states('sensor.speedtest_ping') ~ \"ms, \" ~\n \
+              \ states('sensor.speedtest_upload') ~ \" Mbps, \" ~\n  states('sensor.speedtest_download')\
+              \ ~ \" Mbps\"\n%} {{ \"\" if unavailable_data else text }}"
+            secondary: '{% set script = is_state(''script.1707895746671'',''on'')
+              %}   {% set unavailable_data = states(''sensor.speedtest_download'')
+              in [''unknown'',''unavailable''] %} {% set last_run = states(''sensor.speedtest_last_run'')
+              %}  {{ "Start SpeedTest, Last: " + last_run + " ago" if not script else
+              ("Testing" if unavailable_data else "Wrapping up") }}'
             type: custom:mushroom-template-card
-          - card_mod:
-              style: "ha-card {\n  margin: -10px 12px 0px 12px;\n}\n"
-            type: custom:mushroom-template-card
-          - card_mod:
-              style: "ha-card {\n  box-shadow: none;\n  background: none;\n  border:\
-                \ none;\n}\n"
-            cards:
-            - cards:
-              - apex_config:
-                  chart:
-                    height: 130
-                  fill:
-                    type: gradient
-                  legend:
-                    show: false
-                  plotOptions:
-                    radialBar:
-                      dataLabels:
-                        name:
-                          show: false
-                        value:
-                          show: false
-                      endAngle: 108
-                      hollow:
-                        size: 80%
-                      offsetY: 0
-                      startAngle: -108
-                      track:
-                        margin: 0
-                        strokeWidth: 70%
-                card_mod:
-                  style: "ha-card {\n  box-shadow: none;\n  background: none;\n  border:\
-                    \ none;\n  margin-left: -84px;\n  margin-right: auto;\n  margin-bottom:\
-                    \ 2px;\n}\n"
-                chart_type: radialBar
-                experimental:
-                  color_threshold: true
-                series:
-                - color_threshold:
-                  - color: rgb(244, 67, 54)
-                    value: 50
-                  - color: rgb(255, 87, 34)
-                    value: 75
-                  - color: rgb(255, 152, 0)
-                    value: 100
-                  - color: rgb(255, 193, 7)
-                    value: 125
-                  - color: rgb(255, 235, 59)
-                    value: 150
-                  - color: rgb(205, 220, 57)
-                    value: 175
-                  - color: rgb(129, 195, 74)
-                    value: 200
-                  - color: rgb(76, 175, 80)
-                    value: 225
-                  - color: rgb(78, 175, 80)
-                    value: 250
-                  entity: sensor.speedtest_download
-                  max: 500
-                  show:
-                    legend_value: false
-                type: custom:apexcharts-card
-              - card_mod:
-                  style: "ha-card {\n  margin-top: -98px;\n  margin-left: auto;\n\
-                    \  margin-right: auto;\n  margin-bottom: 2px;\n  box-shadow: none;\n\
-                    \  border: none;\n  background: none;\n}\n"
-                entity: sensor.speedtest_download
-                icon: mdi:download
-                layout: vertical
-                primary: '{{states(''sensor.speedtest_download'')|round(1)}} Mbps
-
-                  '
-                secondary: Download
-                tap_action:
-                  action: more-info
-                type: custom:mushroom-template-card
-              type: vertical-stack
-            - cards:
-              - apex_config:
-                  chart:
-                    height: 130
-                  fill:
-                    type: gradient
-                  legend:
-                    show: false
-                  plotOptions:
-                    radialBar:
-                      dataLabels:
-                        name:
-                          show: false
-                        value:
-                          show: false
-                      endAngle: 108
-                      hollow:
-                        size: 80%
-                      offsetY: 0
-                      startAngle: -108
-                      track:
-                        margin: 0
-                        strokeWidth: 70%
-                card_mod:
-                  style: "ha-card {\n  box-shadow: none;\n  border: none;\n  background:\
-                    \ none;\n  margin-left: -84px;\n  margin-right: auto;\n  margin-bottom:\
-                    \ 2px;\n}\n"
-                chart_type: radialBar
-                experimental:
-                  color_threshold: true
-                series:
-                - color_threshold:
-                  - color: rgb(244, 67, 54)
-                    value: 5
-                  - color: rgb(255, 87, 34)
-                    value: 13
-                  - color: rgb(255, 152, 0)
-                    value: 25
-                  - color: rgb(255, 193, 7)
-                    value: 38
-                  - color: rgb(255, 235, 59)
-                    value: 50
-                  - color: rgb(205, 220, 57)
-                    value: 63
-                  - color: rgb(129, 195, 74)
-                    value: 75
-                  - color: rgb(76, 175, 80)
-                    value: 88
-                  - color: rgb(78, 175, 80)
-                    value: 100
-                  entity: sensor.speedtest_upload
-                  max: 100
-                  show:
-                    legend_value: false
-                type: custom:apexcharts-card
-              - card_mod:
-                  style: "ha-card {\n  margin-top: -98px;\n  margin-left: auto;\n\
-                    \  margin-right: auto;\n  margin-bottom: 2px;\n  box-shadow: none;\n\
-                    \  border: none;\n  background: none;\n}\n"
-                entity: sensor.speedtest_upload
-                icon: mdi:upload
-                layout: vertical
-                primary: '{{states(''sensor.speedtest_upload'')|round(1)}} Mbps
-
-                  '
-                secondary: Upload
-                tap_action:
-                  action: more-info
-                type: custom:mushroom-template-card
-              type: vertical-stack
-            - cards:
-              - card_mod:
-                  style: "ha-card {\n  margin-top: 20px;\n  margin-left: auto;\n \
-                    \ margin-right: auto;\n  margin-bottom: 2px;\n  box-shadow: none;\n\
-                    \  border: none;\n  background: none;\n}\n"
-                entity: sensor.speedtest_ping
-                icon: mdi:wan
-                layout: vertical
-                name: Ping
-                primary_info: state
-                secondary_info: name
-                type: custom:mushroom-entity-card
-              type: vertical-stack
-            horizontal: true
-            type: custom:vertical-stack-in-card
-          type: custom:stack-in-card
+            vertical: true
+          type: vertical-stack
         - entities:
           - entity: sensor.speedtest_download
             name: Download 24h
