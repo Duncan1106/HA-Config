@@ -1,4 +1,5 @@
 #!/bin/bash
+# NOTE: BusyBox-compatible script (HA OS). Avoid GNU-only flags (e.g., find -printf, stat).
 set -euo pipefail
 
 # -------------------------
