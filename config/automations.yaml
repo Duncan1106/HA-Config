@@ -9727,7 +9727,7 @@
             notify_service: notify.duncan
             entity_id: '{{ fan_kallax }}'
             target_state: 'off'
-        alias: Lights
+        alias: Fans
     - if:
       - condition: template
         value_template: '{{ is_state(main_left, ''on'') }}'
@@ -9763,6 +9763,51 @@
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: '{{ main_right }}'
+          target_state: 'off'
+    - alias: Kallax OFF
+      if:
+      - condition: template
+        value_template: '{{ is_state(light_kallax,''on'') or is_state(pump_kallax,''on'')
+          or is_state(fan_kallax,''on'') }}'
+      then:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ light_kallax }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ pump_kallax }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ fan_kallax }}'
           target_state: 'off'
   mode: single
   max_exceeded: silent
