@@ -105,7 +105,7 @@ log "Pattern: $PATTERN, MTIME: $MTIME"
 # -------------------------
 # Collect all files for safety guard
 # -------------------------
-mapfile -d '' ALL_FILES < <(find "$BACKUP_DIR" -maxdepth 1 -name "$PATTERN" -type f -print0 | sort -z)
+mapfile -d '' ALL_FILES < <(find "$BACKUP_DIR" -maxdepth 1 -name "$PATTERN" -type f -print0 )
 TOTAL_FILES=${#ALL_FILES[@]}
 
 log "Total files matching pattern: $TOTAL_FILES"
