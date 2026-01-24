@@ -94,8 +94,9 @@ log "Pattern: $PATTERN, MTIME: $MTIME"
 # -------------------------
 # Collect all files for safety guard
 # -------------------------
-ALL_FILES=( "$BACKUP_DIR"/$PATTERN )
+mapfile -d '' ALL_FILES < <(find "$BACKUP_DIR" -maxdepth 1 -name "$PATTERN" -type f -print0 | sort -z)
 TOTAL_FILES=${#ALL_FILES[@]}
+
 log "Total files matching pattern: $TOTAL_FILES"
 
 # -------------------------
@@ -120,6 +121,8 @@ if (( TOTAL_FILES - NUM_TO_DELETE < MIN_FILES )); then
     (( NUM_TO_DELETE < 0 )) && NUM_TO_DELETE=0
     FILES_TO_DELETE=( "${FILES_TO_DELETE[@]:0:$NUM_TO_DELETE}" )
 fi
+NUM_TO_DELETE=${#FILES_TO_DELETE[@]}
+
 log "Number of files to delete after MIN_FILES guard: $NUM_TO_DELETE"
 
 # -------------------------
