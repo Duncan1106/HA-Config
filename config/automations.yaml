@@ -6591,45 +6591,6 @@
     entity_id: af40e8a58cc2a5090f6b0680f852e07b
     domain: switch
   mode: single
-- id: '1745964630082'
-  alias: Delete old daily backups if storage gets low
-  description: "## \U0001F9F9 **Auto Backup Cleanup — Smart Storage Management** \n\n###
-    \U0001F3AF **Purpose** \n\nThis automation maintains the **USB backup storage**
-    by automatically deleting old **daily**, **weekly**, and **monthly** backups every
-    20h. It helps prevent disk saturation while keeping essential restore points intact.\n\n---
-    \ \n\n### ⏰ **Trigger Frequency** \n\n- Executes **every 20 hours**, ensuring
-    storage is regularly monitored and managed.  \n\n---  \n\n### ⚙️ **How It Works**\n\nEach
-    run initiates a set of cleanup shell commands that remove backups older than their
-    defined retention period.  This process keeps storage usage efficient while maintaining
-    a healthy backup rotation schedule.  \n\n---  \n\n### \U0001F9E0 **Logic Highlights**\n\n-
-    Removes only **expired backups**, protecting recent ones.\n- Ensures reliable
-    long-term operation without manual cleanup.  \n\n---  \n\n### \U0001F9F0 **Executed
-    Cleanup Commands**\n\n#### \U0001F5D3 **Hourly Backup Cleanup (older than 3 days)**\n\n```
-    find /share/NAS_Share/Backup/ -name 'HourlyBackup*.tar' -type f -mtime +3 -delete
-    ```\n\n#### \U0001F5D3 **Daily Backup Cleanup (older than 7 days)**\n\n``` find
-    /share/NAS_Share/Backup/ -name 'DailyBackup*.tar' -type f -mtime +7 -delete ```\n\n####
-    \U0001F4C6 **Weekly Backup Cleanup (older than 60 days)**\n\n``` find /share/NAS_Share/Backup/
-    -name 'WeeklyBackup*.tar' -type f -mtime +60 -delete ```\n\n#### \U0001F5C3 **Monthly
-    Backup Cleanup (older than 120 days)**\n\n``` find /share/NAS_Share/Backup/ -name
-    'MonthlyBackup*.tar' -type f -mtime +120 -delete ``` "
-  triggers:
-  - trigger: time_pattern
-    hours: /20
-  conditions: []
-  actions:
-  - action: shell_command.delete_old_hourly_backups_disk
-    metadata: {}
-    data: {}
-  - action: shell_command.delete_old_daily_backups_disk
-    metadata: {}
-    data: {}
-  - action: shell_command.delete_old_weekly_backups_disk
-    metadata: {}
-    data: {}
-  - action: shell_command.delete_old_monthly_backups_disk
-    metadata: {}
-    data: {}
-  mode: single
 - id: '1746353652230'
   alias: Wohnzimmer Restore
   description: ''
@@ -13405,3 +13366,53 @@
     trigger_entity: binary_sensor.waschkuche_fenster_contact
     custom_friendly_name: Waschküche Fenster
     notification_tag: waschkuche_window_alert
+- id: '1769287041355'
+  alias: 'System: GFS Backup Cleanup Report'
+  description: Runs generational backup cleanup and sends rich summary to UI and stripped
+    text to Duncan
+  triggers:
+  - trigger: time
+    at: '20:00:00'
+  actions:
+  - action: shell_command.cleanup_backups
+    data:
+      type: hourly
+      dry_run: 0
+    response_variable: hourly
+  - action: shell_command.cleanup_backups
+    data:
+      type: daily
+      dry_run: 0
+    response_variable: daily
+  - action: shell_command.cleanup_backups
+    data:
+      type: weekly
+      dry_run: 0
+    response_variable: weekly
+  - action: shell_command.cleanup_backups
+    data:
+      type: monthly
+      dry_run: 0
+    response_variable: monthly
+  - variables:
+      report_json: "{% set results = [hourly, daily, weekly, monthly] %} {% set ns
+        =\nnamespace(total_mb=0, total_files=0, list=\"\") %} {% for r in results
+        if\nr.stdout is defined and r.stdout | trim != \"\" %}\n  {% set data = r.stdout
+        | from_json %}\n  {% set ns.list = ns.list + \"- **\" + data.type | capitalize
+        + \":** \" + data.files_to_delete | string + \" files (\" + data.space_to_free_MB
+        | string + \" MB)\\n\" %}\n  {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB
+        | float(0)) %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete
+        | int(0)) %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb /
+        1024) |\nround(2), 'count': ns.total_files} }}\n"
+  - action: notify.persistent_notification
+    data:
+      title: "\U0001F4BE Backup Cleanup Summary"
+      message: "{% set info = report_json %}\n### Generational Cleanup Status\n\n{{
+        info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
+        Files Removed:** {{ info.count }}\n"
+  - action: notify.duncan
+    data:
+      title: NAS Maintenance Complete
+      message: "{% set info = report_json %}\nBackup cleanup report for today:\n\n
+        \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
+        }} GB.\n"

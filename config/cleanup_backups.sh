@@ -10,10 +10,10 @@ shopt -s nullglob  # Prevent unmatched globs from returning literal strings
 # Configuration
 # -------------------------
 BACKUP_DIR="/share/NAS_Share/Backup"
-TYPE="${1:-}"        # backup type: hourly, daily, weekly, monthly
-DRY_RUN_RAW="${2:-0}"# flexible dry-run param: 1/0/true/false/yes/no
-DEBUG_RAW="${3:-0}"  # flexible debug param: 1/0/true/false/yes/no
-MIN_FILES=3          # safety net: always leave at least this many backups
+TYPE="${1:-}"         # backup type: hourly, daily, weekly, monthly
+DRY_RUN_RAW="${2:-0}" # flexible dry-run param: 1/0/true/false/yes/no
+DEBUG_RAW="${3:-0}"   # flexible debug param: 1/0/true/false/yes/no
+MIN_FILES=3           # safety net: always leave at least this many backups
 
 # -------------------------
 # Flexible Dry-Run Parsing
@@ -126,12 +126,18 @@ log "Number of files to delete after MIN_FILES guard: $NUM_TO_DELETE"
 # Compute space to free (BusyBox-safe)
 # -------------------------
 TOTAL_BYTES=0
+FILE_LIST_JSON="["
+
 for f in "${FILES_TO_DELETE[@]}"; do
     [[ -f "$f" ]] || continue
     SIZE=$(ls -ln "$f" | awk '{print $5}')  # $5 = size in bytes
     TOTAL_BYTES=$(( TOTAL_BYTES + SIZE ))
+    FILE_LIST_JSON+="\"$f\","
     log "File: $f, Size: $SIZE bytes"
 done
+
+# Remove trailing comma for JSON
+FILE_LIST_JSON="${FILE_LIST_JSON%,}]"
 
 SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_BYTES/1024/1024}")
 SIZE_GB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_BYTES/1024/1024/1024}")
@@ -141,11 +147,30 @@ log "Total space to free: $TOTAL_BYTES bytes ($SIZE_MB MB / $SIZE_GB GB)"
 # Dry-run vs actual deletion
 # -------------------------
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "Dry-run [$TYPE]: would delete ${#FILES_TO_DELETE[@]} file(s), freeing ${SIZE_MB} MB (${SIZE_GB} GB)"
+    RESULT_MSG="Dry-run [$TYPE]: would delete ${#FILES_TO_DELETE[@]} file(s), freeing ${SIZE_MB} MB (${SIZE_GB} GB)"
 else
     for f in "${FILES_TO_DELETE[@]}"; do
         rm -f "$f"
         log "Deleted file: $f"
     done
-    echo "Cleanup [$TYPE]: deleted ${#FILES_TO_DELETE[@]} file(s), freed ${SIZE_MB} MB (${SIZE_GB} GB)"
+    RESULT_MSG="Cleanup [$TYPE]: deleted ${#FILES_TO_DELETE[@]} file(s), freed ${SIZE_MB} MB (${SIZE_GB} GB)"
 fi
+
+if [[ "$DEBUG" -eq 1 ]]; then
+    echo "$RESULT_MSG"
+fi
+
+# -------------------------
+# JSON Summary Output
+# -------------------------
+cat <<EOF
+{
+  "type": "$TYPE",
+  "dry_run": $( [[ "$DRY_RUN" -eq 1 ]] && echo true || echo false ),
+  "total_files": $TOTAL_FILES,
+  "files_to_delete": ${#FILES_TO_DELETE[@]},
+  "space_to_free_MB": $SIZE_MB,
+  "space_to_free_GB": $SIZE_GB,
+  "files": $FILE_LIST_JSON
+}
+EOF
