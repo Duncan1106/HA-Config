@@ -4,8 +4,7 @@ set -euo pipefail
 # -------------------------
 # Bash safety tweaks
 # -------------------------
-# Nullglob prevents unmatched globs from expanding to literal strings
-shopt -s nullglob
+shopt -s nullglob  # nullglob prevents unmatched globs from returning literal strings
 
 # -------------------------
 # Configuration
@@ -16,7 +15,15 @@ DRY_RUN="${2:-0}"       # pass 1 for dry-run
 MIN_FILES=3             # safety net: always leave at least this many backups
 
 # -------------------------
-# Validate input
+# Validate DRY_RUN
+# -------------------------
+if ! [[ "$DRY_RUN" =~ ^[0-1]$ ]]; then
+    echo "Invalid DRY_RUN value '$DRY_RUN', defaulting to 0"
+    DRY_RUN=0
+fi
+
+# -------------------------
+# Validate TYPE and BACKUP_DIR
 # -------------------------
 if [[ -z "$TYPE" ]]; then
   echo "ERROR: no backup type specified"
@@ -55,23 +62,27 @@ case "$TYPE" in
 esac
 
 # -------------------------
-# Determine files to delete
+# Collect all files for safety guard
 # -------------------------
-# Collect all files matching the pattern
 ALL_FILES=( "$BACKUP_DIR"/$PATTERN )
 TOTAL_FILES=${#ALL_FILES[@]}
 
-# Find deletable files by mtime
-FILES_TO_DELETE=( $(find "$BACKUP_DIR" -name "$PATTERN" -type f -mtime "$MTIME" -print 2>/dev/null) )
+# -------------------------
+# Collect files to delete safely (preserving filenames with spaces)
+# -------------------------
+mapfile -d '' FILES_TO_DELETE < <(
+    find "$BACKUP_DIR" -name "$PATTERN" -type f -mtime "$MTIME" -print0 |
+    xargs -0 stat --format '%Y %n' |
+    sort -n |
+    cut -d' ' -f2- |        # preserve full filenames, including spaces
+    tr '\n' '\0'
+)
 NUM_TO_DELETE=${#FILES_TO_DELETE[@]}
 
-# Apply minimum file guard
+# Apply minimum file guard, preserving newest backups
 if (( TOTAL_FILES - NUM_TO_DELETE < MIN_FILES )); then
     NUM_TO_DELETE=$(( TOTAL_FILES - MIN_FILES ))
-    if (( NUM_TO_DELETE < 0 )); then
-        NUM_TO_DELETE=0
-    fi
-    # Trim the array to the allowed number of files
+    (( NUM_TO_DELETE < 0 )) && NUM_TO_DELETE=0
     FILES_TO_DELETE=( "${FILES_TO_DELETE[@]:0:$NUM_TO_DELETE}" )
 fi
 
@@ -80,10 +91,9 @@ fi
 # -------------------------
 TOTAL_BYTES=0
 for f in "${FILES_TO_DELETE[@]}"; do
-    if [[ -f "$f" ]]; then
-        SIZE=$(stat -c %s "$f")
-        TOTAL_BYTES=$(( TOTAL_BYTES + SIZE ))
-    fi
+    [[ -f "$f" ]] || continue
+    SIZE=$(stat -c %s "$f")
+    TOTAL_BYTES=$(( TOTAL_BYTES + SIZE ))
 done
 
 SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_BYTES/1024/1024}")
