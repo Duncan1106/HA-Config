@@ -13369,7 +13369,7 @@
 - id: '1769287041355'
   alias: 'System: GFS Backup Cleanup Report'
   description: Runs generational backup cleanup and sends rich summary to UI and stripped
-    text to Duncan
+    text to Duncan. Includes error handling and failure counts.
   triggers:
   - trigger: time
     at: '20:00:00'
@@ -13395,24 +13395,58 @@
       dry_run: 0
     response_variable: monthly
   - variables:
-      report_json: "{% set results = [hourly, daily, weekly, monthly] %} {% set ns
-        =\nnamespace(total_mb=0, total_files=0, list=\"\") %} {% for r in results
-        if\nr.stdout is defined and r.stdout | trim != \"\" %}\n  {% set data = r.stdout
-        | from_json %}\n  {% set ns.list = ns.list + \"- **\" + data.type | capitalize
-        + \":** \" + data.files_to_delete | string + \" files (\" + data.space_to_free_MB
-        | string + \" MB)\\n\" %}\n  {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB
-        | float(0)) %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete
-        | int(0)) %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb /
-        1024) |\nround(2), 'count': ns.total_files} }}\n"
-  - action: notify.persistent_notification
-    data:
-      title: "\U0001F4BE Backup Cleanup Summary"
-      message: "{% set info = report_json %}\n### Generational Cleanup Status\n\n{{
-        info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
-        Files Removed:** {{ info.count }}\n"
-  - action: notify.duncan
-    data:
-      title: NAS Maintenance Complete
-      message: "{% set info = report_json %}\nBackup cleanup report for today:\n\n
-        \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
-        }} GB.\n"
+      results: '{{ [hourly, daily, weekly, monthly] }}'
+      failed_count: '{{ results | selectattr(''returncode'', ''ne'', 0) | list | count
+        }}'
+      any_failed: '{{ failed_count > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ any_failed }}'
+      sequence:
+      - action: notify.persistent_notification
+        data:
+          title: ❌ Cleanup Failed ({{ failed_count }} error{{ 's' if failed_count
+            > 1 else '' }})
+          message: '**Status Report:**
+
+            - Hourly: {{ ''✅ OK'' if hourly.returncode == 0 else ''❌ FAIL ('' ~ hourly.returncode
+            ~ '')'' }}
+
+            - Daily: {{ ''✅ OK'' if daily.returncode == 0 else ''❌ FAIL ('' ~ daily.returncode
+            ~ '')'' }}
+
+            - Weekly: {{ ''✅ OK'' if weekly.returncode == 0 else ''FAIL ('' ~ weekly.returncode
+            ~ '')'' }}
+
+            - Monthly: {{ ''✅ OK'' if monthly.returncode == 0 else ''FAIL ('' ~ monthly.returncode
+            ~ '')'' }}
+
+
+            The maintenance report was not sent to Duncan.
+
+            '
+      - stop: Cleanup failed with {{ failed_count }} error(s).
+    default:
+    - variables:
+        report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
+          %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
+          %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
+          + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete |
+          string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\" %}\n
+          \ {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
+          %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete | int(0))
+          %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb / 1024) |
+          round(2), 'count': ns.total_files} }}\n"
+    - action: notify.persistent_notification
+      data:
+        title: "\U0001F4BE Backup Cleanup Summary"
+        message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
+          info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
+          Files Removed:** {{ info.count }}\n"
+    - action: notify.duncan
+      data:
+        title: NAS Maintenance Complete
+        message: "{% set info = report_json %}\nBackup cleanup report for today:\n
+          \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
+          }} GB.\n"

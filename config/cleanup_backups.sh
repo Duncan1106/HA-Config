@@ -45,6 +45,17 @@ log() {
     fi
 }
 
+# -------------------------
+# JSON escaping function
+# -------------------------
+json_escape() {
+    local s="$1"
+    s="${s//\\/\\\\}"   # escape backslashes
+    s="${s//\"/\\\"}"   # escape double quotes
+    s="${s//$'\n'/\\n}" # escape newlines
+    printf '%s' "$s"
+}
+
 log "Backup type: $TYPE"
 log "Backup directory: $BACKUP_DIR"
 log "Dry-run mode: $DRY_RUN"
@@ -135,7 +146,7 @@ for f in "${FILES_TO_DELETE[@]}"; do
     [[ -f "$f" ]] || continue
     SIZE=$(ls -ln "$f" | awk '{print $5}')  # $5 = size in bytes
     TOTAL_BYTES=$(( TOTAL_BYTES + SIZE ))
-    FILE_LIST_JSON+="\"$f\","
+    FILE_LIST_JSON+="\"$(json_escape "$f")\","
     log "File: $f, Size: $SIZE bytes"
 done
 
