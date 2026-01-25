@@ -949,6 +949,19 @@ warmelampe:
           notify_service: notify.duncan
           target_state: 'off'
           entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: light.esp32_c3_mini_bett_nachtlicht_bettlicht
   - alias: Nightime
     if:
     - condition: and
@@ -1409,14 +1422,19 @@ restart_internet:
         minutes: 10
         seconds: 0
         milliseconds: 0
-      continue_on_timeout: false
+      continue_on_timeout: true
       alias: Warte auf Wiederherstellung der Internetverbindung
-    - alias: Benachrichtigung bei erfolgreichem Internet-Restore
-      action: notify.duncan
-      metadata: {}
-      data:
-        title: Internet
-        message: Verbindung wiederhergestellt
+    - if:
+      - condition: template
+        value_template: '{{ wait.completed }}'
+      then:
+      - alias: Benachrichtigung bei erfolgreichem Internet-Restore
+        action: notify.duncan
+        metadata: {}
+        data:
+          title: Internet
+          message: Verbindung wiederhergestellt
+      alias: notify only if wait is completed
     - action: automation.turn_on
       metadata: {}
       target:
@@ -1498,25 +1516,6 @@ restart_internet:
             notify_service: notify.duncan
             target_state: 'off'
             entity_id: light.ganglicht_zigbee_led
-        - if:
-          - condition: numeric_state
-            entity_id: light.orangina_local
-            attribute: brightness
-            below: 50
-          then:
-          - action: script.retry_action_with_backoff
-            metadata: {}
-            data:
-              action_domain: light
-              action_type: turn_off
-              max_retries: 10
-              base_delay: 5
-              max_delay: 60
-              backoff_type: simple
-              notify_on_failure: true
-              notify_service: notify.duncan
-              target_state: 'off'
-              entity_id: light.orangina_local
   alias: 5 Min Turn Off Ganglicht
   description: ''
   mode: restart
@@ -2112,3 +2111,74 @@ adjust_input_number:
         }}
 
         '
+notify_people_at_home_with_fallbacks:
+  alias: Notify People at Home (With Fallbacks)
+  description: Sends a notification to people home, with default values if fields
+    are missing.
+  fields:
+    message:
+      description: The main body of the notification
+      example: The garage is open
+      required: true
+    title:
+      description: '''Fallback: ''Home Assistant'''
+      example: Security
+    tag:
+      description: 'Fallback: ''general_notification'''
+      example: garage_status
+    color:
+      description: Optional notification color (e.g. red)
+    notification_icon:
+      description: Optional notification icon (e.g. mdi:alert)
+  sequence:
+  - variables:
+      final_title: "{{ title if title is defined and title | trim | length > 0\n   else
+        'Home Assistant' }}"
+      final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
+        }}"
+      notify_data: "{% set base_data = dict(tag=final_tag) %} {% if color is defined
+        and color %}\n  {% set base_data = base_data | combine(dict(color=color))
+        %}\n{% endif %} {% if notification_icon is defined and notification_icon %}\n
+        \ {% set base_data = base_data | combine(dict(notification_icon=notification_icon))
+        %}\n{% endif %} {{ dict(message=message, title=final_title, data=base_data)
+        }}"
+  - if:
+    - condition: template
+      value_template: '{{ message == ''clear_notification'' }}'
+    then:
+    - action: notify.familie
+      data:
+        message: '{{ message }}'
+        data:
+          tag: '{{ final_tag }}'
+    else:
+    - if:
+      - condition: state
+        entity_id: binary_sensor.anyone_home
+        state:
+        - 'on'
+      then:
+      - repeat:
+          for_each:
+          - person: person.stephan
+            service: mobile_app_stephan_iphone
+          - person: person.katalin
+            service: mobile_app_fp4
+          - person: person.enya
+            service: mobile_app_iphone_von_enya
+          - person: person.duncan
+            service: duncan
+          sequence:
+          - if:
+            - condition: template
+              value_template: '{{ is_state(repeat.item.person, ''home'') }}'
+            then:
+            - action: notify.{{ repeat.item.service }}
+              continue_on_error: true
+              data: '{{ notify_data }}'
+      else:
+      - action: notify.familie
+        metadata: {}
+        data: '{{ notify_data }}'
+  mode: parallel
+  max: 50

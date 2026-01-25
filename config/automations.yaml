@@ -570,14 +570,6 @@
           notification_icon: mdi:restart
           tag: ha_start
       action: notify.duncan
-    - action: hassio.addon_restart
-      metadata: {}
-      data:
-        addon: de91e161_hassio_onedrive_backup
-    - action: hassio.addon_restart
-      metadata: {}
-      data:
-        addon: cebe7a76_hassio_google_drive_backup
     - delay:
         hours: 0
         minutes: 1
@@ -588,11 +580,6 @@
       data:
         command: Locate Device(s) using iCloud
         device_name: 3675fe049f5a257fe6eebb6533252e74
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 15
-        milliseconds: 0
     - action: icloud3.action
       metadata: {}
       data:
@@ -627,31 +614,6 @@
         at {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True)
         }}.
       notification_title: The {{ friendly_name | default('Garage') }} was left open
-- id: '1706024033086'
-  alias: 'Waschküche Fenster Offen '
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.waschkuche_fenster_contact
-      friendly_name: 'Waschküche Fenster '
-      notification_click_url: /lovelace
-      duration_issue_state:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
-      notify_services_string: notify.mobile_app_poco_f7
-      notification_message: Das {{ friendly_name | default('Waschküche Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      notification_title: '{{ friendly_name | default(''Waschküche Fenster'') }} offen'
-      repeat_notification: true
-      time_between_repeat_notification:
-        hours: 3
-        minutes: 0
-        seconds: 0
-        days: 0
 - id: '1706398043305'
   alias: 'Spülmaschine fertig '
   description: ''
@@ -2749,21 +2711,24 @@
   mode: single
 - id: '1719828773465'
   alias: Speedtest using Speed test CLI Addon
-  description: "## ⚡ Hourly Internet Speedtest Automation\n\n### \U0001F4CB Purpose\nRuns
-    the **Speedtest CLI Add-on** every hour to monitor internet connection performance.
+  description: "## ⚡ Internet Speedtest Automation\n\n### \U0001F4CB Purpose\nRuns
+    the **Speedtest CLI Add-on** every 2 hours to monitor internet connection performance.
     This helps track latency, download, and upload speeds over time for diagnostics
-    and monitoring purposes.\n\n---\n\n### ⏱ Trigger\n- Every hour using a time pattern
-    (`hours: /1`).\n\n---\n\n### ✅ Conditions\n- None; the automation runs unconditionally
-    every hour.\n\n---\n\n### \U0001F3AF Actions / Workflow\n- Executes the script
-    with ID `script.1707895746671`, which triggers the Speedtest CLI add-on to perform
-    a speed test.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` ensures
-    that a new test won’t start if the previous one is still running.\n- Can be extended
-    to log results or send notifications if thresholds are exceeded."
+    and monitoring purposes.\n\n---\n\n### ⏱ Trigger\n- Every 2 hours using a time
+    pattern (`hours: /2`).\n\n---\n\n### ✅ Conditions\n- None; the automation runs
+    unconditionally every 2 hours.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
+    Random Delay between 0 and 300 seconds\n- Executes the script with ID `script.1707895746671`,
+    which triggers the Speedtest CLI add-on to perform a speed test.\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` ensures that a new test won’t start
+    if the previous one is still running.\n- Can be extended to log results or send
+    notifications if thresholds are exceeded."
   triggers:
-  - hours: /1
+  - hours: /2
     trigger: time_pattern
   conditions: []
   actions:
+  - delay:
+      seconds: '{{ range(0, 301) | random }}'
   - metadata: {}
     data: {}
     action: script.1707895746671
@@ -3532,24 +3497,6 @@
             data: {}
             target:
               entity_id: '{{ light_treppenlicht }}'
-        - if:
-          - condition: or
-            conditions:
-            - condition: numeric_state
-              entity_id: light.orangina_local
-              attribute: brightness
-              below: 50
-            - condition: state
-              entity_id: light.orangina_local
-              state:
-              - 'off'
-          then:
-          - action: light.turn_on
-            metadata: {}
-            target:
-              entity_id: light.orangina_local
-            data:
-              brightness_pct: 15
       enabled: true
   - alias: Turn off after 5min
     if:
@@ -4049,8 +3996,8 @@
     backups according to defined\n  retention periods.\n\n  ---\n\n  ### ⏰ **Triggers**\n
     \ | Trigger Type        | Time / Interval | Trigger ID  |\n  |--------------------|----------------|------------|\n
     \ | Daily backup        | 02:30:00       | daily      |\n  | Hourly backup       |
-    Every 8 hours  | backup_8h     |\n\n  > **Note:** Hourly backups occur every N
-    hours as defined by the `hours` pattern,  \n  daily backups are always scheduled
+    Every 4 hours  | backup_config     |\n\n  > **Note:** Hourly backups occur every
+    N hours as defined by the `hours` pattern,  \n  daily backups are always scheduled
     at 2:30 AM.  \n\n  ---\n\n  ### ✅ **Conditions**\n  - None. Backup creation depends
     solely on the triggers and enabled intervals.  \n\n  ---\n\n  ### \U0001F3AF **Actions
     / Workflow**\n  **1. Yearly Backup**\n  - Trigger: Daily backup, only on Jan 1
@@ -4064,7 +4011,7 @@
     ~30 days.  \n  - Alias: `\"Creating Weekly Backup\"`.\n\n  **4. Daily Backup**\n
     \ - Trigger: Daily backup if `enable_daily` is true.  \n  - Retention: 7 days.
     \ \n  - Alias: `\"Creating Daily Backup\"`.\n\n  **5. Hourly Backup**\n  - Trigger:
-    Every 8 hours if `enable_hourly` is true.  \n  - Retention: 1 day.  \n  - Creates
+    Every 4 hours if `enable_hourly` is true.  \n  - Retention: 1 day.  \n  - Creates
     partial backups excluding media, share, ssl, addons, and database to reduce storage
     usage.  \n  - Alias: `\"Creating Hourly Partial Backup\"`.\n\n  **General Notes
     on Workflow**\n  - Each backup action generates a descriptive name:\n    - `HourlyBackup:
@@ -4088,9 +4035,9 @@
   - id: daily
     at: 02:30:00
     trigger: time
-  - id: backup_8h
+  - id: backup_config
     enabled: true
-    hours: /8
+    hours: /4
     trigger: time_pattern
   conditions: []
   actions:
@@ -4336,6 +4283,8 @@
             password: '{{ password }}'
             keep_days: '{{ keep_days }}'
             exclude_database: true
+            download_path:
+            - /share/NAS_Share/Backup/
             include_folders:
             - config
             exclude_folders:
@@ -4349,6 +4298,8 @@
           name: '{{ name }}'
           password: '{{ password }}'
           keep_days: '{{ keep_days }}'
+          download_path:
+          - /share/NAS_Share/Backup/
           include_folders:
           - config
           exclude_addons:
@@ -4410,91 +4361,8 @@
     subtype: hold
     trigger: device
     id: hold
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_left_down
-    trigger: device
-    id: single
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_right_down
-    trigger: device
-    id: double
   conditions: []
   actions:
-  - alias: SINGLE
-    if:
-    - condition: trigger
-      id:
-      - single
-    then:
-    - sequence:
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.schreibtisch_rechts_power_strip_l5
-          - switch.schreibtisch_links_power_strip_l1
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_links_l1
-          - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_links_l2
-          - switch.desk_paludarium_turm_rechts_l1
-          - switch.desk_paludarium_turm_links_l2
-          - switch.desk_paludarium_turm_links_l3
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 15
-          milliseconds: 0
-      - action: switch.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_links_l1
-          - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_links_l2
-          - switch.desk_paludarium_turm_rechts_l1
-          - switch.desk_paludarium_turm_links_l2
-          - switch.desk_paludarium_turm_links_l3
-  - alias: DOUBE
-    if:
-    - condition: trigger
-      id:
-      - double
-    then:
-    - sequence:
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.desk_paludarium_links_l1
-          - switch.desk_paludarium_turm_rechts_l3
-          - switch.desk_paludarium_links_l2
-          - switch.desk_paludarium_turm_rechts_l1
-          - switch.desk_paludarium_turm_links_l2
-          - switch.desk_paludarium_turm_links_l3
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
-          milliseconds: 0
-      - action: switch.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.schreibtisch_rechts_power_strip_l5
-          - switch.schreibtisch_links_power_strip_l1
   - alias: HOLD
     if:
     - condition: trigger
@@ -4521,75 +4389,110 @@
           - switch.schreibtisch_rechts_power_strip_l2
           - switch.schreibtisch_rechts_power_strip_l3
   mode: restart
-- id: '1733064187070'
-  alias: Kinderbad Fenster Open
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.kinderbad_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Kinderbad Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Kinderbad Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 10
-        seconds: 0
-        days: 0
-      repeat_notification: false
-      time_between_repeat_notification:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        days: 0
-- id: '1733907310581'
+- id: bad_window_monitor
   alias: Bad Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.bad_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Bad Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Bad Fenster') }} ist offen
-        seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 10
-        seconds: 0
-        days: 0
-      duration_from_issue_state:
-        hours: 0
-        minutes: 0
-        seconds: 5
-        days: 0
-      delete_notification: true
-- id: '1734198692426'
+  description: Monitors Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.bad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.bad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.bad_fenster_contact
+    custom_friendly_name: Bad Fenster
+    notification_tag: bad_window_alert
+- id: gasteklo_window_monitor
   alias: Gästeklo Fenster Offen
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.gasteklo_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Gästeklo Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Gästeklo Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
-      duration_issue_state:
-        hours: 0
-        minutes: 15
-        seconds: 0
-        days: 0
-      notification_color: red
-      repeat_notification: true
-      time_between_repeat_notification:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
+  description: Monitors Guest Toilet window and repeats notification every hour if
+    left open.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 1
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.gasteklo_fenster_contact
+    custom_friendly_name: Gästeklo Fenster
+    notification_tag: gasteklo_window_alert
 - id: '1734549334887'
   alias: Nightly Battery Energy Charged
   description: ''
@@ -5163,36 +5066,103 @@
           filename: /media/Gesamt_Kosten.csv
           destination_folder: /Media/
   mode: single
-- id: '1737391740399'
+- id: hobbyraum_window_monitor
   alias: Hobbyraum kleines Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.hobbyraum_kleines_fenster_contact
-      duration_issue_state:
-        hours: 1
-        minutes: 0
-        seconds: 0
-        days: 0
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Hobbyraum Fenster'') }} offen'
-      notification_message: Das {{ friendly_name | default('Hobbyraum Fenster') }}
-        ist offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom('%T',
-        True) }}.
+  description: Monitors Hobby Room window and notifies if left open for 1 hour.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
+    to: 'on'
+    for:
+      hours: 1
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ custom_friendly_name }} offen'
+          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+            | timestamp_custom('%H:%M', True) }}.
+          tag: '{{ notification_tag }}'
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.hobbyraum_kleines_fenster_contact
+    custom_friendly_name: Hobbyraum kleines Fenster
+    notification_tag: hobbyraum_window_alert
 - id: '1737391841418'
   alias: Duncan Fenster offen
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.duncan_fenster_contact
-      notify_services_string: notify.familie
-      notification_title: '{{ friendly_name | default(''Duncans Fenster'') }} offen'
-      notification_message: '{{ friendly_name | default(''Duncans Fenster'') }} ist
-        offen seit {{ as_timestamp(trigger.to_state.last_changed) | timestamp_custom(''%T'',
-        True) }}.'
-      repeat_notification: false
+  description: Monitors Duncan's window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.duncan_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.duncan_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          title: Closed
+          tag: '{{ notification_tag }}'
+  mode: restart
+  max_exceeded: silent
+  variables:
+    trigger_entity: binary_sensor.duncan_fenster_contact
+    custom_friendly_name: Duncans Fenster
+    notification_tag: duncan_window_alert
 - id: '1738024300699'
   alias: Notify When UPS Changes State
   description: This automation sends a notification when the UPS changes its state,
@@ -6621,41 +6591,6 @@
     entity_id: af40e8a58cc2a5090f6b0680f852e07b
     domain: switch
   mode: single
-- id: '1745964630082'
-  alias: Delete old daily backups if storage gets low
-  description: "## \U0001F9F9 **Auto Backup Cleanup — Smart Storage Management** \n\n###
-    \U0001F3AF **Purpose** \n\nThis automation maintains the **USB backup storage**
-    by automatically deleting old **daily**, **weekly**, and **monthly** backups every
-    20h. It helps prevent disk saturation while keeping essential restore points intact.\n\n---
-    \ \n\n### ⏰ **Trigger Frequency** \n\n- Executes **every 20 hours**, ensuring
-    storage is regularly monitored and managed.  \n\n---  \n\n### ⚙️ **How It Works**\n\nEach
-    run initiates a set of cleanup shell commands that remove backups older than their
-    defined retention period.  This process keeps storage usage efficient while maintaining
-    a healthy backup rotation schedule.  \n\n---  \n\n### \U0001F9E0 **Logic Highlights**\n\n-
-    Removes only **expired backups**, protecting recent ones.\n- Ensures reliable
-    long-term operation without manual cleanup.  \n\n---  \n\n### \U0001F9F0 **Executed
-    Cleanup Commands**\n\n#### \U0001F5D3 **Daily Backup Cleanup (older than 7 days)**\n\n```
-    find /share/USBMEDIABACKUP_Share/Backup/ -name 'DailyBackup*' -type f -mtime +7
-    -delete ```\n\n#### \U0001F4C6 **Weekly Backup Cleanup (older than 60 days)**\n\n```
-    find /share/USBMEDIABACKUP_Share/Backup/ -name 'WeeklyBackup*.tar' -type f -mtime
-    +60 -delete ```\n\n#### \U0001F5C3 **Monthly Backup Cleanup (older than 120 days)**\n\n```
-    find /share/USBMEDIABACKUP_Share/Backup/ -name 'MonthlyBackup*.tar' -type f -mtime
-    +120 -delete ``` "
-  triggers:
-  - trigger: time_pattern
-    hours: /20
-  conditions: []
-  actions:
-  - action: shell_command.delete_old_backups_disk
-    metadata: {}
-    data: {}
-  - action: shell_command.delete_old_weekly_backups_disk
-    metadata: {}
-    data: {}
-  - action: shell_command.delete_old_monthly_backups_disk
-    metadata: {}
-    data: {}
-  mode: single
 - id: '1746353652230'
   alias: Wohnzimmer Restore
   description: ''
@@ -7151,6 +7086,7 @@
         minutes: 1
         seconds: 0
         milliseconds: 0
+    alias: 'Delay when triggered by startup '
   - action: mqtt.publish
     metadata: {}
     data:
@@ -7436,7 +7372,7 @@
     | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
     > `number.inverter_battery_capacity`  \n- `sensor.felicity_ess_soc_avg` > **99%**
     \ \n\n---\n\n### \U0001F3AF **Correction Logic**  \n\n#### **Step 1**  \n- Increase
-    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **10s**  \n\n####
+    inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **30s**  \n\n####
     **Step 3**  \n- Decrease inverter’s capacity value by **-1**  \n\n---\n\n### \U0001F527
     **Technical Specs**  \n- **Target Number Entity:** `number.inverter_battery_capacity`
     \ \n- **Sensors Used:**  \n  - `sensor.inverter_battery_corrected_capacity`  \n
@@ -7472,7 +7408,7 @@
   - delay:
       hours: 0
       minutes: 0
-      seconds: 10
+      seconds: 30
       milliseconds: 0
   - action: number.set_value
     metadata: {}
@@ -7484,6 +7420,7 @@
     target:
       entity_id: number.inverter_battery_capacity
   mode: single
+  max_exceeded: silent
 - id: '1750196437853'
   alias: Octopus night usage, turn battery off
   description: "\n  ## ⚡ Octopus Night Usage Automation\n\n  ### \U0001F4CB **EV &
@@ -7597,9 +7534,9 @@
       if car_11kw else 0)) %}\n    {% set grid = states('sensor.grid_import') | float(0)
       %}\n    {% set octopus = is_state('binary_sensor.octopus_a_10a76963_volkswagen_id_4_intelligent_dispatching','on')
       or is_state('input_select.octopus_night_time','Dumb') %}\n    {% set battery_discharging
-      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {{ (car_22kw or
-      car_11kw) and octopus and power_goes > 50 and grid < power_goes and battery_discharging
-      }}"
+      = states('sensor.battery_discharge')| float(0) > 50 %}\n    {% set night_time
+      = now().hour < 5 %}\n    {{ (car_22kw or car_11kw) and octopus and power_goes
+      > 50 and grid < power_goes and battery_discharging and night_time }}"
     for:
       hours: 0
       minutes: 0
@@ -8313,6 +8250,10 @@
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
+      - condition: state
+        entity_id: sensor.go_e_11kw_car
+        state:
+        - ID.4
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -8357,6 +8298,10 @@
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
+      - condition: state
+        entity_id: sensor.go_e_11kw_car
+        state:
+        - ID.4
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -8514,6 +8459,9 @@
         - condition: state
           entity_id: input_select.octopus_night_time
           state: Dumb
+      - condition: time
+        after: 00:00:00
+        before: 05:00:00
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -8731,7 +8679,8 @@
     condition: template
     value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}'
   actions:
-  - repeat:
+  - alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
+    repeat:
       until:
       - condition: or
         conditions:
@@ -8743,29 +8692,36 @@
           value_template: '{{ repeat.index >= max_retries }}'
           alias: Maximale Anzahl Neustartversuche erreicht
       sequence:
-      - variables:
-          restart_result: {}
-        alias: Lokale Variable für Rückgabewert des Scripts setzen
       - action: script.restart_internet
         data:
           called_by_automation: true
-        response_variable: restart_result
-        alias: Starte Router-Neustart-Script mit Rückgabewert
+        alias: Router neu starten
       - if:
-        - condition: template
-          value_template: '{{ restart_result is defined and (restart_result.wait.completed
-            | default(true)) == false }}
-
-            '
+        - condition: state
+          entity_id: binary_sensor.internet_connection
+          state:
+          - 'off'
+        then:
+        - wait_for_trigger:
+          - trigger: state
+            entity_id: binary_sensor.internet_connection
+            to: 'on'
+            for: 00:00:30
+          timeout: 00:05:00
+          continue_on_timeout: true
+          alias: Warte auf Internet nach Neustart
+        alias: Wait for reconnect if not already reconnected
+      - if:
+        - condition: state
+          entity_id: binary_sensor.internet_connection
+          state: 'off'
         then:
         - delay:
-            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %}  {{ [delay, 15]
+            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %} {{ [delay, 15]
               | min }}
 
               '
-          alias: Backoff-Delay vor nächstem Versuch
-        alias: Prüfe, ob Neustart fehlgeschlagen → dann warten
-    alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
+          alias: Backoff vor nächstem Versuch
   - alias: Benachrichtigung bei endgültigem Fehler
     sequence:
     - condition: not
@@ -9736,7 +9692,7 @@
             notify_service: notify.duncan
             entity_id: '{{ fan_kallax }}'
             target_state: 'off'
-        alias: Lights
+        alias: Fans
     - if:
       - condition: template
         value_template: '{{ is_state(main_left, ''on'') }}'
@@ -9773,6 +9729,51 @@
           notify_service: notify.duncan
           entity_id: '{{ main_right }}'
           target_state: 'off'
+    - alias: Kallax OFF
+      if:
+      - condition: template
+        value_template: '{{ is_state(light_kallax,''on'') or is_state(pump_kallax,''on'')
+          or is_state(fan_kallax,''on'') }}'
+      then:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ light_kallax }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ pump_kallax }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ fan_kallax }}'
+          target_state: 'off'
   mode: single
   max_exceeded: silent
 - id: '1755587220350'
@@ -9787,13 +9788,13 @@
     ensuring the system has reached\n  a stable state before attempting to launch
     the exporter service.\n\n  ---\n\n  ### Trigger Overview Table\n\n  | Type | Entity
     / Condition | ID | Purpose |\n  | :--- | :--- | :--- | :--- |\n  | **Time Pattern**
-    | Every **1 hour** | `hourly` | Periodic synchronization of GitHub data. |\n  |
-    **Event** | `event_mqtt_reloaded` | `reload` | Start export due to changes in
-    MQTT. |\n  | **Event** | `event_template_reloaded` | `reload` | Start export due
-    to changes in Templates. |\n\n  ---\n\n  #### \U0001F504 Scheduled Maintenance
-    Mode\n\n  - **Purpose**: Regular, periodic export intervals.\n  - **Logic Overview**:
-    Triggered at the start of every hour (e.g., 1:00, 2:00)\n    regardless of system
-    state.\n  - **Effect**: Immediately calls the start service for the **GitHub Exporter**\n
+    | Every **1 hour** | `1h` | Periodic synchronization of GitHub data. |\n  | **Event**
+    | `event_mqtt_reloaded` | `reload` | Start export due to changes in MQTT. |\n
+    \ | **Event** | `event_template_reloaded` | `reload` | Start export due to changes
+    in Templates. |\n\n  ---\n\n  #### \U0001F504 Scheduled Maintenance Mode\n\n  -
+    **Purpose**: Regular, periodic export intervals.\n  - **Logic Overview**: Triggered
+    at the start of every hour (e.g., 1:00, 2:00)\n    regardless of system state.\n
+    \ - **Effect**: Immediately calls the start service for the **GitHub Exporter**\n
     \   add-on.\n\n  #### ⏳ Delayed Export After Reload\n\n  - **Purpose**: Trigger
     an export after system configuration changes while avoiding duplicate runs.\n
     \ - **Logic Overview**: Triggered by internal Home Assistant reload events\n    (`event_mqtt_reloaded`
@@ -9818,7 +9819,7 @@
   triggers:
   - trigger: time_pattern
     hours: /1
-    id: hourly
+    id: 1h
   - trigger: event
     event_type: event_mqtt_reloaded
     id: reload
@@ -9834,9 +9835,11 @@
     - delay:
         minutes: 5
     alias: Wait when reloaded
-  - data:
-      addon: 68413af6_git-exporter
-    action: hassio.addon_start
+  - action: switch.turn_on
+    metadata: {}
+    target:
+      entity_id: switch.home_assistant_git_exporter
+    data: {}
   mode: restart
 - id: '1757084399628'
   alias: Turn Off Bett Plug Right Over 30W
@@ -9880,10 +9883,53 @@
   mode: single
 - id: '1757273749465'
   alias: Garage Oven Vacuum Power Control
-  description: Automates scheduled power on/off of the garage door, vacuum cleaner
-    and oven according to the smart home status (Daily or Vacation). At 23:00 it turns
-    them off, at 04:00 it turns them on, and in vacation mode it immediately switches
-    them off.
+  description: "⚡ **Garage Oven Vacuum Power Control**\n\n### \U0001F4CB Intelligent
+    Power Management System Control\n\nThis automation manages the operational state
+    of high-drain or specialized garage appliances, specifically the **Garage Door**,
+    **Vacuum**, and **Oven**. It is designed to optimize energy usage by enforcing
+    a nighttime \"deep sleep\" period while ensuring devices are ready for use during
+    the day.\n\n**Operational Strategy:**\n* **Status-Aware Execution:** Logic branches
+    based on whether the home is in **Daily** or **Vacation** mode.\n* **Persistence
+    & Reliability:** Instead of single commands, this system utilizes a `retry_action_with_backoff`
+    script. This ensures that even if a device is momentarily unavailable (common
+    with Tasmota/Wi-Fi devices), the system will attempt to reach the target state
+    up to **10 times** with escalating delays.\n* **Startup Recovery:** Includes a
+    synchronization phase after Home Assistant restarts to ensure entities are fully
+    initialized before commands are dispatched.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time**
+    | 23:00:00 | 23 | Initiates nighttime power-down sequence. |\n| **Time** | 04:00:00
+    | 4 | Initiates early morning power-up sequence. |\n| **Home Assistant** | Start
+    | Start | Ensures device states are corrected after a system reboot. |\n\n---\n\n###
+    Operational Logic Sections\n\n#### \U0001F319 Nighttime Shutdown (Daily Mode)\n*
+    **Purpose:** Conserve energy by disabling devices during late-night hours.\n*
+    **Logic Overview:** Triggered at **23:00** or **Startup** (if between 23:00 and
+    04:00), provided `input_select.smart_home_status` is set to **Daily**.\n* **Effect:**
+    Sets **switch.garagentor_tasmota**, **switch.sauger_tasmota**, and **switch.backofen_tasmota**
+    to **off** using a simple backoff retry logic.\n\n#### ☀️ Daytime Activation (Daily
+    Mode)\n* **Purpose:** Restore power to garage appliances for daily use.\n* **Logic
+    Overview:** Triggered at **04:00** or **Startup** (if between 04:00 and 22:59),
+    provided the status is **Daily**.\n* **Effect:** Restores power (**on**) to all
+    three Tasmota switches. If triggered by a system start, the automation waits up
+    to 1 minute for entities to report a valid state before proceeding.\n\n#### ✈️
+    Vacation Mode\n* **Purpose:** Maximum safety and energy savings during extended
+    absence.\n* **Logic Overview:** Evaluated whenever the automation triggers if
+    `input_select.smart_home_status` is set to **Vacation**.\n* **Effect:** Immediately
+    forces **switch.garagentor_tasmota** and **switch.sauger_tasmota** to **off**.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode:** `queued` (Max: 3) - Ensures sequential
+    processing of state changes if multiple triggers occur rapidly.\n* **Execution
+    Method:** External script `script.retry_action_with_backoff` for robust command
+    delivery.\n* **Key Inputs:** `input_select.smart_home_status`\n* **Controlled
+    Entities:** * **switch.garagentor_tasmota**\n    * **switch.sauger_tasmota**\n
+    \   * **switch.backofen_tasmota**\n* **Safety Mechanisms:** * **Linear Backoff:**
+    Used during power-on to prevent electrical inrush/network congestion.\n    * **Notification:**
+    Failure to reach the target state after 10 retries triggers a notification to
+    **notify.duncan**.\n    * **Availability Wait:** Uses a template to verify entities
+    are not `unavailable` or `unknown` before executing post-restart actions.\n\n---\n\n###
+    \U0001F4A1 Notes\n* **Reliability:** The use of `continue_on_error: true` combined
+    with the retry script prevents one unresponsive device from blocking the entire
+    sequence.\n* **Start-up Logic:** The \"Wait for entities\" template is a critical
+    fail-safe that prevents the automation from firing commands into a \"void\" while
+    Tasmota devices are still reconnecting to the Wi-Fi after a power cycle or reboot.\n"
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -9906,7 +9952,7 @@
         - '23'
         - Start
       - condition: time
-        after: '23:00:00'
+        after: '22:59:59'
         before: 03:59:00
       sequence:
       - action: script.retry_action_with_backoff
@@ -11066,7 +11112,7 @@
     |\n\n  ---\n\n  ## \U0001F4CB Conditions (overview)\n\n  The automation proceeds
     when ANY of these branches is true:\n\n  1) Night charging start branch\n     -
     Current time is in the night charging window (after 00:04:55 and\n       before
-    04:30:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
+    04:45:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
     trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
     switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
     `off`\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n  2) Scheduled
@@ -11075,7 +11121,7 @@
     change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
     \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
     \    - Current time is in the night charging window (after 00:04:55 and before\n
-    \      04:50:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
+    \      04:45:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
     \ ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start Charging (trigger id:
     \"On\" with sensor on)\n     - Notify `notify.duncan` with decision summary\n
     \    - Call `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`
@@ -11133,47 +11179,47 @@
   conditions:
   - condition: or
     conditions:
-    - condition: and
+    - alias: On / amp branch
+      condition: and
       conditions:
       - condition: time
         after: 00:04:55
-        before: 04:30:00
+        before: 04:45:00
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
-      - condition: trigger
-        id:
-        - 'On'
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
-        state:
-        - 'off'
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
+      - condition: or
+        conditions:
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - 'On'
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+            state:
+            - 'off'
+          alias: On branch specific
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - amps
+          - condition: template
+            value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
+              ''required_charge_amps'') | default(30, true) | int %}
+
+              {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
+              | default(0, true) | int %}
+
+              {{ req != current }}'
+          alias: 'Amp branch specific '
     - condition: trigger
       id:
       - 'Off'
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - amps
-      - condition: template
-        value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
-          ''required_charge_amps'') | default(30, true) | int %}
-
-          {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
-          | default(0, true) | int %}
-
-          {{ req != current }}'
-      - condition: time
-        after: 00:04:55
-        before: 04:50:00
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state:
-        - 'on'
   actions:
   - choose:
     - conditions:
@@ -11425,9 +11471,43 @@
           message: clear_notification
   mode: single
 - id: '1763821325453'
-  alias: Terrarium Auto-Off
-  description: Automatically turns off the terrarium humidifier switch 10 minutes
-    after it's turned on, with a retry mechanism.
+  alias: Terrarium Humidifier Auto-Off
+  description: "\U0001F98E **Terrarium Humidifier Auto-Off**\n\n---\n\n### \U0001F4CB
+    Intelligent Humidification Safety Control\n\n**High-level intent**\nThis automation
+    serves as a safety watchdog for the terrarium environment, ensuring that the humidification
+    system does not run indefinitely. It monitors the active state of the hardware
+    and enforces a strict operational window.\n\n**Operational strategy**\nThe system
+    employs a polling-based safety check rather than a simple state-change trigger.
+    By evaluating conditions every two minutes, it ensures that even if a single event-based
+    trigger were missed, the \"off\" command would be issued shortly thereafter once
+    the duration threshold is met.\n\n**Reliability mechanisms**\nTo overcome potential
+    Zigbee mesh interference or \"popcorn effect\" command drops, this automation
+    utilizes a robust **retry script with backoff**. If the initial command fails,
+    the system will attempt to turn off the switch up to 10 times with increasing
+    delays.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition |
+    ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time Pattern** | Every **2
+    minutes** | N/A | Periodic heartbeat check to verify device state and runtime
+    duration. |\n\n---\n\n### Operational Logic Sections\n\n#### Normal Shutdown Mode\n**Purpose**\nEnforce
+    a maximum duty cycle for the humidification hardware to prevent over-saturation
+    of the terrarium and protect the motor from burnout.\n\n**Logic Overview**\nThe
+    automation executes only if **input_boolean.terrarium_on** is **on** (Global System
+    Enable) AND **switch.terrarium_zigbee_l1** has been continuously **on** for at
+    least **10 minutes**.\n\n**Effect**\nTriggers the **script.retry_action_with_backoff**
+    to transition **switch.terrarium_zigbee_l1** to the **off** state.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode**: `restart` (Ensures the most recent
+    trigger takes precedence during execution)\n* **Execution method**: External retry
+    script (**script.retry_action_with_backoff**)\n* **Key Inputs**: `input_boolean.terrarium_on`\n*
+    **Controlled Entities**: `switch.terrarium_zigbee_l1`\n* **Safety Mechanisms**:
+    \n    * **Max Retries**: 10 attempts\n    * **Backoff**: Simple increment (5s
+    to 60s)\n    * **Failure Notification**: Sends an alert via **notify.duncan**
+    if the device fails to turn off after all retries.\n\n---\n\n### \U0001F4A1 Notes\n\n*
+    **Polling Strategy**: Using a `/2` minute time pattern instead of a `state` trigger
+    provides an extra layer of redundancy. If the Home Assistant core restarts exactly
+    at the 10-minute mark of a cycle, the time pattern will catch the \"over-time\"
+    state on the next sweep.\n* **Retry Logic**: The use of a backoff algorithm (5s
+    base to 60s max) is specifically designed to bypass temporary Zigbee interference
+    or network congestion.\n* **Silent Throttling**: The `max_exceeded: silent` configuration
+    prevents logbook clutter during rapid state evaluations.\n"
   triggers:
   - trigger: time_pattern
     minutes: /2
@@ -11718,7 +11798,7 @@
     der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
     `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
     ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
-    > 20 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
+    > 15 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
     Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
     Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
     Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
@@ -11765,7 +11845,9 @@
           target_state: 'on'
           action_domain: switch
           max_retries: 10
-          base_delay: 5
+          notify_service: notify.duncan
+          base_delay: 10
+          max_delay: 60
     - conditions:
       - condition: trigger
         id:
@@ -11787,14 +11869,14 @@
             metadata: {}
             data:
               title: "\U0001F307 Bett Powerbank"
-              message: Prüfe, ob die Powerbank weiterhin im Low-Power-Modus verbleibt.
+              message: Low‑Power‑Modus beibehalten oder beenden?
               data:
                 tag: powerbank_low
                 actions:
                 - action: '{{ leave_on }}'
-                  title: Leave On
+                  title: Low‑Power behalten
                 - action: '{{ turn_off }}'
-                  title: Turn Off
+                  title: Low‑Power beenden
           - alias: Wait for a response
             wait_for_trigger:
             - event_type: mobile_app_notification_action
@@ -11819,16 +11901,23 @@
                 data: {}
                 target:
                   entity_id: input_boolean.bett_powerbank_low_power
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_type: turn_off
-            backoff_type: linear
-            entity_id: switch.bett_powerbank_charger
-            target_state: 'off'
-            action_domain: switch
-            max_retries: 10
-            base_delay: 5
+        - sequence:
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 5
+              milliseconds: 0
+          - action: script.retry_action_with_backoff
+            metadata: {}
+            data:
+              action_type: turn_off
+              backoff_type: linear
+              entity_id: switch.bett_powerbank_charger
+              target_state: 'off'
+              action_domain: switch
+              max_retries: 10
+              max_delay: 60
+              base_delay: 10
     - conditions:
       - condition: trigger
         id:
@@ -11908,6 +11997,17 @@
     id: HA_Start
   conditions: []
   actions:
+  - if:
+    - condition: trigger
+      id:
+      - HA_Start
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
+    alias: Wait 30s to wrap up HA Startup
   - variables:
       entities:
       - switch.fenster_licht_vorne_zigbee
@@ -11944,7 +12044,7 @@
           - delay:
               hours: 0
               minutes: 0
-              seconds: 3
+              seconds: 1
               milliseconds: 0
       - alias: Seasonal Ambient Lights ON
         if:
@@ -11971,7 +12071,7 @@
             - delay:
                 hours: 0
                 minutes: 0
-                seconds: 3
+                seconds: 1
                 milliseconds: 0
     - conditions:
       - condition: or
@@ -12001,7 +12101,7 @@
           - delay:
               hours: 0
               minutes: 0
-              seconds: 3
+              seconds: 1
               milliseconds: 0
       - alias: Seasonal Ambient Lights OFF
         if:
@@ -12028,7 +12128,7 @@
             - delay:
                 hours: 0
                 minutes: 0
-                seconds: 3
+                seconds: 1
                 milliseconds: 0
   mode: restart
 - id: '1766573948427'
@@ -12077,12 +12177,13 @@
     lock screens once the issue is resolved.\n"
   triggers:
   - trigger: template
-    value_template: '{% set b1 = states(''sensor.battery_1_bat1_current'') %}
-
-      {% set b2 = states(''sensor.battery_2_bat2_current'') %}
-
-      {{ b1 | is_number and b2 | is_number and b1 | float(1) == 0 and b2 | float(0)
-      != 0 }}'
+    value_template: "{% set b1 = states('sensor.battery_1_bat1_current') | default(none,
+      true) | float(none) %}\n{% set b2 = states('sensor.battery_2_bat2_current')
+      | default(none, true) | float(none) %}\n{% set b1_soc = states('sensor.battery_1_bat1_soc')
+      | default(none, true) | float(none) %}\n{% set b2_soc = states('sensor.battery_2_bat2_soc')
+      | default(none, true) | float(none) %}\n\n{% set all_valid = None not in [b1,
+      b2, b1_soc, b2_soc] %}\n\n{{ \n  all_valid\n  and b1 == 0\n  and b2 != 0\n  and
+      b1_soc > b2_soc\n}}"
     for:
       hours: 0
       minutes: 2
@@ -12197,12 +12298,65 @@
             entity_id: input_boolean.forecast_wet
             state: 'on'
       sequence:
-      - action: cover.close_cover
-        target:
-          entity_id: cover.wintergarten_rolladen_dachfenster
-      - action: input_boolean.turn_on
-        target:
-          entity_id: input_boolean.rollo_state
+      - alias: Close the window before closing the rollo
+        if:
+        - condition: state
+          entity_id: cover.wintergarten_dachfenster
+          state:
+          - open
+        then:
+        - repeat:
+            until:
+            - condition: or
+              conditions:
+              - condition: state
+                entity_id: cover.wintergarten_dachfenster
+                state:
+                - closed
+              - condition: template
+                value_template: '{{ repeat.index >= 3 }}'
+            sequence:
+            - action: cover.close_cover
+              metadata: {}
+              target:
+                entity_id: cover.wintergarten_dachfenster
+              data: {}
+            - wait_for_trigger:
+              - trigger: state
+                entity_id:
+                - cover.wintergarten_dachfenster
+                to:
+                - closed
+              timeout:
+                hours: 0
+                minutes: 2
+                seconds: 0
+                milliseconds: 0
+              alias: Wait for closed
+        - delay:
+            hours: 0
+            minutes: 0
+            seconds: 10
+            milliseconds: 0
+          alias: 'Let it settle down: 10s'
+      - if:
+        - condition: state
+          entity_id: cover.wintergarten_dachfenster
+          state:
+          - closed
+        then:
+        - action: cover.close_cover
+          target:
+            entity_id: cover.wintergarten_rolladen_dachfenster
+        - action: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.rollo_state
+        else:
+        - action: notify.duncan
+          data:
+            title: "\U0001FA9F Rollo close blocked"
+            message: Window did not close after 3 attempts; skipping rollo close.
+        alias: Close Rollo only if window is closed
       alias: Close if forecast allows
     - conditions:
       - condition: trigger
@@ -12785,9 +12939,13 @@
     entire system is idle or the inverter is not drawing power.\n"
   triggers:
   - trigger: template
-    value_template: "{% set b1 = states('sensor.battery_1_bat1_current') %} {% set
-      b2 = states('sensor.battery_2_bat2_current') %} {{ b1 | is_number\n   and b2
-      | is_number\n   and b2 | float(1) == 0\n   and b1 | float(0) != 0 }}"
+    value_template: "{% set b1 = states('sensor.battery_1_bat1_current') | default(none,
+      true) | float(none) %}\n{% set b2 = states('sensor.battery_2_bat2_current')
+      | default(none, true) | float(none) %}\n{% set b1_soc = states('sensor.battery_1_bat1_soc')
+      | default(none, true) | float(none) %}\n{% set b2_soc = states('sensor.battery_2_bat2_soc')
+      | default(none, true) | float(none) %}\n\n{% set all_valid = None not in [b1,
+      b2, b1_soc, b2_soc] %}\n\n{{\n  all_valid\n  and b2 == 0\n  and b1 != 0\n  and
+      b2_soc > b1_soc\n}}"
     for:
       hours: 0
       minutes: 2
@@ -12904,6 +13062,17 @@
     id: sync
     trigger: homeassistant
   actions:
+  - alias: Wait 30s to wrap up HA Startup
+    if:
+    - condition: trigger
+      id:
+      - sync
+    then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
   - choose:
     - alias: 'Condition: It is sunset or night-time'
       conditions:
@@ -12955,54 +13124,344 @@
   mode: single
 - id: '1768073928361'
   alias: Smart Meter Status Alert
-  description: "# ⚡ **Smart Meter Status Alert**\n\n---\n\n### \U0001F4CB Intelligent
-    Smart Meter Monitoring Control\n\nThis automation provides real-time oversight
-    of the **Smart Meter** connectivity and operational health. Its primary intent
-    is to ensure data integrity by monitoring the MQTT bridge status. The operational
-    strategy focuses on **immediate notification** whenever the meter reports a hardware-level
-    problem or the data stream becomes stale (unavailable). This serves as a critical
-    reliability mechanism to alert administrators of potential gaps in energy tracking
-    or hardware failures.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity
-    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.smart_meter_mqtt_data`
-    | N/A | Detects when the meter explicitly reports a **Problem** state. |\n| **State**
-    | `binary_sensor.smart_meter_mqtt_data` | N/A | Detects when the meter becomes
-    **Unavailable** (connection timeout). |\n\n---\n\n### Operational Logic Sections\n\n####
-    Status Alerting Mode\n- **Purpose**: To provide instant awareness of meter faults
-    or communication loss.\n- **Logic Overview**: Triggered when the sensor state
-    transitions to **on** (representing a problem) or **unavailable**. No additional
-    conditions are required to ensure maximum deliverability.\n- **Effect**: Dispatches
-    a high-priority notification to **notify.duncan** with a context-specific message.\n\n---\n\n###
-    Technical Overview\n\n- **Automation Mode**: `single`\n- **Execution Method**:
-    Direct YAML action block utilizing Jinja2 templating.\n- **Key Inputs**: `binary_sensor.smart_meter_mqtt_data`\n-
-    **Controlled Entities**: `notify.duncan`\n- **Safety Mechanisms**: Uses a conditional
-    template to differentiate between a reported hardware status of **0** (Problem)
-    and a communication timeout (**Unavailable**), ensuring the notification contains
-    actionable data.\n\n---\n\n### \U0001F4A1 Notes\n\n- **Fail-Safe Monitoring**:
-    By monitoring the **unavailable** state, the automation accounts for MQTT broker
-    issues or sensor expiration timeouts, not just active error signals.\n- **Threshold
-    Rationale**: The use of `trigger.to_state.state` in the message template allows
-    for a single automation to handle multiple failure modes efficiently without redundant
-    logic.\n"
+  description: "⚠️ **Smart Meter Status Alert**\n\n### \U0001F4CB Intelligent Utility
+    Monitoring Control\n\nThis automation provides proactive oversight of the household's
+    smart meter communication and hardware health. Its primary intent is to ensure
+    data integrity by alerting the administrator immediately if the meter reports
+    an internal fault or ceases communication entirely. \n\nThe operational strategy
+    is **safety-first**, utilizing a 30-second verification delay to filter out transient
+    network blips while ensuring that genuine hardware failures or communication timeouts
+    are addressed before data gaps occur.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State**
+    | **binary_sensor.smart_meter_mqtt_data** | N/A | Detects internal hardware status
+    fault (**on**) |\n| **State** | **binary_sensor.smart_meter_mqtt_data** | N/A
+    | Detects communication loss (**unavailable**) |\n\n---\n\n### Operational Logic
+    Sections\n\n#### Hardware Fault Mode\n- **Purpose**: To notify when the meter's
+    internal diagnostics report a \"Hardware Status 0\" or general failure.\n- **Logic
+    Overview**: Triggered when **binary_sensor.smart_meter_mqtt_data** remains in
+    the **on** state for at least **30 seconds**.\n- **Effect**: Sends a high-priority
+    notification to **notify.duncan** with the tag **smart_meter_problem**.\n\n####
+    Communication Timeout Mode\n- **Purpose**: To identify instances where the MQTT
+    stream has stopped or the bridge has gone offline.\n- **Logic Overview**: Triggered
+    when the entity state changes to **unavailable** for at least **30 seconds**.\n-
+    **Effect**: Dispatches a \"Communication timeout\" alert to **notify.duncan**.\n\n---\n\n###
+    Technical Overview\n\n- **Automation Mode**: **single** (prevents redundant notifications
+    during rapid state flickering).\n- **Execution Method**: Direct YAML action block
+    using the **notify.duncan** service.\n- **Key Inputs**: **binary_sensor.smart_meter_mqtt_data**.\n-
+    **Controlled Entities**: Notification service (**notify.duncan**).\n- **Safety
+    Mechanisms**: 30-second **for** duration on triggers to prevent \"false positive\"
+    notifications during service restarts.\n\n---\n\n### \U0001F4A1 Notes\n\n- **De-duplication**:
+    The use of the **tag: smart_meter_problem** ensures that consecutive alerts overwrite
+    each other on the mobile device, preventing notification spam.\n- **Threshold
+    Rationale**: The **30-second** delay is calibrated to ignore standard MQTT broker
+    restarts while remaining fast enough to allow for manual intervention before significant
+    data loss in energy dashboards.\n- **Dynamic Messaging**: Uses Jinja2 templating
+    to provide specific context (Hardware vs. Communication) within a single automation
+    flow.\n"
   triggers:
   - entity_id:
     - binary_sensor.smart_meter_mqtt_data
     to:
     - 'on'
     trigger: state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   - entity_id:
     - binary_sensor.smart_meter_mqtt_data
     to:
     - unavailable
     trigger: state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   conditions: []
   actions:
   - data:
       title: ⚠️ Smart Meter Alert
-      message: "{% if trigger.to_state.state == \"problem\" %}\n  The Smart Meter
-        reports a problem (status = 0).\n{% elif trigger.to_state.state == \"unavailable\"
-        %}\n  The Smart Meter stopped reporting (expired after defined timeout).\n{%
+      message: "{% if trigger.to_state.state == \"on\" %}\n  The Smart Meter reports
+        a problem (Hardware status = 0).\n{% elif trigger.to_state.state == \"unavailable\"
+        %}\n  The Smart Meter stopped reporting (Communication timeout).\n{% else
+        %}\n  The Smart Meter status changed to {{ trigger.to_state.state }}.\n{%
         endif %}\n"
       data:
         tag: smart_meter_problem
     action: notify.duncan
   mode: single
+- id: '1768908825981'
+  alias: Timemachine NAS Sync (Hourly with Notifications)
+  description: "\U0001F4E6 **Timemachine NAS Sync (Hourly with Notifications)**\n\n###
+    \U0001F4CB Intelligent NAS Backup Control\n\nThis automation manages the synchronization
+    process between local storage and a Network Attached Storage (NAS) device. Its
+    primary intent is to ensure data redundancy by mirroring Timemachine backups on
+    a consistent, hourly basis.\n\nThe operational strategy utilizes a shell-level
+    mirror command followed by an intelligent evaluation of the return codes. This
+    ensures that the system doesn't just run blindly but actively monitors for script
+    execution errors and reports them via a dedicated notification channel, providing
+    a high level of reliability for critical data backups.\n\n---\n\n### Trigger Overview
+    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
+    :--- |\n| **Time Pattern** | Every hour at **10** minutes past | N/A | Initiates
+    the synchronization process on a fixed hourly schedule. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### \U0001F6E0️ Synchronization Execution\n- **Purpose**: Execute
+    the core data transfer logic.\n- **Logic Overview**: Triggered automatically by
+    the time pattern; no global conditions restrict execution.\n- **Effect**: Runs
+    **shell_command.mirror_timemachine_to_nas** and captures the output into the **nas_response**
+    variable.\n\n#### ⚠️ Error Handling & Failure Notification\n- **Purpose**: Alert
+    the administrator if the backup fails.\n- **Logic Overview**: Evaluates if the
+    **returncode** of the shell command is not **0**.\n- **Effect**: Sends a notification
+    to **notify.duncan** containing the specific **stderr** message and applies the
+    tag **nas_sync_error**.\n\n#### ✅ Success Reporting\n- **Purpose**: Provide confirmation
+    of data movement when requested.\n- **Logic Overview**: Requires the **returncode**
+    to be **0**, the output to contain actual file changes (ignoring \"No changes
+    detected\"), and the helper **input_boolean.notify_on_nas_sync_success** to be
+    **on**.\n- **Effect**: Sends a success notification to **notify.duncan** with
+    the tag **nas_sync_success**.\n\n---\n\n### Technical Overview\n\n- **Automation
+    Mode**: **single** (prevents overlapping sync processes)\n- **Execution Method**:
+    Shell Command with captured response variables\n- **Key Inputs**: **input_boolean.notify_on_nas_sync_success**\n-
+    **Controlled Entities**: **notify.duncan**\n- **Safety Mechanisms**: Return code
+    validation and error string capture (**stderr**) to diagnose script-level failures.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n- **Efficient Notifications**: The automation distinguishes
+    between a successful run with no data (quiet) and a successful run with actual
+    file transfers, preventing notification fatigue.\n- **Error Transparency**: By
+    passing the **stderr** directly into the notification message, troubleshooting
+    can begin immediately without needing to check Home Assistant logs.\n- **Collision
+    Prevention**: The **single** mode is critical here; it ensures that if a large
+    backup takes longer than an hour, a second sync process will not start and potentially
+    corrupt the transfer or over-tax the CPU."
+  triggers:
+  - minutes: '10'
+    trigger: time_pattern
+  conditions: []
+  actions:
+  - action: shell_command.mirror_timemachine_to_nas
+    response_variable: nas_response
+    data: {}
+  - if:
+    - condition: template
+      value_template: '{{ nas_response is mapping and (nas_response.returncode | default(1))
+        != 0 }}'
+    then:
+    - data:
+        title: Timemachine NAS Sync Failed
+        message: 'Something went wrong with the NAS mirror script!
+
+          Error: {{ nas_response[''stderr''] }}'
+        data:
+          tag: nas_sync_error
+      action: notify.duncan
+    alias: Failure Notification
+  - alias: Success Notification
+    if:
+    - condition: template
+      value_template: "{% set stdout = (nas_response.stdout | default('')) %}\n{{
+        nas_response is mapping and (nas_response.returncode | default(1)) == 0\n
+        \  and (\n     'Copied 0 new snapshots' not in stdout or \n     'Deleted 0
+        obsolete snapshots' not in stdout\n   )\n   and is_state('input_boolean.notify_on_nas_sync_success',
+        'on') }}\n"
+    then:
+    - data:
+        title: Timemachine NAS Sync Success
+        message: 'Files were successfully mirrored to NAS.
+
+
+          **Details:**
+
+          ```
+
+          {{ nas_response[''stdout''] }}
+
+          ```'
+        data:
+          tag: nas_sync_success
+      action: notify.duncan
+  mode: single
+- id: kinderbad_window_monitor
+  alias: Kinderbad Fenster offen
+  description: Monitors Kids' Bathroom window and uses the smart notification script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.kinderbad_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''off'')  }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 0
+              minutes: 10
+              seconds: 0
+              milliseconds: 0
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.kinderbad_fenster_contact
+    custom_friendly_name: Kinderbad Fenster
+    notification_tag: kinderbad_window_alert
+- id: waschkuche_window_monitor
+  alias: Waschküche Fenster Offen
+  description: Monitors Laundry Room window with a 1-hour delay and 3-hour repeat
+    cycle.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.waschkuche_fenster_contact
+    to: 'on'
+    for:
+      hours: 1
+    id: send_notification
+  - trigger: state
+    entity_id: binary_sensor.waschkuche_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: delete_notification
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: send_notification
+      sequence:
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+          - delay:
+              hours: 3
+    - conditions:
+      - condition: trigger
+        id: delete_notification
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+  mode: restart
+  variables:
+    trigger_entity: binary_sensor.waschkuche_fenster_contact
+    custom_friendly_name: Waschküche Fenster
+    notification_tag: waschkuche_window_alert
+- id: '1769287041355'
+  alias: 'System: GFS Backup Cleanup Report'
+  description: Runs generational backup cleanup and sends rich summary to UI and stripped
+    text to Duncan. Includes error handling and failure counts.
+  triggers:
+  - trigger: time
+    at: '20:00:00'
+  actions:
+  - action: shell_command.cleanup_backups
+    data:
+      type: hourly
+      dry_run: 0
+    response_variable: hourly
+  - action: shell_command.cleanup_backups
+    data:
+      type: daily
+      dry_run: 0
+    response_variable: daily
+  - action: shell_command.cleanup_backups
+    data:
+      type: weekly
+      dry_run: 0
+    response_variable: weekly
+  - action: shell_command.cleanup_backups
+    data:
+      type: monthly
+      dry_run: 0
+    response_variable: monthly
+  - variables:
+      results: '{{ [hourly, daily, weekly, monthly] }}'
+      failed_count: '{{ results | selectattr(''returncode'', ''ne'', 0) | list | count
+        }}'
+      any_failed: '{{ failed_count > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ any_failed }}'
+      sequence:
+      - action: notify.persistent_notification
+        data:
+          title: ❌ Cleanup Failed ({{ failed_count }} error{{ 's' if failed_count
+            > 1 else '' }})
+          message: '**Status Report:**
+
+            - Hourly: {{ ''✅ OK'' if hourly.returncode == 0 else ''❌ FAIL ('' ~ hourly.returncode
+            ~ '')'' }}
+
+            - Daily: {{ ''✅ OK'' if daily.returncode == 0 else ''❌ FAIL ('' ~ daily.returncode
+            ~ '')'' }}
+
+            - Weekly: {{ ''✅ OK'' if weekly.returncode == 0 else ''FAIL ('' ~ weekly.returncode
+            ~ '')'' }}
+
+            - Monthly: {{ ''✅ OK'' if monthly.returncode == 0 else ''FAIL ('' ~ monthly.returncode
+            ~ '')'' }}
+
+
+            The maintenance report was not sent to Duncan.
+
+            '
+      - stop: Cleanup failed with {{ failed_count }} error(s).
+    default:
+    - variables:
+        report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
+          %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
+          %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
+          + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete |
+          string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\" %}\n
+          \ {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
+          %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete | int(0))
+          %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb / 1024) |
+          round(2), 'count': ns.total_files} }}\n"
+    - action: notify.persistent_notification
+      data:
+        title: "\U0001F4BE Backup Cleanup Summary"
+        message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
+          info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
+          Files Removed:** {{ info.count }}\n"
+    - action: notify.duncan
+      data:
+        title: NAS Maintenance Complete
+        message: "{% set info = report_json %}\nBackup cleanup report for today:\n
+          \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
+          }} GB.\n"

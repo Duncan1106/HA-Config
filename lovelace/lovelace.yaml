@@ -56,8 +56,6 @@ config:
               navigation_path: /lovelace/smart
             entity: person.duncan
             fill_container: true
-            hold_action:
-              action: none
             layout: vertical
             tap_action:
               action: navigate
@@ -1037,9 +1035,27 @@ config:
             entity: sensor.t_h_duncan_zigbee_battery_plus
             show_icon: true
             show_state: true
+            state_content:
+            - state
+            - battery_type_and_quantity
             tap_action:
               action: more-info
             type: entity
+          - color: state
+            entity: sensor.duncan_fenster_battery_plus
+            icon: mdi:window-closed
+            show_icon: true
+            show_state: true
+            state_content:
+            - state
+            - battery_type_and_quantity
+            tap_action:
+              action: more-info
+            type: entity
+            visibility:
+            - below: 20
+              condition: numeric_state
+              entity: sensor.duncan_fenster_battery_plus
           heading: Duncan
           heading_style: title
           icon: ''
@@ -1648,6 +1664,7 @@ config:
             show_soc: false
             threshold: 10
             unit: W
+          battery_labels: []
           devices:
           - entity: sensor.go_echarger_270862_nrg_12
             force_hide_under_threshold: true
@@ -1664,7 +1681,9 @@ config:
             invert_state_values: true
             unit: W
           home:
+            decimal_places: 1
             entity: sensor.home_power
+            tap_action: more_info
             unit: W
           pv:
             entity: sensor.solar_power_total
@@ -2056,77 +2075,18 @@ config:
         entity_day5: sensor.solcast_pv_forecast_prognose_tag_5
         entity_day6: sensor.solcast_pv_forecast_prognose_tag_6
         entity_day7: sensor.solcast_pv_forecast_prognose_tag_7
-        entity_remaining: sensor.solcast_pv_forecast_prognose_verbleibende_leistung_heute
         entity_today: sensor.solcast_pv_forecast_prognose_heute
         entity_tomorrow: sensor.solcast_pv_forecast_prognose_morgen
         max_value: 120
-        remaining_blink: true
+        remaining_blink: false
         remaining_color_end: '#f1c40f'
         remaining_color_start: '#e67e22'
-        remaining_indicator: marker
-        remaining_inverted: true
+        remaining_inverted: false
         remaining_low_color_end: '#ffa500'
         remaining_low_color_start: '#ff0000'
         show_tooltips: false
         type: custom:clock-pv-forecast-card
         weekday_format: short
-      - apex_config:
-          legend:
-            show: true
-          tooltip:
-            enabled: true
-            marker:
-              show: false
-            y:
-              formatter: 'EVAL:function(y) {return y.toFixed(3);}
-
-                '
-        graph_span: 23h
-        header:
-          show: true
-          show_states: false
-          title: Solcast Dampening
-        series:
-        - color: orange
-          data_generator: "const factors = entity.attributes.detailedForecast;\nreturn\
-            \ factors.map(entry => {\n  return {\n    x: entry.period_start,\n   \
-            \ y: entry.dampening_factor\n  };\n});                 \n"
-          entity: sensor.solcast_pv_forecast_prognose_heute
-          name: Applied
-          show:
-            in_header: false
-            legend_value: false
-          stroke_width: 1
-          type: line
-        - color: grey
-          data_generator: "const factors = entity.attributes.factors; const now =\
-            \ new Date(); // local time (browser)\nreturn factors.map(({ interval,\
-            \ factor }) => {\n  const [h, m] = interval.split(':').map(Number);\n\
-            \  // Build a Date for \"today\" at the given hh:mm in local time\n  const\
-            \ x = new Date(\n    now.getFullYear(), now.getMonth(), now.getDate(),\
-            \ h, m\n  ).getTime(); // epoch ms for ApexCharts\n\n  return { x, y:\
-            \ factor };\n});\n"
-          entity: sensor.solcast_pv_forecast_dampfung
-          name: Base
-          opacity: 0.5
-          show:
-            in_header: false
-            legend_value: false
-          stroke_width: 0
-          type: area
-        span:
-          start: day
-        type: custom:apexcharts-card
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
-        yaxis:
-        - apex_config:
-            tickAmount: 5
-          decimals: 3
-          max: 1
-          min: 0
       type: grid
     theme: Backend-selected
     title: 'Energie '
@@ -4329,8 +4289,8 @@ config:
             show_sun_times: true
           forecast_action:
             tap_action:
-              action: toggle-forecast
-          show_condition_effects: true
+              action: more-info
+          show_condition_effects: false
           show_current: true
           show_forecast: true
           tap_action:
@@ -4349,8 +4309,8 @@ config:
             show_sun_times: true
           forecast_action:
             tap_action:
-              action: toggle-forecast
-          show_condition_effects: true
+              action: more-info
+          show_condition_effects: false
           show_current: true
           show_forecast: true
           tap_action:
@@ -7396,7 +7356,7 @@ config:
             update_interval: 1
           conditions:
           - condition: state
-            entity: binary_sensor.internet_connection
+            entity: binary_sensor.cloud_flare_either_connected
             state_not: 'on'
           type: conditional
         - card:
@@ -7434,7 +7394,7 @@ config:
             update_interval: 1
           conditions:
           - condition: state
-            entity: binary_sensor.internet_connection
+            entity: binary_sensor.google_either_connected
             state_not: 'on'
           type: conditional
         - card:
@@ -7472,7 +7432,7 @@ config:
             update_interval: 1
           conditions:
           - condition: state
-            entity: binary_sensor.internet_connection
+            entity: binary_sensor.quad9_either_connected
             state_not: 'on'
           type: conditional
         type: vertical-stack
@@ -8154,238 +8114,271 @@ config:
       - heading: Kontrolle
         heading_style: title
         type: heading
-      - cards:
-        - card:
-            entities:
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_1_power
-                name: Power
-              - entity: sensor.time_of_use_1
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_2
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_1_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
-              name: Timeslot 1
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_2_power
-                name: Power
-              - entity: sensor.time_of_use_2
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_3
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_2_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
-              name: Timeslot 2
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_3_power
-                name: Power
-              - entity: sensor.time_of_use_3
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_4
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_3_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
-              name: Timeslot 3
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_4_power
-                name: Power
-              - entity: sensor.time_of_use_4
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_5
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_4_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
-              name: Timeslot 4
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_5_power
-                name: Power
-              - entity: sensor.time_of_use_5
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_6
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_5_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
-              name: Timeslot 5
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_6_power
-                name: Power
-              - entity: sensor.time_of_use_6
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_1
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_6_voltage
-                format: precision1
-                name: Voltage
-              entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
-              name: Timeslot 6
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use
-              name: Time of Use
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            type: entities
-          conditions:
-          - condition: state
-            entity: select.esp32_s3_zero_deye8k_battery_operation
-            state: Use V
-          type: conditional
-        - card:
-            entities:
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_1_power
-                name: Power
-              - entity: sensor.time_of_use_1
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_2
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_1_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
-              name: Timeslot 1
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_2_power
-                name: Power
-              - entity: sensor.time_of_use_2
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_3
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_2_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
-              name: Timeslot 2
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_3_power
-                name: Power
-              - entity: sensor.time_of_use_3
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_4
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_3_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
-              name: Timeslot 3
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_4_power
-                name: Power
-              - entity: sensor.time_of_use_4
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_5
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_4_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
-              name: Timeslot 4
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_5_power
-                name: Power
-              - entity: sensor.time_of_use_5
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_6
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_5_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
-              name: Timeslot 5
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entities:
-              - entity: number.esp32_s3_zero_deye8k_time_point_6_power
-                name: Power
-              - entity: sensor.time_of_use_6
-                format: precision0
-                name: From
-              - entity: sensor.time_of_use_1
-                format: precision0
-                name: To
-              - entity: number.esp32_s3_zero_deye8k_time_point_6_capacity
-                format: precision0
-                name: SOC
-              entity: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
-              name: Timeslot 6
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            - entity: switch.esp32_s3_zero_deye8k_time_of_use
-              name: Time of Use
-              state_color: true
-              state_header: Charge
-              type: custom:multiple-entity-row
-            type: entities
-          conditions:
-          - condition: state
-            entity: select.esp32_s3_zero_deye8k_battery_operation
-            state: Use %
-          type: conditional
-        type: horizontal-stack
+      - card_padding: ''
+        cell_padding:
+          bottom: 4
+          left: 0
+          right: 0
+          top: 4
+        column_count: 6
+        custom_template_enabled: false
+        custom_template_html: ''
+        header_from_first_row: false
+        narrow_breakpoint: ''
+        overflow_x: true
+        rows:
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 1
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_1_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_1
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_2
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_1_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_1_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_1_charge_enable
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 2
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_2_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_2
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_3
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_2_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_2_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_2_charge_enable
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 3
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_3_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_3
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_4
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_3_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_3_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_3_charge_enable
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 4
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_4_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_4
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_5
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_4_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_4_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_4_charge_enable
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 5
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_5_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_5
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_6
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_5_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_5_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_5_charge_enable
+        - cells:
+          - align: left
+            style:
+              text_transform: ''
+            type: string
+            value: Time of Use 6
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_6_power
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_6
+          - align: right
+            type: entity
+            use_entity_unit: true
+            value: sensor.time_of_use_1
+          - align: right
+            dyn_color:
+            - conditions:
+              - entity: select.esp32_s3_zero_deye8k_battery_operation
+                op: '='
+                val: Use V
+              entity: select.esp32_s3_zero_deye8k_battery_operation
+              match: all
+              op: ==
+              overwrite: entity
+              overwrite_entity: number.esp32_s3_zero_deye8k_time_point_6_voltage
+              val: Use V
+            type: entity
+            use_entity_unit: true
+            value: number.esp32_s3_zero_deye8k_time_point_6_capacity
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_point_6_charge_enable
+        - cells:
+          - align: left
+            type: string
+            value: Master Control
+          - align: right
+            type: string
+            value: ''
+          - align: right
+            type: string
+            value: ''
+          - align: right
+            type: string
+            value: ''
+          - align: right
+            type: string
+            value: ''
+          - align: right
+            entity_display: icon
+            type: entity
+            use_entity_unit: true
+            value: switch.esp32_s3_zero_deye8k_time_of_use
+        text_size: ''
+        type: custom:flex-cells-card
+        zebra: false
       - entities:
         - entity: switch.esp32_s3_zero_deye8k_enable_charge_automations
           name: Enable Automations
