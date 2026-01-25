@@ -1,6 +1,8 @@
+id: main_sidebar
 title: "Hallo {{ user_name }}"
 subtitle: "Reif für die 550"
 sidebar_editable: False
+
 order:
   - item: /lovelace
     order: 0
@@ -23,6 +25,7 @@ order:
     order: 5
     info: |
         Size: {{ states('sensor.media_folder_size', with_unit=True) }}
+    divider: true
   - item: /dashboard-enya
     match: href
     hide: true
@@ -58,19 +61,34 @@ exceptions:
         name: Z2M
         order: 6
         bottom: true
-      - item: /ccab4aaf_frigate-fa
+        attributes:
+          tp: zigbee2mqtt
+      - item: /zigbee-map
         match: href
+        name: Z2M Map
         order: 7
         bottom: true
+        attributes:
+          tp: z2m-map
+      - item: /ccab4aaf_frigate-fa
+        match: href
+        order: 8
+        bottom: true
         hide: false
+        attributes:
+          tp: frigate
       - item: /core_configurator
         bottom: true
         match: href
-        order: 8
+        order: 9
+        attributes:
+          tp: file-editor
       - item: /hacs
         match: href
-        order: 9
+        order: 10
         bottom: true
+        attributes:
+          tp: hacs
         notification: |
           [[[
             const outdatedHacsEntities = Object.values(entities.update).filter(
@@ -80,37 +98,48 @@ exceptions:
           ]]]
       - item: Integrationen
         icon: mdi:puzzle
-        order: 10
-        bottom: true
-        new_item: true
-        href: "/config/integrations"
-        info: |
-          {{states('sensor.devices')}} Geräte | {{states('sensor.entities')}} Entitäten
-      - item: Automationen
-        icon: mdi:robot
         order: 11
         bottom: true
         new_item: true
+        href: "/config/integrations"
+        attributes:
+          tp: integrations
+      - item: Automationen
+        icon: mdi:robot
+        order: 12
+        bottom: true
+        new_item: true
         href: "/config/automation"
-        info: |
-            {{ states.automation | selectattr('state', 'eq', 'off') | list | count }} inaktive |  {{ states.automation | selectattr('state', 'eq', 'on') | list | count }} aktive
+        attributes:
+          tp: automations
+      - item: /cafe
+        order: 13
+        bottom: true
+        match: href
+        attributes:
+          tp: cafe
       - new_item: true
         item: 'info'
-        name: 'Info ({{ state_attr("update.home_assistant_supervisor_update", "latest_version") }})'
-        info: 'OS {{ state_attr("update.home_assistant_operating_system_update", "latest_version") }}'
+        name: 'Info'
         href: '/hassio/system/info'
         icon: 'mdi:information-outline'
         bottom: true
-        order: 12
+        order: 14
+        attributes:
+          tp: info
       - item: /developer-tools
         icon: mdi:tools
         match: href
-        order: 13
+        order: 15
         bottom: true
+        attributes:
+          tp: dev-to
       - item: /config
         match: href
-        order: 14
+        order: 16
         bottom: true
+        attributes:
+          tp: config
 
   - user:  
     - Katalin
@@ -138,3 +167,80 @@ exceptions:
       - item: /dashboard-analysis
         match: href
         hide: true
+      - item: /cafe
+        match: href
+        hide: true
+      - item: /zigbee-map
+        match: href
+        hide: true
+
+styles: |
+  :host([expanded]) ha-md-list {
+    display: grid;
+    grid-template-columns: repeat(4, 25%);
+    grid-template-rows: auto auto auto auto auto 1fr auto;
+    overflow: visible !important;
+  }
+  
+  :host([expanded]) ha-md-list > ha-md-list-item {
+    grid-column: 1 / 5;
+    height: 48px;
+  }
+  
+  :host([expanded]) ha-md-list > ha-md-list-item[tp] {
+    /* Change width from 48px to 100% to stop clipping */
+    width: 100% !important;
+    position: relative;
+    overflow: visible !important;
+    --md-list-item-leading-space: 0px;
+  }
+
+  /* Center the icon within the 100% width area */
+  :host([expanded]) ha-md-list-item[tp]::part(inner) {
+    justify-content: center !important;
+    overflow: visible !important;
+  }
+
+  :host([expanded]) ha-md-list-item[tp] > .item-text {
+    display: none !important;
+  }
+
+  /* --- Badge Styling --- */
+  :host([expanded]) ha-md-list-item[tp] .badge {
+    display: flex !important;
+    position: absolute !important;
+    
+    /* Center-relative positioning */
+    /* Since the parent is now 100% width, 'right: 0' would put it at the cell edge. */
+    /* Instead, we anchor it to the center where the icon is. */
+    left: calc(50% + 6px) !important; 
+    top: 6px !important;
+    
+    justify-content: center !important;
+    align-items: center !important;
+    background-color: var(--accent-color, #ff5252) !important;
+    color: white !important;
+    border-radius: 12px !important; /* Rounded pill shape */
+    padding: 0 6px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+    z-index: 5 !important;
+    pointer-events: none;
+  }
+
+  /* Row Mapping */
+  :host([expanded]) ha-md-list-item[tp="zigbee2mqtt"] { grid-column: 1 / 2; }
+  :host([expanded]) ha-md-list-item[tp="z2m-map"] { grid-column: 2 / 3; }
+  :host([expanded]) ha-md-list-item[tp="frigate"] { grid-column: 3 / 4; }
+  :host([expanded]) ha-md-list-item[tp="file-editor"] { grid-column: 4 / 5; }
+
+  :host([expanded]) ha-md-list-item[tp="hacs"] { grid-column: 1 / 2; }
+  :host([expanded]) ha-md-list-item[tp="integrations"] { grid-column: 2 / 3; }
+  :host([expanded]) ha-md-list-item[tp="automations"] { grid-column: 3 / 4; }
+  :host([expanded]) ha-md-list-item[tp="cafe"] { grid-column: 4 / 5; }
+
+  :host([expanded]) ha-md-list-item[tp="info"] { grid-column: 1 / 2; }
+  :host([expanded]) ha-md-list-item[tp="dev-to"] { grid-column: 2 / 3; }
+  :host([expanded]) ha-md-list-item[tp="config"] { grid-column: 3 / 4; }
