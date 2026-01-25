@@ -628,19 +628,19 @@
       - 0d88285a82251e06c1a2bfced7afbd00
       - 2f1b9530bd2a8a239c9716ad67359eba
       - 905c163dcc62544838edb078413723b2
-      end_message_title: 'Spülmaschine '
+      end_message_title: Spülmaschine
       end_custom_actions:
-      - metadata: {}
-        data: {}
+      - action: button.press
+        metadata: {}
         target:
-          entity_id: counter.spulmaschine
-        action: counter.increment
-        enabled: false
+          entity_id: button.spulmaschine_force_end_cycle
+        data: {}
       start_appliance_power: 15
       end_message: 'Spülmaschine ausräumen '
       start_message: ' '
       include_end_notify: enable_end_notify_options
-      include_custom_actions: []
+      include_custom_actions:
+      - enable_end_custom_actions
       start_custom_actions: []
       end_appliance_power: 2
       end_time_delay: 1
@@ -656,6 +656,7 @@
       include_cycle_counter: enable_cycle_counter
       cycle_counter_helper: counter.spulmaschine
       end_notify_tag: spuelmaschine_fertig
+      end_notify_icon: mdi:dishwasher
 - id: '1708932016459'
   alias: Update System Metrics Sensors
   description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
@@ -5413,7 +5414,7 @@
   max: 10
 - id: '1738676581969'
   alias: Connectivity Ping Update
-  description: "\n  # \U0001F310 **Connectivity Ping Update**\n\n\n  ### \U0001F4CB
+  description: "  # \U0001F310 **Connectivity Ping Update**\n\n\n  ### \U0001F4CB
     Adaptive Connectivity Sensor Update Controller\n\n\n  This automation enforces
     deterministic update intervals for critical\n  ping-based connectivity binary
     sensors by explicitly triggering\n  `homeassistant.update_entity`. It intentionally
@@ -5425,83 +5426,60 @@
     over vertical repetition.\n\n\n  ---\n\n\n  ### Trigger Overview\n\n\n  | Trigger
     Type | Interval | Trigger ID | Operational Context |\n  | :----------- | :-------
     | :--------- | :------------------ |\n  | **Time Pattern** | Every 5 seconds |
-    `5s` | High-resolution monitoring during normal occupancy |\n  | **Time Pattern**
-    | Every 30 seconds | `30s` | Low-impact background monitoring during absence |\n\n\n
-    \ ---\n\n\n  ### Operational Logic\n\n\n  #### Daily / Active Mode\n\n  - **Activation
-    Conditions**:\n    - Trigger ID: `5s`\n    - `input_select.smart_home_status`
-    = **Daily**\n\n  - **Behavior**:\n    - Forces an immediate update for all configured
-    connectivity sensors.\n    - Prioritizes fast and deterministic detection of total
-    internet loss.\n\n\n  #### Vacation Mode\n\n  - **Activation Conditions**:\n    -
-    Trigger ID: `30s`\n    - `input_select.smart_home_status` = **Vacation**\n\n  -
-    **Behavior**:\n    - Maintains baseline reachability awareness with substantially
-    reduced\n      scheduler, network, and radio overhead.\n\n\n  ---\n\n\n  ### Update
-    Frequency & Traffic Profile\n\n\n  **Assumptions**:\n  - 6 ping sensors total\n
-    \ - `count: 1` per sensor\n  - IPv4 ICMP Echo Request + Reply\n  - ~168 bytes
-    per sensor update (request + response)\n\n\n  | Mode | Interval | Update Calls
-    / Day | Update Calls / Month | ICMP Packets / Day | Traffic / Day | Traffic /
-    Month |\n  | :--- | :------- | ------------------ | -------------------- | -----------------
-    | ------------- | --------------- |\n  | **Daily** | 5 s | 103,680 | ~3.11 million
-    | 207,360 | ~16.6 MB | ~480 MB |\n  | **Vacation** | 30 s | 17,280 | ~518,400
-    | 34,560 | ~2.8 MB | ~83 MB |\n\n\n  ---\n\n\n  ### Technical Characteristics\n\n\n
-    \ - **Automation Mode**: `parallel` (maximum concurrent executions: 3)\n  - **Execution
-    Strategy**: Explicit `homeassistant.update_entity` calls\n  - **State Control
-    Input**:\n    - `input_select.smart_home_status`\n  - **Connectivity Targets**:\n
-    \   - Cloudflare: `1.1.1.1`, `1.0.0.1`\n    - Google: `8.8.8.8`, `8.8.4.4`\n    -
-    Quad9: `9.9.9.9`, `149.112.112.112`\n\n\n  ---\n\n\n  ### Notes and Design Rationale\n\n\n
-    \ - **Why `count: 1`**:\n    Reliability is achieved through multiple independent
-    endpoints and providers\n    rather than repeated ICMP bursts against a single
-    target. This significantly\n    reduces traffic while preserving failure-detection
-    accuracy.\n\n  - **Deterministic Scheduling**:\n    Explicit update calls ensure
-    predictable evaluation timing, which is critical\n    for downstream automations,
-    alerts, or failover logic.\n\n  - **Scalability**:\n    Additional operational
-    states or polling tiers can be introduced by adding\n    new trigger IDs without
-    restructuring the automation."
+    `5s` | High-resolution monitoring during normal occupancy |\n\n\n  ---\n\n\n  ###
+    Operational Logic\n\n\n  #### Daily / Active Mode\n\n  - **Behavior**:\n    -
+    Updates all configured connectivity sensors on every 5-second trigger.\n    -
+    Prioritizes fast and deterministic detection of total internet loss.\n\n\n  ####
+    Vacation Mode\n\n  - **Behavior**:\n    - Updates all connectivity sensors only
+    on exact 30-second boundaries (:00 and :30).\n    - Maintains baseline reachability
+    awareness with substantially reduced\n      scheduler, network, and radio overhead.\n
+    \   - Determined via template: `((now().minute*60 + now().second) % 30) == 0`.\n\n\n
+    \ ---\n\n\n  ### Update Frequency & Traffic Profile\n\n\n  **Assumptions**:\n
+    \ - 7 ping sensors total (including Cudy router)\n  - `count: 1` per sensor\n
+    \ - IPv4 ICMP Echo Request + Reply\n  - ~168 bytes per sensor update (request
+    + response)\n\n\n  | Mode | Interval | Update Calls / Day | Update Calls / Month
+    | ICMP Packets / Day | Traffic / Day | Traffic / Month |\n  | :--- | :-------
+    | ------------------ | -------------------- | ----------------- | -------------
+    | --------------- |\n  | **Daily** | 5 s | 103,680 | ~3.11 million | 207,360 |
+    ~16.6 MB | ~480 MB |\n  | **Vacation** | 30 s | 17,280 | ~518,400 | 34,560 | ~2.8
+    MB | ~83 MB |\n\n\n  ---\n\n\n  ### Technical Characteristics\n\n\n  - **Automation
+    Mode**: `parallel` (maximum concurrent executions: 3)\n  - **Execution Strategy**:
+    Explicit `homeassistant.update_entity` calls\n  - **State Control Input**:\n    -
+    `input_select.smart_home_status`\n  - **Connectivity Targets**:\n    - Cloudflare:
+    `1.1.1.1`, `1.0.0.1`\n    - Google: `8.8.8.8`, `8.8.4.4`\n    - Quad9: `9.9.9.9`,
+    `149.112.112.112`\n    - Cudy Router: `192.168.2.1`\n\n\n  ---\n\n\n  ### Notes
+    and Design Rationale\n\n\n  - **Why `count: 1`**:\n    Reliability is achieved
+    through multiple independent endpoints and providers\n    rather than repeated
+    ICMP bursts against a single target. This significantly\n    reduces traffic while
+    preserving failure-detection accuracy.\n\n  - **Deterministic Scheduling**:\n
+    \   Explicit update calls ensure predictable evaluation timing, which is critical\n
+    \   for downstream automations, alerts, or failover logic.\n\n  - **Vacation Mode
+    Optimization**:\n    Uses modulo-based timing to reduce unnecessary updates while
+    preserving\n    deterministic behavior.\n\n  - **Scalability**:\n    Additional
+    operational states or polling tiers can be introduced by adding\n    new sensors
+    without restructuring the automation."
   triggers:
   - trigger: time_pattern
     seconds: /5
-    id: 5s
-  - trigger: time_pattern
-    seconds: /30
-    id: 30s
   conditions: []
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - 5s
-      - condition: state
-        entity_id: input_select.smart_home_status
-        state: Daily
-      sequence:
-      - action: homeassistant.update_entity
-        metadata: {}
-        data:
-          entity_id:
-          - binary_sensor.1_1_1_1
-          - binary_sensor.1_0_0_1
-          - binary_sensor.8_8_8_8
-          - binary_sensor.8_8_4_4
-          - binary_sensor.9_9_9_9
-          - binary_sensor.149_112_112_112
-    - conditions:
-      - condition: trigger
-        id:
-        - 30s
-      - condition: state
-        entity_id: input_select.smart_home_status
-        state: Vacation
-      sequence:
-      - action: homeassistant.update_entity
-        metadata: {}
-        data:
-          entity_id:
-          - binary_sensor.1_1_1_1
-          - binary_sensor.1_0_0_1
-          - binary_sensor.8_8_8_8
-          - binary_sensor.8_8_4_4
-          - binary_sensor.9_9_9_9
-          - binary_sensor.149_112_112_112
+  - if:
+    - condition: template
+      value_template: "{% if states('input_select.smart_home_status') == 'Daily' %}\n
+        \ true\n{% elif states('input_select.smart_home_status') == 'Vacation' %}\n
+        \ {{ ((now().minute*60 + now().second) % 30) == 0 }}\n{% else %}\n  false\n{%
+        endif %}\n"
+    then:
+    - action: homeassistant.update_entity
+      data:
+        entity_id:
+        - binary_sensor.192_168_2_1
+        - binary_sensor.1_1_1_1
+        - binary_sensor.1_0_0_1
+        - binary_sensor.8_8_8_8
+        - binary_sensor.8_8_4_4
+        - binary_sensor.9_9_9_9
+        - binary_sensor.149_112_112_112
   mode: parallel
   max: 3
 - id: '1738740501702'
