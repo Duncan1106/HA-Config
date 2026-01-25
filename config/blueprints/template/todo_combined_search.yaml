@@ -22,13 +22,7 @@ blueprint:
         entity:
           filter:
             - domain: input_button
-
-variables:
-  todo_lists_var: !input todo_lists
-  search_input_var: !input search_input
-  update_button_var: !input update_button
-
-trigger:
+triggers:
   - platform: event
     event_type: event_template_reloaded
   - platform: homeassistant
@@ -40,7 +34,7 @@ trigger:
   - platform: state
     entity_id: !input todo_lists
 
-action:
+actions:
   - action: todo.get_items
     data:
       status: needs_action
@@ -48,6 +42,10 @@ action:
       entity_id: !input todo_lists
     response_variable: all_todo_items
 
+variables:
+      todo_lists_var: !input todo_lists
+      search_input_var: !input search_input
+      update_button_var: !input update_button
 sensor:
   - name: "Combined Filtered Items"
     unique_id: "combined_todo_{{ search_input_var | replace('.', '_') }}"
@@ -121,10 +119,3 @@ sensor:
           {{ combined.items | sort(attribute='s', case_sensitive=False) | to_json }}
         {% else %} []
         {% endif %}
-
-  - name: "Combined Filtered Items Hash"
-    unique_id: "combined_todo_hash_{{ search_input_var | replace('.', '_') }}"
-    state: >-
-      {% set base = 'sensor.combined_filtered_items' %}
-      {{ (state_attr(base, 'filtered_items') | default([]) | to_json ~ 
-          state_attr(base, 'source_map') | default({}) | to_json) | md5 }}
