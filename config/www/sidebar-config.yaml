@@ -188,42 +188,64 @@ styles: |
   }
   
   :host([expanded]) ha-md-list > ha-md-list-item[tp] {
-    /* Change width from 48px to 100% to stop clipping */
     width: 100% !important;
     position: relative;
     overflow: visible !important;
-    --md-list-item-leading-space: 0px;
+    --md-list-item-leading-space: 0px !important;
+    --md-list-item-trailing-space: 0px !important;
   }
 
-  /* Center the icon within the 100% width area */
+  /* 1. Force the inner container to use the full width and center content */
   :host([expanded]) ha-md-list-item[tp]::part(inner) {
+    display: flex !important;
     justify-content: center !important;
-    overflow: visible !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* 2. Target the 'start' slot specifically to stop it from hugging the left */
+  :host([expanded]) ha-md-list-item[tp] [slot="start"] {
+    margin: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  /* 3. Ensure the icon itself has no alignment margins */
+  :host([expanded]) ha-md-list-item[tp] ha-svg-icon {
+    margin: 0 !important;
+    position: relative !important;
   }
 
   :host([expanded]) ha-md-list-item[tp] > .item-text {
     display: none !important;
   }
 
-  /* --- Badge Styling --- */
+  /* 4. Badge Logic (HACS and Config) */
   :host([expanded]) ha-md-list-item[tp] .badge {
+    display: none !important;
+  }
+
+  :host([expanded]) ha-md-list-item[tp="hacs"] .badge:not(:empty),
+  :host([expanded]) ha-md-list-item[tp="config"] .badge:not(:empty) {
     display: flex !important;
     position: absolute !important;
+    /* Anchor to the center of the grid cell */
+    left: 50% !important;
+    top: 50% !important;
+    /* Adjust translate to put it on the icon's top-right corner */
+    transform: translate(4px, -18px) !important; 
     
-    /* Center-relative positioning */
-    /* Since the parent is now 100% width, 'right: 0' would put it at the cell edge. */
-    /* Instead, we anchor it to the center where the icon is. */
-    left: calc(50% + 6px) !important; 
-    top: 6px !important;
-    
+    width: auto !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    padding: 0 4px !important;
     justify-content: center !important;
     align-items: center !important;
     background-color: var(--accent-color, #ff5252) !important;
     color: white !important;
-    border-radius: 12px !important; /* Rounded pill shape */
-    padding: 0 6px !important;
-    min-width: 18px !important;
-    height: 18px !important;
+    border-radius: 10px !important;
     font-size: 11px !important;
     font-weight: bold !important;
     z-index: 5 !important;
