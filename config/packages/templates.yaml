@@ -1032,6 +1032,17 @@ template:
         entity_id:
          - input_button.update_beta_release_notes
          - input_select.conversation_agents
+    conditions:
+      - condition: template
+        value_template: >
+            {% set today = now().date() %}
+            {% if today.day <= 7 %}
+              {% set fdom = today.replace(day=1) %}
+            {% else %}
+              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
+            {% endif %}
+            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
+            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
     actions:
       - action: multiscrape.scrape
         response_variable: beta_scrape
