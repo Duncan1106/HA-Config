@@ -1028,13 +1028,11 @@ template:
         event: start
       - platform: event
         event_type: event_template_reloaded
-      - trigger: state
-        entity_id:
-         - input_button.update_beta_release_notes
-         - input_select.conversation_agents
-    conditions:
-      - condition: template
-        value_template: >
+    binary_sensor:
+      - unique_id: home_assistant_beta_release_notes_window
+        name: Home Assistant Beta Release Notes Window
+        icon: mdi:home-assistant
+        state: >
             {% set today = now().date() %}
             {% if today.day <= 7 %}
               {% set fdom = today.replace(day=1) %}
@@ -1043,6 +1041,20 @@ template:
             {% endif %}
             {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
             {{ first_wed - timedelta(days=7) <= today <= first_wed }}
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - trigger: state
+        entity_id:
+         - input_button.update_beta_release_notes
+         - input_select.conversation_agents
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.home_assistant_beta_release_notes_window
+        state:
+          - "on"
     actions:
       - action: multiscrape.scrape
         response_variable: beta_scrape
@@ -1100,21 +1112,11 @@ template:
             {{ beta_scrape.beta_notes_content }}
             
           agent_id: "{{ states('input_select.conversation_agents')}}"
-    binary_sensor:
+    sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
         state: >
-            {% set today = now().date() %}
-            {% if today.day <= 7 %}
-              {% set fdom = today.replace(day=1) %}
-            {% else %}
-              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
-            {% endif %}
-            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
-            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
-        attributes:
-          beta_version: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {% set url = beta_scrape.beta_url.value|string|trim %}
               {% if 'release-' in url %}
@@ -1127,7 +1129,8 @@ template:
               {% endif %}
             {% else %}
               Unknown
-            {% endif %}
+            {% endif %}%}
+        attributes:
           beta_url: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {{beta_scrape.beta_url.value|string }}
