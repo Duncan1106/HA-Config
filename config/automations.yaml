@@ -4833,6 +4833,7 @@
     from:
     to: 'on'
     id: Arbeit
+    enabled: false
   - trigger: zone
     entity_id: person.stephan
     zone: zone.papa_arbeit
@@ -7528,6 +7529,7 @@
       minutes: 1
       seconds: 0
     above: 99
+    enabled: false
   - trigger: numeric_state
     entity_id:
     - sensor.lsjwh4097rn105299_soc
@@ -13457,3 +13459,25 @@
           }} GB.\n"
         data:
           tag: nas_maintenance_complete
+- id: '1769546818976'
+  alias: NAS Connectivity Monitor
+  description: Alerts when NAS shares disconnect using dynamic variables
+  triggers:
+  - entity_id:
+    - binary_sensor.nas_share_verbunden
+    - binary_sensor.nas_filme_verbunden
+    from: 'on'
+    to: 'off'
+    trigger: state
+  actions:
+  - action: notify.duncan
+    data:
+      title: Connection Alert
+      message: 'The sensor {{ trigger.to_state.name }}  reported a status of {{ trigger.to_state.state
+        }}  at {{ now().strftime(''%H:%M:%S'') }}.
+
+        '
+      data:
+        tag: nas-alert-{{ trigger.entity_id }}
+        group: NAS Status
+  mode: parallel
