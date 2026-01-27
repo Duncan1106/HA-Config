@@ -13461,23 +13461,48 @@
           tag: nas_maintenance_complete
 - id: '1769546818976'
   alias: NAS Connectivity Monitor
-  description: Alerts when NAS shares disconnect using dynamic variables
+  description: Alerts on disconnect and clears notification on reconnect
   triggers:
-  - entity_id:
+  - trigger: state
+    entity_id:
     - binary_sensor.nas_share_verbunden
     - binary_sensor.nas_filme_verbunden
     from: 'on'
     to: 'off'
-    trigger: state
+    id: disconnected
+  - trigger: state
+    entity_id:
+    - binary_sensor.nas_share_verbunden
+    - binary_sensor.nas_filme_verbunden
+    from: 'off'
+    to: 'on'
+    for:
+      minutes: 1
+    id: reconnected
   actions:
-  - action: notify.duncan
-    data:
-      title: Connection Alert
-      message: 'The sensor {{ trigger.to_state.name }}  reported a status of {{ trigger.to_state.state
-        }}  at {{ now().strftime(''%H:%M:%S'') }}.
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: disconnected
+      sequence:
+      - action: notify.admin
+        data:
+          title: ⚠️ NAS Connection Alert
+          message: 'The sensor {{ trigger.to_state.name }} reported a status of  {{
+            trigger.to_state.state }} at {{ now().strftime(''%H:%M:%S'') }}.
 
-        '
-      data:
-        tag: nas-alert-{{ trigger.entity_id }}
-        group: NAS Status
+            '
+          data:
+            tag: nas-alert-{{ trigger.entity_id }}
+            group: NAS Status
+            priority: high
+    - conditions:
+      - condition: trigger
+        id: reconnected
+      sequence:
+      - action: notify.admin
+        data:
+          message: clear_notification
+          data:
+            tag: nas-alert-{{ trigger.entity_id }}
   mode: parallel
