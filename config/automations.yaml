@@ -5414,72 +5414,88 @@
   max: 10
 - id: '1738676581969'
   alias: Connectivity Ping Update
-  description: "  # \U0001F310 **Connectivity Ping Update**\n\n\n  ### \U0001F4CB
-    Adaptive Connectivity Sensor Update Controller\n\n\n  This automation enforces
-    deterministic update intervals for critical\n  ping-based connectivity binary
-    sensors by explicitly triggering\n  `homeassistant.update_entity`. It intentionally
-    bypasses the integration’s\n  internal polling cadence to provide predictable
-    and explainable update timing\n  for internet reachability monitoring.\n\n\n  Redundancy
-    is achieved through **multiple independent targets across different\n  DNS providers**,
-    rather than by sending multiple ICMP requests per update.\n  Each sensor is configured
-    with `count: 1`, favoring horizontal diversity\n  (provider and endpoint separation)
-    over vertical repetition.\n\n\n  ---\n\n\n  ### Trigger Overview\n\n\n  | Trigger
-    Type | Interval | Trigger ID | Operational Context |\n  | :----------- | :-------
-    | :--------- | :------------------ |\n  | **Time Pattern** | Every 5 seconds |
-    `5s` | High-resolution monitoring during normal occupancy |\n\n\n  ---\n\n\n  ###
-    Operational Logic\n\n\n  #### Daily / Active Mode\n\n  - **Behavior**:\n    -
-    Updates all configured connectivity sensors on every 5-second trigger.\n    -
-    Prioritizes fast and deterministic detection of total internet loss.\n\n\n  ####
-    Vacation Mode\n\n  - **Behavior**:\n    - Updates all connectivity sensors only
-    on exact 30-second boundaries (:00 and :30).\n    - Maintains baseline reachability
-    awareness with substantially reduced\n      scheduler, network, and radio overhead.\n
-    \   - Determined via template: `((now().minute*60 + now().second) % 30) == 0`.\n\n\n
-    \ ---\n\n\n  ### Update Frequency & Traffic Profile\n\n\n  **Assumptions**:\n
-    \ - 7 ping sensors total (including Cudy router)\n  - `count: 1` per sensor\n
-    \ - IPv4 ICMP Echo Request + Reply\n  - ~168 bytes per sensor update (request
-    + response)\n\n\n  | Mode | Interval | Update Calls / Day | Update Calls / Month
-    | ICMP Packets / Day | Traffic / Day | Traffic / Month |\n  | :--- | :-------
-    | ------------------ | -------------------- | ----------------- | -------------
-    | --------------- |\n  | **Daily** | 5 s | 103,680 | ~3.11 million | 207,360 |
-    ~16.6 MB | ~480 MB |\n  | **Vacation** | 30 s | 17,280 | ~518,400 | 34,560 | ~2.8
-    MB | ~83 MB |\n\n\n  ---\n\n\n  ### Technical Characteristics\n\n\n  - **Automation
-    Mode**: `parallel` (maximum concurrent executions: 3)\n  - **Execution Strategy**:
-    Explicit `homeassistant.update_entity` calls\n  - **State Control Input**:\n    -
-    `input_select.smart_home_status`\n  - **Connectivity Targets**:\n    - Cloudflare:
-    `1.1.1.1`, `1.0.0.1`\n    - Google: `8.8.8.8`, `8.8.4.4`\n    - Quad9: `9.9.9.9`,
-    `149.112.112.112`\n    - Cudy Router: `192.168.2.1`\n\n\n  ---\n\n\n  ### Notes
-    and Design Rationale\n\n\n  - **Why `count: 1`**:\n    Reliability is achieved
-    through multiple independent endpoints and providers\n    rather than repeated
-    ICMP bursts against a single target. This significantly\n    reduces traffic while
-    preserving failure-detection accuracy.\n\n  - **Deterministic Scheduling**:\n
-    \   Explicit update calls ensure predictable evaluation timing, which is critical\n
-    \   for downstream automations, alerts, or failover logic.\n\n  - **Vacation Mode
-    Optimization**:\n    Uses modulo-based timing to reduce unnecessary updates while
-    preserving\n    deterministic behavior.\n\n  - **Scalability**:\n    Additional
-    operational states or polling tiers can be introduced by adding\n    new sensors
-    without restructuring the automation."
+  description: "# \U0001F310 **Connectivity Ping Update**\n\n### \U0001F4CB Adaptive
+    Connectivity Sensor Update Controller\n\nThis automation enforces **deterministic,
+    state-driven update intervals** for\ncritical ping-based connectivity binary sensors
+    by explicitly triggering\n`homeassistant.update_entity`.\n\nBy doing so, it **bypasses
+    the integrations’ internal polling cadence**, ensuring\npredictable, explainable,
+    and centrally controlled evaluation timing for both\n**internet reachability**
+    and **local network health**.\n\n---\n\n### \U0001F9ED Connectivity Model\n\nConnectivity
+    is evaluated along **two orthogonal dimensions**:\n\n1. **External (Internet)
+    Reachability**\n   - Multiple independent public endpoints across different DNS
+    providers\n   - Detects upstream ISP, routing, or DNS-level outages\n\n2. **Internal
+    (Local) Reachability**\n   - A local router endpoint (Cudy)\n   - Distinguishes
+    *LAN availability* from *internet availability*\n\nThis separation prevents false
+    conclusions such as:\n> “The internet is down”  \nwhen in reality the **local
+    network or router is unreachable**, or vice versa.\n\n---\n\n### \U0001F501 Redundancy
+    Strategy\n\nRedundancy is achieved through **horizontal diversity**, not packet
+    repetition:\n\n- Multiple providers and endpoints\n- Each sensor configured with
+    `count: 1`\n- No ICMP bursts against a single target\n\nThis approach improves
+    fault classification while keeping traffic and radio\noverhead low.\n\n---\n\n###
+    ⏱ Trigger Overview\n\n| Trigger Type | Interval | Operational Context |\n| :-----------
+    | :------- | :------------------ |\n| **Time Pattern** | Every 5 seconds | Base
+    scheduler for all modes |\n\nThe trigger fires every 5 seconds, but **actual updates
+    are gated by conditions**\nbased on the current operational state.\n\n---\n\n###
+    \U0001F9E0 Operational Logic\n\n#### Daily / Active Mode\n\n- **Behavior**:\n
+    \ - All connectivity sensors are updated on every 5-second trigger.\n  - Prioritizes
+    fast, deterministic detection of:\n    - Total internet loss\n    - Partial provider
+    failures\n    - Local router / LAN outages\n\n- **Use case**:\n  - Normal occupancy\n
+    \ - Automations depending on near-real-time connectivity state\n\n---\n\n####
+    Vacation / Power-Save Mode\n\n- **Behavior**:\n  - Sensors are updated **only
+    on exact 30-second boundaries** (`:00` and `:30`).\n  - Enforced via modulo-based
+    time gating:\n    ```\n    ((now().minute * 60 + now().second) % 30) == 0\n    ```\n
+    \ - Maintains baseline reachability awareness while substantially reducing:\n
+    \   - Scheduler churn\n    - Network traffic\n    - Wi-Fi / radio wakeups\n\n-
+    **Use case**:\n  - Extended absence\n  - Reduced automation sensitivity requirements\n\n---\n\n###
+    \U0001F4CA Update Frequency & Traffic Profile\n\n**Assumptions**:\n- 7 total ping
+    sensors\n- `count: 1` per sensor\n- IPv4 ICMP Echo Request + Reply\n- ~168 bytes
+    per successful update\n- 6 external (internet) targets\n- 1 internal (LAN) target\n\n---\n\n####
+    \U0001F30D External Traffic (Internet Reachability)\n\n| Mode | Interval | Update
+    Calls / Day | ICMP Packets / Day | Traffic / Day | Traffic / Month |\n| :--- |
+    :------- | ------------------ | ----------------- | ------------- | ---------------
+    |\n| **Daily** | 5 s | 88,560 | 177,120 | ~14.2 MB | ~410 MB |\n| **Vacation**
+    | 30 s | 14,760 | 29,520 | ~2.4 MB | ~70 MB |\n\n**Includes**:\n- Cloudflare:
+    `1.1.1.1`, `1.0.0.1`\n- Google: `8.8.8.8`, `8.8.4.4`\n- Quad9: `9.9.9.9`, `149.112.112.112`\n\n---\n\n####
+    \U0001F3E0 Internal Traffic (Local Network Reachability)\n\n| Mode | Interval
+    | Update Calls / Day | ICMP Packets / Day | Traffic / Day | Traffic / Month |\n|
+    :--- | :------- | ------------------ | ----------------- | ------------- | ---------------
+    |\n| **Daily** | 5 s | 14,760 | 29,520 | ~2.4 MB | ~70 MB |\n| **Vacation** |
+    30 s | 2,460 | 4,920 | ~0.4 MB | ~12 MB |\n\n**Includes**:\n- Cudy Router: `192.168.2.1`\n\n>
+    This traffic **never leaves the LAN** and remains local to the Wi-Fi or\n> Ethernet
+    segment.\n\n---\n\n### ⚙ Technical Characteristics\n\n- **Automation Mode**: `parallel`
+    (max concurrent executions: 3)\n- **Execution Strategy**:\n  - Explicit `homeassistant.update_entity`\n-
+    **State Control Input**:\n  - `input_select.smart_home_status`\n- **Deterministic
+    Timing**:\n  - Centralized scheduling\n  - No reliance on integration-specific
+    polling behavior\n\n---\n\n### \U0001F4DD Notes & Design Rationale\n\n- **Why
+    `count: 1`**  \n  Failure detection accuracy comes from **endpoint diversity**,
+    not repeated\n  probes. This avoids unnecessary traffic amplification while preserving\n
+    \ diagnostic clarity.\n\n- **Why explicit updates**  \n  Downstream automations
+    and alerts benefit from **predictable evaluation\n  timing**, which implicit polling
+    cannot guarantee.\n\n- **Why separate local vs external targets**  \n  This avoids
+    conflating:\n  - ISP outages\n  - DNS/provider failures\n  - Router or LAN failures
+    \ \n  Each failure class produces a distinct, interpretable sensor pattern.\n\n-
+    **Scalability**  \n  Additional providers, local gateways, or operational modes
+    can be introduced\n  without restructuring the automation logic."
   triggers:
   - trigger: time_pattern
     seconds: /5
-  conditions: []
+  conditions:
+  - condition: template
+    value_template: "{% if states('input_select.smart_home_status') == 'Daily' %}\n
+      \ true\n{% elif states('input_select.smart_home_status') in ['Vacation', 'Power
+      Save'] %}\n  {{ ((now().minute*60 + now().second) % 30) == 0 }}\n{% else %}\n
+      \ false\n{% endif %}\n"
   actions:
-  - if:
-    - condition: template
-      value_template: "{% if states('input_select.smart_home_status') == 'Daily' %}\n
-        \ true\n{% elif states('input_select.smart_home_status') == 'Vacation' %}\n
-        \ {{ ((now().minute*60 + now().second) % 30) == 0 }}\n{% else %}\n  false\n{%
-        endif %}\n"
-    then:
-    - action: homeassistant.update_entity
-      data:
-        entity_id:
-        - binary_sensor.192_168_2_1
-        - binary_sensor.1_1_1_1
-        - binary_sensor.1_0_0_1
-        - binary_sensor.8_8_8_8
-        - binary_sensor.8_8_4_4
-        - binary_sensor.9_9_9_9
-        - binary_sensor.149_112_112_112
+  - action: homeassistant.update_entity
+    data:
+      entity_id:
+      - binary_sensor.192_168_2_1
+      - binary_sensor.1_1_1_1
+      - binary_sensor.1_0_0_1
+      - binary_sensor.8_8_8_8
+      - binary_sensor.8_8_4_4
+      - binary_sensor.9_9_9_9
+      - binary_sensor.149_112_112_112
   mode: parallel
   max: 3
 - id: '1738740501702'
@@ -10726,10 +10742,11 @@
     period\n\n### ⚙️ **Reliability Features**\n\nEach light entity is processed individually
     with up to **5 retry attempts**,   using a **5-second exponential backoff** between
     attempts to guarantee the final desired state is reached.\n\n--- \n\n*Entities
-    managed:*  \n\n\n  - `switch.plant_tent`\n  \n  - `switch.tisch`\n\n*Paludarien
+    managed:*  \n\n\n  - `switch.tisch`\n\n  - `switch.plant_box`\n  \n  - `switch.plant_tent`\n\n*Paludarien
     managed:*\n\n\n  - `switch.paludarien_left`\n  \n  - `switch.paludarien_right`\n
     \ \n  - `switch.paludarien_center`\n  \n  - `switch.kallax_plant_light_zigbee_l3`\n
     \ \n  - `switch.kallax_plant_light_zigbee_l2`\n  \n  - `switch.regal_planzen_1`\n\n
+    \ - `switch.schreibtisch_links_power_strip_l1`\n\n  - `switch.schreibtisch_rechts_power_strip_l5`\n\n
     \ "
   triggers:
   - trigger: sun
@@ -10763,8 +10780,9 @@
   actions:
   - variables:
       entities:
-      - switch.plant_tent
       - switch.tisch
+      - switch.plant_box
+      - switch.plant_tent
       paludarium:
       - switch.paludarien_left
       - switch.paludarien_right
