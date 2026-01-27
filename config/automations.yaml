@@ -4478,6 +4478,8 @@
               message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
                 | timestamp_custom('%H:%M', True) }}.
               tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
           - delay:
               hours: 1
     - conditions:
@@ -5069,7 +5071,8 @@
   mode: single
 - id: hobbyraum_window_monitor
   alias: Hobbyraum kleines Fenster offen
-  description: Monitors Hobby Room window and notifies if left open for 1 hour.
+  description: Monitors Hobby Room window and notifies if left open for 1 hour, repeat
+    every 2 hours.
   triggers:
   - trigger: state
     entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
@@ -5089,12 +5092,21 @@
       - condition: trigger
         id: send_notification
       sequence:
-      - action: script.notify_people_at_home_with_fallbacks
-        data:
-          title: '{{ custom_friendly_name }} offen'
-          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
-            | timestamp_custom('%H:%M', True) }}.
-          tag: '{{ notification_tag }}'
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 2
     - conditions:
       - condition: trigger
         id: delete_notification
@@ -13326,6 +13338,8 @@
               message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
                 | timestamp_custom('%H:%M', True) }}.
               tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
           - delay:
               hours: 3
     - conditions:
