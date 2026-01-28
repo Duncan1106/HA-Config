@@ -12632,7 +12632,7 @@
     to **3600** (if before 05:00) or **900** (if after 05:00).\n\n#### ☀️ Opportunistic
     Solar Heating\n* **Purpose:** Utilize free energy to warm the interior during
     the day.\n* **Logic Overview:** Triggered if the heater is **off**, temperature
-    is between **1.5°C and 10.0°C**, and solar power is **≥ 2000W**.\n* **Effect:**
+    is between **1.5°C and 6.0°C**, and solar power is **≥ 2000W**.\n* **Effect:**
     Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
     to **900**.\n\n#### \U0001F6D1 Thermal Cut-off (Hard OFF)\n* **Purpose:** Prevent
     overheating and energy waste once target temperature is reached.\n* **Logic Overview:**
@@ -12672,7 +12672,7 @@
       value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
         (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) >
         1.5 and states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
-        < 10.0 and states(''sensor.solar_power_total'') | float(0) >= 2000) }}'
+        < 6.0 and states(''sensor.solar_power_total'') | float(0) >= 2000) }}'
       alias: Solar opportunistic heating
     - condition: template
       value_template: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') and states(''sensor.esp32_c3_zero_epever_bme280_temperature'')
@@ -13562,16 +13562,48 @@
   mode: parallel
 - id: 1705101110242_battery_plus_low
   alias: 'Notify: Offline or Low Battery Devices (Detailed)'
-  description: 'Sends a detailed notification if battery devices are offline or critically
-    low, optionally enriched with battery type and quantity from battery_plus sensors.
-
-    '
+  description: "# \U0001F50B **Notify: Offline or Low Battery Devices**\n\n### \U0001F4CB
+    Intelligent Battery Monitoring System Control\n\n**Intent**\nAutomated health
+    monitoring for the smart home ecosystem, designed to preemptively identify and
+    notify the administrator of hardware maintenance requirements.\n\n**Operational
+    Strategy**\nThe system performs a daily deep-scan of the entity registry at a
+    scheduled time. It evaluates all battery-class sensors for two critical failure
+    states: communication loss (**Unavailable/Unknown**) or power depletion (**Below
+    Threshold**). \n\n**Reliability Mechanisms**\nUses a comprehensive template-based
+    aggregation method that dynamically filters a global exclusion list to prevent
+    false positives from mobile devices or transient entities. It leverages `battery_plus`
+    integration data to provide actionable maintenance information (battery types
+    and quantities) directly within the alert.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time**
+    | `10:30:00` | N/A | Initiates the daily maintenance scan during active morning
+    hours. |\n\n---\n\n### Operational Logic Sections\n\n#### Battery Health Evaluation\n\n**Purpose**\nTo
+    identify hardware requiring physical intervention (recharging, replacement, or
+    reconnection).\n\n**Logic Overview**\nThe automation triggers only if the `battery_alert_list`
+    is not empty and the current day matches the `day` variable (0 = Daily). It inspects
+    all `sensor` and `binary_sensor` entities with a `device_class` of **battery**.\n*
+    **Offline Check:** Detects if state is **unavailable** or **unknown**.\n* **Level
+    Check:** Detects if numeric state is **≤ 15%** or if binary state is **on**.\n\n**Effect**\nGenerates
+    a formatted list and dispatches a persistent notification via **notify.duncan**
+    with the tag `offline_devices`.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode:** `single`\n* **Execution Method:** Direct action via `notify.duncan`.\n*
+    **Key Inputs:** * `low_battery_threshold`: **15**\n    * `day`: **0** (All days)\n*
+    **Controlled Entities:** Notification service (`notify.duncan`).\n* **Safety Mechanisms:**
+    * **Exclusion Filter:** Hardcoded list of mobile devices (e.g., `sensor.fp4_battery_level`)
+    to ignore non-static hardware.\n    * **Battery Plus Integration:** Automatically
+    attempts to pull `battery_type_and_quantity` attributes to assist in hardware
+    replacement.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Dynamic Discovery:** The template
+    automatically discovers new battery devices without manual configuration, provided
+    they have the correct `device_class`.\n* **Contextual Awareness:** By checking
+    `device_id(s.entity_id)`, the logic links generic sensors to their parent device
+    to pull specific battery hardware requirements (e.g., \"2x CR2032\"), reducing
+    maintenance friction.\n* **Noise Reduction:** Uses a `trim` check in the condition
+    to ensure the notification engine is never fired for an empty list.\n"
   triggers:
   - at: '10:30:00'
     trigger: time
   conditions:
   - condition: template
-    value_template: '{{ battery_alert_list != '''' and (day == 0 or day == now().isoweekday())
+    value_template: '{{ battery_alert_list|trim != '''' and (day == 0 or day == now().isoweekday())
       }}'
   actions:
   - action: notify.duncan
@@ -13587,33 +13619,39 @@
         tag: offline_devices
   variables:
     day: 0
-    low_battery_threshold: 20
+    low_battery_threshold: 15
     exclude:
     - sensor.fp4_battery_level
     - sensor.iphone_von_enya_battery_level
     - sensor.poco_f7_battery_level
     - sensor.mi_9t_battery_level
+    - sensor.wvgzzze2zpe005371_battery_level
     battery_alert_list: "{%- set entities =\n    (states.sensor\n      | selectattr('attributes.device_class',
       'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
       \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n
       \   +\n    (states.binary_sensor\n      | selectattr('attributes.device_class',
       'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
-      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n-%}\n{%-
-      set result = namespace(items=[]) -%}\n{%- for s in entities -%}\n  {%- if s.entity_id
-      in exclude -%}\n    {%- continue -%}\n  {%- endif -%}\n\n  {%- set state = s.state
-      -%}\n  {%- set value = state | float(-1) -%}\n\n  {%- set is_offline = state
-      in ['unavailable', 'unknown'] -%}\n  {%- set is_low =\n        not is_offline\n
-      \       and value >= 0\n        and value < low_battery_threshold\n  -%}\n\n
-      \ {%- if not (is_offline or is_low) -%}\n    {%- continue -%}\n  {%- endif -%}\n\n
-      \ {%- set dev_id = device_id(s.entity_id) -%}\n  {%- set dev_name = device_name(dev_id)
-      -%}\n\n  {%- set battery_info = none -%}\n  {%- for e in device_entities(dev_id)
+      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n-%}\n\n{%-
+      set result = namespace(items=[]) -%}\n\n{%- for s in entities -%}\n  {%- if
+      s.entity_id in exclude -%}\n    {%- continue -%}\n  {%- endif -%}\n\n  {%- set
+      state = s.state -%}\n\n  {# Determine if the sensor is offline #}\n  {%- set
+      is_offline = state in ['unavailable', 'unknown'] -%}\n\n  {# Determine if the
+      sensor is low battery #}\n  {%- set is_low = false -%}\n  {%- if not is_offline
+      -%}\n    {%- if s.domain == 'sensor' -%}\n      {%- set value = state | float(-1)
+      -%}\n      {%- set is_low = value >= 0 and value <= low_battery_threshold -%}\n
+      \   {%- elif s.domain == 'binary_sensor' -%}\n      {%- set is_low = state ==
+      'on' -%} {# on = low battery #}\n    {%- endif -%}\n  {%- endif -%}\n\n  {%-
+      if not (is_offline or is_low) -%}\n    {%- continue -%}\n  {%- endif -%}\n\n
+      \ {# Lookup _battery_plus info if available #}\n  {%- set dev_id = device_id(s.entity_id)
+      -%}\n  {%- set battery_info = none -%}\n  {%- for e in device_entities(dev_id)
       -%}\n    {%- if e.endswith('_battery_plus') -%}\n      {%- set battery_info
       = state_attr(e, 'battery_type_and_quantity') -%}\n      {%- break -%}\n    {%-
-      endif -%}\n  {%- endfor -%}\n\n  {%- set status =\n      \"Offline\"\n      if
-      is_offline\n      else \"Low battery (\" ~ value | int ~ \"%)\"\n  -%}\n\n  {%-
-      set line =\n    \" - \" ~ s.name ~ \" (\" ~ s.entity_id ~ \")\\n\"\n      ~
-      \"Device: \" ~ dev_name ~ \" — \" ~ status\n      ~ (\n         \"\\nBattery:
-      \" ~ battery_info\n         if battery_info is not none\n         else \"\"\n
-      \     )\n  -%}\n\n  {%- set result.items = result.items + [line] -%}\n{%- endfor
-      -%}\n{{ result.items | join('\\n \\n') }}"
+      endif -%}\n  {%- endfor -%}\n\n  {# Set status text #}\n  {%- set status =\n
+      \     \"Offline\"\n      if is_offline\n      else \"Low battery\"\n      if
+      s.domain == 'binary_sensor'\n      else \"Low battery (\" ~ value | int ~ \"%)\"\n
+      \ -%}\n\n  {# Build single-line alert #}\n  {%- set line =\n    \"• \"\n    ~
+      s.name ~ \" (\" ~ s.entity_id ~ \")\"\n    ~ \" — \" ~ status\n    ~ (\n      \"
+      — \" ~ battery_info\n      if battery_info is not none\n      else \"\"\n    )\n
+      \ -%}\n\n  {%- set result.items = result.items + [line] -%}\n{%- endfor -%}\n\n{{
+      result.items | join('\\n') }}"
   mode: single
