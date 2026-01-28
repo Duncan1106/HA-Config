@@ -11182,6 +11182,11 @@
     - binary_sensor.charge_battery_at_night
     attribute: required_charge_amps
     id: amps
+  - trigger: state
+    entity_id:
+    - binary_sensor.charge_battery_at_night
+    attribute: offset_charge_target_percent
+    id: SoC target
   conditions:
   - condition: or
     conditions:
@@ -11191,9 +11196,6 @@
       - condition: time
         after: 00:04:55
         before: 04:45:00
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state: 'on'
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
@@ -11223,6 +11225,24 @@
 
               {{ req != current }}'
           alias: 'Amp branch specific '
+        - alias: SoC Branch specific
+          condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - SoC target
+          - condition: state
+            entity_id: switch.esp32_s3_zero_deye8k_battery_charge_grid
+            state:
+            - 'on'
+          - condition: template
+            value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
+              ''offset_charge_target_percent'') | default(30, true) | int %}
+
+              {% set current = states(''number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto'')
+              | default(0, true) | int %}
+
+              {{ req != current }}'
     - condition: trigger
       id:
       - 'Off'
@@ -11416,6 +11436,19 @@
           entity_id: number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current
         data:
           value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
+            | default(30, true) | int }}'
+    - conditions:
+      - condition: trigger
+        id:
+        - SoC target
+      sequence:
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id:
+          - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
+        data:
+          value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''offset_charge_target_percent'')
             | default(30, true) | int }}'
   mode: parallel
   max: 10
