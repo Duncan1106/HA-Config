@@ -125,9 +125,9 @@ template:
           buffer_kwh: "{{ [dyn_margin_kwh, min_soc_kwh] | max }}"
           
           # Resulting Energy State
-          net_energy: "{{ battery_usable_kwh + forecast_kwh - buffer_kwh }}"
-          charge_needed: "{{ (target_kwh - net_energy) | clamp(0, target_kwh) }}"
-                    
+          net_energy: "{{ battery_usable_kwh + forecast_kwh - buffer_kwh }}" # available battery + solar - buffers
+          charge_needed: "{{ (target_kwh - net_energy) }}" #raw
+          
           # Offset
           charge_offset: "{{ states('input_number.battery_charge_percent_offset') | float(0) }}"
           charge_offset_base_kwh: "{{ ((cap|float(0)) * (charge_offset|float(0) / 100)) }}"
@@ -135,7 +135,7 @@ template:
           effective_missing_kwh: "{{ effective_target_kwh - net_energy }}"
           charge_offset_kwh: "{{ charge_offset_base_kwh | clamp(0, effective_missing_kwh) }}"
           effective_charge_needed: "{{ (charge_needed + charge_offset_kwh ) | clamp(0, battery_missing_kwh) }}"
-
+          
           # Charging Power Calculation Inputs
           battery_voltage: 51.2
           efficiency: 0.95
@@ -162,7 +162,7 @@ template:
               {{ full_window }}
             {% endif %}
           raw_amps: >
-            {% set charge_kwh = effective_charge_needed | float(0) %}
+            {% set charge_kwh = effective_missing_kwh | float(0) %}
             {% if charge_kwh > 0 %}
               {% set voltage = battery_voltage | float %}
               {% set efficiency_val = efficiency | float %}
@@ -197,15 +197,14 @@ template:
           charge_kwh: ''
           charge_needed_kwh: "{{ charge_needed | round(2) }}"
           charge_offset_kwh: "{{ charge_offset_base_kwh | round(2) }}"
-          charge_needed_effective_kwh: "{{ effective_charge_needed }}"
           effective_missing_kwh: "{{ effective_missing_kwh }}"
           charge_target: ''
           charge_target_percent: >
-            {% set target_pct = ((battery_usable_kwh + effective_missing_kwh) / cap) * 100 if cap > 0 else 0 %}
+            {% set target_pct = ((battery_usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
             {{ target_pct | clamp(0, 100) | round(0, 'ceil', 100) }}
           battery_charge_percent_offset: "{{ charge_offset }}"
           offset_charge_target_percent: >
-            {% set target_pct = (((battery_usable_kwh + effective_charge_needed) / cap) * 100) if cap > 0 else 0 %}
+            {% set target_pct = (((battery_usable_kwh + effective_missing_kwh) / cap) * 100) if cap > 0 else 0 %}
             {{ target_pct | clamp(0, 100) | round(0, 'ceil', 100) }}
           buffer: ''
           dynamic_margin_kwh: "{{ dyn_margin_kwh | round(2) }}"
