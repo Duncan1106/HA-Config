@@ -507,28 +507,6 @@
       action: counter.increment
   mode: parallel
   max: 10
-- id: '1705101110242'
-  alias: Notify When Battery Devices Are Offline
-  description: This automation sends a notification when specific battery-operated
-    devices go offline. It excludes certain devices to avoid unnecessary alerts and
-    triggers at 10:30 AM daily.
-  use_blueprint:
-    path: Tahutipai/zigbee_zwave_notify_when_battery_devices_have_fallen_offline.yaml
-    input:
-      exclude:
-        entity_id:
-        - sensor.fp4_battery_level
-        - sensor.iphone_von_enya_battery_level
-        - sensor.poco_f7_battery_level
-        - sensor.mi_9t_battery_level
-      actions:
-      - metadata: {}
-        data:
-          title: Offline Sensors
-          target: Warning
-          message: The following devices are unavailable {{sensors}}
-        action: notify.duncan
-      time: '10:30:00'
 - id: '1705389061375'
   alias: Homeassistent Start & Stop
   description: "## \U0001F504 Home Assistant Start & Stop Automation\n\n### \U0001F4CB
@@ -13582,3 +13560,60 @@
           data:
             tag: nas-alert-{{ trigger.entity_id }}
   mode: parallel
+- id: 1705101110242_battery_plus_low
+  alias: 'Notify: Offline or Low Battery Devices (Detailed)'
+  description: 'Sends a detailed notification if battery devices are offline or critically
+    low, optionally enriched with battery type and quantity from battery_plus sensors.
+
+    '
+  triggers:
+  - at: '10:30:00'
+    trigger: time
+  conditions:
+  - condition: template
+    value_template: '{{ battery_alert_list != '''' and (day == 0 or day == now().isoweekday())
+      }}'
+  actions:
+  - action: notify.duncan
+    data:
+      title: "\U0001FAAB Battery Issues Detected"
+      message: 'The following battery-powered devices need attention:
+
+
+        {{ battery_alert_list }}
+
+        '
+      data:
+        tag: offline_devices
+  variables:
+    day: 0
+    low_battery_threshold: 20
+    exclude:
+    - sensor.fp4_battery_level
+    - sensor.iphone_von_enya_battery_level
+    - sensor.poco_f7_battery_level
+    - sensor.mi_9t_battery_level
+    battery_alert_list: "{%- set entities =\n    (states.sensor\n      | selectattr('attributes.device_class',
+      'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
+      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n
+      \   +\n    (states.binary_sensor\n      | selectattr('attributes.device_class',
+      'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
+      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n-%}\n{%-
+      set result = namespace(items=[]) -%}\n{%- for s in entities -%}\n  {%- if s.entity_id
+      in exclude -%}\n    {%- continue -%}\n  {%- endif -%}\n\n  {%- set state = s.state
+      -%}\n  {%- set value = state | float(-1) -%}\n\n  {%- set is_offline = state
+      in ['unavailable', 'unknown'] -%}\n  {%- set is_low =\n        not is_offline\n
+      \       and value >= 0\n        and value < low_battery_threshold\n  -%}\n\n
+      \ {%- if not (is_offline or is_low) -%}\n    {%- continue -%}\n  {%- endif -%}\n\n
+      \ {%- set dev_id = device_id(s.entity_id) -%}\n  {%- set dev_name = device_name(dev_id)
+      -%}\n\n  {%- set battery_info = none -%}\n  {%- for e in device_entities(dev_id)
+      -%}\n    {%- if e.endswith('_battery_plus') -%}\n      {%- set battery_info
+      = state_attr(e, 'battery_type_and_quantity') -%}\n      {%- break -%}\n    {%-
+      endif -%}\n  {%- endfor -%}\n\n  {%- set status =\n      \"Offline\"\n      if
+      is_offline\n      else \"Low battery (\" ~ value | int ~ \"%)\"\n  -%}\n\n  {%-
+      set line =\n    \" - \" ~ s.name ~ \" (\" ~ s.entity_id ~ \")\\n\"\n      ~
+      \"Device: \" ~ dev_name ~ \" — \" ~ status\n      ~ (\n         \"\\nBattery:
+      \" ~ battery_info\n         if battery_info is not none\n         else \"\"\n
+      \     )\n  -%}\n\n  {%- set result.items = result.items + [line] -%}\n{%- endfor
+      -%}\n{{ result.items | join('\\n \\n') }}"
+  mode: single
