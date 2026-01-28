@@ -13515,7 +13515,45 @@
           tag: nas_maintenance_complete
 - id: '1769546818976'
   alias: NAS Connectivity Monitor
-  description: Alerts on disconnect and clears notification on reconnect
+  description: "\U0001F4BE **NAS Connectivity Monitor**\n\n### \U0001F4CB Intelligent
+    Storage Connectivity Control\n\nThis automation provides real-time oversight of
+    Network Attached Storage (NAS) mount points. It is designed with a **safety-first**
+    communication strategy, ensuring that administrative personnel are immediately
+    alerted to storage disconnections while maintaining a clean notification history
+    through automated dismissal logic.\n\nThe operational strategy relies on **state-tracking
+    with persistence validation** to prevent flapping and ensures that high-priority
+    alerts are delivered only when a genuine interruption occurs.\n\n---\n\n### Trigger
+    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
+    | :--- | :--- |\n| **State** | `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`
+    | `disconnected` | Detects when a NAS share transition from **on** to **off**.
+    |\n| **State** | `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`
+    | `reconnected` | Confirms a stable reconnection after a **1-minute** duration.
+    |\n\n---\n\n### Operational Logic Sections\n\n#### ⚠️ Disconnected Mode\n- **Purpose**:
+    Immediate notification of storage unavailability.\n- **Logic Overview**: Triggered
+    instantly when a monitored sensor reports an **off** state.\n- **Effect**: Sends
+    a **high-priority** notification to `notify.admin` containing the specific entity
+    name and a timestamp. The alert is assigned a unique **tag** based on the entity
+    ID for targeted management.\n\n#### ✅ Reconnected Mode\n- **Purpose**: Automated
+    workspace cleanup and status restoration.\n- **Logic Overview**: Triggered when
+    a sensor returns to **on** and remains stable for **00:01:00**.\n- **Effect**:
+    Issues a `clear_notification` command to the admin device, removing the specific
+    alert associated with the restored share.\n\n---\n\n### Technical Overview\n\n-
+    **Automation Mode**: `parallel` (Allows simultaneous monitoring of multiple shares)\n-
+    **Execution Method**: Direct `notify.admin` action calls with dynamic data templates.\n-
+    **Key Inputs**: `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`\n-
+    **Controlled Entities**: Administrative notification engine (`notify.admin`).\n-
+    **Safety Mechanisms**: \n    - **Notification Tagging**: Uses `nas-alert-{{ trigger.entity_id
+    }}` to ensure the system only clears the alert for the specific share that reconnected.\n
+    \   - **Stability Delay**: A 1-minute `for` duration on reconnection prevents
+    premature \"all-clear\" messages during intermittent network toggling.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n- **Rationale**: The use of `priority: high` ensures that
+    connection drops bypass \"Do Not Disturb\" settings on supported devices, reflecting
+    the critical nature of storage availability.\n- **Logic Highlight**: The automation
+    utilizes **Parallel mode** to ensure that if both `share` and `filme` sensors
+    drop simultaneously, both notification paths are processed independently without
+    queuing or cancellation.\n- **Fail-safe**: Reconnection triggers require a 60-second
+    dwell time to filter out \"flapping\" network states that might otherwise spam
+    the administrator.\n"
   triggers:
   - trigger: state
     entity_id:
