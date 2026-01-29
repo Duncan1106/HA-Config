@@ -562,22 +562,18 @@ config:
           red: 0
           yellow: 75
         type: gauge
-      - content: "**\U0001F6E1\uFE0F Advisor Recommendations:** {{ state_attr('sensor.system_ha_global_health_score',\
-          \ 'recommendations') }}\n{% set z_list = state_attr('sensor.system_ha_global_health_score',\
-          \ 'zombie_entities') %} {% if z_list and z_list != 'None' %} **\u26A0\uFE0F\
-          \ Zombie Entities:** {{ z_list.split(',') | count }} detected *(Check list\
-          \ below)* {% endif %}\n{% set entity_id = 'sensor.system_ha_global_health_score'\
-          \ %}\n{% set zombie_str = state_attr(entity_id, 'zombie_entities') %}\n\n\
-          {% set entity_id = 'sensor.system_ha_global_health_score' %}\n{% set zombie_str\
-          \ = state_attr(entity_id, 'zombie_entities') %}\n\n{% if zombie_str is not\
-          \ none %}\n{% set entities = expand(zombie_str.split(', ')) %}\n{% set grouped\
-          \ = entities | groupby('domain') %}\n<details>\n<summary><b>Zombie Domains:\
-          \ {{ grouped | length }}</b></summary>\n{% for d in grouped %}\n<details>\n\
-          <summary>{{- d[0] | title }}: <b>{{ d[1] | count }}</b></summary>\n{% for\
-          \ i in d[1] -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- {{ i.name }}: <b>{{ i.state\
-          \ }}</b><br>\n{% endfor %}\n</details>\n{% endfor %}\n</details>\n{% else\
-          \ %}\n<b>\U0001F9DF Zombie attribute not found on {{ entity_id }}</b>\n\
-          {% endif %}\n"
+      - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} **\U0001F6E1\
+          \uFE0F Advisor Recommendations:** {{ state_attr(entity_id, 'recommendations')\
+          \ }}\n{% set z_list = state_attr(entity_id, 'zombie_entities').split(',')\
+          \ %} {% if z_list and z_list != 'None' %}  **\u26A0\uFE0F Zombie Entities:**\
+          \ {{ z_list | count }} detected *(Check list below)* {% set zombies = expand(z_list)\
+          \ %} {% set grouped_zombies = zombies | groupby('domain') %}\n<details>\n\
+          <summary><b>Zombie Domains: {{ grouped_zombies | length }}</b></summary>\n\
+          {% for d in grouped_zombies %}\n<details>\n<summary>{{- d[0] | title }}:\
+          \ <b>{{ d[1] | count }}</b></summary>\n{% for i in d[1] -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-\
+          \ {{ i.name }}: <b>{{ i.state }}</b><br>\n{% endfor %}\n</details>\n{% endfor\
+          \ %}\n</details>\n{% else %}\n<b>\U0001F9DF Zombie attribute not found on\
+          \ {{ entity_id }}</b>\n{% endif %}\n"
         type: markdown
       type: vertical-stack
     icon: mdi:home-analytics
