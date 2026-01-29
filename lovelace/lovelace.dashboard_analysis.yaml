@@ -564,16 +564,15 @@ config:
         type: gauge
       - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} **\U0001F6E1\
           \uFE0F Advisor Recommendations:** {{ state_attr(entity_id, 'recommendations')\
-          \ }}\n{% set z_list = state_attr(entity_id, 'zombie_entities').split(',')\
-          \ %} {% if z_list and z_list != 'None' %}  **\u26A0\uFE0F Zombie Entities:**\
-          \ {{ z_list | count }} detected *(Check list below)* {% set zombies = expand(z_list)\
-          \ %} {% set grouped_zombies = zombies | groupby('domain') %}\n<details>\n\
-          <summary><b>Zombie Domains: {{ grouped_zombies | length }}</b></summary>\n\
-          {% for d in grouped_zombies %}\n<details>\n<summary>{{- d[0] | title }}:\
-          \ <b>{{ d[1] | count }}</b></summary>\n{% for i in d[1] -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-\
-          \ {{ i.name }}: <b>{{ i.state }}</b><br>\n{% endfor %}\n</details>\n{% endfor\
-          \ %}\n</details>\n{% else %}\n<b>\U0001F9DF Zombie attribute not found on\
-          \ {{ entity_id }}</b>\n{% endif %}\n"
+          \ }}\n{% set z_list =\n  state_attr(entity_id, 'zombie_entities')\n  .split(',')\n\
+          \  | map('trim')\n  | list\n%} {% if z_list and z_list != 'None' %}\n{%\
+          \ set zombies = expand(z_list) %} {% set grouped_zombies = zombies | groupby('domain')\
+          \ %}\n<details>\n<summary><b>Zombie Domains: {{ grouped_zombies | length\
+          \ }}</b></summary>\n{% for d in grouped_zombies %}\n<details>\n<summary>{{-\
+          \ d[0] | title }}: <b>{{ d[1] | count }}</b></summary>\n{% for i in d[1]\
+          \ -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- {{ i.name }}: <b>{{ i.state }}</b><br>\n\
+          {% endfor %}\n</details>\n{% endfor %}\n</details>\n{% else %}\n<b>\U0001F9DF\
+          \ Zombie attribute not found on {{ entity_id }}</b>\n{% endif %}\n"
         type: markdown
       type: vertical-stack
     icon: mdi:home-analytics
