@@ -12607,162 +12607,131 @@
   mode: single
 - id: '1767622395757'
   alias: 'Garden House: Freeze Protection Heating'
-  description: "❄️ **Garden House: Freeze Protection Heating**\n\n---\n\n### \U0001F4CB
-    Intelligent Garden House Thermal Control\n\nThis automation manages the climate
-    of the Garden House through a dual-strategy approach: **Emergency Freeze Protection**
-    and **Opportunistic Solar Heating**. It ensures the structure remains above critical
-    freezing thresholds while intelligently utilizing excess solar production to maintain
-    a buffer temperature. \n\nTo ensure high availability in remote environments,
-    the system employs a **retry-with-backoff** reliability mechanism. This ensures
-    that even if a network command fails, the heater state is synchronized through
-    repeated attempts and administrative notifications.\n\n---\n\n### Trigger Overview
-    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
-    :--- |\n| Time Pattern | Every **15 minutes** | N/A | Periodic heartbeat to check
-    thermal conditions and apply logic. |\n| Numeric State | **sensor.solar_power_total**
-    > **2000** | N/A | Immediate activation of opportunistic heating when solar yield
-    is high. |\n\n---\n\n### Operational Logic Sections\n\n#### \U0001F6A8 Emergency
-    Freeze Protection\n* **Purpose:** Prevent structural damage by maintaining temperatures
-    above freezing.\n* **Logic Overview:** Triggered if the heater is **off** and
-    current temperature is **≤ 1.5°C** or the 24h minimum temperature is **≤ -0.5°C**.\n*
-    **Effect:** Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
-    to **3600** (if before 05:00) or **900** (if after 05:00).\n\n#### ☀️ Opportunistic
-    Solar Heating\n* **Purpose:** Utilize free energy to warm the interior during
-    the day.\n* **Logic Overview:** Triggered if the heater is **off**, temperature
-    is between **1.5°C and 6.0°C**, solar power is **≥ 2000W**, heater_energy_today
-    < **1.5 kWh**, and battery > **50%**.\n* **Effect:** Activates **switch.gartenhaus_heizlufter**.
-    Sets **number.gartenhaus_heizlufter_countdown** to **900**.\n\n#### \U0001F6D1
-    Thermal Cut-off (Hard OFF)\n* **Purpose:** Prevent overheating and energy waste
-    once target temperature is reached.\n* **Logic Overview:** Triggered if the heater
-    is **on** and current temperature is **≥ 11.0°C**.\n* **Effect:** Deactivates
-    **switch.gartenhaus_heizlufter**.\n\n---\n\n### Technical Overview\n\n* **Automation
-    Mode:** `single` (Silent suppression of concurrent runs).\n* **Execution Method:**
-    Utilizes `script.retry_action_with_backoff` (10 retries, linear backoff, notification
-    via `notify.duncan`).\n* **Key Inputs:** * **sensor.esp32_c3_zero_epever_bme280_temperature**
-    (Current Temp)\n    * **sensor.bme280_temperature_min** (24h Low)\n    * **sensor.solar_power_total**
-    (Solar Yield)\n* **Controlled Entities:** * **switch.gartenhaus_heizlufter**\n
-    \   * **number.gartenhaus_heizlufter_countdown**\n* **Safety Mechanisms:** Fail-safe
-    `float(99)` values prevent accidental heating on sensor failure; 10-step retry
-    logic for command reliability.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Dynamic Countdown:**
-    The automation intelligently adjusts the heater duration based on the time of
-    day during emergency events; longer runs (**1 hour**) are prioritized in the early
-    morning hours (pre-05:00) to combat the coldest daily troughs.\n* **Hysteresis
-    & Efficiency:** The system targets a wide gap between activation (**1.5°C**) and
-    deactivation (**11.0°C**) to prevent rapid cycling of the heating hardware and
-    to store thermal energy during solar peaks.\n* **Resilience:** By using a 15-minute
-    time pattern, the automation self-heals if a state change was missed or manually
-    overridden.\n"
+  description: "❄️ **Garden House: Freeze Protection Heating**\n\n### \U0001F4CB Intelligent
+    Climate Preservation Control\n\nThis automation manages the heating system within
+    the garden house to prevent structural damage from freezing temperatures. It employs
+    a **two-tier operational strategy**: maintaining a critical safety floor to prevent
+    ice formation and utilizing excess renewable energy to pre-heat the space during
+    high solar output.\n\nReliability is ensured through a **linear backoff retry
+    mechanism**, which validates state changes against potential network instability,
+    and a tiered countdown timer to prevent short-cycling or runaway power consumption.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| Time Pattern | Every **15 minutes** | N/A | Periodic
+    temperature and condition check. |\n| Numeric State | **sensor.solar_power_total**
+    | N/A | Monitors for solar production above **2000W** to trigger opportunistic
+    heating. |\n\n---\n\n### Operational Logic Sections\n\n#### Emergency Freeze Prevention\n*
+    **Purpose**: Protect infrastructure when temperatures reach critical levels.\n*
+    **Logic Overview**: Triggered if the heater is **off** AND current temperature
+    is **≤ 1.5°C** OR the 24-hour minimum has dropped to **≤ 0.5°C**.\n* **Effect**:
+    Activates **switch.gartenhaus_heizlufter** via retry script. Sets a **3600s**
+    (1 hour) countdown if before 04:00, or **900s** (15 mins) otherwise.\n\n#### Opportunistic
+    Solar Heating\n* **Purpose**: Increase ambient temperature using free solar energy.\n*
+    **Logic Overview**: Triggered if heater is **off**, temperature is between **1.5°C**
+    and **6.0°C**, solar production is **≥ 2000W**, daily heater consumption is **<
+    1.5kWh**, and battery SoC is **> 50%**.\n* **Effect**: Activates **switch.gartenhaus_heizlufter**
+    via retry script and sets a **900s** (15 mins) operation countdown.\n\n#### Hard
+    Thermal Cutoff\n* **Purpose**: Prevent overheating and energy waste.\n* **Logic
+    Overview**: Triggered if the heater is currently **on** and the temperature reaches
+    or exceeds **11.0°C**.\n* **Effect**: Disengages **switch.gartenhaus_heizlufter**
+    via retry script with mandatory state confirmation.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode**: `single` (Quietly ignores new triggers if currently running
+    logic).\n* **Execution Method**: Utilizes `script.retry_action_with_backoff` for
+    resilient hardware state switching.\n* **Key Inputs**:\n    * **sensor.esp32_c3_zero_epever_bme280_temperature**
+    (Live Temp)\n    * **sensor.solar_power_total** (Solar Production)\n    * **sensor.felicity_ess_soc_avg**
+    (Battery SoC)\n* **Controlled Entities**:\n    * **switch.gartenhaus_heizlufter**
+    (Main Heater)\n    * **number.gartenhaus_heizlufter_countdown** (Run-time logic)\n*
+    **Safety Mechanisms**:\n    * **Linear Backoff**: 10 retries with 5s-60s delays.\n
+    \   * **Notifications**: Direct alerts to **notify.duncan** upon hardware failure.\n
+    \   * **Energy Cap**: Limits opportunistic heating to **1.5kWh** daily.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Logic Rationale**: The **1.5°C** threshold provides a
+    buffer above freezing to account for sensor variance and thermal inertia. \n*
+    **Battery Protection**: Solar heating is strictly inhibited if the battery is
+    below **50%**, ensuring base load capacity for the household is prioritized over
+    garden house pre-heating.\n* **Smart Timing**: The 1-hour emergency run-time before
+    04:00 anticipates the coldest part of the night, reducing the frequency of start/stop
+    cycles during high-risk hours."
   triggers:
-  - minutes: /15
-    trigger: time_pattern
-  - entity_id: sensor.solar_power_total
+  - trigger: time_pattern
+    minutes: /15
+  - trigger: numeric_state
+    entity_id: sensor.solar_power_total
     above: 2000
-    trigger: numeric_state
   conditions:
-  - condition: or
-    conditions:
-    - alias: Emergency heating needed
-      condition: template
-      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
-        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) <=
-        1.5 or states(''sensor.bme280_temperature_min'') | float(99) <= 0.5) }}'
-    - alias: Solar opportunistic heating
-      condition: template
-      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
-
-        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) >
-        1.5
-
-        and states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
-        < 6.0
-
-        and states(''sensor.solar_power_total'') | float(0) >= 2000
-
-        and states(''sensor.gartenhaus_heizlufter_energy_today'') | float(0) < 1.5
-
-        and states(''sensor.felicity_ess_soc_avg'') | float(0) > 50) }}'''
-    - condition: template
-      value_template: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') and states(''sensor.esp32_c3_zero_epever_bme280_temperature'')
-        | float(99) >= 11.0 }}'
-      alias: Hard OFF
+  - condition: template
+    value_template: '{{ is_emergency or is_opportunistic or is_hard_off }}'
   actions:
-  - variables:
-      temp_now: '{{ states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
-        }}'
-      temp_min_24h: '{{ states(''sensor.bme280_temperature_min'') | float(99) }}'
-      solar_power: '{{ states(''sensor.solar_power_total'') | float(0) }}'
-      heater_on: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') }}'
-      heater_energy_today: '{{ states(''sensor.gartenhaus_heizlufter_energy_today'')
-        | float(0) }}'
-      battery: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0) }}'
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <=
-          0.5) }}
-
-          '
+        value_template: '{{ is_emergency }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_on
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'on'
-      - target:
+      - action: number.set_value
+        target:
           entity_id: number.gartenhaus_heizlufter_countdown
         data:
           value: '{{ 3600 if now().hour < 4 else 900 }}'
-        action: number.set_value
     - conditions:
       - condition: template
-        value_template: "{{ not heater_on\n   and temp_now > 1.5\n   and temp_now
-          < 6.0\n   and solar_power >= 2000 \n   and heater_energy_today < 1.5\n   and
-          battery > 50 }}\n"
+        value_template: '{{ is_opportunistic }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_on
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'on'
-      - target:
+      - action: number.set_value
+        target:
           entity_id: number.gartenhaus_heizlufter_countdown
         data:
           value: 900
-        action: number.set_value
     - conditions:
       - condition: template
-        value_template: '{{ heater_on and temp_now >= 11.0 }}
-
-          '
+        value_template: '{{ is_hard_off }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_off
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'off'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'off'
+  variables:
+    temp_now: '{{ states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
+      }}'
+    temp_min_24h: '{{ states(''sensor.bme280_temperature_min'') | float(99) }}'
+    solar_power: '{{ states(''sensor.solar_power_total'') | float(0) }}'
+    heater_on: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') }}'
+    heater_energy_today: '{{ states(''sensor.gartenhaus_heizlufter_energy_today'')
+      | float(0) }}'
+    battery: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0) }}'
+    is_emergency: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <= 0.5) }}'
+    is_opportunistic: '{{ not heater_on and 1.5 < temp_now < 6.0 and solar_power >=
+      2000 and heater_energy_today < 1.5 and battery > 50 }}'
+    is_hard_off: '{{ heater_on and temp_now >= 11.0 }}'
   mode: single
   max_exceeded: silent
 - id: '1767700454624'
