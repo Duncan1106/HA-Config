@@ -562,17 +562,24 @@ config:
           red: 0
           yellow: 75
         type: gauge
-      - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} **\U0001F6E1\
-          \uFE0F Advisor Recommendations:** {{ state_attr(entity_id, 'recommendations')\
-          \ }}\n{% set z_list =\n  state_attr(entity_id, 'zombie_entities')\n  .split(',')\n\
-          \  | map('trim')\n  | list\n%}  {% if z_list | length > 0 %}\n{% set zombies\
-          \ = expand(z_list) %} {% set grouped_zombies = zombies | groupby('domain')\
-          \ %}\n<details>\n<summary><b>Zombie Domains: {{ grouped_zombies | length\
-          \ }}</b></summary>\n{% for d in grouped_zombies %}\n<details>\n<summary>{{-\
-          \ d[0] | title }}: <b>{{ d[1] | count }}</b></summary>\n{% for i in d[1]\
-          \ -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- {{ i.name }}: <b>{{ i.state }}</b><br>\n\
-          {% endfor %}\n</details>\n{% endfor %}\n</details>\n{% else %}\n<b>\U0001F9DF\
-          \ Zombie attribute not found on {{ entity_id }}</b>\n{% endif %}\n"
+      - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %}\n{%\
+          \ set recommendations = state_attr(entity_id, 'recommendations') %}\n{%\
+          \ set z_raw = state_attr(entity_id, 'zombie_entities') | default('', true)\
+          \ %}\n\n### \U0001F6E1\uFE0F Advisor Recommendations\n{% if recommendations\
+          \ not in [none, 'unknown', 'unavailable', 'none'] %}\n  {{ recommendations\
+          \ }}\n{% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\
+          \uFE0F **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705\
+          \ System healthy. No recommendations.\n{% endif %}\n\n---\n\n{% if z_raw\
+          \ | length > 0 %}\n  {#- Process list once and filter out any invalid entities\
+          \ to prevent 'expand' errors -#}\n  {% set z_list = z_raw.split(',') | map('trim')\
+          \ | select('search', '\\\\.') | list %}\n  {% set grouped_zombies = expand(z_list)\
+          \ | groupby('domain') %}\n<details>\n<summary><b>Zombie Domains: {{ grouped_zombies\
+          \ | length }}</b></summary>\n{% for d in grouped_zombies %}<br>\n<details\
+          \ >\n<summary>{{- d[0] | title }}: <b>{{ d[1] | count }}</b></summary>\n\
+          {% for i in d[1] -%}\n&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \u2022 {{ i.name }}:\
+          \ <b>{{ i.state }}</b><br>\n{% endfor %}\n</details>\n{% endfor %}\n</details>\n\
+          {% else %}\n<b>\U0001F9DF Zombie attribute not found on {{ entity_id }}</b>\n\
+          {% endif %}\n"
         type: markdown
       type: vertical-stack
     icon: mdi:home-analytics
