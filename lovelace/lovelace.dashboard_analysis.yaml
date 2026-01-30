@@ -569,20 +569,20 @@ config:
           \ [none, 'unknown', 'unavailable', 'none'] %}\n  {{ recommendations }}\n\
           {% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\uFE0F\
           \ **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705 System\
-          \ healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw | length >\
-          \ 0 %}\n  {#- Process list and map to Device Names -#}\n  {% set z_list\
-          \ = z_raw.split(',') | map('trim') | select('search', '\\\\.') | list %}\n\
-          \  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list %}\n    {%\
-          \ set d_name = device_attr(eid, 'name') | default('No Device / Independent',\
-          \ true) %}\n    {% set ns.items = ns.items + [{'entity': eid, 'device':\
-          \ d_name}] %}\n  {% endfor %}\n  {% set grouped_devices = ns.items | groupby('device')\
-          \ %}\n\n<details> <summary><b>Zombie Devices: {{ grouped_devices | length\
-          \ }}</b></summary> {% for d in grouped_devices %}<br> <details> <summary>{{\
-          \ d[0] }}: <b>{{ d[1] | count }}</b></summary>  {% for i in d[1] -%} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;\
-          \ \u2022 {{ state_attr(i.entity, 'friendly_name') | default(i.entity) }}:\
-          \ <b>{{ states(i.entity) }}</b><br> {% endfor %} </details>  {% endfor %}\
-          \  </details>\n{% else %} \u2705 **No zombie entities detected.** {% endif\
-          \ %}\n"
+          \ healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw not in ['None',\
+          \ '', none] %}\n  {#- Process list and map to Device Names -#}\n  {% set\
+          \ z_list = z_raw.split(',') | map('trim') | select('search', '\\\\.') |\
+          \ list %}\n  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list\
+          \ %}\n    {% set d_name = device_attr(eid, 'name') | default('No Device\
+          \ / Independent', true) %}\n    {% set ns.items = ns.items + [{'entity':\
+          \ eid, 'device': d_name}] %}\n  {% endfor %}\n  {% set grouped_devices =\
+          \ ns.items | groupby('device') %}\n\n<details> <summary><b>Zombie Devices:\
+          \ {{ grouped_devices | length }}</b></summary> {% for d in grouped_devices\
+          \ %}<br> <details> <summary>{{ d[0] }}: <b>{{ d[1] | count }}</b></summary>\
+          \  {% for i in d[1] -%} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \u2022 {{ state_attr(i.entity,\
+          \ 'friendly_name') | default(i.entity) }}: <b>{{ states(i.entity) }}</b><br>\
+          \ {% endfor %} </details>  {% endfor %}  </details>\n{% else %} \u2705 **No\
+          \ zombie entities detected.** {% endif %}\n"
         type: markdown
       type: vertical-stack
     icon: mdi:home-analytics

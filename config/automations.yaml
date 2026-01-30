@@ -13671,7 +13671,7 @@
 - id: '1769760819099'
   alias: 'ESPHome: Controlled Firmware Auto-Update'
   description: 'Automatically installs ESPHome firmware updates once per day at 10:00.
-    Updates are triggered if the month changed OR the patch gap is >= 3. Limits updates
+    Updates are triggered if the month changed OR the patch gap is >= 2. Limits updates
     to 5 devices per day, skips devices already updating. Uses Spook actions to manage
     HAGHS ignore labels.
 
@@ -13702,27 +13702,31 @@
           entity_id: '{{ repeat.item.entity }}'
         action: update.install
     enabled: true
-  - action: persistent_notification.create
-    data:
-      title: ESPHome Firmware Updates Installed
-      message: '{{ update_message |replace(''
-
-        '',''<br>'') }}'
-  - action: notify.duncan
-    data:
-      title: ESPHome Firmware Updates Installed
-      message: '{{ update_message }}'
+  - if:
+    - condition: template
+      value_template: '{{ update_message | trim | length > 0 }}'
+    then:
+    - action: notify.duncan
       data:
-        actions:
-        - action: URI
-          title: Open ESPHome
-          uri: /config/esphome/dashboard
-        - action: URI
-          title: Open Updates
-          uri: /config/updates
+        title: ESPHome Firmware Updates Installed
+        message: '{{ update_message }}'
+        data:
+          actions:
+          - action: URI
+            title: Open ESPHome
+            uri: /config/esphome/dashboard
+          - action: URI
+            title: Open Updates
+            uri: /config/updates
+    - action: persistent_notification.create
+      data:
+        title: ESPHome Firmware Updates Installed
+        message: '{{ update_message |replace(''
+
+          '',''<br>'') }}'
   mode: single
   variables:
-    patch_gap_threshold: 1
+    patch_gap_threshold: 2
     esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
       '^update\\\\.')\n   | list }}"
     eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
