@@ -490,7 +490,7 @@ config:
         action: more-info
       type: custom:mushroom-template-card
       vertical: true
-    - content: "{% set x = ['unavailable','unknown'] %}\n\n{%- for d in states|groupby('domain')\
+    - content: "{% set x = ['unavailable','unknown'] %}\n{%- for d in states|groupby('domain')\
         \ %}\n  {% if loop.first %} \n    <details><summary><b>Domains: {{loop.length}}</b>\
         \ </summary>\n  {% endif %}\n   <details>\n    <summary>{{- d[0] | title }}:\
         \ <b>{{states[d[0]]|rejectattr('state','in',x)|list|count}}</b></summary>\n\
@@ -498,6 +498,9 @@ config:
         \ {{i.name}}: <b>{{i.state}}</b><br>\n    {% endfor %}\n   </details>\n{%-\
         \ endfor -%}\n</details>"
       type: markdown
+      visibility:
+      - condition: user
+        users: []
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
@@ -586,54 +589,38 @@ config:
         type: markdown
       type: vertical-stack
     - card:
-      - hold_action:
-          action: more-info
-        icon_color: '{% if states(entity) < now().strftime(''%Y-%m-%d'') %} red  {%
-          elif states(entity) == now().strftime(''%Y-%m-%d'') %} blue  {% else %}
-          green {% endif %}
-
-          '
-        picture: '{# Dynamically finds the image entity for each plant #} {% set base
-          = entity.split(''_geplante_'')[0].replace(''sensor.'', ''image.'') %} {{
-          state_attr(base, ''entity_picture'') }}
-
-          '
-        primary: '{% set name = state_attr(entity, ''friendly_name'') %} {{ name.split(''
-          Geplante'')[0] }}
-
-          '
-        secondary: "{% set due = states(entity) %} {% set today = now().strftime('%Y-%m-%d')\
-          \ %} {% set tomorrow = (now() + timedelta(days=1)).strftime('%Y-%m-%d')\
-          \ %} {% set task_type = 'Water' if 'bewasserung' in entity else 'Fertilize'\
-          \ if 'dungung' in entity else 'Clean' %}\n{% if due < today %}\n  \u26A0\
-          \uFE0F LATE ({{due}}): {{task_type}}\n{% elif due == today %}\n  \U0001F4C5\
-          \ TODAY: {{task_type}}\n{% else %}\n  \U0001F552 Tomorrow: {{task_type}}\n\
-          {% endif %}\n"
-        tap_action:
-          action: call-service
-          service: button.press
-          target:
-            entity_id: '{# Maps the sensor back to the specific "complete" button
-              #} {{ entity.replace(''sensor.'', ''button.'').replace(''_geplante_'',
-              ''_'').replace(''bewasserung'', ''bewasserung_abschliessen'').replace(''dungung'',
-              ''dungung_abschliessen'').replace(''reinigung'', ''reinigung_abschliessen'')
-              }}
-
-              '
-        type: custom:mushroom-template-card
+        type: vertical-stack
+      card_param: cards
       filter:
         template: "{% set tasks = ['geplante_bewasserung', 'geplante_dungung', 'geplante_reinigung']\
-          \ %}\n{% set today = now().date() %}\n{% set tomorrow = (now() + timedelta(days=1)).date()\
-          \ %}\n{% set ns = namespace(entities=[]) %}\n\n{% for task in tasks %}\n\
-          \  {% for state in states.sensor | selectattr('entity_id', 'search', task)\
-          \ %}\n    {% if state.state != 'unknown' and state.state != 'unavailable'\
-          \ %}\n      {% set due_date = as_datetime(state.state).date() %}\n     \
-          \ {% if due_date <= tomorrow %}\n        {% set ns.entities = ns.entities\
-          \ + [state.entity_id] %}\n      {% endif %}\n    {% endif %}\n  {% endfor\
-          \ %}\n{% endfor %}\n{{ ns.entities }}\n"
-      show_empty: true
-      sort:
-        method: state
+          \ %}\n{% set tomorrow = (now() + timedelta(days=1)).date() %}\n{% set ns\
+          \ = namespace(cards=[]) %}\n\n{% for task in tasks %}\n  {% for state in\
+          \ states.sensor | selectattr('entity_id', 'search', task) %}\n    {% if\
+          \ as_datetime(state.state) != None %}\n      {% if as_datetime(state.state).date()\
+          \ <= tomorrow %}\n        {% set entity = state.entity_id %}\n        {%\
+          \ set dev_id = device_id(entity) %}\n        {% set dev_entities = device_entities(dev_id)\
+          \ if dev_id else [] %}\n        \n        {% set img_entity = dev_entities\
+          \ | select('search', '^image\\.') | first %}\n        {% set img_path =\
+          \ state_attr(img_entity, 'entity_picture') if img_entity else '' %}\n  \
+          \      \n        {% set task_suffix = task.replace('geplante_', '') ~ '_abschliessen'\
+          \ %}\n        {% set btn_entity = dev_entities | select('search', task_suffix)\
+          \ | first %}\n        \n        {% set row = {\n          \"type\": \"horizontal-stack\"\
+          ,\n          \"cards\": [\n            {\n              \"type\": \"custom:mushroom-template-card\"\
+          ,\n              \"primary\": state_attr(entity, 'friendly_name').split('\
+          \ Geplante')[0],\n              \"secondary\": (as_datetime(states(entity)).date()\
+          \ | string) ~ (' (Water)' if 'bewasserung' in entity else ' (Fertilize)'\
+          \ if 'dungung' in entity else ' (Clean)'),\n              \"picture\": img_path,\n\
+          \              \"entity\": entity,\n              \"tap_action\": { \"action\"\
+          : \"more-info\" }\n            },\n            {\n              \"type\"\
+          : \"custom:mushroom-template-card\",\n              \"primary\": \"Done\"\
+          ,\n              \"icon\": \"mdi:check\",\n              \"icon_color\"\
+          : \"green\",\n              \"layout\": \"vertical\",\n              \"\
+          tap_action\": {\n                \"action\": \"perform-action\",\n     \
+          \           \"perform_action\": \"button.press\",\n                \"target\"\
+          : { \"entity_id\": btn_entity }\n              }\n            }\n      \
+          \    ]\n        } %}\n        {% set ns.cards = ns.cards + [row] %}\n  \
+          \    {% endif %}\n    {% endif %}\n  {% endfor %}\n{% endfor %}\n{{ ns.cards\
+          \ | tojson }}\n"
       type: custom:auto-entities
     icon: mdi:home-analytics
     title: Analytics
