@@ -11081,67 +11081,60 @@
   mode: single
 - id: '1763164752006'
   alias: Night Battery Charging
-  description: "  # \U0001F319 Night Battery Charging Automation\n\n  ## ⚙️ Purpose\n\n
-    \ Automatically manage battery charging during cheap night tariff windows.\n  Starts
-    charging when allowed and needed, adjusts max charge current when a\n  requested-amps
-    attribute changes, and ensures charging reliably stops at the\n  scheduled times
-    (04:55 / 05:00), including after Home Assistant restarts.\n\n  ---\n\n  ## ⏰ Triggers\n\n
-    \ | Trigger ID | Type   | Details                                                                 |\n
-    \ |------------|--------|-------------------------------------------------------------------------|\n
-    \ | On         | State  | `binary_sensor.charge_battery_at_night` turns `on`                      |\n
-    \ | On         | Time   | Time at `00:05:00` (helper to evaluate start conditions)
-    \               |\n  | Off        | Time   | Time at `04:55:00` (scheduled stop)
-    \                                    |\n  | Off        | Time   | Time at `05:00:00`
-    (scheduled stop fallback)                            |\n  | amps       | State
-    \ | Attribute change: `binary_sensor.charge_battery_at_night.required_charge_amps`
-    |\n\n  ---\n\n  ## \U0001F4CB Conditions (overview)\n\n  The automation proceeds
-    when ANY of these branches is true:\n\n  1) Night charging start branch\n     -
-    Current time is in the night charging window (after 00:04:55 and\n       before
-    04:45:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
-    trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
-    switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
-    `off`\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n  2) Scheduled
-    stop branch\n     - The trigger was one of the \"Off\" time triggers (04:55 or
-    05:00)\n\n  3) Required-amps update branch\n     - The trigger was the attribute
-    change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
-    \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
-    \    - Current time is in the night charging window (after 00:04:55 and before\n
-    \      04:45:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
-    \ ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start Charging (trigger id:
-    \"On\" with sensor on)\n     - Notify `notify.duncan` with decision summary\n
-    \    - Call `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`
-    (retries/backoff,\n       notify on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
-    to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
-    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
-    saved cost into `input_number.save_through_night_battery_charging`\n     - Call
-    `script.retry_action_with_backoff` to turn on `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
-    \    - Update `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
-    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  2)
-    Stop Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
-    to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n     -
-    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
-    `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`
-    (uses\n       a linear backoff variant; longer max_delay)\n\n  3) Adjust Max Charge
-    Current (trigger id: attribute change \"amps\")\n     - Call `script.retry_action_with_backoff`
-    to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
-    \    - Update\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
-    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  ---\n\n
-    \ ## ✅ Retry / Reliability\n\n  - Both start/stop/external-amp operations use
-    `script.retry_action_with_backoff`\n    to ensure the switch actions succeed (configurable
-    retries, base/max\n    delays, backoff type).\n  - Scheduled stop triggers at
-    04:55 and 05:00 guarantee charging is turned\n    off even after restarts or missed
-    events.\n  - Time window checks prevent starting outside the intended cheap-tariff\n
-    \   night window.\n\n  ---\n\n  ## \U0001F50E Entities referenced\n\n  - binary_sensor.charge_battery_at_night
-    (attributes: soc_percent,\n    usable_kwh, target_kwh, total_energy_kwh, charge_needed_kwh,\n
-    \   offset_charge_target_percent, required_charge_amps, forecast_heute_kwh,\n
-    \   saved_cost_eur)\n  - switch.esp32_s3_zero_deye8k_battery_charge_grid\n  -
-    switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control\n  - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto\n
-    \ - number.esp32_s3_zero_deye8k_time_point_1_power\n  - number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current\n
-    \ - input_number.save_through_night_battery_charging\n  - script.retry_action_with_backoff\n
-    \ - notify.duncan\n\n  ---\n\n  Summary: starts charging only when allowed and
-    beneficial during the\n  night window, adjusts external amp control and max-current
-    when requested,\n  and always attempts to stop charging reliably at the scheduled
-    times."
+  description: "# \U0001F319 **Night Battery Charging**\n\n---\n\n### \U0001F4CB Intelligent
+    Battery Energy Control\n**High-Level Intent**\nOptimizes home battery storage
+    by charging from the grid during low-cost night windows. The system calculates
+    required energy based on current state-of-charge (SoC), solar forecasts, and user-defined
+    buffers to ensure sufficient power for the following day at minimum cost.\n\n**Operational
+    Strategy**\n* **Cost-Efficient:** Leverages night-time electricity rates when
+    solar availability is insufficient.\n* **Dynamic Adjustment:** Real-time updates
+    to charge amperage and SoC targets if underlying requirements change during the
+    active window.\n* **Automation Window:** Strictly active between **00:05** and
+    **04:59** to align with typical off-peak utility periods.\n\n**Reliability Mechanisms**\n*
+    **Robust Execution:** Utilizes `script.retry_action_with_backoff` for critical
+    switch toggles, ensuring hardware commands (e.g., Deye Inverter settings) succeed
+    despite potential transient network issues.\n* **Parallel Execution:** Mode set
+    to **Parallel** to allow simultaneous processing of SoC and Amperage updates.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **State** | `binary_sensor.charge_battery_at_night`
+    (**on**) | `On` | Initiation of the charging logic based on demand. |\n| **Time**
+    | **00:05:00** | `On` | Scheduled start of the night charging window. |\n| **Time**
+    | **04:59:00** / **05:00:00** | `Off` | Scheduled termination of grid charging.
+    |\n| **State** | `attribute: required_charge_amps` | `amps` | Adjusts charging
+    speed if demand attributes change. |\n| **State** | `attribute: offset_charge_target_percent`
+    | `SoC target` | Updates the maximum SoC limit dynamically. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### \U0001F311 Charging Initiation (Night Window)\n* **Purpose:**
+    Secure energy storage for the next day.\n* **Logic Overview:** Triggered by time
+    or sensor state within the **00:05** to **04:59** window. Only executes if the
+    `binary_sensor` is **on** and the inverter grid-charge switch is currently **off**.\n*
+    **Effect:** * Sends a detailed **Notification** via `notify.duncan` with calculated
+    kWh requirements and cost savings.\n    * Sets `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    to the calculated target percentage.\n    * Forces `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to **0** to prioritize charging.\n    * Enables `switch.esp32_s3_zero_deye8k_battery_charge_grid`
+    and `switch.bett_powerbank_charger`.\n    * Increments `input_number.save_through_night_battery_charging`
+    with predicted savings.\n\n#### ☀️ Window Termination\n* **Purpose:** Cease grid
+    reliance before peak rates or solar production begins.\n* **Logic Overview:**
+    Triggered at **04:59** or **05:00**.\n* **Effect:** * Disables all grid-charging
+    switches.\n    * Resets `number.esp32_s3_zero_deye8k_time_point_1_power` to **7000W**
+    for normal discharge operations.\n    * Turns off auxiliary chargers (`switch.bett_powerbank_charger`).\n\n####
+    ⚡ Dynamic Parameter Adjustment\n* **Purpose:** Adapt to changing energy requirements
+    in real-time.\n* **Logic Overview:** Monitors changes in `required_charge_amps`
+    or `offset_charge_target_percent`.\n* **Effect:** Updates inverter registers immediately
+    to match the new `binary_sensor` attributes without restarting the full charging
+    cycle.\n\n---\n\n### Technical Overview\n\n* **Automation Mode:** `parallel` (Max:
+    10)\n* **Execution Method:** `script.retry_action_with_backoff`\n* **Key Inputs:**
+    * `binary_sensor.charge_battery_at_night` (Logic controller)\n    * `input_number.battery_charge_percent_offset`
+    (User-defined safety margin)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n
+    \   * `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n    *
+    `switch.bett_powerbank_charger`\n* **Safety Mechanisms:** 10x retry limit with
+    exponential backoff on hardware commands; SoC targets are clamped at a maximum
+    of **100%**.\n\n---\n\n### \U0001F4A1 Notes\n* **Financial Tracking:** The automation
+    calculates `saved_cost_eur` per session and logs it to a global helper for long-term
+    ROI tracking.\n* **Predictive Buffer:** Logic includes a `dynamic_margin_kwh`
+    which accounts for solar forecast uncertainty, ensuring the battery isn't overcharged
+    if a very sunny day is expected.\n* **Calculated Duration:** The notification
+    includes a \"Time Remaining\" calculation to inform the user exactly how long
+    the high-current charge phase will last."
   triggers:
   - entity_id: binary_sensor.charge_battery_at_night
     to: 'on'
