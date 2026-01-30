@@ -6063,6 +6063,9 @@ config:
             type: grid
           card_param: cards
           filter:
+            exclude:
+            - label: light_schrag
+              options: {}
             include:
             - domain: light
               entity_id: light.gx53_*
@@ -6070,19 +6073,42 @@ config:
                 entity: this.entity_id
                 features:
                 - type: light-brightness
+                features_position: inline
                 type: tile
+                vertical: false
               state: 'on'
           show_empty: false
           type: custom:auto-entities
           visibility:
-          - condition: or
-            conditions:
-            - condition: state
-              entity: switch.duncan_lichtschalter_left
+          - condition: state
+            entity: switch.duncan_lichtschalter_right
+            state: 'on'
+        - card:
+            columns: 1
+            square: false
+            type: grid
+          card_param: cards
+          filter:
+            exclude:
+            - label: light_gerade
+              options: {}
+            include:
+            - domain: light
+              entity_id: light.gx53_*
+              options:
+                entity: this.entity_id
+                features:
+                - type: light-brightness
+                features_position: inline
+                type: tile
+                vertical: false
               state: 'on'
-            - condition: state
-              entity: switch.duncan_lichtschalter_right
-              state: 'on'
+          show_empty: false
+          type: custom:auto-entities
+          visibility:
+          - condition: state
+            entity: switch.duncan_lichtschalter_left
+            state: 'on'
         type: vertical-stack
       - cards:
         - badges:
@@ -7498,9 +7524,13 @@ config:
         clear-children: true
         expanded: false
         gap: 0.1em
-        icon: ''
+        icon: ' '
         overlay-margin: 0em
         padding: 0.1em
+        templates:
+        - template: expanded
+          value_template: "[[[\n  /* Handing the initial undefined state with the\
+            \ ?? operator */\n  return variables.dns_down ?? false;\n]]]\n"
         title: Expander Card
         title-card:
           alignment:
@@ -7543,6 +7573,12 @@ config:
         title-card-button-overlay: true
         title-card-clickable: true
         type: custom:expander-card
+        variables:
+        - value_template: "[[[\n  return is_state('binary_sensor.quad9_either_connected',\
+            \ 'off') ||\n         is_state('binary_sensor.google_either_connected',\
+            \ 'off') ||\n         is_state('binary_sensor.cloud_flare_either_connected',\
+            \ 'off');\n]]]\n"
+          variable: dns_down
       - button-background: transparent
         cards:
         - cards:
