@@ -12752,8 +12752,8 @@
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_outdoor_temperature
-    id: temp below 2
-    below: 2
+    id: temp below
+    below: 1
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_rain_rate
@@ -12821,7 +12821,7 @@
               < 10 or low_temp < 10 %}\n              {% set ns.is_low = true %}\n
               \           {% endif %}\n            {% set is_precip = item.condition
               in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy', 'snowy-rainy']
-              %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
+              %}\n            {% set is_cold = current_temp < 1 or low_temp < 1 %}\n
               \           {% if is_precip and is_cold %}\n              {% set ns.is_wet
               = true %}\n            {% endif %}\n        {% endif %}\n        {%
               if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
@@ -12857,8 +12857,8 @@
       - condition: trigger
         id:
         - wet
-        - temp below 2
         - 30m
+        - temp below
       - condition: sun
         after: sunset
         before: sunrise
@@ -12868,15 +12868,15 @@
         - conditions:
           - condition: trigger
             id:
-            - temp below 2
             - 30m
+            - temp below
           - condition: state
             entity_id: input_boolean.rollo_was_cold
             state:
             - 'off'
           - condition: numeric_state
             entity_id: sensor.gw1100a_outdoor_temperature
-            below: 2
+            below: 1
           sequence:
           - action: input_boolean.turn_on
             metadata: {}
@@ -13688,7 +13688,7 @@
       label_id:
       - haghs_ignore
       entity_id: '{{ eligible_updates | map(attribute=''entity'') | list }}'
-    enabled: false
+    enabled: true
   - repeat:
       for_each: '{{ updates_today }}'
       sequence:
@@ -13701,11 +13701,13 @@
       - target:
           entity_id: '{{ repeat.item.entity }}'
         action: update.install
-    enabled: false
+    enabled: true
   - action: persistent_notification.create
     data:
       title: ESPHome Firmware Updates Installed
-      message: '{{ update_message }}'
+      message: '{{ update_message |replace(''
+
+        '',''<br>'') }}'
   - action: notify.duncan
     data:
       title: ESPHome Firmware Updates Installed
@@ -13742,5 +13744,5 @@
       latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
       endif %}\n{% endfor %} {{ ns.items }}"
     updates_today: '{{ eligible_updates[:5] }}'
-    update_message: '{% for item in updates_today %} • {{ item.name }} updated from
-      {{ item.from }} → {{ item.to }}\n {% endfor %}'
+    update_message: "{% for item in updates_today %} \n• {{ item.name }} updated from
+      {{ item.from}} → {{ item.to }}\n{% endfor %}\n"
