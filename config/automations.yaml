@@ -13668,3 +13668,79 @@
       \ -%}\n\n  {%- set result.items = result.items + [line] -%}\n{%- endfor -%}\n\n{{
       result.items | join('\\n') }}"
   mode: single
+- id: '1769760819099'
+  alias: 'ESPHome: Controlled Firmware Auto-Update'
+  description: 'Automatically installs ESPHome firmware updates once per day at 10:00.
+    Updates are triggered if the month changed OR the patch gap is >= 3. Limits updates
+    to 5 devices per day, skips devices already updating. Uses Spook actions to manage
+    HAGHS ignore labels.
+
+    '
+  triggers:
+  - trigger: time
+    at: '10:00:00'
+  conditions:
+  - condition: template
+    value_template: '{{ eligible_updates | length > 0 }}'
+  actions:
+  - action: homeassistant.add_label_to_entity
+    data:
+      label_id:
+      - haghs_ignore
+      entity_id: '{{ eligible_updates | map(attribute=''entity'') | list }}'
+    enabled: false
+  - repeat:
+      for_each: '{{ updates_today }}'
+      sequence:
+      - action: homeassistant.remove_label_from_entity
+        data:
+          label_id:
+          - haghs_ignore
+          entity_id:
+          - '{{ repeat.item.entity }}'
+      - target:
+          entity_id: '{{ repeat.item.entity }}'
+        action: update.install
+    enabled: false
+  - action: persistent_notification.create
+    data:
+      title: ESPHome Firmware Updates Installed
+      message: '{{ update_message }}'
+  - action: notify.duncan
+    data:
+      title: ESPHome Firmware Updates Installed
+      message: '{{ update_message }}'
+      data:
+        actions:
+        - action: URI
+          title: Open ESPHome
+          uri: /config/esphome/dashboard
+        - action: URI
+          title: Open Updates
+          uri: /config/updates
+  mode: single
+  variables:
+    patch_gap_threshold: 1
+    esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
+      '^update\\\\.')\n   | list }}"
+    eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
+      %}\n  {% set installed = state_attr(e, 'installed_version') %}\n  {% set latest
+      = state_attr(e, 'latest_version') %}\n  {% set in_progress = state_attr(e, 'in_progress')
+      %}\n\n  {% if installed and latest and not in_progress %}\n    {% set i = installed.split('.')[:3]
+      %}\n    {% set l = latest.split('.')[:3] %}\n\n    {% if i | length >= 2 and
+      l | length >= 2 %}\n      {% set installed_year = i[0] | int %}\n      {% set
+      installed_month = i[1] | int %}\n      {% set installed_patch = i[2] | int if
+      i | length > 2 else 0 %}\n\n      {% set latest_year = l[0] | int %}\n      {%
+      set latest_month = l[1] | int %}\n      {% set latest_patch = l[2] | int if
+      l | length > 2 else 0 %}\n\n      {% set installed_months = installed_year *
+      12 + installed_month %}\n      {% set latest_months = latest_year * 12 + latest_month
+      %}\n\n      {% set month_changed = (latest_months - installed_months) >= 1 %}\n
+      \     {% set patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold
+      %}\n\n      {% if month_changed or patch_gap %}\n        {% set ns.items = ns.items
+      + [\n          {\n            \"entity\": e,\n            \"name\": state_attr(e,
+      'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
+      latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
+      endif %}\n{% endfor %} {{ ns.items }}"
+    updates_today: '{{ eligible_updates[:5] }}'
+    update_message: '{% for item in updates_today %} • {{ item.name }} updated from
+      {{ item.from }} → {{ item.to }}\n {% endfor %}'
