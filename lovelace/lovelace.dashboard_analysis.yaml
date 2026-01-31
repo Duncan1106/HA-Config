@@ -570,14 +570,14 @@ config:
       - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} {%\
           \ set recommendations = state_attr(entity_id, 'recommendations') %} {% set\
           \ z_raw = state_attr(entity_id, 'zombie_entities') | default('', true) %}\n\
-          ### \U0001F6E1\uFE0F Advisor Recommendations {% if recommendations not in\
-          \ [none, 'unknown', 'unavailable', 'none'] %}\n  {{ recommendations }}\n\
-          {% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\uFE0F\
-          \ **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705 System\
-          \ healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw not in ['None',\
-          \ '', none] %}\n  {#- Process list and map to Device Names -#}\n  {% set\
-          \ z_list = z_raw.split(',') | map('trim') | select('search', '\\\\.') |\
-          \ list %}\n  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list\
+          ### \U0001F6E1\uFE0F Advisor Recommendations  {% if recommendations not\
+          \ in [none, 'unknown', 'unavailable', 'none', 'None', ''] %}\n  {{ recommendations\
+          \ }}\n{% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\
+          \uFE0F **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705\
+          \ System healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw not\
+          \ in ['None', '', none] %}\n  {#- Process list and map to Device Names -#}\n\
+          \  {% set z_list = z_raw.split(',') | map('trim') | select('search', '\\\
+          \\.') | list %}\n  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list\
           \ %}\n    {% set d_name = device_attr(eid, 'name') | default('No Device\
           \ / Independent', true) %}\n    {% set ns.items = ns.items + [{'entity':\
           \ eid, 'device': d_name}] %}\n  {% endfor %}\n  {% set grouped_devices =\
