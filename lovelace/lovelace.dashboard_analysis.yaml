@@ -490,17 +490,19 @@ config:
         action: more-info
       type: custom:mushroom-template-card
       vertical: true
-    - content: "{% set x = ['unavailable','unknown'] %}\n{%- for d in states|groupby('domain')\
-        \ %}\n  {% if loop.first %} \n    <details><summary><b>Domains: {{loop.length}}</b>\
-        \ </summary>\n  {% endif %}\n   <details>\n    <summary>{{- d[0] | title }}:\
-        \ <b>{{states[d[0]]|rejectattr('state','in',x)|list|count}}</b></summary>\n\
-        \    {% for i in d[1] if i.state not in x -%}\n      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-\
-        \ {{i.name}}: <b>{{i.state}}</b><br>\n    {% endfor %}\n   </details>\n{%-\
-        \ endfor -%}\n</details>"
+    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = 'Planta'\
+        \ -%}\n\n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first\
+        \ -%} \n    <details><summary><b>Domains: {{loop.length}}</b></summary>\n\
+        \  {%- endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%-\
+        \ for i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
+        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
+        \ none -%}\n     {%- if c_title != ignore_int -%}\n       {%- set items.visible\
+        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
+        \ if items.visible | count > 0 -%}\n   <details>\n    <summary>{{ d[0] | title\
+        \ }}: <b>{{ items.visible | count }}</b></summary>\n    {%- for i in items.visible\
+        \ -%}\n      {{- i.name -}}: <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n\
+        \   </details>\n   {%- endif -%}\n{%- endfor -%}\n</details>"
       type: markdown
-      visibility:
-      - condition: user
-        users: []
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
@@ -588,102 +590,6 @@ config:
           \ zombie entities detected.** {% endif %}\n"
         type: markdown
       type: vertical-stack
-    - card:
-        type: vertical-stack
-      card_param: cards
-      filter:
-        template: "{% set tasks = ['geplante_bewasserung', 'geplante_dungung', 'geplante_reinigung']\
-          \ %}\n{% set tomorrow = (now() + timedelta(days=1)).date() %}\n{% set ns\
-          \ = namespace(cards=[]) %}\n\n{% for task in tasks %}\n  {% for state in\
-          \ states.sensor | selectattr('entity_id', 'search', task) %}\n    {% if\
-          \ as_datetime(state.state) != None %}\n      {% if as_datetime(state.state).date()\
-          \ <= tomorrow %}\n        {% set entity = state.entity_id %}\n        {%\
-          \ set dev_id = device_id(entity) %}\n        {% set dev_entities = device_entities(dev_id)\
-          \ if dev_id else [] %}\n        \n        {# 1. Identify related image and\
-          \ button #}\n        {% set img_entity = dev_entities | select('search',\
-          \ '^image\\.') | first %}\n        {% set img_path = state_attr(img_entity,\
-          \ 'entity_picture') if img_entity else '' %}\n        \n        {% set task_suffix\
-          \ = task.replace('geplante_', '') ~ '_abschliessen' %}\n        {% set btn_entity\
-          \ = dev_entities | select('search', task_suffix) | first %}\n        \n\
-          \        {# 2. Only build the card if we have a valid button, otherwise\
-          \ skip or fallback #}\n        {% if btn_entity %}\n          {% set row\
-          \ = {\n            \"type\": \"horizontal-stack\",\n            \"cards\"\
-          : [\n              {\n                \"type\": \"custom:mushroom-template-card\"\
-          ,\n                \"primary\": state_attr(entity, 'friendly_name').split('\
-          \ Geplante')[0],\n                \"secondary\": (as_datetime(states(entity)).date()\
-          \ | string) ~ (' (Water)' if 'bewasserung' in entity else ' (Fertilize)'\
-          \ if 'dungung' in entity else ' (Clean)'),\n                \"picture\"\
-          : img_path,\n                \"entity\": entity,\n                \"tap_action\"\
-          : { \"action\": \"more-info\" }\n              },\n              {\n   \
-          \             \"type\": \"custom:mushroom-template-card\",\n           \
-          \     \"primary\": \"Done\",\n                \"icon\": \"mdi:check\",\n\
-          \                \"icon_color\": \"green\",\n                \"layout\"\
-          : \"vertical\",\n                \"tap_action\": {\n                  \"\
-          action\": \"perform-action\",\n                  \"perform_action\": \"\
-          button.press\",\n                  \"target\": { \"entity_id\": btn_entity\
-          \ }\n                }\n              }\n            ]\n          } %}\n\
-          \          {% set ns.cards = ns.cards + [row] %}\n        {% endif %}\n\
-          \      {% endif %}\n    {% endif %}\n  {% endfor %}\n{% endfor %}\n\n{{\
-          \ ns.cards | tojson }}\n"
-      type: custom:auto-entities
-    - cards:
-      - aspect_ratio: '1:1'
-        camera_view: auto
-        entity: image.aechmea_blue_rain
-        fit_mode: fill
-        show_name: false
-        show_state: false
-        type: picture-entity
-      - entity: button.aechmea_blue_rain_bewasserung_abschliessen
-        features_position: bottom
-        icon: mdi:mushroom
-        primary: Data
-        secondary: How are you?
-        type: custom:mushroom-template-card
-      - features_position: bottom
-        icon: mdi:mushroom
-        primary: Button
-        secondary: How are you?
-        type: custom:mushroom-template-card
-      type: horizontal-stack
-    - card:
-        type: vertical-stack
-      card_param: cards
-      filter:
-        template: "{% set tasks = ['geplante_bewasserung', 'geplante_dungung', 'geplante_reinigung']\
-          \ %} {% set tomorrow = (now() + timedelta(days=1)).date() %} {% set ns =\
-          \ namespace(cards=[]) %}\n{% for task in tasks %}\n  {% for state in states.sensor\
-          \ | selectattr('entity_id', 'search', task) %}\n    {% set dt = as_datetime(state.state)\
-          \ %}\n    {% if dt and dt.date() <= tomorrow %}\n      {% set entity = state.entity_id\
-          \ %}\n      {% set dev_id = device_id(entity) %}\n      {% set dev_entities\
-          \ = device_entities(dev_id) if dev_id else [] %}\n\n      {% set img_entity\
-          \ = dev_entities | select('search', '^image\\.') | first %}\n      {% set\
-          \ task_suffix = task.replace('geplante_', '') ~ '_abschliessen' %}\n   \
-          \   {% set btn_entity = dev_entities | select('search', task_suffix) | first\
-          \ %}\n\n      {% if img_entity is string and btn_entity is string %}\n \
-          \       {% set row = {\n          \"type\": \"horizontal-stack\",\n    \
-          \      \"cards\": [\n            {\n              \"type\": \"picture-entity\"\
-          ,\n              \"image_entity\": img_entity,\n              \"show_name\"\
-          : false,\n              \"show_state\": false,\n              \"camera_view\"\
-          : \"auto\",\n              \"fit_mode\": \"fill\",\n              \"aspect_ratio\"\
-          : \"1:1\",\n              \"tap_action\": {\n                \"action\"\
-          : \"more-info\"\n              }\n            },\n            {\n      \
-          \        \"type\": \"custom:mushroom-template-card\",\n              \"\
-          primary\": state_attr(entity, 'friendly_name').split(' Geplante')[0],\n\
-          \              \"secondary\": dt.date() | string\n                ~ (' (Water)'\
-          \ if 'bewasserung' in entity\n                else ' (Fertilize)' if 'dungung'\
-          \ in entity\n                else ' (Clean)'),\n              \"entity\"\
-          : entity,\n              \"tap_action\": { \"action\": \"more-info\" }\n\
-          \            },\n            {\n              \"type\": \"custom:mushroom-template-card\"\
-          ,\n              \"primary\": \"Done\",\n              \"icon\": \"mdi:check\"\
-          ,\n              \"icon_color\": \"green\",\n              \"layout\": \"\
-          vertical\",\n              \"tap_action\": {\n                \"action\"\
-          : \"perform-action\",\n                \"perform_action\": \"button.press\"\
-          ,\n                \"target\": { \"entity_id\": btn_entity }\n         \
-          \     }\n            }\n          ]\n        } %}\n        {% set ns.cards\
-          \ = ns.cards + [row] %}\n      {% endif %}\n    {% endif %}\n  {% endfor\
-          \ %}\n{% endfor %}\n{{ ns.cards | tojson }}\n"
-      type: custom:auto-entities
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
@@ -1470,4 +1376,49 @@ config:
         type: vertical-stack
       type: grid
     title: DB Purge
+    type: sections
+  - max_columns: 4
+    path: planta
+    sections:
+    - cards:
+      - card:
+          type: vertical-stack
+        card_param: cards
+        filter:
+          template: "{% set tasks = ['geplante_bewasserung', 'geplante_dungung', 'geplante_reinigung']\
+            \ %} {% set tomorrow = (now() + timedelta(days=1)).date() %} {% set ns\
+            \ = namespace(cards=[]) %}\n{% for task in tasks %}\n  {% for state in\
+            \ states.sensor | selectattr('entity_id', 'search', task) %}\n    {% set\
+            \ dt = as_datetime(state.state) %}\n    {% if dt and dt.date() <= tomorrow\
+            \ %}\n      {% set entity = state.entity_id %}\n      {% set dev_id =\
+            \ device_id(entity) %}\n      {% set dev_entities = device_entities(dev_id)\
+            \ if dev_id else [] %}\n\n      {% set img_entity = dev_entities | select('search',\
+            \ '^image\\.') | first %}\n      {% set task_suffix = task.replace('geplante_',\
+            \ '') ~ '_abschliessen' %}\n      {% set btn_entity = dev_entities | select('search',\
+            \ task_suffix) | first %}\n\n      {% if img_entity and btn_entity %}\n\
+            \        {% set row = {\n          \"type\": \"horizontal-stack\",\n \
+            \         \"cards\": [\n            {\n              \"type\": \"picture-entity\"\
+            ,\n              \"entity\": img_entity,\n              \"aspect_ratio\"\
+            : \"1:1\",\n              \"fit_mode\": \"fill\",\n              \"show_name\"\
+            : \"\",\n              \"show_state\": \"\",\n              \"tap_action\"\
+            : {\n                \"action\": \"more-info\"\n              }\n    \
+            \        },\n            {\n              \"type\": \"custom:mushroom-template-card\"\
+            ,\n              \"primary\": state_attr(entity, 'friendly_name').split('\
+            \ Geplante')[0],\n              \"secondary\": (dt.date() | string)\n\
+            \                ~ (' (Water)' if 'bewasserung' in entity\n          \
+            \      else ' (Fertilize)' if 'dungung' in entity\n                else\
+            \ ' (Clean)'),\n              \"entity\": entity,\n              \"tap_action\"\
+            : { \"action\": \"more-info\" }\n            },\n            {\n     \
+            \         \"type\": \"custom:mushroom-template-card\",\n             \
+            \ \"primary\": \"Done\",\n              \"icon\": \"mdi:check\",\n   \
+            \           \"icon_color\": \"green\",\n              \"layout\": \"vertical\"\
+            ,\n              \"tap_action\": {\n                \"action\": \"perform-action\"\
+            ,\n                \"perform_action\": \"button.press\",\n           \
+            \     \"target\": { \"entity_id\": btn_entity }\n              }\n   \
+            \         }\n          ]\n        } %}\n        {% set ns.cards = ns.cards\
+            \ + [row] %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n{% endfor\
+            \ %}\n{{ ns.cards | tojson }}\n"
+        type: custom:auto-entities
+      type: grid
+    title: Planta
     type: sections
