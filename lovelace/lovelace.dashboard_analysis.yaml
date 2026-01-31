@@ -1385,39 +1385,56 @@ config:
           type: vertical-stack
         card_param: cards
         filter:
-          template: "{% set tasks = ['geplante_bewasserung', 'geplante_dungung', 'geplante_reinigung']\
-            \ %} {% set tomorrow = (now() + timedelta(days=1)).date() %} {% set ns\
-            \ = namespace(cards=[]) %}\n{% for task in tasks %}\n  {% for state in\
-            \ states.sensor | selectattr('entity_id', 'search', task) %}\n    {% set\
-            \ dt = as_datetime(state.state) %}\n    {% if dt and dt.date() <= tomorrow\
-            \ %}\n      {% set entity = state.entity_id %}\n      {% set dev_id =\
-            \ device_id(entity) %}\n      {% set dev_entities = device_entities(dev_id)\
-            \ if dev_id else [] %}\n\n      {% set img_entity = dev_entities | select('search',\
-            \ '^image\\.') | first %}\n      {% set task_suffix = task.replace('geplante_',\
-            \ '') ~ '_abschliessen' %}\n      {% set btn_entity = dev_entities | select('search',\
-            \ task_suffix) | first %}\n\n      {% if img_entity and btn_entity %}\n\
-            \        {% set row = {\n          \"type\": \"horizontal-stack\",\n \
-            \         \"cards\": [\n            {\n              \"type\": \"picture-entity\"\
+          template: "{% set tasks = [\n  {'key': 'geplante_bewasserung', 'label':\
+            \ 'Watering Needed', 'icon': 'mdi:water'},\n  {'key': 'geplante_dungung',\
+            \ 'label': 'Fertilizing Needed', 'icon': 'mdi:sprout'},\n  {'key': 'geplante_reinigung',\
+            \ 'label': 'Cleaning Needed', 'icon': 'mdi:spray-bottle'}\n] %}\n\n{%\
+            \ set today = now().date() %}\n{% set tomorrow = (now() + timedelta(days=1)).date()\
+            \ %}\n{% set ns = namespace(cards=[]) %}\n\n{% for task in tasks %}\n\
+            \  {% set task_entities = states.sensor \n    | selectattr('entity_id',\
+            \ 'search', task.key) \n    | list %}\n  \n  {% set type_group = namespace(found=false,\
+            \ items=[]) %}\n\n  {% for state in task_entities %}\n    {% set dt =\
+            \ as_datetime(state.state) %}\n    {% if dt and dt.date() <= tomorrow\
+            \ %}\n      {% set dev_id = device_id(state.entity_id) %}\n      {% set\
+            \ dev_entities = device_entities(dev_id) if dev_id else [] %}\n      {%\
+            \ set img_entity = dev_entities | select('search', '^image\\.') | first\
+            \ %}\n      {% set task_suffix = task.key.replace('geplante_', '') ~ '_abschliessen'\
+            \ %}\n      {% set btn_entity = dev_entities | select('search', task_suffix)\
+            \ | first %}\n\n      {% if img_entity and btn_entity %}\n        {% set\
+            \ is_overdue = dt.date() < today %}\n        {% set type_group.found =\
+            \ true %}\n        {% set row = {\n          \"type\": \"horizontal-stack\"\
+            ,\n          \"cards\": [\n            {\n              \"type\": \"picture-entity\"\
             ,\n              \"entity\": img_entity,\n              \"aspect_ratio\"\
             : \"1:1\",\n              \"fit_mode\": \"fill\",\n              \"show_name\"\
             : \"\",\n              \"show_state\": \"\",\n              \"tap_action\"\
-            : {\n                \"action\": \"more-info\"\n              }\n    \
-            \        },\n            {\n              \"type\": \"custom:mushroom-template-card\"\
-            ,\n              \"primary\": state_attr(entity, 'friendly_name').split('\
-            \ Geplante')[0],\n              \"secondary\": (dt.date() | string)\n\
-            \                ~ (' (Water)' if 'bewasserung' in entity\n          \
-            \      else ' (Fertilize)' if 'dungung' in entity\n                else\
-            \ ' (Clean)'),\n              \"entity\": entity,\n              \"tap_action\"\
             : { \"action\": \"more-info\" }\n            },\n            {\n     \
             \         \"type\": \"custom:mushroom-template-card\",\n             \
-            \ \"primary\": \"Done\",\n              \"icon\": \"mdi:check\",\n   \
-            \           \"icon_color\": \"green\",\n              \"layout\": \"vertical\"\
-            ,\n              \"tap_action\": {\n                \"action\": \"perform-action\"\
-            ,\n                \"perform_action\": \"button.press\",\n           \
-            \     \"target\": { \"entity_id\": btn_entity }\n              }\n   \
-            \         }\n          ]\n        } %}\n        {% set ns.cards = ns.cards\
-            \ + [row] %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n{% endfor\
-            \ %}\n{{ ns.cards | tojson }}\n"
+            \ \"primary\": state_attr(state.entity_id, 'friendly_name').split(' Geplante')[0],\n\
+            \              \"secondary\": (\n                '\u26A0\uFE0F Overdue\
+            \ \u2013 ' if is_overdue else ''\n              ) ~ (dt.date() | string),\n\
+            \              \"entity\": state.entity_id,\n              \"icon\": task.icon,\n\
+            \              \"multiline_secondary\": 'true',\n              \"vertical\"\
+            : 'true',\n              \"icon_color\": \"red\" if is_overdue else \"\
+            green\",\n              \"tap_action\": { \"action\": \"more-info\" }\n\
+            \            },\n            {\n              \"type\": \"custom:mushroom-template-card\"\
+            ,\n              \"primary\": \"Done\",\n              \"icon\": \"mdi:check\"\
+            ,\n              \"icon_color\": \"red\" if is_overdue else \"green\"\
+            ,\n              \"layout\": \"vertical\",\n              \"tap_action\"\
+            : {\n                \"action\": \"perform-action\",\n               \
+            \ \"perform_action\": \"button.press\",\n                \"target\": {\
+            \ \"entity_id\": btn_entity }\n              }\n            }\n      \
+            \    ]\n        } %}\n        {% set type_group.items = type_group.items\
+            \ + [row] %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n\n \
+            \ {% if type_group.found %}\n    {% set total_count = type_group.items\
+            \ | length %}\n    {% set overdue_count = type_group.items | selectattr('card','defined')\
+            \ \n        | selectattr('overdue') | list | length %}\n    {% set header_title\
+            \ = task.label ~ ' (' ~ total_count ~ ')' %}\n    {% if overdue_count\
+            \ > 0 %}\n      {% set header_title = header_title ~ ' \u2014 \u26A0\uFE0F\
+            \ ' ~ overdue_count ~ ' overdue' %}\n    {% endif %}\n\n    {% set header\
+            \ = {\n      \"type\": \"custom:mushroom-title-card\",\n      \"title\"\
+            : header_title\n    } %}\n    {% set ns.cards = ns.cards + [header] +\
+            \ type_group.items %}\n  {% endif %}\n{% endfor %}\n\n{{ ns.cards | tojson\
+            \ }}"
         type: custom:auto-entities
       type: grid
     title: Planta
