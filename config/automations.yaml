@@ -13511,30 +13511,35 @@
             '
       - stop: Cleanup failed with {{ failed_count }} error(s).
     default:
-    - variables:
-        report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
-          %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
-          %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
-          + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete |
-          string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\" %}\n
-          \ {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
-          %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete | int(0))
-          %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb / 1024) |
-          round(2), 'count': ns.total_files} }}\n"
-    - action: notify.persistent_notification
-      data:
-        title: "\U0001F4BE Backup Cleanup Summary"
-        message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
-          info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
-          Files Removed:** {{ info.count }}\n"
-    - action: notify.duncan
-      data:
-        title: NAS Maintenance Complete
-        message: "{% set info = report_json %}\nBackup cleanup report for today:\n
-          \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
-          }} GB.\n"
+    - if:
+      - condition: state
+        entity_id: input_boolean.notify_on_nas_sync_success
+        state: []
+      then:
+      - variables:
+          report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
+            %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
+            %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
+            + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete
+            | string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\"
+            %}\n  {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
+            %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete |
+            int(0)) %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb
+            / 1024) | round(2), 'count': ns.total_files} }}\n"
+      - action: notify.persistent_notification
         data:
-          tag: nas_maintenance_complete
+          title: "\U0001F4BE Backup Cleanup Summary"
+          message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
+            info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
+            Files Removed:** {{ info.count }}\n"
+      - action: notify.duncan
+        data:
+          title: NAS Maintenance Complete
+          message: "{% set info = report_json %}\nBackup cleanup report for today:\n
+            \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
+            }} GB.\n"
+          data:
+            tag: nas_maintenance_complete
 - id: '1769546818976'
   alias: NAS Connectivity Monitor
   description: "\U0001F4BE **NAS Connectivity Monitor**\n\n### \U0001F4CB Intelligent
