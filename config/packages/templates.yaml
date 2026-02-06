@@ -1234,3 +1234,44 @@ template:
         - action: script.wintergarten_dachfenster_rolladen_stop
         name: Wintergarten Rolladen Dachfenster
         state: "{{ is_state('input_boolean.rollo_state', 'off') }}"
+
+  # Lenovo Wallpanel
+  - sensor:
+      - name: "Lenovo P11 Battery"
+        unit_of_measurement: "%"
+        device_class: battery
+        unique_id: lenovo_p11_battery
+        variables:
+          sources:
+            - "sensor.lenovo_tab_p11_batterie"
+            - "sensor.lenovo_tb_j606f_battery_level"
+          levels: >
+            {{ sources
+               | map('states')
+               | map('float', none)
+               | select('!=', none)
+               | list }}
+          level: >
+            {% if levels | length > 0 %}
+              {{ levels | min }}
+            {% else %}
+              none
+            {% endif %}
+        availability: >
+          {{ levels | length > 0 }}
+        state: "{{ level }}"
+        attributes:
+          band: >
+            {% if level is none %}
+              unknown
+            {% elif level < 10 %}
+              critical
+            {% elif level < 20 %}
+              very_low
+            {% elif level < 30 %}
+              low
+            {% elif level < 40 %}
+              warn
+            {% else %}
+              ok
+            {% endif %}
