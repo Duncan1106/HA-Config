@@ -5264,20 +5264,23 @@ config:
             \ + [item.card] %}\n    {% endfor %}\n    {% set header_title = task.label\
             \ ~ ' (' ~ type_group.items | length ~ ')' %}\n    {% if type_group.overdue_count\
             \ > 0 %} {% set header_title = header_title ~ ' \u2014 \u26A0\uFE0F '\
-            \ ~ type_group.overdue_count ~ ' overdue' %} {% endif %}\n    {% set expander\
-            \ = { \"type\": \"custom:expander-card\", \"title-card-clickable\": 'true',\
-            \ \"title-card-button-overlay\": 'true', \"child-padding\": \"0px\", \"\
-            title-card\": { \"type\": \"custom:mushroom-title-card\", \"title\": header_title\
-            \ }, \"cards\": inner_ns.final_cards } %}\n    {% set ns.cards = ns.cards\
-            \ + [expander] %}\n  {% endif %}\n{% endfor %}\n\n{# FALLBACK: If only\
-            \ the input_number card exists, show a \"Clean\" card #}\n{% if ns.cards\
-            \ | length == 1 %}\n  {% set days_label = \"Tag\" if days_ahead == 1 else\
-            \ \"Tagen\" %}\n  {% set secondary = \"Keine anstehenden Aufgaben f\xFC\
-            r den gew\xE4hlten Zeitraum von \" ~ days_ahead ~ \" \" ~ days_label %}\n\
-            \  {% set ns.cards = ns.cards + [{\n    \"type\": \"custom:mushroom-template-card\"\
-            ,\n    \"primary\": \"Alles erledigt!\",\n    \"secondary\": secondary,\n\
-            \    \"icon\": \"mdi:flower\",\n    \"icon_color\": \"green\",\n    \"\
-            layout\": \"vertical\"\n  }] %}\n{% endif %}\n\n{{ ns.cards | tojson }}\n"
+            \ ~ type_group.overdue_count ~ ' overdue' %} {% endif %}\n    {% set expander_base\
+            \ = {\n     \"type\": \"custom:expander-card\",\n     \"title-card-clickable\"\
+            : 'true',\n     \"title-card-button-overlay\": 'true',\n     \"child-padding\"\
+            : \"0px\",\n     \"title-card\": {\n       \"type\": \"custom:mushroom-title-card\"\
+            ,\n       \"title\": header_title\n     },\n     \"cards\": inner_ns.final_cards\n\
+            \     } %}\n\n     {% set expander = expander_base\n      | combine( {\
+            \ \"expanded\": 'true' } if (ns.cards | length == 1) else {} )\n     %}\n\
+            \    {% set ns.cards = ns.cards + [expander] %}\n  {% endif %}\n{% endfor\
+            \ %}\n\n{# FALLBACK: If only the input_number card exists, show a \"Clean\"\
+            \ card #}\n{% if ns.cards | length == 1 %}\n  {% set days_label = \"Tag\"\
+            \ if days_ahead == 1 else \"Tagen\" %}\n  {% set secondary = \"Keine anstehenden\
+            \ Aufgaben f\xFCr den gew\xE4hlten Zeitraum von \" ~ days_ahead ~ \" \"\
+            \ ~ days_label %}\n  {% set ns.cards = ns.cards + [{\n    \"type\": \"\
+            custom:mushroom-template-card\",\n    \"primary\": \"Alles erledigt!\"\
+            ,\n    \"secondary\": secondary,\n    \"icon\": \"mdi:flower\",\n    \"\
+            icon_color\": \"green\",\n    \"layout\": \"vertical\"\n  }] %}\n{% endif\
+            \ %}\n\n{{ ns.cards | tojson }}"
         type: custom:auto-entities
       type: grid
     title: Planta
