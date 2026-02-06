@@ -490,18 +490,28 @@ config:
         action: more-info
       type: custom:mushroom-template-card
       vertical: true
-    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = 'Planta'\
-        \ -%}\n\n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first\
-        \ -%} \n    <details><summary><b>Domains: {{loop.length}}</b></summary>\n\
-        \  {%- endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%-\
-        \ for i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
+    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
+        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
+        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
+        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
+        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
+        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
+        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
+        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
+        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
+        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
+        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
+        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
+        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
+        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
         \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
-        \ none -%}\n     {%- if c_title != ignore_int -%}\n       {%- set items.visible\
+        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
         \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
-        \ if items.visible | count > 0 -%}\n   <details>\n    <summary>{{ d[0] | title\
-        \ }}: <b>{{ items.visible | count }}</b></summary>\n    {%- for i in items.visible\
-        \ -%}\n      {{- i.name -}}: <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n\
-        \   </details>\n   {%- endif -%}\n{%- endfor -%}\n</details>"
+        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
+        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
+        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
+        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
+        \ -%}\n{%- endfor -%}\n</details>"
       type: markdown
     - entity: todo.to_do_duncan
       hide_completed: true
