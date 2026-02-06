@@ -13806,10 +13806,8 @@
       {{ item.from}} → {{ item.to }}\n{% endfor %}\n"
 - id: '1770413807856'
   alias: Tablet Battery Status Alerts
-  description: 'Sends notifications based on the Lenovo P11 battery band attribute
-    (critical, very_low, low, warn) and clears notifications when charging above 40%.
-
-    '
+  description: Sends notifications based on battery bands and clears them when 'ok'.
+    Consolidated low-level alerts to reduce repetition.
   triggers:
   - trigger: state
     entity_id: sensor.lenovo_p11_battery
@@ -13822,51 +13820,28 @@
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ trigger.to_state.attributes.band == ''critical'' }}'
+        value_template: '{{ trigger.to_state.attributes.band in [''critical'', ''very_low'',
+          ''low'', ''warn''] }}'
       sequence:
       - action: notify.duncan
         data:
-          title: "\U0001F534 Tablet Battery Critical!"
+          title: "{% set titles = {\n  'critical': '\U0001F534 Tablet Battery Critical!',\n
+            \ 'very_low': '\U0001F7E0 Tablet Battery Low',\n  'low': '\U0001F7E1 Tablet
+            Battery Getting Low',\n  'warn': '⚠️ Tablet Battery Notice'\n} %} {{ titles.get(trigger.to_state.attributes.band)
+            }}"
           message: Lenovo Tab P11 battery is at {{ states('sensor.lenovo_p11_battery')
-            }}%. Plug it in now!
+            }}%. {{ 'Plug it in now!' if trigger.to_state.attributes.band == 'critical'
+            }} {{ 'Charger issue?' if trigger.to_state.attributes.band == 'very_low'
+            }}
           data:
             tag: lenovo_p11_battery_warning
-      - action: script.restart_charging_process
-    - conditions:
-      - condition: template
-        value_template: '{{ trigger.to_state.attributes.band == ''very_low'' }}'
-      sequence:
-      - action: notify.duncan
-        data:
-          title: "\U0001F7E0 Tablet Battery Low"
-          message: Lenovo Tab P11 battery dropped to {{ states('sensor.lenovo_p11_battery')
-            }}%. Charger issue?
-          data:
-            tag: lenovo_p11_battery_warning
-      - action: script.restart_charging_process
-    - conditions:
-      - condition: template
-        value_template: '{{ trigger.to_state.attributes.band == ''low'' }}'
-      sequence:
-      - action: notify.duncan
-        data:
-          title: "\U0001F7E1 Tablet Battery Getting Low"
-          message: Lenovo Tab P11 battery is at {{ states('sensor.lenovo_p11_battery')
-            }}%.
-          data:
-            tag: lenovo_p11_battery_warning
-      - action: script.restart_charging_process
-    - conditions:
-      - condition: template
-        value_template: '{{ trigger.to_state.attributes.band == ''warn'' }}'
-      sequence:
-      - action: notify.duncan
-        data:
-          title: ⚠️ Tablet Battery Notice
-          message: Lenovo Tab P11 battery is at {{ states('sensor.lenovo_p11_battery')
-            }}%.
-          data:
-            tag: lenovo_p11_battery_warning
+      - if:
+        - condition: template
+          value_template: '{{ trigger.to_state.attributes.band in [''critical'', ''very_low'',
+            ''low''] }}'
+        then:
+        - action: script.restart_charging_process
+      alias: Warn and Restart Charging
     - conditions:
       - condition: template
         value_template: '{{ trigger.to_state.attributes.band == ''ok'' }}'
@@ -13876,4 +13851,5 @@
           message: clear_notification
           data:
             tag: lenovo_p11_battery_warning
+      alias: Clear Warning
   mode: single
