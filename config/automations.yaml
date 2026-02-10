@@ -1074,7 +1074,13 @@
       - sensor.t_h_bad_zigbee_temperature
       - sensor.t_h_kinderbad_zigbee_temperature
       - sensor.t_h_garage_zigbee_temperature
+      - sensor.t_h_gasteklo_zigbee_temperature
+      - sensor.t_h_hobbyraum_zigbee_temperature
+      - sensor.treppenhaus_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
+      - sensor.og_temperatur
+      - sensor.eg_temperatur
+      - sensor.kg_temperatur
     sensors: "{% set result = namespace(sensors=[]) %} {% for s in expand(include.entity_id)
       %}\n  {% if s.domain == 'sensor' %}\n    {% set u = s.attributes.unit_of_measurement
       | default('', true) %}\n    {% set v_raw = s.state | float(-999) %}\n    {%
@@ -1754,11 +1760,54 @@
   mode: single
 - id: '1714558482048'
   alias: Notify on Overcurrent Phase
-  description: This automation sends a notification if an overcurrent is detected
-    on any phase (L1, L2, or L3) of the smart meter. It checks if the current goes
-    above a predefined limit and alerts the user with the current value and the threshold.
-    Additionally, it disables charging on specific EV chargers if an overcurrent is
-    detected.
+  description: "⚡ **Notify on Overcurrent Phase**\n\n---\n\n### \U0001F4CB Intelligent
+    Load Management Control\n\n**High-Level Intent**\nThis automation provides critical
+    infrastructure protection by monitoring the electrical load across all three phases
+    (**L1, L2, L3**) of the main smart meter. Its primary goal is to prevent fuse
+    trips by detecting sustained overcurrent events and executing immediate remedial
+    actions.\n\n**Operational Strategy**\nThe system employs a **safety-first protection
+    strategy**. Upon detecting a current draw exceeding the defined **Fuse Limit**,
+    it triggers an immediate notification and attempts to gracefully reduce the load
+    of high-consumption devices (EV Chargers) before resorting to a full shutdown
+    of those services.\n\n**Reliability Mechanisms**\nTo ensure high availability
+    and successful execution, the automation utilizes a **retry script with backoff**
+    (`script.retry_action_with_backoff`) for charger shutdowns. This ensures that
+    even if a device is momentarily offline or a command fails, the system will persist
+    for up to **10 retries** with increasing delays to secure the electrical system.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **Numeric State** | **Smart Meter Phase L1** > **Fuse
+    Limit** | `overcurrent_l1` | Detect phase 1 overload for 30s |\n| **Numeric State**
+    | **Smart Meter Phase L2** > **Fuse Limit** | `overcurrent_l2` | Detect phase
+    2 overload for 30s |\n| **Numeric State** | **Smart Meter Phase L3** > **Fuse
+    Limit** | `overcurrent_l3` | Detect phase 3 overload for 30s |\n\n---\n\n### Operational
+    Logic Sections\n\n#### Overcurrent Mitigation Mode\n**Purpose**\nProtect the main
+    building fuse by reducing high-draw loads immediately upon detection of an overcurrent
+    event.\n\n**Logic Overview**\nTriggered when any phase attribute on the **Smart
+    Meter MQTT Data** sensor exceeds the **input_number.fuselimit** for a sustained
+    period of **30 seconds**.\n\n**Effect**\n* **Notification:** Dispatches an urgent
+    alert via `notify.duncan` detailing the affected phase, the current amperage,
+    and the threshold exceeded.\n* **Active Load Reduction:** Checks if EV chargers
+    are currently active (Amps > **6** and Power > **10**). If active, it reduces
+    the charging rate to **75%** of the current value.\n* **Emergency Cut-off:** If
+    the charger is at its minimum or the reduction fails, it initiates a script to
+    force the charging state to **Don't charge**.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode:** `parallel` (Max: 6) - Allows simultaneous handling of multiple
+    phase triggers.\n* **Execution Method:** Uses direct service calls for amperage
+    adjustment and `script.retry_action_with_backoff` for reliable state changes.\n*
+    **Key Inputs:** `input_number.fuselimit` (Global threshold for current monitoring).\n*
+    **Controlled Entities:** * `number.go_echarger_270862_amp` (11kW Charger)\n    *
+    `number.go_echarger_252682_amp` (22kW Charger)\n    * `select.go_echarger_270862_frc`
+    (Charging Mode)\n* **Safety Mechanisms:** * **30-second hysteresis** on triggers
+    to prevent activation by momentary spikes.\n    * **Clamping logic** ensures amperage
+    never drops below the minimum safe level of **6A** or exceeds hardware limits
+    (**16A/32A**).\n\n---\n\n### \U0001F4A1 Notes\n\n* **Hysteresis Rationale:** The
+    30-second \"for\" duration is critical to distinguish between short-lived motor
+    start-up spikes and genuine sustained overloads that threaten fuse integrity.\n*
+    **Dynamic Scaling:** The **75%** reduction logic allows the system to attempt
+    to keep the vehicle charging at a slower rate rather than simply cutting power,
+    maintaining user convenience while ensuring safety.\n* **Fail-Safe:** If the chargers
+    are already at their lowest setting (**6A**) but the overcurrent persists, the
+    automation shifts from \"throttling\" to \"disabling\" via the retry script."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -1773,41 +1822,67 @@
   - trigger: numeric_state
     entity_id:
     - binary_sensor.smart_meter_mqtt_data
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
     attribute: current_L2
     above: input_number.fuselimit
     id: overcurrent_l2
-  - trigger: numeric_state
-    entity_id:
-    - binary_sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
+  - trigger: numeric_state
+    entity_id:
+    - binary_sensor.smart_meter_mqtt_data
     attribute: current_L3
     above: input_number.fuselimit
     id: overcurrent_l3
-  conditions: []
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - trigger: time_pattern
+    seconds: /30
+  conditions:
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L1
+      above: input_number.fuselimit
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L2
+      above: input_number.fuselimit
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L3
+      above: input_number.fuselimit
   actions:
-  - alias: Message on Overcurrent
+  - action: notify.duncan
+    data:
+      title: '!!! OVERCURRENT !!!'
+      message: "{% if trigger.id.startswith('overcurrent_l') %}\n  {% set phase =
+        trigger.id.split('_')[1] | upper %}\n  {% set current = (state_attr(trigger.entity_id,
+        'current_' ~ phase) | float(0) / 1000) | round(2) %}\n  {% set limit = (states('input_number.fuselimit')
+        | float(0) / 1000) | round(2) %}\n  ⚡ Phase: {{ phase }} | Strom: {{ current
+        }} A (Limit: {{ limit }} A)\n{% else %}\n  ⚡ Detected by time pattern\n{%
+        endif %}"
+  - alias: Go-e 11kW Set amps to 75% of original value
     if:
-    - condition: trigger
-      id:
-      - overcurrent_l1
-      - overcurrent_l2
-      - overcurrent_l3
+    - condition: numeric_state
+      entity_id: number.go_echarger_270862_amp
+      above: 6
+    - condition: numeric_state
+      entity_id: sensor.go_echarger_270862_nrg_12
+      above: 10
     then:
-    - metadata: {}
+    - action: number.set_value
+      metadata: {}
+      target:
+        entity_id: number.go_echarger_252682_amp
       data:
-        title: '!!! OVERCURRENT !!!'
-        message: "⚡ Phase: {{ trigger.id.replace('overcurrent_l', 'L') }}   Aktueller
-          Strom: {{\n  (trigger.to_state.attributes['current_' ~ trigger.id.replace('overcurrent_',
-          '').upper()] | float(0) / 1000) | round(2)\n}} A (Grenzwert: {{ ((states('input_number.fuselimit')
-          | float(0)) / 1000.0) | round(2) }} A)"
-      action: notify.duncan
+        value: '{{ (states(''number.go_echarger_270862_amp'') | float * 0.75) | int
+          | clamp(6, 16) }}'
+    else:
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -1828,6 +1903,24 @@
             entity_id:
             - select.go_echarger_270862_frc
         custom_target_state: Don't charge
+      enabled: true
+  - alias: Go-e 22kW Set amps to 75% of original value
+    if:
+    - condition: numeric_state
+      entity_id: number.go_echarger_252682_amp
+      above: 6
+    - condition: numeric_state
+      entity_id: sensor.go_echarger_252682_nrg_12
+      above: 10
+    then:
+    - action: number.set_value
+      metadata: {}
+      target:
+        entity_id: number.go_echarger_252682_amp
+      data:
+        value: '{{ (states(''number.go_echarger_252682_amp'') | float * 0.75) | int
+          | clamp(6, 32) }}'
+    else:
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -1848,8 +1941,9 @@
             entity_id:
             - select.go_echarger_252682_frc
         custom_target_state: Don't charge
+      enabled: true
   mode: parallel
-  max: 10
+  max: 6
 - id: '1716307846138'
   alias: Pool Runtime Control
   description: "## \U0001F31E Pool Runtime Control\n\n### \U0001F4CB Purpose\nControls
@@ -2357,7 +2451,7 @@
   - data:
       title: ' !! Wasserleck !!'
       message: '{{trigger.to_state.name}} {{text_var}}'
-    action: notify.notify
+    action: notify.familie
   - data:
       title: ' !! Wasserleck !!'
       message: '{{trigger.to_state.name}} {{text_var}}'
@@ -5537,179 +5631,6 @@
           milliseconds: 125
   mode: parallel
   max: 3
-- id: '1738740501702'
-  alias: Dreame Clean EG if Awake
-  description: This automation triggers a notification when the Dreame vacuum is set
-    to clean the EG area while someone is awake. Users can choose to start the cleaning
-    or have the vacuum return to the base.
-  triggers:
-  - entity_id: schedule.dreame_clean_up
-    from: 'off'
-    to: 'on'
-    trigger: state
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: '{{ notification_title }}'
-      message: '{{ notification_message }}'
-      data:
-        tag: '{{ notification_title }}'
-        persistent: '{{ persistent_notification }}'
-        actions: "{% set titles = [action_1_title, action_2_title, action_3_title]
-          %} {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
-          = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
-          %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
-          + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\"
-          if uri|length else action_name,\n      \"title\": title,\n      \"uri\":
-          uri \n      }\n    %}\n    {% set actions.data = actions.data + [action]
-          %}\n  {% endif %}\n{% endfor %} {{ actions.data }}\n"
-  - wait_for_trigger:
-      event_type: mobile_app_notification_action
-      trigger: event
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG'' }}'
-      sequence:
-      - action: vacuum.start
-        metadata: {}
-        data: {}
-        target:
-          entity_id: vacuum.d9_max_gen_2
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG'' }}'
-      sequence: []
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG''}}'
-      sequence:
-      - action: vacuum.return_to_base
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.d9_max_gen_2
-    enabled: true
-  mode: restart
-  max_exceeded: silent
-  variables:
-    notify_device: 905c163dcc62544838edb078413723b2
-    trigger_entity: schedule.dreame_clean_up
-    notification_title: Dreame Clean-Up EG
-    notification_message: ''
-    persistent_notification: false
-    action_1_title: Awake for EG
-    action_1_uri: ''
-    first_action:
-    - action: vacuum.start
-      metadata: {}
-      data: {}
-      target:
-        entity_id: vacuum.d9_max_gen_2
-    action_2_title: ''
-    action_2_uri: ''
-    second_action: []
-    action_3_title: Not Awake
-    action_3_uri: ''
-    third_action:
-    - action: vacuum.return_to_base
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.d9_max_gen_2
-- id: '1738740572519'
-  alias: Dreame Clean OG If Awake
-  description: This automation triggers the Dreame robot vacuum to clean the OG area
-    if it is confirmed that someone is awake. A notification is sent with options
-    to start cleaning or return the vacuum to its base.
-  triggers:
-  - entity_id: schedule.dreame_clean_up
-    from: 'off'
-    to: 'on'
-    trigger: state
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: '{{ notification_title }}'
-      message: '{{ notification_message }}'
-      data:
-        tag: '{{ notification_title }}'
-        persistent: '{{ persistent_notification }}'
-        actions: "{% set titles = [action_1_title, action_2_title, action_3_title]
-          %} {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
-          = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
-          %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
-          + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\"
-          if uri|length else action_name,\n      \"title\": title,\n      \"uri\":
-          uri \n      }\n    %}\n    {% set actions.data = actions.data + [action]
-          %}\n  {% endif %}\n{% endfor %} {{ actions.data }}\n"
-  - wait_for_trigger:
-      event_type: mobile_app_notification_action
-      trigger: event
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG'' }}'
-      sequence:
-      - action: vacuum.start
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.dreamebot_d10_plus
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG''}}'
-      sequence: []
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG'' }}'
-      sequence:
-      - action: vacuum.return_to_base
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.dreamebot_d10_plus
-  mode: restart
-  max_exceeded: silent
-  variables:
-    notify_device: 905c163dcc62544838edb078413723b2
-    trigger_entity: schedule.dreame_clean_up
-    notification_title: Dreame Clean-Up OG
-    notification_message: ''
-    persistent_notification: false
-    action_1_title: Awake for OG
-    action_1_uri: ''
-    first_action:
-    - action: vacuum.start
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.dreamebot_d10_plus
-    action_2_title: ''
-    action_2_uri: ''
-    second_action: []
-    action_3_title: Not Awake
-    action_3_uri: ''
-    third_action:
-    - action: vacuum.return_to_base
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.dreamebot_d10_plus
 - id: '1739881671493'
   alias: Notify for Tibber Pulse Battery Replacement
   description: Notifies when the Tibber Pulse battery voltage drops below a threshold,
@@ -6233,16 +6154,15 @@
     → sets frequency after system boots.\n- **Every 8 hours** → re-applies frequency
     setting for robustness (e.g., if device resets).\n- **Entity state change** →
     immediately re-applies the correct frequency if the value is modified manually
-    or by other automations.\n\n---\n\n### ✅ Conditions\n- No global conditions, runs
-    unconditionally.\n\n---\n\n### \U0001F3AF Actions\n- Waits **5 seconds** after
-    trigger to ensure the entity is initialized and ready.  \n- Calls `number.set_value`
-    on `number.herd_ct_klemme_zigbee_update_frequency` to enforce the configured interval
-    (value: `20` → corresponds to 20s updates).\n\n---\n\n### \U0001F527 Technical
-    Notes\n- Mode: `single` → prevents overlapping executions.  \n- The **hourly trigger**
-    ensures long-term stability even if the device silently resets its reporting interval.
-    \ \n- The **entity state trigger** catches accidental or external changes to the
-    setting.  \n- Delay ensures that HA startup doesn’t fail if the entity is still
-    initializing."
+    or by other automations.\n\n---\n\n### ✅ Conditions\n- Only when not at 20\n\n---\n\n###
+    \U0001F3AF Actions\n- Waits **5 seconds** after trigger to ensure the entity is
+    initialized and ready.  \n- Calls `number.set_value` on `number.herd_ct_klemme_zigbee_update_frequency`
+    to enforce the configured interval (value: `20` → corresponds to 20s updates).\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` → prevents overlapping executions.
+    \ \n- The **hourly trigger** ensures long-term stability even if the device silently
+    resets its reporting interval.  \n- The **entity state trigger** catches accidental
+    or external changes to the setting.  \n- Delay ensures that HA startup doesn’t
+    fail if the entity is still initializing."
   triggers:
   - trigger: homeassistant
     event: start
@@ -6251,7 +6171,15 @@
   - trigger: state
     entity_id:
     - number.herd_ct_klemme_zigbee_update_frequency
-  conditions: []
+  conditions:
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
+      above: 20
+    - condition: numeric_state
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
+      below: 20
   actions:
   - delay:
       hours: 0
@@ -11450,7 +11378,7 @@
   mode: restart
   max_exceeded: silent
 - id: '1763832773682'
-  alias: Daily Mama Temperature Notification
+  alias: Daily Garage & Gartenhaus Temperature Notification
   description: "\n  ## \U0001F321️ Daily Mama Temperature Notification\n\n  ### \U0001F4CB
     **Automated Temperature Snapshot for Key Areas**\n\n  This automation sends a
     daily **14:00 temperature update** summarizing both the **current temperature**
@@ -11699,16 +11627,15 @@
     der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
     \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
     \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
-    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
+    wenn die heutige PV-Prognose > 15 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
     um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
     Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
     an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
     **Low-Power-Modus deaktiviert:** Benachrichtigungen werden **gelöscht**, falls
     der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
     `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
-    ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
-    > 15 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
-    Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
+    ausgeschaltet wurde, wird trotzdem die Notification gelöscht\n\n### ⚡ Hinweise
+    / Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
     Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
     Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
   triggers:
@@ -13546,12 +13473,50 @@
   mode: single
 - id: '1769760819099'
   alias: 'ESPHome: Controlled Firmware Auto-Update'
-  description: 'Automatically installs ESPHome firmware updates once per day at 10:00.
-    Updates are triggered if the month changed OR the patch gap is >= 2. Limits updates
-    to 5 devices per day, skips devices already updating. Uses Spook actions to manage
-    HAGHS ignore labels.
-
-    '
+  description: "# ⚡ **ESPHome: Controlled Firmware Auto-Update**\n\n### \U0001F4CB
+    Intelligent ESPHome Lifecycle Control\nThis automation manages the lifecycle of
+    ESPHome firmware updates across the fleet. It employs a **throttled deployment
+    strategy** to ensure network stability and avoid mass-failure scenarios. By evaluating
+    version strings, the system distinguishes between routine maintenance and critical
+    version jumps, ensuring devices remain secure without requiring manual intervention
+    for every patch.\n\nThe strategy relies on a **safety-first approach**: it ignores
+    devices already in an active update state and uses **Spook** integrations to manage
+    visibility and suppress secondary update alerts during the automated process.\n\n---\n\n###
+    Trigger Overview Table\n| Type | Entity / Condition | ID | Purpose |\n| :--- |
+    :--- | :--- | :--- |\n| **Time** | `10:00:00` | N/A | Initiates the daily update
+    cycle during peak monitoring hours. |\n\n---\n\n### Operational Logic Sections\n\n####
+    #### \U0001F50D Update Eligibility Assessment\n* **Purpose**: Identify which devices
+    require firmware installation based on version history.\n* **Logic Overview**:
+    Filters all **ESPHome** update entities. A device is marked eligible if it is
+    not currently `in_progress` and meets one of two criteria:\n    * **Month Change**:
+    The latest version reflects a new monthly release (Year/Month).\n    * **Patch
+    Gap**: The difference between the installed and latest patch version is **>= 2**.\n*
+    **Effect**: Generates a list of target entities and prepares the `eligible_updates`
+    variable.\n\n#### #### \U0001F6E0 Controlled Deployment (Daily Batch)\n* **Purpose**:
+    Execute the updates while preventing network congestion.\n* **Logic Overview**:
+    Limits the execution to a maximum of **5 devices** per day (`updates_today`).\n*
+    **Effect**: \n    * Applies the `haghs_ignore` label to all eligible entities
+    to silence external managers.\n    * Sequentially removes the label for the specific
+    batch item and calls `update.install`.\n\n#### #### \U0001F4E2 Notification &
+    Reporting\n* **Purpose**: Provide visibility into automated changes.\n* **Logic
+    Overview**: Only triggers if the `update_message` contains processed devices.\n*
+    **Effect**: Sends a mobile notification via `notify.duncan` and creates a **Persistent
+    Notification** in the UI with direct links to the ESPHome dashboard and Update
+    settings.\n\n---\n\n### Technical Overview\n* **Automation Mode**: `single` (Prevents
+    overlapping execution runs).\n* **Execution Method**: Direct action calls with
+    `repeat.for_each` looping.\n* **Key Inputs**: `patch_gap_threshold` (Set to **2**).\n*
+    **Controlled Entities**: All entities belonging to the **ESPHome** integration
+    matching the `update.` domain.\n* **Safety Mechanisms**: \n    * **State Check**:
+    Skips devices where `in_progress` is true.\n    * **Throttling**: Strict limit
+    of **5** installs per 24-hour cycle.\n    * **Label Management**: Uses `haghs_ignore`
+    to prevent conflicting automation logic (via HAGHS).\n\n---\n\n### \U0001F4A1
+    Notes\n* **Version Parsing**: The logic manually splits the version strings (Year.Month.Patch)
+    to calculate the `latest_months` vs `installed_months`, allowing it to catch updates
+    even if the patch number resets in a new month.\n* **Label Logic**: By adding
+    labels to all eligible updates but only removing them for the ones being updated,
+    the automation ensures that \"pending\" updates for tomorrow stay hidden from
+    other notification systems.\n* **Maintenance**: If a device fails to update, it
+    will naturally remain in the `eligible_updates` list for the next day's cycle."
   triggers:
   - trigger: time
     at: '10:00:00'
@@ -13602,7 +13567,7 @@
           '',''<br>'') }}'
   mode: single
   variables:
-    patch_gap_threshold: 1
+    patch_gap_threshold: 2
     esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
       '^update\\\\.')\n   | list }}"
     eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
