@@ -3221,74 +3221,6 @@
     metadata: {}
     data: {}
   mode: single
-- id: '1727252450108'
-  alias: Nightly Battery Energy Discharged
-  description: ''
-  trigger:
-  - platform: sun
-    event: sunrise
-    offset: 0
-    id: Rise
-  - platform: sun
-    event: sunset
-    offset: 0
-    id: Set
-  condition: []
-  action:
-  - if:
-    - condition: trigger
-      id:
-      - Rise
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
-          round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_night_battery_discharged
-    alias: 'Save last night '
-  - alias: Save last day
-    if:
-    - condition: trigger
-      id:
-      - Set
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
-          round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_day_battery_discharged
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: 5.95
-      target:
-        entity_id: input_number.last_day_battery_discharged
-      enabled: false
-  - alias: Reset at sunrise or sunset
-    if:
-    - condition: trigger
-      id:
-      - Set
-      - Rise
-    then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 2
-        milliseconds: 0
-    - action: utility_meter.reset
-      data: {}
-      target:
-        entity_id: sensor.night_battery_energy_discharged
-  mode: single
 - id: '1727387566504'
   alias: Ganglicht Motion
   description: "## \U0001F6B6 Ganglicht Motion  \n\n### \U0001F4CB **Motion-Activated
@@ -4557,68 +4489,6 @@
     trigger_entity: binary_sensor.gasteklo_fenster_contact
     custom_friendly_name: Gästeklo Fenster
     notification_tag: gasteklo_window_alert
-- id: '1734549334887'
-  alias: Nightly Battery Energy Charged
-  description: ''
-  triggers:
-  - event: sunrise
-    offset: +00:00:01
-    id: Rise
-    trigger: sun
-  - event: sunset
-    offset: +00:00:01
-    id: Set
-    trigger: sun
-  conditions: []
-  actions:
-  - alias: 'Save last night '
-    if:
-    - condition: trigger
-      id:
-      - Rise
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
-          | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_night_battery_charged
-  - alias: Save last day
-    if:
-    - condition: trigger
-      id:
-      - Set
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
-          | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_day_battery_charged
-  - alias: Reset at sunrise or sunset
-    if:
-    - condition: trigger
-      id:
-      - Set
-      - Rise
-    then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 1
-        milliseconds: 0
-    - action: utility_meter.reset
-      data: {}
-      target:
-        entity_id: sensor.day_night_battery_charged_energy
-  mode: parallel
-  max: 10
 - id: '1735214695890'
   alias: Dunstabzugshaube
   description: "## \U0001F4A8 Dunstabzugshaube (Range Hood Control)\n\n### \U0001F4CB
@@ -13649,4 +13519,117 @@
           data:
             tag: lenovo_p11_battery_warning
       alias: Clear Warning
+  mode: single
+- id: '1770812457380'
+  alias: Night Battery Charge/Discharge Energy
+  description: "\U0001F319 **Night Battery Charge/Discharge Energy**\n\n### \U0001F4CB
+    Intelligent Battery Energy Monitoring Control\n\nThis automation manages the historical
+    logging and cycling of battery energy statistics based on the solar cycle. Its
+    primary intent is to capture and archive total energy charged and discharged during
+    distinct day and night periods before resetting the active counters for the next
+    phase.\n\nThe operational strategy relies on the **Sun** entity to provide precise
+    temporal boundaries, ensuring that daily solar production and nightly consumption
+    are compartmentalized accurately. By utilizing a sequential \"Capture-then-Reset\"
+    logic, the system maintains high data integrity for long-term energy tracking.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **Sun** | `sunrise` (+00:00:01) | `Rise` | Archive night-time
+    performance and prepare for solar charging phase. |\n| **Sun** | `sunset` (+00:00:01)
+    | `Set` | Archive daytime performance and prepare for nocturnal discharge phase.
+    |\n\n---\n\n#### \U0001F305 Sunrise (End of Night Phase)\n* **Purpose**: Archive
+    energy metrics from the preceding night and reset sensors for the day.\n* **Logic
+    Overview**: Triggered 1 second after **sunrise**.\n* **Effect**: \n    * Copies
+    **sensor.day_night_battery_charged_energy** to **input_number.last_night_battery_charged**.\n
+    \   * Copies **sensor.night_battery_energy_discharged** to **input_number.last_night_battery_discharged**.\n\n####
+    \U0001F307 Sunset (End of Day Phase)\n* **Purpose**: Archive energy metrics from
+    the preceding day and reset sensors for the night.\n* **Logic Overview**: Triggered
+    1 second after **sunset**.\n* **Effect**: \n    * Copies **sensor.day_night_battery_charged_energy**
+    to **input_number.last_day_battery_charged**.\n    * Copies **sensor.night_battery_energy_discharged**
+    to **input_number.last_day_battery_discharged**.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode**: `single`\n* **Execution Method**: Direct state snapshots
+    and `utility_meter.reset` service calls.\n* **Key Inputs**: `sensor.day_night_battery_charged_energy`,
+    `sensor.night_battery_energy_discharged`.\n* **Controlled Entities**: \n    *
+    `input_number.last_night_battery_charged`\n    * `input_number.last_night_battery_discharged`\n
+    \   * `input_number.last_day_battery_charged`\n    * `input_number.last_day_battery_discharged`\n*
+    **Safety Mechanisms**: \n    * **1-second offset** on triggers ensures the solar
+    state transition is fully registered by the system.\n    * **2-second delay**
+    between data archival and sensor reset prevents race conditions, ensuring values
+    are saved before the sensors are cleared.\n    * **Float casting** with a default
+    of **0** ensures the automation does not fail if a sensor is temporarily unavailable.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Precision**: Values are rounded to **2 decimal places**
+    to maintain clean historical records without floating-point errors.\n* **Data
+    Integrity**: The use of `utility_meter.reset` allows for a clean slate at every
+    transition, making these sensors ideal for use in custom energy dashboards or
+    long-term statistics.\n* **Timing**: The slight delay in the action sequence acts
+    as a \"buffer\" to ensure the database write for the `input_number` entities is
+    initiated before the source sensors are zeroed out.\n"
+  triggers:
+  - event: sunrise
+    offset: +00:00:01
+    id: Rise
+    trigger: sun
+  - event: sunset
+    offset: +00:00:01
+    id: Set
+    trigger: sun
+  conditions: []
+  actions:
+  - alias: 'Save last night '
+    if:
+    - condition: trigger
+      id:
+      - Rise
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_charged
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_discharged
+  - alias: Save last day
+    if:
+    - condition: trigger
+      id:
+      - Set
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_charged
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_discharged
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - action: utility_meter.reset
+    data: {}
+    target:
+      entity_id:
+      - sensor.day_night_battery_charged_energy
+      - sensor.night_battery_energy_discharged
   mode: single
