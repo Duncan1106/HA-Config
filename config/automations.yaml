@@ -5227,26 +5227,49 @@
   mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
-  description: "## \U0001F34A Orangina Lamp Light\n\n### \U0001F4CB **Smart Brightness-Controlled
-    Ambient Lighting**\nAutomatically manages the Orangina lamp based on light sensor
-    readings with robust retry logic and multiple safety shutoff conditions.\n\n---\n\n###
-    \U0001F506 **Turn ON Triggers**\n| Condition | Duration | Threshold |\n|-----------|----------|-----------|\n|
-    **Light Level** | 30 seconds | `sensor.light_brighness` > **1 %** |\n| **Light
-    Level** | 60 seconds | `sensor.light_brighness` > **1 %** |\n\n### \U0001F319
-    **Turn OFF Triggers**\n\n#### **⏰ Time-Based**\n- **\U0001F55A 23:00** - Standard
-    bedtime shutoff\n- **\U0001F550 01:00** - Force off (end time safety)\n\n####
-    **\U0001F6CF️ Bedtime Detection** \n- When bed night-light turns **ON** (`switch.esp32_c3_mini_bett_nachtlicht_was_in_bed`)\n\n####
-    **\U0001F305 Brightness-Based Sync**\n- When `sensor.light_brighness` drops **below
-    1 %** for 30s or 60s\n\n---\n\n### \U0001F3AF **Smart Logic**\n\n#### **\U0001F506
-    ON Action**\n```\n✅ Retry up to 10 times with 5s delays\n✅ Continues until switch
-    confirms \"on\" state\n```\n\n#### **\U0001F319 OFF Actions** (3 scenarios)\n1.
-    **\U0001F6CF️ Bedtime Mode** (22:59-04:00 + bed light ON + 23:00 trigger)\n2.
-    **\U0001F305 Daytime Override** (04:00-20:00 + brightness sync trigger)  \n3.
-    **⏰ Force Off** (00:59-04:00 + 01:00 end time trigger)\n\n```\n✅ Each scenario
-    retries up to 10 times with 5s delays\n✅ Continues until switch confirms \"off\"
-    state\n```\n\n---\n\n### \U0001F527 **Technical Specs**\n- **Target:** `light.orangina_local`\n-
-    **Sensor:** `sensor.light_brighness` \n- **Mode:** `queued` (max 10 concurrent)\n-
-    **Retry Logic:** 10 attempts × 5s delay for bulletproof switching\n"
+  description: "# \U0001F34A **Orangina Lamp Light**\n\n### \U0001F4CB Intelligent
+    Ambient Lighting Control\n\nThis automation provides a robust, state-synchronized
+    lighting management system for the **Orangina Lamp**. Its high-level intent is
+    to align lamp states with environmental brightness levels and specific time-of-day
+    constraints.\n\nThe operational strategy utilizes a \"sync-and-verify\" approach,
+    ensuring the physical device reflects the desired logic even in unstable network
+    conditions. Reliability is maintained through a high-availability **backoff retry
+    script**, which handles command failures and provides administrative notifications
+    if the hardware becomes unresponsive.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Numeric
+    State | **sensor.light_brighness** | `On` | Activates lamp when brightness rises
+    above **1** (30s/60s checks). |\n| Time | **23:00:00** | `Dimm` | Initiates late-evening
+    dimming phase. |\n| Time | **01:00:00** | `Off end time` | Triggers the hard-cutoff
+    for nighttime shutdown. |\n| Numeric State | **sensor.light_brighness** | `Off
+    sync` | Deactivates lamp when brightness falls below **1** (30s/60s checks). |\n\n---\n\n###
+    Operational Logic Sections\n\n#### Daytime & Ambient Sync\n* **Purpose**: Ensures
+    the lamp remains **Off** during daylight hours or when external brightness is
+    sufficient.\n* **Logic Overview**: Triggered by **Off sync** (brightness < 1).
+    Condition restricted to the window between **04:00** and **20:00**.\n* **Effect**:
+    Switches **light.orangina_local** to **off**.\n\n#### Late Evening (Dimmed)\n*
+    **Purpose**: Transitions the lamp to a low-power state for late-night ambiance.\n*
+    **Logic Overview**: Triggered at exactly **23:00**. \n* **Effect**: Sets **light.orangina_local**
+    brightness to **40%**.\n\n#### Nighttime Shutdown\n* **Purpose**: Forces the lamp
+    off during late night/early morning hours.\n* **Logic Overview**: Triggered by
+    **Off end time** (01:00). Validated by a safety time window between **00:59**
+    and **04:00**.\n* **Effect**: Switches **light.orangina_local** to **off**.\n\n####
+    Active Illumination\n* **Purpose**: Activates full brightness when the environment
+    requires light.\n* **Logic Overview**: Triggered by **On** (brightness > 1) for
+    a sustained period of 30-60 seconds.\n* **Effect**: Sets **light.orangina_local**
+    to **on** at **100%** brightness.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode**: `queued` (Max 10)\n* **Execution Method**: `script.retry_action_with_backoff`\n*
+    **Key Inputs**: **sensor.light_brighness**\n* **Controlled Entities**: **light.orangina_local**\n*
+    **Safety Mechanisms**:\n    * **Max Retries**: 10 attempts per state change.\n
+    \   * **Exponential Backoff**: Base delay of 5s, scaling to 60s.\n    * **Failure
+    Notification**: Direct alert via **notify.duncan** if target state is not reached.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Redundant Triggers**: The use of two duration thresholds
+    (30s and 60s) for the same brightness sensor acts as a fail-safe to ensure the
+    state change is caught even if the first event is missed.\n* **Target State Verification**:
+    The automation does not just send a command; it passes a `target_state` to the
+    retry script, ensuring the physical lamp's state matches the logic's intent before
+    the execution finishes.\n* **Time-Fence Security**: The \"Off\" logic includes
+    strict time windows (e.g., **00:59 - 04:00**) to prevent accidental shutdowns
+    during unplanned sensor fluctuations outside of the intended hours."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -5268,15 +5291,10 @@
     id: 'On'
   - trigger: time
     at: '23:00:00'
-    id: 'Off'
+    id: Dimm
   - trigger: time
     at: 01:00:00
     id: Off end time
-  - trigger: state
-    entity_id:
-    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-    to: 'on'
-    id: 'Off'
   - trigger: numeric_state
     entity_id:
     - sensor.light_brighness
@@ -5319,20 +5337,28 @@
           service_data: '{"brightness_pct":"100"}'
       alias: 'On'
     - conditions:
+      - condition: trigger
+        id:
+        - Dimm
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: light.orangina_local
+          service_data: '{"brightness_pct":"40"}'
+      alias: Dimm
+    - conditions:
       - condition: or
         conditions:
-        - alias: 23 o'clock and in bed off
-          condition: and
-          conditions:
-          - condition: time
-            after: '22:59:00'
-            before: 04:00:00
-          - condition: state
-            entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-            state: 'on'
-          - condition: trigger
-            id:
-            - 'Off'
         - alias: Daytime or if bright enough
           condition: and
           conditions:
