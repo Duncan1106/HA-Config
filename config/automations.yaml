@@ -9845,6 +9845,26 @@
   - choose:
     - conditions:
       - condition: trigger
+        id:
+        - usage_change
+      - condition: template
+        value_template: '{% set old = trigger.from_state.state | float(0) %}
+
+          {% set new = trigger.to_state.state | float(0) %}
+
+          {{ (new // 10) > (old // 10) }}'
+      sequence:
+      - action: notify.admin
+        metadata: {}
+        data:
+          message: "Der Wasserzähler steht jetzt auf {{ states('sensor.wasserenthartung')
+            }} m³. \nBitte kurz gegen den Enthärtungsbehälter klopfen, um Salzbrücken
+            zu lösen."
+          title: "\U0001F528 Zeit zum Klopfen!"
+          data:
+            tag: wasserenthaertung_klopfen
+    - conditions:
+      - condition: trigger
         id: usage_change
       - condition: template
         value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
@@ -9859,7 +9879,7 @@
           - input_boolean.salz_nachgefullt
         action: input_boolean.turn_on
         data: {}
-      - action: notify.duncan
+      - action: notify.admin
         data:
           title: "\U0001F4A7 Erinnerung: Salz nachfüllen"
           message: 'Der Wasserenthärter hat {{ states(''sensor.wasserenthartung'')
@@ -9879,7 +9899,7 @@
           value: '0'
         target:
           entity_id: sensor.wasserenthartung
-      - action: notify.duncan
+      - action: notify.admin
         data:
           message: clear_notification
           data:
