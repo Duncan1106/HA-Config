@@ -855,32 +855,6 @@ warmelampe:
       continue_on_error: true
     else: []
   mode: queued
-'1707895746671':
-  sequence:
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: sensor.speedtest_download
-      state: unavailable
-    enabled: true
-  - metadata: {}
-    data:
-      addon: 6b87c29e_speedtest_addon
-    enabled: true
-    action: hassio.addon_start
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 15
-      milliseconds: 0
-  - metadata: {}
-    data: {}
-    target:
-      entity_id: counter.speedtest
-    action: counter.increment
-  alias: Speedtest update (addon)
-  mode: single
-  description: Run's the Speedtest CLI Addon to update internet speed metrics
 '1716068747270':
   alias: Ambient Daytime Lighting Control
   sequence:
@@ -1071,10 +1045,6 @@ warmelampe:
     - if:
       - condition: and
         conditions:
-        - condition: state
-          entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-          state:
-          - 'off'
         - condition: state
           entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
           state:
@@ -1275,6 +1245,14 @@ create_timelapse:
   max: 10
 wintergarten_dachfenster_rolladen_close:
   sequence:
+  - action: script.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - script.wintergarten_dachfenster_rolladen_open
+      - script.wintergarten_dachfenster_rolladen_stop
+    data: {}
+    continue_on_error: true
   - action: script.send_ir_remote_command
     metadata: {}
     data:
@@ -1285,10 +1263,28 @@ wintergarten_dachfenster_rolladen_close:
     target:
       entity_id: input_boolean.rollo_state
     data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 30
+      milliseconds: 0
+  - action: script.send_ir_remote_command
+    metadata: {}
+    data:
+      button_label: rollo_close
+    continue_on_error: true
   alias: Wintergarten Dachfenster Rolladen Close
   description: ''
 wintergarten_dachfenster_rolladen_open:
   sequence:
+  - action: script.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - script.wintergarten_dachfenster_rolladen_stop
+      - script.wintergarten_dachfenster_rolladen_close
+    data: {}
+    continue_on_error: true
   - action: script.send_ir_remote_command
     metadata: {}
     data:
@@ -1299,10 +1295,28 @@ wintergarten_dachfenster_rolladen_open:
     target:
       entity_id: input_boolean.rollo_state
     data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 30
+      milliseconds: 0
+  - action: script.send_ir_remote_command
+    metadata: {}
+    data:
+      button_label: rollo_open
+    continue_on_error: true
   alias: Wintergarten Dachfenster Rolladen Open
   description: ''
 wintergarten_dachfenster_rolladen_stop:
   sequence:
+  - action: script.turn_off
+    metadata: {}
+    target:
+      entity_id:
+      - script.wintergarten_dachfenster_rolladen_open
+      - script.wintergarten_dachfenster_rolladen_close
+    data: {}
+    continue_on_error: true
   - action: script.send_ir_remote_command
     metadata: {}
     data:
@@ -1526,8 +1540,8 @@ test_duncan_notify_response_echo:
   sequence:
   - alias: Send confirmable notification via notify.duncan
     data:
-      title: bitte ausräumen
-      message: Trockner fertig
+      title: Trockner fertig
+      message: Bitte ausräumen
       data:
         tag: confirmable_notify_trockner
         actions:
@@ -1558,10 +1572,9 @@ test_duncan_notify_response_echo:
         target:
           entity_id: input_boolean.trockner_fertig
       - data:
-          title: Trockner ausgeräumt von {{ states.person|selectattr("attributes.user_id",
-            "==", wait.trigger.event.context.user_id)|map(attribute="attributes.friendly_name")|first
-            }}
-          message: Danke
+          title: Trockner ausgeräumt
+          message: Danke {{ states.person|selectattr('attributes.user_id', '==',wait.trigger.event.context.user_id)|map(attribute='attributes.friendly_name')|first|
+            default('dir', true) }}
           data:
             tag: confirmable_notify_trockner
         action: notify.duncan

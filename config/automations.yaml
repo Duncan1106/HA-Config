@@ -507,28 +507,6 @@
       action: counter.increment
   mode: parallel
   max: 10
-- id: '1705101110242'
-  alias: Notify When Battery Devices Are Offline
-  description: This automation sends a notification when specific battery-operated
-    devices go offline. It excludes certain devices to avoid unnecessary alerts and
-    triggers at 10:30 AM daily.
-  use_blueprint:
-    path: Tahutipai/zigbee_zwave_notify_when_battery_devices_have_fallen_offline.yaml
-    input:
-      exclude:
-        entity_id:
-        - sensor.fp4_battery_level
-        - sensor.iphone_von_enya_battery_level
-        - sensor.poco_f7_battery_level
-        - sensor.mi_9t_battery_level
-      actions:
-      - metadata: {}
-        data:
-          title: Offline Sensors
-          target: Warning
-          message: The following devices are unavailable {{sensors}}
-        action: notify.duncan
-      time: '10:30:00'
 - id: '1705389061375'
   alias: Homeassistent Start & Stop
   description: "## \U0001F504 Home Assistant Start & Stop Automation\n\n### \U0001F4CB
@@ -538,14 +516,14 @@
     Fires when Home Assistant starts.\n- `homeassistant.shutdown`: Fires when Home
     Assistant stops.\n\n---\n\n### ✅ Conditions\n- None. Actions execute unconditionally
     based on the trigger.\n\n---\n\n### \U0001F3AF Actions / Workflow\n\n#### Startup
-    Actions\n- Notify user that Home Assistant is online including the local IP and
-    port.\n- Restart key backup add-ons:\n  - `hassio_onedrive_backup`\n  - `hassio_google_drive_backup`\n-
-    Wait 1 minute.\n- Locate iCloud devices sequentially with 15-second delay between
-    devices.\n\n#### Shutdown Actions\n- Notify user that Home Assistant is down.\n-
-    Include uptime duration in notification using `sensor.uptime`.\n\n---\n\n### \U0001F527
-    Technical Specs\n- Mode: `single` to prevent overlapping execution.\n- Notifications
-    use icon: `mdi:restart`.\n- iCloud device identifiers:\n  - `3675fe049f5a257fe6eebb6533252e74`\n
-    \ - `e146d7ea7dd792848fa6d8090a91ff6c`"
+    Actions\n- Wait 30 seconds.\n- Notify user that Home Assistant is online including
+    the local IP and port.\n- Restart key backup add-ons:\n  - `hassio_onedrive_backup`\n
+    \ - `hassio_google_drive_backup`\n- Wait 1 minute.\n- Locate iCloud devices sequentially
+    with 15-second delay between devices.\n\n#### Shutdown Actions\n- Notify user
+    that Home Assistant is down.\n- Include uptime duration in notification using
+    `sensor.uptime`.\n\n---\n\n### \U0001F527 Technical Specs\n- Mode: `single` to
+    prevent overlapping execution.\n- Notifications use icon: `mdi:restart`.\n- iCloud
+    device identifiers:\n  - `3675fe049f5a257fe6eebb6533252e74`\n  - `e146d7ea7dd792848fa6d8090a91ff6c`"
   triggers:
   - event: start
     id: Start
@@ -561,6 +539,11 @@
       id:
       - Start
     then:
+    - delay:
+        hours: 0
+        minutes: 0
+        seconds: 30
+        milliseconds: 0
     - metadata: {}
       data:
         title: Homeassistent is Up
@@ -628,19 +611,19 @@
       - 0d88285a82251e06c1a2bfced7afbd00
       - 2f1b9530bd2a8a239c9716ad67359eba
       - 905c163dcc62544838edb078413723b2
-      end_message_title: 'Spülmaschine '
+      end_message_title: Spülmaschine
       end_custom_actions:
-      - metadata: {}
-        data: {}
+      - action: button.press
+        metadata: {}
         target:
-          entity_id: counter.spulmaschine
-        action: counter.increment
-        enabled: false
+          entity_id: button.spulmaschine_force_end_cycle
+        data: {}
       start_appliance_power: 15
       end_message: 'Spülmaschine ausräumen '
       start_message: ' '
       include_end_notify: enable_end_notify_options
-      include_custom_actions: []
+      include_custom_actions:
+      - enable_end_custom_actions
       start_custom_actions: []
       end_appliance_power: 2
       end_time_delay: 1
@@ -656,6 +639,7 @@
       include_cycle_counter: enable_cycle_counter
       cycle_counter_helper: counter.spulmaschine
       end_notify_tag: spuelmaschine_fertig
+      end_notify_icon: mdi:dishwasher
 - id: '1708932016459'
   alias: Update System Metrics Sensors
   description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
@@ -925,7 +909,7 @@
       state: 'on'
     then:
     - data:
-        title: 'Daily Energy Summary:'
+        title: Daily Energy Summary
         message: '{{ states(''sensor.energy_summary_1st_block'') }}
 
 
@@ -1095,7 +1079,13 @@
       - sensor.t_h_bad_zigbee_temperature
       - sensor.t_h_kinderbad_zigbee_temperature
       - sensor.t_h_garage_zigbee_temperature
+      - sensor.t_h_gasteklo_zigbee_temperature
+      - sensor.t_h_hobbyraum_zigbee_temperature
+      - sensor.treppenhaus_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
+      - sensor.og_temperatur
+      - sensor.eg_temperatur
+      - sensor.kg_temperatur
     sensors: "{% set result = namespace(sensors=[]) %} {% for s in expand(include.entity_id)
       %}\n  {% if s.domain == 'sensor' %}\n    {% set u = s.attributes.unit_of_measurement
       | default('', true) %}\n    {% set v_raw = s.state | float(-999) %}\n    {%
@@ -1145,7 +1135,7 @@
       state: 'off'
     - condition: numeric_state
       entity_id: sensor.charged_energy_to_bkw_battery
-      above: 2
+      above: 1.8
     then:
     - target:
         entity_id:
@@ -1775,11 +1765,54 @@
   mode: single
 - id: '1714558482048'
   alias: Notify on Overcurrent Phase
-  description: This automation sends a notification if an overcurrent is detected
-    on any phase (L1, L2, or L3) of the smart meter. It checks if the current goes
-    above a predefined limit and alerts the user with the current value and the threshold.
-    Additionally, it disables charging on specific EV chargers if an overcurrent is
-    detected.
+  description: "⚡ **Notify on Overcurrent Phase**\n\n---\n\n### \U0001F4CB Intelligent
+    Load Management Control\n\n**High-Level Intent**\nThis automation provides critical
+    infrastructure protection by monitoring the electrical load across all three phases
+    (**L1, L2, L3**) of the main smart meter. Its primary goal is to prevent fuse
+    trips by detecting sustained overcurrent events and executing immediate remedial
+    actions.\n\n**Operational Strategy**\nThe system employs a **safety-first protection
+    strategy**. Upon detecting a current draw exceeding the defined **Fuse Limit**,
+    it triggers an immediate notification and attempts to gracefully reduce the load
+    of high-consumption devices (EV Chargers) before resorting to a full shutdown
+    of those services.\n\n**Reliability Mechanisms**\nTo ensure high availability
+    and successful execution, the automation utilizes a **retry script with backoff**
+    (`script.retry_action_with_backoff`) for charger shutdowns. This ensures that
+    even if a device is momentarily offline or a command fails, the system will persist
+    for up to **10 retries** with increasing delays to secure the electrical system.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **Numeric State** | **Smart Meter Phase L1** > **Fuse
+    Limit** | `overcurrent_l1` | Detect phase 1 overload for 30s |\n| **Numeric State**
+    | **Smart Meter Phase L2** > **Fuse Limit** | `overcurrent_l2` | Detect phase
+    2 overload for 30s |\n| **Numeric State** | **Smart Meter Phase L3** > **Fuse
+    Limit** | `overcurrent_l3` | Detect phase 3 overload for 30s |\n\n---\n\n### Operational
+    Logic Sections\n\n#### Overcurrent Mitigation Mode\n**Purpose**\nProtect the main
+    building fuse by reducing high-draw loads immediately upon detection of an overcurrent
+    event.\n\n**Logic Overview**\nTriggered when any phase attribute on the **Smart
+    Meter MQTT Data** sensor exceeds the **input_number.fuselimit** for a sustained
+    period of **30 seconds**.\n\n**Effect**\n* **Notification:** Dispatches an urgent
+    alert via `notify.duncan` detailing the affected phase, the current amperage,
+    and the threshold exceeded.\n* **Active Load Reduction:** Checks if EV chargers
+    are currently active (Amps > **6** and Power > **10**). If active, it reduces
+    the charging rate to **75%** of the current value.\n* **Emergency Cut-off:** If
+    the charger is at its minimum or the reduction fails, it initiates a script to
+    force the charging state to **Don't charge**.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode:** `parallel` (Max: 6) - Allows simultaneous handling of multiple
+    phase triggers.\n* **Execution Method:** Uses direct service calls for amperage
+    adjustment and `script.retry_action_with_backoff` for reliable state changes.\n*
+    **Key Inputs:** `input_number.fuselimit` (Global threshold for current monitoring).\n*
+    **Controlled Entities:** * `number.go_echarger_270862_amp` (11kW Charger)\n    *
+    `number.go_echarger_252682_amp` (22kW Charger)\n    * `select.go_echarger_270862_frc`
+    (Charging Mode)\n* **Safety Mechanisms:** * **30-second hysteresis** on triggers
+    to prevent activation by momentary spikes.\n    * **Clamping logic** ensures amperage
+    never drops below the minimum safe level of **6A** or exceeds hardware limits
+    (**16A/32A**).\n\n---\n\n### \U0001F4A1 Notes\n\n* **Hysteresis Rationale:** The
+    30-second \"for\" duration is critical to distinguish between short-lived motor
+    start-up spikes and genuine sustained overloads that threaten fuse integrity.\n*
+    **Dynamic Scaling:** The **75%** reduction logic allows the system to attempt
+    to keep the vehicle charging at a slower rate rather than simply cutting power,
+    maintaining user convenience while ensuring safety.\n* **Fail-Safe:** If the chargers
+    are already at their lowest setting (**6A**) but the overcurrent persists, the
+    automation shifts from \"throttling\" to \"disabling\" via the retry script."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -1794,41 +1827,67 @@
   - trigger: numeric_state
     entity_id:
     - binary_sensor.smart_meter_mqtt_data
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
     attribute: current_L2
     above: input_number.fuselimit
     id: overcurrent_l2
-  - trigger: numeric_state
-    entity_id:
-    - binary_sensor.smart_meter_mqtt_data
     for:
       hours: 0
       minutes: 0
       seconds: 30
+  - trigger: numeric_state
+    entity_id:
+    - binary_sensor.smart_meter_mqtt_data
     attribute: current_L3
     above: input_number.fuselimit
     id: overcurrent_l3
-  conditions: []
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  - trigger: time_pattern
+    seconds: /30
+  conditions:
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L1
+      above: input_number.fuselimit
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L2
+      above: input_number.fuselimit
+    - condition: numeric_state
+      entity_id: binary_sensor.smart_meter_mqtt_data
+      attribute: current_L3
+      above: input_number.fuselimit
   actions:
-  - alias: Message on Overcurrent
+  - action: notify.duncan
+    data:
+      title: '!!! OVERCURRENT !!!'
+      message: "{% if trigger.id.startswith('overcurrent_l') %}\n  {% set phase =
+        trigger.id.split('_')[1] | upper %}\n  {% set current = (state_attr(trigger.entity_id,
+        'current_' ~ phase) | float(0) / 1000) | round(2) %}\n  {% set limit = (states('input_number.fuselimit')
+        | float(0) / 1000) | round(2) %}\n  ⚡ Phase: {{ phase }} | Strom: {{ current
+        }} A (Limit: {{ limit }} A)\n{% else %}\n  ⚡ Detected by time pattern\n{%
+        endif %}"
+  - alias: Go-e 11kW Set amps to 75% of original value
     if:
-    - condition: trigger
-      id:
-      - overcurrent_l1
-      - overcurrent_l2
-      - overcurrent_l3
+    - condition: numeric_state
+      entity_id: number.go_echarger_270862_amp
+      above: 6
+    - condition: numeric_state
+      entity_id: sensor.go_echarger_270862_nrg_12
+      above: 10
     then:
-    - metadata: {}
+    - action: number.set_value
+      metadata: {}
+      target:
+        entity_id: number.go_echarger_270862_amp
       data:
-        title: '!!! OVERCURRENT !!!'
-        message: "⚡ Phase: {{ trigger.id.replace('overcurrent_l', 'L') }}   Aktueller
-          Strom: {{\n  (trigger.to_state.attributes['current_' ~ trigger.id.replace('overcurrent_',
-          '').upper()] | float(0) / 1000) | round(2)\n}} A (Grenzwert: {{ ((states('input_number.fuselimit')
-          | float(0)) / 1000.0) | round(2) }} A)"
-      action: notify.duncan
+        value: '{{ (states(''number.go_echarger_270862_amp'') | float * 0.75) | int
+          | clamp(6, 16) }}'
+    else:
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -1849,6 +1908,24 @@
             entity_id:
             - select.go_echarger_270862_frc
         custom_target_state: Don't charge
+      enabled: true
+  - alias: Go-e 22kW Set amps to 75% of original value
+    if:
+    - condition: numeric_state
+      entity_id: number.go_echarger_252682_amp
+      above: 6
+    - condition: numeric_state
+      entity_id: sensor.go_echarger_252682_nrg_12
+      above: 10
+    then:
+    - action: number.set_value
+      metadata: {}
+      target:
+        entity_id: number.go_echarger_252682_amp
+      data:
+        value: '{{ (states(''number.go_echarger_252682_amp'') | float * 0.75) | int
+          | clamp(6, 32) }}'
+    else:
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -1869,8 +1946,9 @@
             entity_id:
             - select.go_echarger_252682_frc
         custom_target_state: Don't charge
+      enabled: true
   mode: parallel
-  max: 10
+  max: 6
 - id: '1716307846138'
   alias: Pool Runtime Control
   description: "## \U0001F31E Pool Runtime Control\n\n### \U0001F4CB Purpose\nControls
@@ -2378,7 +2456,7 @@
   - data:
       title: ' !! Wasserleck !!'
       message: '{{trigger.to_state.name}} {{text_var}}'
-    action: notify.notify
+    action: notify.familie
   - data:
       title: ' !! Wasserleck !!'
       message: '{{trigger.to_state.name}} {{text_var}}'
@@ -2607,7 +2685,8 @@
       - condition: or
         conditions:
         - condition: numeric_state
-          entity_id: sensor.cloud_coverage
+          entity_id: weather.forecast_home
+          attribute: cloud_coverage
           below: 50
         - condition: numeric_state
           entity_id: sensor.solar_power_total
@@ -2657,7 +2736,8 @@
         - condition: and
           conditions:
           - condition: numeric_state
-            entity_id: sensor.cloud_coverage
+            entity_id: weather.forecast_home
+            attribute: cloud_coverage
             above: 50
           - condition: numeric_state
             entity_id: sensor.solar_power_total
@@ -2708,30 +2788,6 @@
           }} °C). Heizung wird nicht eingeschaltet.
 
           '
-  mode: single
-- id: '1719828773465'
-  alias: Speedtest using Speed test CLI Addon
-  description: "## ⚡ Internet Speedtest Automation\n\n### \U0001F4CB Purpose\nRuns
-    the **Speedtest CLI Add-on** every 2 hours to monitor internet connection performance.
-    This helps track latency, download, and upload speeds over time for diagnostics
-    and monitoring purposes.\n\n---\n\n### ⏱ Trigger\n- Every 2 hours using a time
-    pattern (`hours: /2`).\n\n---\n\n### ✅ Conditions\n- None; the automation runs
-    unconditionally every 2 hours.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
-    Random Delay between 0 and 300 seconds\n- Executes the script with ID `script.1707895746671`,
-    which triggers the Speedtest CLI add-on to perform a speed test.\n\n---\n\n###
-    \U0001F527 Technical Notes\n- Mode: `single` ensures that a new test won’t start
-    if the previous one is still running.\n- Can be extended to log results or send
-    notifications if thresholds are exceeded."
-  triggers:
-  - hours: /2
-    trigger: time_pattern
-  conditions: []
-  actions:
-  - delay:
-      seconds: '{{ range(0, 301) | random }}'
-  - metadata: {}
-    data: {}
-    action: script.1707895746671
   mode: single
 - id: '1720823999014'
   alias: Battery Notes - Battery Replaced
@@ -2994,12 +3050,12 @@
   actions:
   - action: homeassistant.reload_config_entry
     metadata: {}
-    data: {}
+    data:
+      entry_id: 095870ffe41dcd88e07d2c23ed156ccf
     target:
       device_id:
       - 990e7401f4719a68ee0021ca37067f72
       - 2a504e345eda14cbe58039ef062f08b5
-      - 4411b655b0684dfc50b78e7bea9df06d
   - action: hassio.addon_restart
     metadata: {}
     data:
@@ -3140,10 +3196,10 @@
         title: 'Willkommen zurück '
   mode: single
 - id: '1726817233810'
-  alias: Restart at 4:15 every second Night
+  alias: Restart at 3:15 every second Night
   description: ''
   triggers:
-  - at: 04:15:00
+  - at: 03:15:00
     trigger: time
   conditions:
   - condition: and
@@ -3153,79 +3209,17 @@
       enabled: true
     - condition: state
       entity_id: binary_sensor.up_longer_than_1_day
-      state: 'on'
+      state:
+      - 'on'
+    - condition: state
+      entity_id: sensor.ups0_status
+      state:
+      - Online
+    alias: Date is even, Homeassistant Core up longer than 1 day and UPS is Online
   actions:
   - action: homeassistant.restart
     metadata: {}
     data: {}
-  mode: single
-- id: '1727252450108'
-  alias: Nightly Battery Energy Discharged
-  description: ''
-  trigger:
-  - platform: sun
-    event: sunrise
-    offset: 0
-    id: Rise
-  - platform: sun
-    event: sunset
-    offset: 0
-    id: Set
-  condition: []
-  action:
-  - if:
-    - condition: trigger
-      id:
-      - Rise
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
-          round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_night_battery_discharged
-    alias: 'Save last night '
-  - alias: Save last day
-    if:
-    - condition: trigger
-      id:
-      - Set
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
-          round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_day_battery_discharged
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: 5.95
-      target:
-        entity_id: input_number.last_day_battery_discharged
-      enabled: false
-  - alias: Reset at sunrise or sunset
-    if:
-    - condition: trigger
-      id:
-      - Set
-      - Rise
-    then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 2
-        milliseconds: 0
-    - action: utility_meter.reset
-      data: {}
-      target:
-        entity_id: sensor.night_battery_energy_discharged
   mode: single
 - id: '1727387566504'
   alias: Ganglicht Motion
@@ -3650,8 +3644,8 @@
     on** when it’s dark (<20 lux) and motion is detected.  \n  - **Turns off** if
     ambient light becomes bright (>25–50 lux).  \n  - **Turns off after motion clears**
     (30s wait), but adapts based on brightness:  \n    - If brightness is above **15
-    lux** → switch light **off** with a smooth\n      **2s fade** (with retries).
-    \ \n    - If it’s still dark → keep a **soft glow** at brightness 9 with a **2s\n
+    lux** → switch light **off** with a smooth\n      **1.5s fade** (with retries).
+    \ \n    - If it’s still dark → keep a **soft glow** at brightness 9 with a **1.5s\n
     \     fade** (with retries).  \n  - **Retries ensure reliability**: repeated on/off
     commands until the final\n    state is confirmed.  \n  - **Restart mode**: new
     motion cancels pending off-timers.  \n\n  ---\n\n  ### ⏰ **Triggers**  \n\n  |
@@ -3667,15 +3661,15 @@
     **on** if:  \n  - `sensor.bad_nachtlicht_illuminance` < **20 lux**  \n  - `binary_sensor.kinderbad_bewegung`
     is **on**  \n  - Light is **off** OR brightness < **10%**  \n\n  ---\n\n  ###
     \U0001F3AF **Actions**  \n\n  #### **\U0001F4A1 On Action**  \n  - Turn on `light.bad_nachtlicht`
-    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **2s
+    \ \n  - Brightness: **100%**  \n  - Color Temp: **2400K**  \n  - Transition: **1.5s
     smooth fade**  \n\n  ---\n\n  #### **\U0001F319 Off Action (after motion clears)**
     \ \n  - Wait **30s** after motion clears  \n  - If brightness > **15 lux** → turn
-    light **off** with a **2s fade**\n    (with retries)  \n  - Else (still dark)
-    → set light to **brightness 9** with a **2s fade**\n    (with retries)  \n\n  ---\n\n
-    \ #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50 lux**
-    \ \n  - Turn off `light.bad_nachtlicht` immediately with a **0.25s fade**\n    (with
-    retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target Light:**
-    `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
+    light **off** with a **1.5s fade**\n    (with retries)  \n  - Else (still dark)
+    → set light to **brightness 9** with a **1.5s fade**\n    (with retries)  \n\n
+    \ ---\n\n  #### **⚡ Immediate Off Action**  \n  - If brightness rises above **25–50
+    lux**  \n  - Turn off `light.bad_nachtlicht` immediately with a **0.25s fade**\n
+    \   (with retries)  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n  - **Target
+    Light:** `light.bad_nachtlicht`  \n  - **Sensors Used:**  \n    - `sensor.bad_nachtlicht_illuminance`
     \ \n    - `binary_sensor.kinderbad_bewegung`  \n  - **Mode:** `restart`  \n  -
     **Failsafes:** all on/off/dim actions repeat until confirmed"
   triggers:
@@ -3765,7 +3759,7 @@
         service_data:
           brightness_pct: 100
           color_temp_kelvin: 2400
-          transition: 2
+          transition: 1.5
   - alias: Off after time x
     if:
     - condition: trigger
@@ -3796,7 +3790,7 @@
           target_state: 'off'
           entity_id: light.bad_nachtlicht
           service_data:
-            transition: 2
+            transition: 1.5
       else:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -3814,7 +3808,7 @@
           service_data:
             brightness: 9
             color_temp_kelvin: 2400
-            transition: 2
+            transition: 1.5
     enabled: true
   - alias: Off immediately
     if:
@@ -4477,6 +4471,8 @@
               message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
                 | timestamp_custom('%H:%M', True) }}.
               tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
           - delay:
               hours: 1
     - conditions:
@@ -4493,68 +4489,6 @@
     trigger_entity: binary_sensor.gasteklo_fenster_contact
     custom_friendly_name: Gästeklo Fenster
     notification_tag: gasteklo_window_alert
-- id: '1734549334887'
-  alias: Nightly Battery Energy Charged
-  description: ''
-  triggers:
-  - event: sunrise
-    offset: +00:00:01
-    id: Rise
-    trigger: sun
-  - event: sunset
-    offset: +00:00:01
-    id: Set
-    trigger: sun
-  conditions: []
-  actions:
-  - alias: 'Save last night '
-    if:
-    - condition: trigger
-      id:
-      - Rise
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
-          | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_night_battery_charged
-  - alias: Save last day
-    if:
-    - condition: trigger
-      id:
-      - Set
-    then:
-    - action: input_number.set_value
-      metadata: {}
-      data:
-        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
-          | round(2) }}
-
-          '
-      target:
-        entity_id: input_number.last_day_battery_charged
-  - alias: Reset at sunrise or sunset
-    if:
-    - condition: trigger
-      id:
-      - Set
-      - Rise
-    then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 1
-        milliseconds: 0
-    - action: utility_meter.reset
-      data: {}
-      target:
-        entity_id: sensor.day_night_battery_charged_energy
-  mode: parallel
-  max: 10
 - id: '1735214695890'
   alias: Dunstabzugshaube
   description: "## \U0001F4A8 Dunstabzugshaube (Range Hood Control)\n\n### \U0001F4CB
@@ -4791,15 +4725,16 @@
     a clutter-free UI.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
     | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.wvgzzze2zpe005371_vehicle_moving`
     | `Arbeit` | Detects when the vehicle starts moving to initiate the departure
-    sequence. |\n| **Zone** | `person.stephan` (Enters `zone.big_home_2`) | `Enter`
-    | Triggers a mid-commute ETA update when entering the outer perimeter. |\n| **Zone**
-    | `person.stephan` (Enters `zone.home`) | `Home` | Detects final arrival to clear
-    existing notifications. |\n\n---\n\n### Operational Logic Sections\n\n#### Leave
-    Arbeit (Departure)\n* **Purpose:** Initializes tracking and sends the first ETA
-    alert.\n* **Logic Overview:** Triggered by vehicle movement between **17:00 -
-    18:30** (Mon-Thu) or **13:00 - 16:00** (Fri), provided **person.stephan** is not
-    already **home**.\n* **Effect:** Commands **iCloud3** to **Restart**, waits 30
-    seconds, and sends a notification to **notify.duncan** with the value of `sensor.stephans_iphone_travel_time`.\n\n####
+    sequence. |\n| **Zone** | `person.stephan` (Leaves `zone.papa_arbeit`) | `Arbeit`
+    | Triggers the departure sequence. |\n| **Zone** | `person.stephan` (Enters `zone.big_home_2`)
+    | `Enter` | Triggers a mid-commute ETA update when entering the outer perimeter.
+    |\n| **Zone** | `person.stephan` (Enters `zone.home`) | `Home` | Detects final
+    arrival to clear existing notifications. |\n\n---\n\n### Operational Logic Sections\n\n####
+    Leave Arbeit (Departure)\n* **Purpose:** Initializes tracking and sends the first
+    ETA alert.\n* **Logic Overview:** Triggered by vehicle movement between **17:00
+    - 18:30** (Mon-Thu) or **13:00 - 16:00** (Fri), provided **person.stephan** is
+    not already **home**.\n* **Effect:** Commands **iCloud3** to **Restart**, waits
+    30 seconds, and sends a notification to **notify.duncan** with the value of `sensor.stephans_iphone_travel_time`.\n\n####
     Proximity Alert (Enter)\n* **Purpose:** Provides a secondary ETA update as the
     commute nears completion.\n* **Logic Overview:** Triggered when **person.stephan**
     enters the **Big Home 2** zone.\n* **Effect:** Sends a refreshed ETA notification
@@ -4829,6 +4764,12 @@
     - binary_sensor.wvgzzze2zpe005371_vehicle_moving
     from:
     to: 'on'
+    id: Arbeit
+    enabled: true
+  - trigger: zone
+    entity_id: person.stephan
+    zone: zone.papa_arbeit
+    event: leave
     id: Arbeit
   - trigger: zone
     entity_id: person.stephan
@@ -4900,6 +4841,12 @@
       - condition: trigger
         id:
         - Enter
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: person.stephan
+          state:
+          - home
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -5068,7 +5015,8 @@
   mode: single
 - id: hobbyraum_window_monitor
   alias: Hobbyraum kleines Fenster offen
-  description: Monitors Hobby Room window and notifies if left open for 1 hour.
+  description: Monitors Hobby Room window and notifies if left open for 1 hour, repeat
+    every 2 hours.
   triggers:
   - trigger: state
     entity_id: binary_sensor.hobbyraum_kleines_fenster_contact
@@ -5088,12 +5036,21 @@
       - condition: trigger
         id: send_notification
       sequence:
-      - action: script.notify_people_at_home_with_fallbacks
-        data:
-          title: '{{ custom_friendly_name }} offen'
-          message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
-            | timestamp_custom('%H:%M', True) }}.
-          tag: '{{ notification_tag }}'
+      - repeat:
+          while:
+          - condition: template
+            value_template: '{{ is_state(trigger_entity, ''on'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
+                | timestamp_custom('%H:%M', True) }}.
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+          - delay:
+              hours: 2
     - conditions:
       - condition: trigger
         id: delete_notification
@@ -5270,26 +5227,49 @@
   mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
-  description: "## \U0001F34A Orangina Lamp Light\n\n### \U0001F4CB **Smart Brightness-Controlled
-    Ambient Lighting**\nAutomatically manages the Orangina lamp based on light sensor
-    readings with robust retry logic and multiple safety shutoff conditions.\n\n---\n\n###
-    \U0001F506 **Turn ON Triggers**\n| Condition | Duration | Threshold |\n|-----------|----------|-----------|\n|
-    **Light Level** | 30 seconds | `sensor.light_brighness` > **1 %** |\n| **Light
-    Level** | 60 seconds | `sensor.light_brighness` > **1 %** |\n\n### \U0001F319
-    **Turn OFF Triggers**\n\n#### **⏰ Time-Based**\n- **\U0001F55A 23:00** - Standard
-    bedtime shutoff\n- **\U0001F550 01:00** - Force off (end time safety)\n\n####
-    **\U0001F6CF️ Bedtime Detection** \n- When bed night-light turns **ON** (`switch.esp32_c3_mini_bett_nachtlicht_was_in_bed`)\n\n####
-    **\U0001F305 Brightness-Based Sync**\n- When `sensor.light_brighness` drops **below
-    1 %** for 30s or 60s\n\n---\n\n### \U0001F3AF **Smart Logic**\n\n#### **\U0001F506
-    ON Action**\n```\n✅ Retry up to 10 times with 5s delays\n✅ Continues until switch
-    confirms \"on\" state\n```\n\n#### **\U0001F319 OFF Actions** (3 scenarios)\n1.
-    **\U0001F6CF️ Bedtime Mode** (22:59-04:00 + bed light ON + 23:00 trigger)\n2.
-    **\U0001F305 Daytime Override** (04:00-20:00 + brightness sync trigger)  \n3.
-    **⏰ Force Off** (00:59-04:00 + 01:00 end time trigger)\n\n```\n✅ Each scenario
-    retries up to 10 times with 5s delays\n✅ Continues until switch confirms \"off\"
-    state\n```\n\n---\n\n### \U0001F527 **Technical Specs**\n- **Target:** `light.orangina_local`\n-
-    **Sensor:** `sensor.light_brighness` \n- **Mode:** `queued` (max 10 concurrent)\n-
-    **Retry Logic:** 10 attempts × 5s delay for bulletproof switching\n"
+  description: "# \U0001F34A **Orangina Lamp Light**\n\n### \U0001F4CB Intelligent
+    Ambient Lighting Control\n\nThis automation provides a robust, state-synchronized
+    lighting management system for the **Orangina Lamp**. Its high-level intent is
+    to align lamp states with environmental brightness levels and specific time-of-day
+    constraints.\n\nThe operational strategy utilizes a \"sync-and-verify\" approach,
+    ensuring the physical device reflects the desired logic even in unstable network
+    conditions. Reliability is maintained through a high-availability **backoff retry
+    script**, which handles command failures and provides administrative notifications
+    if the hardware becomes unresponsive.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Numeric
+    State | **sensor.light_brighness** | `On` | Activates lamp when brightness rises
+    above **1** (30s/60s checks). |\n| Time | **23:00:00** | `Dimm` | Initiates late-evening
+    dimming phase. |\n| Time | **01:00:00** | `Off end time` | Triggers the hard-cutoff
+    for nighttime shutdown. |\n| Numeric State | **sensor.light_brighness** | `Off
+    sync` | Deactivates lamp when brightness falls below **1** (30s/60s checks). |\n\n---\n\n###
+    Operational Logic Sections\n\n#### Daytime & Ambient Sync\n* **Purpose**: Ensures
+    the lamp remains **Off** during daylight hours or when external brightness is
+    sufficient.\n* **Logic Overview**: Triggered by **Off sync** (brightness < 1).
+    Condition restricted to the window between **04:00** and **20:00**.\n* **Effect**:
+    Switches **light.orangina_local** to **off**.\n\n#### Late Evening (Dimmed)\n*
+    **Purpose**: Transitions the lamp to a low-power state for late-night ambiance.\n*
+    **Logic Overview**: Triggered at exactly **23:00**. \n* **Effect**: Sets **light.orangina_local**
+    brightness to **40%**.\n\n#### Nighttime Shutdown\n* **Purpose**: Forces the lamp
+    off during late night/early morning hours.\n* **Logic Overview**: Triggered by
+    **Off end time** (01:00). Validated by a safety time window between **00:59**
+    and **04:00**.\n* **Effect**: Switches **light.orangina_local** to **off**.\n\n####
+    Active Illumination\n* **Purpose**: Activates full brightness when the environment
+    requires light.\n* **Logic Overview**: Triggered by **On** (brightness > 1) for
+    a sustained period of 30-60 seconds.\n* **Effect**: Sets **light.orangina_local**
+    to **on** at **100%** brightness.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode**: `queued` (Max 10)\n* **Execution Method**: `script.retry_action_with_backoff`\n*
+    **Key Inputs**: **sensor.light_brighness**\n* **Controlled Entities**: **light.orangina_local**\n*
+    **Safety Mechanisms**:\n    * **Max Retries**: 10 attempts per state change.\n
+    \   * **Exponential Backoff**: Base delay of 5s, scaling to 60s.\n    * **Failure
+    Notification**: Direct alert via **notify.duncan** if target state is not reached.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Redundant Triggers**: The use of two duration thresholds
+    (30s and 60s) for the same brightness sensor acts as a fail-safe to ensure the
+    state change is caught even if the first event is missed.\n* **Target State Verification**:
+    The automation does not just send a command; it passes a `target_state` to the
+    retry script, ensuring the physical lamp's state matches the logic's intent before
+    the execution finishes.\n* **Time-Fence Security**: The \"Off\" logic includes
+    strict time windows (e.g., **00:59 - 04:00**) to prevent accidental shutdowns
+    during unplanned sensor fluctuations outside of the intended hours."
   triggers:
   - trigger: numeric_state
     entity_id:
@@ -5311,15 +5291,13 @@
     id: 'On'
   - trigger: time
     at: '23:00:00'
-    id: 'Off'
+    id: Dimm
+  - trigger: time
+    at: 00:00:00
+    id: Dimm 2
   - trigger: time
     at: 01:00:00
     id: Off end time
-  - trigger: state
-    entity_id:
-    - switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-    to: 'on'
-    id: 'Off'
   - trigger: numeric_state
     entity_id:
     - sensor.light_brighness
@@ -5362,20 +5340,48 @@
           service_data: '{"brightness_pct":"100"}'
       alias: 'On'
     - conditions:
+      - condition: trigger
+        id:
+        - Dimm
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: light.orangina_local
+          service_data: '{"brightness_pct":"40"}'
+      alias: Dimm 40%
+    - conditions:
+      - condition: trigger
+        id:
+        - Dimm 2
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: light
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: light.orangina_local
+          service_data: '{"brightness_pct":"20"}'
+      alias: Dimm 20%
+    - conditions:
       - condition: or
         conditions:
-        - alias: 23 o'clock and in bed off
-          condition: and
-          conditions:
-          - condition: time
-            after: '22:59:00'
-            before: 04:00:00
-          - condition: state
-            entity_id: switch.esp32_c3_mini_bett_nachtlicht_was_in_bed
-            state: 'on'
-          - condition: trigger
-            id:
-            - 'Off'
         - alias: Daytime or if bright enough
           condition: and
           conditions:
@@ -5413,316 +5419,109 @@
   max: 10
 - id: '1738676581969'
   alias: Connectivity Ping Update
-  description: "\n  # \U0001F310 **Connectivity Ping Update**\n\n\n  ### \U0001F4CB
-    Adaptive Connectivity Sensor Update Controller\n\n\n  This automation enforces
-    deterministic update intervals for critical\n  ping-based connectivity binary
-    sensors by explicitly triggering\n  `homeassistant.update_entity`. It intentionally
-    bypasses the integration’s\n  internal polling cadence to provide predictable
-    and explainable update timing\n  for internet reachability monitoring.\n\n\n  Redundancy
-    is achieved through **multiple independent targets across different\n  DNS providers**,
-    rather than by sending multiple ICMP requests per update.\n  Each sensor is configured
-    with `count: 1`, favoring horizontal diversity\n  (provider and endpoint separation)
-    over vertical repetition.\n\n\n  ---\n\n\n  ### Trigger Overview\n\n\n  | Trigger
-    Type | Interval | Trigger ID | Operational Context |\n  | :----------- | :-------
-    | :--------- | :------------------ |\n  | **Time Pattern** | Every 5 seconds |
-    `5s` | High-resolution monitoring during normal occupancy |\n  | **Time Pattern**
-    | Every 30 seconds | `30s` | Low-impact background monitoring during absence |\n\n\n
-    \ ---\n\n\n  ### Operational Logic\n\n\n  #### Daily / Active Mode\n\n  - **Activation
-    Conditions**:\n    - Trigger ID: `5s`\n    - `input_select.smart_home_status`
-    = **Daily**\n\n  - **Behavior**:\n    - Forces an immediate update for all configured
-    connectivity sensors.\n    - Prioritizes fast and deterministic detection of total
-    internet loss.\n\n\n  #### Vacation Mode\n\n  - **Activation Conditions**:\n    -
-    Trigger ID: `30s`\n    - `input_select.smart_home_status` = **Vacation**\n\n  -
-    **Behavior**:\n    - Maintains baseline reachability awareness with substantially
-    reduced\n      scheduler, network, and radio overhead.\n\n\n  ---\n\n\n  ### Update
-    Frequency & Traffic Profile\n\n\n  **Assumptions**:\n  - 6 ping sensors total\n
-    \ - `count: 1` per sensor\n  - IPv4 ICMP Echo Request + Reply\n  - ~168 bytes
-    per sensor update (request + response)\n\n\n  | Mode | Interval | Update Calls
-    / Day | Update Calls / Month | ICMP Packets / Day | Traffic / Day | Traffic /
-    Month |\n  | :--- | :------- | ------------------ | -------------------- | -----------------
-    | ------------- | --------------- |\n  | **Daily** | 5 s | 103,680 | ~3.11 million
-    | 207,360 | ~16.6 MB | ~480 MB |\n  | **Vacation** | 30 s | 17,280 | ~518,400
-    | 34,560 | ~2.8 MB | ~83 MB |\n\n\n  ---\n\n\n  ### Technical Characteristics\n\n\n
-    \ - **Automation Mode**: `parallel` (maximum concurrent executions: 3)\n  - **Execution
-    Strategy**: Explicit `homeassistant.update_entity` calls\n  - **State Control
-    Input**:\n    - `input_select.smart_home_status`\n  - **Connectivity Targets**:\n
-    \   - Cloudflare: `1.1.1.1`, `1.0.0.1`\n    - Google: `8.8.8.8`, `8.8.4.4`\n    -
-    Quad9: `9.9.9.9`, `149.112.112.112`\n\n\n  ---\n\n\n  ### Notes and Design Rationale\n\n\n
-    \ - **Why `count: 1`**:\n    Reliability is achieved through multiple independent
-    endpoints and providers\n    rather than repeated ICMP bursts against a single
-    target. This significantly\n    reduces traffic while preserving failure-detection
-    accuracy.\n\n  - **Deterministic Scheduling**:\n    Explicit update calls ensure
-    predictable evaluation timing, which is critical\n    for downstream automations,
-    alerts, or failover logic.\n\n  - **Scalability**:\n    Additional operational
-    states or polling tiers can be introduced by adding\n    new trigger IDs without
-    restructuring the automation."
+  description: "# \U0001F310 **Connectivity Ping Update**\n\n### \U0001F4CB Adaptive
+    Connectivity Update Orchestrator\n\nThis automation implements a **deterministic,
+    state-aware orchestration layer**\nfor ping-based connectivity binary sensors
+    by explicitly invoking\n`homeassistant.update_entity` using a **parallel, staged
+    execution model**.\n\nBy centralizing scheduling and execution, it **bypasses
+    integration-level\npolling behavior** and enforces predictable, explainable evaluation
+    timing for\nboth **internet reachability** and **local network health**, while
+    actively\npreventing ICMP bursts and uncontrolled traffic amplification.\n\n---\n\n###
+    \U0001F9ED Connectivity Model\n\nConnectivity is evaluated along **two orthogonal
+    and intentionally separated dimensions**:\n\n1. **External (Internet) Reachability**\n
+    \  - Multiple independent public endpoints across different DNS providers\n   -
+    Split into **primary** and **secondary** execution groups\n   - Detects ISP, routing,
+    peering, or provider-specific failures\n2. **Internal (Local) Reachability**\n
+    \  - A single authoritative LAN endpoint (router)\n   - Used to distinguish **LAN
+    availability** from **upstream internet availability**\n\nThis separation prevents
+    false conclusions such as “The internet is down” when the actual failure domain
+    is the local network or router.\n\n---\n\n### \U0001F501 Redundancy & Execution
+    Strategy\n\nRedundancy is achieved through **endpoint diversity combined with
+    controlled execution**, not blind packet repetition:\n\n- Multiple independent
+    providers and infrastructure domains\n- Each sensor configured with **`count:
+    2`**\n- Explicit service-driven updates (`homeassistant.update_entity`)\n- Execution
+    structured as:\n  - **Parallel evaluation paths** (local vs external)\n  - **Staged
+    sequencing within external targets**\n- Inter-entity delays **dynamically derived
+    from both the active interval and the total number of execution steps**\n\nThis
+    results in **adaptive ICMP density control**: adding or removing targets automatically
+    reshapes timing while keeping overall traffic bounded and ensuring automation
+    runtime stays within the 15s trigger window.\n\n---\n\n### ⏱ Trigger Overview\n\n|
+    Trigger Type | Interval | Operational Role |\n| :--- | :--- | :--- |\n| **Time
+    Pattern** | Every **15 seconds** | Global scheduler |\n\nThe trigger fires at
+    a fixed cadence, but **actual execution is strictly gated** by operational state
+    and time-alignment logic.\n\n---\n\n### \U0001F9E0 Operational Logic\n\n#### Daily
+    / Active Mode\n- **Behavior**: All connectivity sensors evaluated every 15s.\n-
+    **Execution**: Local (LAN) checks run in parallel with staged external checks.\n\n####
+    Vacation / Power-Save Mode\n- **Behavior**: Updates occur only on **30-second
+    boundaries** (`:00`, `:30`).\n- **Logic**: `((now().minute * 60 + now().second)
+    % 30) == 0`\n\n---\n\n### \U0001F4CA Update Frequency & Traffic Profile (Updated
+    for Count: 2)\n\n**Assumptions**:\n- 7 total ping sensors\n- **`count: 2` per
+    sensor**\n- ~168 bytes per request/reply pair → ~336 bytes per update\n\n####
+    \U0001F30D External Traffic (Internet)\n| Mode | Interval | Update Calls / Day
+    | ICMP Packets / Day | Traffic / Day | Traffic / Month |\n| :--- | :--- | :---
+    | :--- | :--- | :--- |\n| **Daily** | 15 s | 34,560 | 138,240 | ~11.1 MB | ~333
+    MB |\n| **Vacation** | 30 s | 17,280 | 69,120 | ~5.5 MB | ~165 MB |\n\n#### \U0001F3E0
+    Internal Traffic (LAN)\n| Mode | Interval | Update Calls / Day | ICMP Packets
+    / Day | Traffic / Day | Traffic / Month |\n| :--- | :--- | :--- | :--- | :---
+    | :--- |\n| **Daily** | 15 s | 5,760 | 23,040 | ~1.9 MB | ~58 MB |\n| **Vacation**
+    | 30 s | 2,880 | 11,520 | ~0.9 MB | ~29 MB |\n\n---\n\n### ⚙ Technical Characteristics\n-
+    **Automation Mode**: `parallel` (Max 3)\n- **Execution Model**: Parallel paths
+    + staged external updates\n- **Timing Guarantees**: Centralized scheduling prevents
+    sensor \"drift.\"\n\n---\n\n### \U0001F4DD Design Rationale\n- **Why `count: 2`**:
+    Optimizes the balance between packet loss resilience and automation runtime, ensuring
+    the sequence completes before the next 15s trigger.\n- **Why parallel + staged**:
+    Separates failure domains while avoiding synchronized ICMP bursts.\n- **Why separate
+    local vs external**: Prevents conflation of LAN/Router failures with ISP outages."
   triggers:
   - trigger: time_pattern
-    seconds: /5
-    id: 5s
-  - trigger: time_pattern
-    seconds: /30
-    id: 30s
-  conditions: []
+    seconds: /15
+  conditions:
+  - condition: template
+    value_template: "{% if states('input_select.smart_home_status') == 'Daily' %}\n
+      \ true\n{% elif states('input_select.smart_home_status') in ['Vacation', 'Power
+      Save'] %}\n  {{ ((now().minute*60 + now().second) % 30) == 0 }}\n{% else %}\n
+      \ false\n{% endif %}\n"
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - 5s
-      - condition: state
-        entity_id: input_select.smart_home_status
-        state: Daily
-      sequence:
-      - action: homeassistant.update_entity
-        metadata: {}
-        data:
-          entity_id:
-          - binary_sensor.1_1_1_1
-          - binary_sensor.1_0_0_1
-          - binary_sensor.8_8_8_8
-          - binary_sensor.8_8_4_4
-          - binary_sensor.9_9_9_9
-          - binary_sensor.149_112_112_112
-    - conditions:
-      - condition: trigger
-        id:
-        - 30s
-      - condition: state
-        entity_id: input_select.smart_home_status
-        state: Vacation
-      sequence:
-      - action: homeassistant.update_entity
-        metadata: {}
-        data:
-          entity_id:
-          - binary_sensor.1_1_1_1
-          - binary_sensor.1_0_0_1
-          - binary_sensor.8_8_8_8
-          - binary_sensor.8_8_4_4
-          - binary_sensor.9_9_9_9
-          - binary_sensor.149_112_112_112
+  - variables:
+      local:
+      - binary_sensor.192_168_2_1
+      external_primary:
+      - binary_sensor.1_1_1_1
+      - binary_sensor.8_8_8_8
+      - binary_sensor.9_9_9_9
+      external_secondary:
+      - binary_sensor.1_0_0_1
+      - binary_sensor.8_8_4_4
+      - binary_sensor.149_112_112_112
+      count: '{{ external_primary|length + external_secondary|length +2 }}'
+      status: '{{ states(''input_select.smart_home_status'') }}'
+      interval: '{{ 30 if status in [''Vacation'', ''Power Save''] else 15 }}'
+      tempo: '{{ (interval / count) | round(3) }}'
+  - parallel:
+    - repeat:
+        for_each: '{{ local }}'
+        sequence:
+        - action: homeassistant.update_entity
+          data:
+            entity_id: '{{ repeat.item }}'
+    - sequence:
+      - repeat:
+          for_each: '{{ external_primary }}'
+          sequence:
+          - action: homeassistant.update_entity
+            data:
+              entity_id: '{{ repeat.item }}'
+          - delay: '{{ tempo }}'
+      - delay: '{{ tempo }}'
+      - repeat:
+          for_each: '{{ external_secondary }}'
+          sequence:
+          - action: homeassistant.update_entity
+            data:
+              entity_id: '{{ repeat.item }}'
+          - delay: '{{ tempo }}'
   mode: parallel
   max: 3
-- id: '1738740501702'
-  alias: Dreame Clean EG if Awake
-  description: This automation triggers a notification when the Dreame vacuum is set
-    to clean the EG area while someone is awake. Users can choose to start the cleaning
-    or have the vacuum return to the base.
-  triggers:
-  - entity_id: schedule.dreame_clean_up
-    from: 'off'
-    to: 'on'
-    trigger: state
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: '{{ notification_title }}'
-      message: '{{ notification_message }}'
-      data:
-        tag: '{{ notification_title }}'
-        persistent: '{{ persistent_notification }}'
-        actions: "{% set titles = [action_1_title, action_2_title, action_3_title]
-          %} {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
-          = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
-          %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
-          + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\"
-          if uri|length else action_name,\n      \"title\": title,\n      \"uri\":
-          uri \n      }\n    %}\n    {% set actions.data = actions.data + [action]
-          %}\n  {% endif %}\n{% endfor %} {{ actions.data }}\n"
-  - wait_for_trigger:
-      event_type: mobile_app_notification_action
-      trigger: event
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG'' }}'
-      sequence:
-      - action: vacuum.start
-        metadata: {}
-        data: {}
-        target:
-          entity_id: vacuum.d9_max_gen_2
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG'' }}'
-      sequence: []
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up EG''}}'
-      sequence:
-      - action: vacuum.return_to_base
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.d9_max_gen_2
-    enabled: true
-  mode: restart
-  max_exceeded: silent
-  variables:
-    notify_device: 905c163dcc62544838edb078413723b2
-    trigger_entity: schedule.dreame_clean_up
-    notification_title: Dreame Clean-Up EG
-    notification_message: ''
-    persistent_notification: false
-    action_1_title: Awake for EG
-    action_1_uri: ''
-    first_action:
-    - action: vacuum.start
-      metadata: {}
-      data: {}
-      target:
-        entity_id: vacuum.d9_max_gen_2
-    action_2_title: ''
-    action_2_uri: ''
-    second_action: []
-    action_3_title: Not Awake
-    action_3_uri: ''
-    third_action:
-    - action: vacuum.return_to_base
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.d9_max_gen_2
-- id: '1738740572519'
-  alias: Dreame Clean OG If Awake
-  description: This automation triggers the Dreame robot vacuum to clean the OG area
-    if it is confirmed that someone is awake. A notification is sent with options
-    to start cleaning or return the vacuum to its base.
-  triggers:
-  - entity_id: schedule.dreame_clean_up
-    from: 'off'
-    to: 'on'
-    trigger: state
-  actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      title: '{{ notification_title }}'
-      message: '{{ notification_message }}'
-      data:
-        tag: '{{ notification_title }}'
-        persistent: '{{ persistent_notification }}'
-        actions: "{% set titles = [action_1_title, action_2_title, action_3_title]
-          %} {% set uris = [action_1_uri, action_2_uri, action_3_uri] %} {% set actions
-          = namespace(data = []) %}\n{% for title in titles %}\n  {% if title|length
-          %}\n    {% set uri = uris[loop.index - 1] %}\n    {% set action_name = \"action\"
-          + loop.index|string %}\n    {% set action = {\n      \"action\": \"URI\"
-          if uri|length else action_name,\n      \"title\": title,\n      \"uri\":
-          uri \n      }\n    %}\n    {% set actions.data = actions.data + [action]
-          %}\n  {% endif %}\n{% endfor %} {{ actions.data }}\n"
-  - wait_for_trigger:
-      event_type: mobile_app_notification_action
-      trigger: event
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action1'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG'' }}'
-      sequence:
-      - action: vacuum.start
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.dreamebot_d10_plus
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action2'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG''}}'
-      sequence: []
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == ''action3'' and wait.trigger.event.data.title
-          == ''Dreame Clean-Up OG'' }}'
-      sequence:
-      - action: vacuum.return_to_base
-        metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - vacuum.dreamebot_d10_plus
-  mode: restart
-  max_exceeded: silent
-  variables:
-    notify_device: 905c163dcc62544838edb078413723b2
-    trigger_entity: schedule.dreame_clean_up
-    notification_title: Dreame Clean-Up OG
-    notification_message: ''
-    persistent_notification: false
-    action_1_title: Awake for OG
-    action_1_uri: ''
-    first_action:
-    - action: vacuum.start
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.dreamebot_d10_plus
-    action_2_title: ''
-    action_2_uri: ''
-    second_action: []
-    action_3_title: Not Awake
-    action_3_uri: ''
-    third_action:
-    - action: vacuum.return_to_base
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - vacuum.dreamebot_d10_plus
-- id: '1738879628887'
-  alias: Restart Go-e 11kW If Minimum Pause Duration
-  description: 'This automation restarts the Go-e 11kW charger if it detects a minimum
-    pause duration without charging. It ensures the charger operates efficiently without
-    unnecessary downtime.
-
-    Helps resolve the bug, where the firmware gets stuck in the minimum pause duration
-    but.'
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.go_echarger_270862_modelstatus
-    from:
-    to: Not charging because of minimum pause duration
-  conditions: []
-  actions:
-  - action: button.press
-    metadata: {}
-    data: {}
-    target:
-      entity_id: button.go_echarger_270862_rst
-    enabled: true
-  mode: single
-- id: '1738879679202'
-  alias: Restart Go-e 22kW If Minimum Pause Duration
-  description: 'This automation restarts the Go-e 22kW charger if it detects a minimum
-    pause duration without charging. It ensures the charger operates efficiently without
-    unnecessary downtime.
-
-    Helps resolve the bug, where the firmware gets stuck in the minimum pause duration
-    but.'
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.go_echarger_252682_modelstatus
-    from:
-    to: Not charging because of minimum pause duration
-  conditions: []
-  actions:
-  - action: button.press
-    metadata: {}
-    data: {}
-    enabled: true
-    target:
-      entity_id: button.go_echarger_252682_rst
-  mode: single
 - id: '1739881671493'
   alias: Notify for Tibber Pulse Battery Replacement
   description: Notifies when the Tibber Pulse battery voltage drops below a threshold,
@@ -6246,16 +6045,15 @@
     → sets frequency after system boots.\n- **Every 8 hours** → re-applies frequency
     setting for robustness (e.g., if device resets).\n- **Entity state change** →
     immediately re-applies the correct frequency if the value is modified manually
-    or by other automations.\n\n---\n\n### ✅ Conditions\n- No global conditions, runs
-    unconditionally.\n\n---\n\n### \U0001F3AF Actions\n- Waits **5 seconds** after
-    trigger to ensure the entity is initialized and ready.  \n- Calls `number.set_value`
-    on `number.herd_ct_klemme_zigbee_update_frequency` to enforce the configured interval
-    (value: `20` → corresponds to 20s updates).\n\n---\n\n### \U0001F527 Technical
-    Notes\n- Mode: `single` → prevents overlapping executions.  \n- The **hourly trigger**
-    ensures long-term stability even if the device silently resets its reporting interval.
-    \ \n- The **entity state trigger** catches accidental or external changes to the
-    setting.  \n- Delay ensures that HA startup doesn’t fail if the entity is still
-    initializing."
+    or by other automations.\n\n---\n\n### ✅ Conditions\n- Only when not at 20\n\n---\n\n###
+    \U0001F3AF Actions\n- Waits **5 seconds** after trigger to ensure the entity is
+    initialized and ready.  \n- Calls `number.set_value` on `number.herd_ct_klemme_zigbee_update_frequency`
+    to enforce the configured interval (value: `20` → corresponds to 20s updates).\n\n---\n\n###
+    \U0001F527 Technical Notes\n- Mode: `single` → prevents overlapping executions.
+    \ \n- The **hourly trigger** ensures long-term stability even if the device silently
+    resets its reporting interval.  \n- The **entity state trigger** catches accidental
+    or external changes to the setting.  \n- Delay ensures that HA startup doesn’t
+    fail if the entity is still initializing."
   triggers:
   - trigger: homeassistant
     event: start
@@ -6264,7 +6062,15 @@
   - trigger: state
     entity_id:
     - number.herd_ct_klemme_zigbee_update_frequency
-  conditions: []
+  conditions:
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
+      above: 20
+    - condition: numeric_state
+      entity_id: number.herd_ct_klemme_zigbee_update_frequency
+      below: 20
   actions:
   - delay:
       hours: 0
@@ -7163,126 +6969,6 @@
           addon: cff83567_ankerctl
       alias: Stop Ankerctl Addon When Printer Turned Off
   mode: single
-- id: '1749622712645'
-  alias: Tablet Battery Status Alerts
-  description: Sends notifications at battery thresholds (40%, 30%, 20%, 10%) and
-    clears when charging above 40%, with flapping protection and automatic charging
-    process restart.
-  triggers:
-  - entity_id:
-    - sensor.lenovo_tab_p11_batterie
-    - sensor.lenovo_tb_j606f_battery_level
-    below: 39
-    trigger: numeric_state
-  - entity_id:
-    - sensor.lenovo_tab_p11_batterie
-    - sensor.lenovo_tb_j606f_battery_level
-    below: 30
-    trigger: numeric_state
-  - entity_id:
-    - sensor.lenovo_tab_p11_batterie
-    - sensor.lenovo_tb_j606f_battery_level
-    below: 20
-    trigger: numeric_state
-  - entity_id:
-    - sensor.lenovo_tab_p11_batterie
-    - sensor.lenovo_tb_j606f_battery_level
-    below: 10
-    trigger: numeric_state
-  - trigger: numeric_state
-    entity_id:
-    - sensor.lenovo_tab_p11_batterie
-    - sensor.lenovo_tb_j606f_battery_level
-    above: 40
-    id: Above_40
-  conditions:
-  - condition: or
-    conditions:
-    - condition: template
-      value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
-        | float(100)) > (trigger.to_state.state | float(0)) }}\n"
-      alias: Check if Batters is dropping
-    - condition: trigger
-      id:
-      - Above_40
-  actions:
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ (trigger.to_state.state | float(0)) < 11 }}'
-      sequence:
-      - data:
-          title: "\U0001F534 Tablet Battery Critical!"
-          message: 'Lenovo Tab P11 battery is at {{ trigger.to_state.state }}%. Plug
-            it in now or check if it’s charging properly!
-
-            '
-          data:
-            tag: lenovo_p11_battery_warning
-        action: notify.duncan
-      - action: script.restart_charging_process
-        metadata: {}
-        data: {}
-      alias: Battery below 10
-    - conditions:
-      - condition: template
-        value_template: '{{ (trigger.to_state.state | float(0)) < 21 }}'
-      sequence:
-      - data:
-          title: "\U0001F7E0 Tablet Battery Low"
-          message: 'Lenovo Tab P11 battery dropped to {{ trigger.to_state.state }}%.
-            Might be an issue with the charger or cable.
-
-            '
-          data:
-            tag: lenovo_p11_battery_warning
-        action: notify.duncan
-      - action: script.restart_charging_process
-        metadata: {}
-        data: {}
-      alias: Battery below 20
-    - conditions:
-      - condition: template
-        value_template: '{{ (trigger.to_state.state | float(0)) < 31 }}'
-      sequence:
-      - data:
-          title: "\U0001F7E1 Tablet Battery Getting Low"
-          message: 'Lenovo Tab P11 is now at {{ trigger.to_state.state }}%. Consider
-            checking if it''s still charging as expected.
-
-            '
-          data:
-            tag: lenovo_p11_battery_warning
-        action: notify.duncan
-      - action: script.restart_charging_process
-        metadata: {}
-        data: {}
-      alias: Battery below 30
-    - conditions:
-      - condition: trigger
-        id:
-        - Above_40
-      - condition: template
-        value_template: "{{ trigger.from_state is not none and\n   (trigger.from_state.state
-          | float(0)) < (trigger.to_state.state | float(100)) }}\n   "
-      sequence:
-      - data:
-          data:
-            tag: lenovo_p11_battery_warning
-          message: clear_notification
-        action: notify.duncan
-      alias: Remove Notification if charging and above 40
-    default:
-    - data:
-        title: ⚠️ Tablet Battery Notice
-        message: 'Lenovo Tab P11 battery is at {{ trigger.to_state.state }}%. Might
-          need attention soon.
-
-          '
-        data:
-          tag: lenovo_p11_battery_warning
-      action: notify.duncan
-  mode: single
 - id: '1749768402037'
   alias: Gang Light Brightness Control
   description: "## \U0001F6B6‍♂️ Gang Light Brightness Control  \n\n### \U0001F4CB
@@ -7517,6 +7203,7 @@
       minutes: 1
       seconds: 0
     above: 99
+    enabled: true
   - trigger: numeric_state
     entity_id:
     - sensor.lsjwh4097rn105299_soc
@@ -7695,197 +7382,209 @@
               entity_id: switch.wvgzzze2zpe005371_charging
             data: {}
           alias: 'Start Charging ID.4 and force the update '
-      - alias: Wait up to 5 mins for power to rise above 50W, indicating a successful
-          Charging Start
-        wait_for_trigger:
-        - trigger: numeric_state
-          entity_id:
-          - sensor.go_echarger_270862_nrg_12
-          - sensor.go_echarger_252682_nrg_12
-          above: 50
-        timeout:
-          hours: 0
-          minutes: 5
-          seconds: 0
-          milliseconds: 0
-        continue_on_timeout: true
-      - alias: Fallback if not charging then re-enable Battery
+      - alias: Only wait for Power to Rise if not already risen
         if:
-        - condition: template
-          value_template: '{{ not wait.completed }}'
+        - condition: and
+          conditions:
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_270862_nrg_12
+            below: 50
+          - condition: numeric_state
+            entity_id: sensor.go_echarger_252682_nrg_12
+            below: 50
         then:
-        - alias: If Car is connected to 22kW Charger then stop charging
+        - alias: Wait up to 5 mins for power to rise above 50W, indicating a successful
+            Charging Start
+          wait_for_trigger:
+          - trigger: numeric_state
+            entity_id:
+            - sensor.go_echarger_270862_nrg_12
+            - sensor.go_echarger_252682_nrg_12
+            above: 50
+          timeout:
+            hours: 0
+            minutes: 5
+            seconds: 0
+            milliseconds: 0
+          continue_on_timeout: true
+        - alias: Fallback if not charging then re-enable Battery
           if:
-          - condition: state
-            entity_id: binary_sensor.go_echarger_252682_car
-            state: 'on'
+          - condition: template
+            value_template: '{{ not wait.completed }}'
           then:
-          - action: script.retry_action_with_backoff
-            metadata: {}
-            data:
-              max_retries: 10
-              base_delay: 5
-              max_delay: 60
-              backoff_type: simple
-              notify_on_failure: true
-              notify_service: notify.duncan
-              entity_id: select.go_echarger_252682_frc
-              target_state: custom
-              custom_action:
-              - action: select.select_option
-                metadata: {}
-                data:
-                  option: Don't charge
-                target:
-                  entity_id:
-                  - select.go_echarger_252682_frc
-              custom_target_state: Don't charge
-        - alias: If Car is connected to 11kW Charger then stop charging
-          if:
-          - condition: state
-            entity_id: binary_sensor.go_echarger_270862_car
-            state: 'on'
-          then:
-          - action: script.retry_action_with_backoff
-            metadata: {}
-            data:
-              max_retries: 10
-              base_delay: 5
-              max_delay: 60
-              backoff_type: simple
-              notify_on_failure: true
-              notify_service: notify.duncan
-              entity_id: select.go_echarger_270862_frc
-              target_state: custom
-              custom_action:
-              - action: select.select_option
-                metadata: {}
-                data:
-                  option: Don't charge
-                target:
-                  entity_id:
-                  - select.go_echarger_270862_frc
-              custom_target_state: Don't charge
-        - alias: Only wait for power if above threshold
-          if:
-          - condition: or
-            conditions:
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_270862_nrg_12
-              above: 5
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_252682_nrg_12
-              above: 5
-          then:
-          - wait_for_trigger:
-            - trigger: numeric_state
-              entity_id:
-              - sensor.go_echarger_270862_nrg_12
-              below: 5
-            - trigger: numeric_state
-              entity_id:
-              - sensor.go_echarger_252682_nrg_12
-              below: 5
-            timeout:
-              hours: 0
-              minutes: 1
-              seconds: 0
-              milliseconds: 0
-            continue_on_timeout: true
-        - if:
-          - condition: and
-            conditions:
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_270862_nrg_12
-              below: 5
-            - condition: numeric_state
-              entity_id: sensor.go_echarger_252682_nrg_12
-              below: 5
-          then:
-          - action: script.retry_action_with_backoff
-            metadata: {}
-            data:
-              action_domain: switch
-              action_type: turn_on
-              max_retries: 10
-              base_delay: 5
-              max_delay: 60
-              backoff_type: simple
-              notify_on_failure: true
-              notify_service: notify.duncan
-              entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-              target_state: 'on'
-            alias: Turn Battery On via retry Script
-          else:
-          - action: notify.duncan
-            data:
-              title: Octopus night recovery
-              message: 'Skipping battery ON: EV still >5 W (wait timed out). Will
-                retry in 1, 3, and 5 minutes.'
+          - alias: If Car is connected to 22kW Charger then stop charging
+            if:
+            - condition: state
+              entity_id: binary_sensor.go_echarger_252682_car
+              state: 'on'
+            then:
+            - action: script.retry_action_with_backoff
+              metadata: {}
               data:
-                tag: octopus_night_recovery
-          - alias: Retry Battery ON after timeout (1, 3, 5 min)
-            repeat:
-              sequence:
-              - choose:
-                - conditions:
-                  - condition: template
-                    value_template: '{{ repeat.index == 1 }}'
-                  sequence:
-                  - delay: 00:01:00
-                - conditions:
-                  - condition: template
-                    value_template: '{{ repeat.index == 2 }}'
-                  sequence:
-                  - delay: 00:03:00
-                - conditions:
-                  - condition: template
-                    value_template: '{{ repeat.index == 3 }}'
-                  sequence:
-                  - delay: 00:05:00
-                alias: 1, 3 or 5 Minute Delay between retries
-              - alias: Turn Battery on if no EV Power Draw, if not notify about it
-                if:
-                - condition: and
-                  conditions:
-                  - condition: numeric_state
-                    entity_id: sensor.go_echarger_270862_nrg_12
-                    below: 5
-                  - condition: numeric_state
-                    entity_id: sensor.go_echarger_252682_nrg_12
-                    below: 5
-                then:
-                - alias: 'Turn Battery On via retry Script '
-                  action: script.retry_action_with_backoff
+                max_retries: 10
+                base_delay: 5
+                max_delay: 60
+                backoff_type: simple
+                notify_on_failure: true
+                notify_service: notify.duncan
+                entity_id: select.go_echarger_252682_frc
+                target_state: custom
+                custom_action:
+                - action: select.select_option
                   metadata: {}
                   data:
-                    action_domain: switch
-                    action_type: turn_on
-                    max_retries: 10
-                    base_delay: 5
-                    max_delay: 60
-                    backoff_type: simple
-                    notify_on_failure: true
-                    notify_service: notify.duncan
-                    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                    target_state: 'on'
-                else:
-                - action: notify.duncan
+                    option: Don't charge
+                  target:
+                    entity_id:
+                    - select.go_echarger_252682_frc
+                custom_target_state: Don't charge
+          - alias: If Car is connected to 11kW Charger then stop charging
+            if:
+            - condition: state
+              entity_id: binary_sensor.go_echarger_270862_car
+              state: 'on'
+            then:
+            - action: script.retry_action_with_backoff
+              metadata: {}
+              data:
+                max_retries: 10
+                base_delay: 5
+                max_delay: 60
+                backoff_type: simple
+                notify_on_failure: true
+                notify_service: notify.duncan
+                entity_id: select.go_echarger_270862_frc
+                target_state: custom
+                custom_action:
+                - action: select.select_option
+                  metadata: {}
                   data:
-                    title: Octopus night recovery
-                    message: 'Retry {{ repeat.index }}: EV still >5 W; trying next
-                      slot (1/3/5 min).'
+                    option: Don't charge
+                  target:
+                    entity_id:
+                    - select.go_echarger_270862_frc
+                custom_target_state: Don't charge
+          - alias: Only wait for power if above threshold
+            if:
+            - condition: or
+              conditions:
+              - condition: numeric_state
+                entity_id: sensor.go_echarger_270862_nrg_12
+                above: 5
+              - condition: numeric_state
+                entity_id: sensor.go_echarger_252682_nrg_12
+                above: 5
+            then:
+            - wait_for_trigger:
+              - trigger: numeric_state
+                entity_id:
+                - sensor.go_echarger_270862_nrg_12
+                below: 5
+              - trigger: numeric_state
+                entity_id:
+                - sensor.go_echarger_252682_nrg_12
+                below: 5
+              timeout:
+                hours: 0
+                minutes: 1
+                seconds: 0
+                milliseconds: 0
+              continue_on_timeout: true
+          - if:
+            - condition: and
+              conditions:
+              - condition: numeric_state
+                entity_id: sensor.go_echarger_270862_nrg_12
+                below: 5
+              - condition: numeric_state
+                entity_id: sensor.go_echarger_252682_nrg_12
+                below: 5
+            then:
+            - action: script.retry_action_with_backoff
+              metadata: {}
+              data:
+                action_domain: switch
+                action_type: turn_on
+                max_retries: 10
+                base_delay: 5
+                max_delay: 60
+                backoff_type: simple
+                notify_on_failure: true
+                notify_service: notify.duncan
+                entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                target_state: 'on'
+              alias: Turn Battery On via retry Script
+            else:
+            - action: notify.duncan
+              data:
+                title: Octopus night recovery
+                message: 'Skipping battery ON: EV still >5 W (wait timed out). Will
+                  retry in 1, 3, and 5 minutes.'
+                data:
+                  tag: octopus_night_recovery
+            - alias: Retry Battery ON after timeout (1, 3, 5 min)
+              repeat:
+                sequence:
+                - choose:
+                  - conditions:
+                    - condition: template
+                      value_template: '{{ repeat.index == 1 }}'
+                    sequence:
+                    - delay: 00:01:00
+                  - conditions:
+                    - condition: template
+                      value_template: '{{ repeat.index == 2 }}'
+                    sequence:
+                    - delay: 00:03:00
+                  - conditions:
+                    - condition: template
+                      value_template: '{{ repeat.index == 3 }}'
+                    sequence:
+                    - delay: 00:05:00
+                  alias: 1, 3 or 5 Minute Delay between retries
+                - alias: Turn Battery on if no EV Power Draw, if not notify about
+                    it
+                  if:
+                  - condition: and
+                    conditions:
+                    - condition: numeric_state
+                      entity_id: sensor.go_echarger_270862_nrg_12
+                      below: 5
+                    - condition: numeric_state
+                      entity_id: sensor.go_echarger_252682_nrg_12
+                      below: 5
+                  then:
+                  - alias: 'Turn Battery On via retry Script '
+                    action: script.retry_action_with_backoff
+                    metadata: {}
                     data:
-                      tag: octopus_night_recovery
-              until:
-              - condition: or
-                conditions:
-                - condition: state
-                  entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-                  state: 'on'
-                - condition: template
-                  value_template: '{{ repeat.index >= 3 }}'
-                alias: Either battery is on or we retried 3 or more times
+                      action_domain: switch
+                      action_type: turn_on
+                      max_retries: 10
+                      base_delay: 5
+                      max_delay: 60
+                      backoff_type: simple
+                      notify_on_failure: true
+                      notify_service: notify.duncan
+                      entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                      target_state: 'on'
+                  else:
+                  - action: notify.duncan
+                    data:
+                      title: Octopus night recovery
+                      message: 'Retry {{ repeat.index }}: EV still >5 W; trying next
+                        slot (1/3/5 min).'
+                      data:
+                        tag: octopus_night_recovery
+                until:
+                - condition: or
+                  conditions:
+                  - condition: state
+                    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+                    state: 'on'
+                  - condition: template
+                    value_template: '{{ repeat.index >= 3 }}'
+                  alias: Either battery is on or we retried 3 or more times
       alias: Start EV Charging, Octopus Dumb Mode
     - conditions:
       - alias: Triggered by off time or EV full
@@ -8675,9 +8374,9 @@
     entity_id: switch.o2_router
     state: 'on'
     alias: Router ist eingeschaltet
-  - alias: Router verbraucht >10W
+  - alias: Router verbraucht >4W
     condition: template
-    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 10 }}'
+    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 4.0 }}'
   actions:
   - alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
     repeat:
@@ -9561,139 +9260,8 @@
       before: sunrise
       after: sunset
     then:
-    - alias: if any MAIN is ON, then switch ligths, Pumps and Fans OFF
+    - alias: if left MAIN is ON, then switch Light, Pump and Fan OFF
       if:
-      - condition: or
-        conditions:
-        - condition: template
-          value_template: '{{ is_state(main_left, ''on'') }}'
-        - condition: template
-          value_template: '{{ is_state(main_right, ''on'') }}'
-      then:
-      - sequence:
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ pump_left }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ pump_right }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ pump_kallax }}'
-            target_state: 'off'
-        alias: Pumps
-      - sequence:
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ light_left }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ light_right }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ light_kallax }}'
-            target_state: 'off'
-        alias: Lights
-      - sequence:
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ fan_left }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ fan_right }}'
-            target_state: 'off'
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: switch
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            entity_id: '{{ fan_kallax }}'
-            target_state: 'off'
-        alias: Fans
-    - if:
       - condition: template
         value_template: '{{ is_state(main_left, ''on'') }}'
       then:
@@ -9708,14 +9276,99 @@
           backoff_type: simple
           notify_on_failure: true
           notify_service: notify.duncan
+          entity_id: '{{ pump_left }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ light_left }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ fan_left }}'
+          target_state: 'off'
+      - wait_template: '{{ is_state(light_left ,''off'') and is_state(pump_left ,''off'')  and
+          is_state(fan_left ,''off'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
           entity_id: '{{ main_left }}'
           target_state: 'off'
-      alias: Main Left OFF
-    - alias: Main Right OFF
+    - alias: if right MAIN is ON, then switch Light, Pump and Fan OFF
       if:
       - condition: template
         value_template: '{{ is_state(main_right, ''on'') }}'
       then:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ pump_right }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ light_right }}'
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: '{{ fan_right }}'
+          target_state: 'off'
+      - wait_template: '{{ is_state(light_right ,''off'') and is_state(pump_right,''off'')  and
+          is_state(fan_right,''off'') }}'
+        timeout: 00:00:30
+        continue_on_timeout: true
       - action: script.retry_action_with_backoff
         metadata: {}
         data:
@@ -9933,10 +9586,26 @@
   triggers:
   - trigger: time
     at: '23:00:00'
-    id: '23'
+    id: 'Off'
+    weekday:
+    - sun
+    - sat
+    - fri
+    - wed
+    - tue
+    - mon
+    - thu
   - trigger: time
     at: 04:00:00
-    id: '4'
+    id: 'On'
+    weekday:
+    - sun
+    - sat
+    - fri
+    - wed
+    - tue
+    - mon
+    - thu
   - trigger: homeassistant
     event: start
     id: Start
@@ -9949,8 +9618,8 @@
         state: Daily
       - condition: trigger
         id:
-        - '23'
         - Start
+        - 'Off'
       - condition: time
         after: '22:59:59'
         before: 03:59:00
@@ -10004,11 +9673,11 @@
         state: Daily
       - condition: trigger
         id:
-        - '4'
         - Start
+        - 'On'
       - condition: time
         after: 03:59:00
-        before: '22:59:00'
+        before: '23:00:00'
       sequence:
       - alias: Wait for entitys to become available after HA Start
         if:
@@ -10041,6 +9710,7 @@
           notify_service: notify.duncan
           entity_id: switch.garagentor_tasmota
           target_state: 'on'
+        enabled: true
       - action: script.retry_action_with_backoff
         continue_on_error: true
         metadata: {}
@@ -10198,6 +9868,26 @@
   - choose:
     - conditions:
       - condition: trigger
+        id:
+        - usage_change
+      - condition: template
+        value_template: '{% set old = trigger.from_state.state | float(0) %}
+
+          {% set new = trigger.to_state.state | float(0) %}
+
+          {{ (new // 10) > (old // 10) }}'
+      sequence:
+      - action: notify.admin
+        metadata: {}
+        data:
+          message: "Der Wasserzähler steht jetzt auf {{ states('sensor.wasserenthartung')
+            }} m³. \nBitte kurz gegen den Enthärtungsbehälter klopfen, um Salzbrücken
+            zu lösen."
+          title: "\U0001F528 Zeit zum Klopfen!"
+          data:
+            tag: wasserenthaertung_klopfen
+    - conditions:
+      - condition: trigger
         id: usage_change
       - condition: template
         value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
@@ -10212,7 +9902,7 @@
           - input_boolean.salz_nachgefullt
         action: input_boolean.turn_on
         data: {}
-      - action: notify.duncan
+      - action: notify.admin
         data:
           title: "\U0001F4A7 Erinnerung: Salz nachfüllen"
           message: 'Der Wasserenthärter hat {{ states(''sensor.wasserenthartung'')
@@ -10232,7 +9922,7 @@
           value: '0'
         target:
           entity_id: sensor.wasserenthartung
-      - action: notify.duncan
+      - action: notify.admin
         data:
           message: clear_notification
           data:
@@ -10384,15 +10074,16 @@
       until:
       - condition: template
         value_template: "{% set bad_phrases = [\n    \"Unable to get response\",\n
-          \   \"Sorry, I had a problem getting a response\"\n] %}\n{{ (bad_phrases
-          | select('in', agent_gemini.response.speech.plain.speech) | list | count
-          == 0)\n   or repeat.index >= 10 }}"
+          \   \"Sorry, I had a problem getting a response\",\n    \"Error talking
+          to API\"\n] %}\n{{ (bad_phrases | select('in', agent_gemini.response.speech.plain.speech)
+          | list | count == 0)\n   or repeat.index >= 10 }}"
   - choose:
     - conditions:
       - condition: template
         value_template: "{% set bad_phrases = [\n  \"Unable to get response\",\n  \"Sorry,
-          I had a problem getting a response\"\n] %}\n{{ (bad_phrases | select('in',
-          agent_gemini.response.speech.plain.speech) | list | count) > 0 }}"
+          I had a problem getting a response\",\n  \"Error talking to API\"\n] %}\n{{
+          (bad_phrases | select('in', agent_gemini.response.speech.plain.speech) |
+          list | count) > 0 }}"
       sequence:
       - variables:
           fallback_text: "{%- for cal in calendars -%}\n  {%- set agenda = agendas[cal.entity]
@@ -10641,6 +10332,11 @@
     data: {}
     target:
       entity_id: input_boolean.waschmaschine_fertig
+  - action: button.press
+    metadata: {}
+    target:
+      entity_id: button.washing_machine_force_end_cycle
+    data: {}
   mode: single
 - id: '1760874193253'
   alias: Auto Trockner Fertig
@@ -10687,6 +10383,11 @@
     data: {}
     target:
       entity_id: input_boolean.trockner_fertig
+  - action: button.press
+    metadata: {}
+    target:
+      entity_id: button.trockner_force_end_cycle
+    data: {}
   mode: single
 - id: '1761086236371'
   alias: Tibber Pulse Bridge Auto Restart
@@ -10746,7 +10447,7 @@
   triggers:
   - trigger: state
     entity_id:
-    - binary_sensor.home_assistant_beta_release_notes
+    - sensor.home_assistant_beta_release_notes
     attribute: ai_summary
     for:
       hours: 0
@@ -10754,18 +10455,17 @@
       seconds: 0
   conditions:
   - condition: state
-    entity_id: binary_sensor.home_assistant_beta_release_notes
+    entity_id: binary_sensor.home_assistant_beta_release_notes_window
     state:
     - 'on'
   actions:
   - action: notify.duncan
     metadata: {}
     data:
-      title: Beta Release {{ state_attr('binary_sensor.home_assistant_beta_release_notes',
-        'beta_version') }}
-      message: '{{ state_attr(''binary_sensor.home_assistant_beta_release_notes'',''ai_summary'')}}'
+      title: Beta Release {{ states('sensor.home_assistant_beta_release_notes') }}
+      message: '{{ state_attr(''sensor.home_assistant_beta_release_notes'',''ai_summary'')}}'
       data:
-        clickAction: '{{ state_attr(''binary_sensor.home_assistant_beta_release_notes'',''beta_url'')}}'
+        clickAction: '{{ state_attr(''sensor.home_assistant_beta_release_notes'',''beta_url'')}}'
         tag: beta_release_summary
   mode: single
 - id: '1762188975423'
@@ -10783,10 +10483,11 @@
     period\n\n### ⚙️ **Reliability Features**\n\nEach light entity is processed individually
     with up to **5 retry attempts**,   using a **5-second exponential backoff** between
     attempts to guarantee the final desired state is reached.\n\n--- \n\n*Entities
-    managed:*  \n\n\n  - `switch.plant_tent`\n  \n  - `switch.tisch`\n\n*Paludarien
+    managed:*  \n\n\n  - `switch.tisch`\n\n  - `switch.plant_box`\n  \n  - `switch.plant_tent`\n\n*Paludarien
     managed:*\n\n\n  - `switch.paludarien_left`\n  \n  - `switch.paludarien_right`\n
     \ \n  - `switch.paludarien_center`\n  \n  - `switch.kallax_plant_light_zigbee_l3`\n
     \ \n  - `switch.kallax_plant_light_zigbee_l2`\n  \n  - `switch.regal_planzen_1`\n\n
+    \ - `switch.schreibtisch_links_power_strip_l1`\n\n  - `switch.schreibtisch_rechts_power_strip_l5`\n\n
     \ "
   triggers:
   - trigger: sun
@@ -10817,11 +10518,22 @@
       minutes: 1
       seconds: 0
     id: switch.tisch
+  - trigger: state
+    entity_id:
+    - switch.plant_box
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: switch.plant_box
   actions:
   - variables:
       entities:
-      - switch.plant_tent
       - switch.tisch
+      - switch.plant_box
+      - switch.plant_tent
       paludarium:
       - switch.paludarien_left
       - switch.paludarien_right
@@ -10925,6 +10637,7 @@
         id:
         - switch.plant_tent
         - switch.tisch
+        - switch.plant_box
       - condition: sun
         before: sunrise
         before_offset: +00:15:01
@@ -11096,67 +10809,60 @@
   mode: single
 - id: '1763164752006'
   alias: Night Battery Charging
-  description: "  # \U0001F319 Night Battery Charging Automation\n\n  ## ⚙️ Purpose\n\n
-    \ Automatically manage battery charging during cheap night tariff windows.\n  Starts
-    charging when allowed and needed, adjusts max charge current when a\n  requested-amps
-    attribute changes, and ensures charging reliably stops at the\n  scheduled times
-    (04:55 / 05:00), including after Home Assistant restarts.\n\n  ---\n\n  ## ⏰ Triggers\n\n
-    \ | Trigger ID | Type   | Details                                                                 |\n
-    \ |------------|--------|-------------------------------------------------------------------------|\n
-    \ | On         | State  | `binary_sensor.charge_battery_at_night` turns `on`                      |\n
-    \ | On         | Time   | Time at `00:05:00` (helper to evaluate start conditions)
-    \               |\n  | Off        | Time   | Time at `04:55:00` (scheduled stop)
-    \                                    |\n  | Off        | Time   | Time at `05:00:00`
-    (scheduled stop fallback)                            |\n  | amps       | State
-    \ | Attribute change: `binary_sensor.charge_battery_at_night.required_charge_amps`
-    |\n\n  ---\n\n  ## \U0001F4CB Conditions (overview)\n\n  The automation proceeds
-    when ANY of these branches is true:\n\n  1) Night charging start branch\n     -
-    Current time is in the night charging window (after 00:04:55 and\n       before
-    04:45:00)\n     - `binary_sensor.charge_battery_at_night` is `on`\n     - The
-    trigger was the \"On\" trigger (binary sensor on or 00:05:00)\n     - The charger
-    switch `switch.esp32_s3_zero_deye8k_battery_charge_grid` is\n       currently
-    `off`\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n  2) Scheduled
-    stop branch\n     - The trigger was one of the \"Off\" time triggers (04:55 or
-    05:00)\n\n  3) Required-amps update branch\n     - The trigger was the attribute
-    change for\n       `binary_sensor.charge_battery_at_night.required_charge_amps`\n
-    \    - The requested amps differs from\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n
-    \    - Current time is in the night charging window (after 00:04:55 and before\n
-    \      04:45:00)\n     - When `binary_sensor.charge_battery_at_night` is `on`\n\n
-    \ ---\n\n  ## \U0001F527 Actions (branches)\n\n  1) Start Charging (trigger id:
-    \"On\" with sensor on)\n     - Notify `notify.duncan` with decision summary\n
-    \    - Call `script.retry_action_with_backoff` to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`
-    (retries/backoff,\n       notify on failure)\n     - Set `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
-    to the\n       `offset_charge_target_percent` (ceiled, capped at 100)\n     -
-    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `0`\n     - Accumulate
-    saved cost into `input_number.save_through_night_battery_charging`\n     - Call
-    `script.retry_action_with_backoff` to turn on `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
-    \    - Update `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
-    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  2)
-    Stop Charging (trigger id: \"Off\")\n     - Call `script.retry_action_with_backoff`
-    to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n     -
-    Set `number.esp32_s3_zero_deye8k_time_point_1_power` to `\"7000\"`\n     - Call
-    `script.retry_action_with_backoff` to turn off\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`
-    (uses\n       a linear backoff variant; longer max_delay)\n\n  3) Adjust Max Charge
-    Current (trigger id: attribute change \"amps\")\n     - Call `script.retry_action_with_backoff`
-    to turn on\n       `switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control`\n
-    \    - Update\n       `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`
-    to the\n       `required_charge_amps` attribute (default 30 if missing)\n\n  ---\n\n
-    \ ## ✅ Retry / Reliability\n\n  - Both start/stop/external-amp operations use
-    `script.retry_action_with_backoff`\n    to ensure the switch actions succeed (configurable
-    retries, base/max\n    delays, backoff type).\n  - Scheduled stop triggers at
-    04:55 and 05:00 guarantee charging is turned\n    off even after restarts or missed
-    events.\n  - Time window checks prevent starting outside the intended cheap-tariff\n
-    \   night window.\n\n  ---\n\n  ## \U0001F50E Entities referenced\n\n  - binary_sensor.charge_battery_at_night
-    (attributes: soc_percent,\n    usable_kwh, target_kwh, total_energy_kwh, charge_needed_kwh,\n
-    \   offset_charge_target_percent, required_charge_amps, forecast_heute_kwh,\n
-    \   saved_cost_eur)\n  - switch.esp32_s3_zero_deye8k_battery_charge_grid\n  -
-    switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control\n  - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto\n
-    \ - number.esp32_s3_zero_deye8k_time_point_1_power\n  - number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current\n
-    \ - input_number.save_through_night_battery_charging\n  - script.retry_action_with_backoff\n
-    \ - notify.duncan\n\n  ---\n\n  Summary: starts charging only when allowed and
-    beneficial during the\n  night window, adjusts external amp control and max-current
-    when requested,\n  and always attempts to stop charging reliably at the scheduled
-    times."
+  description: "# \U0001F319 **Night Battery Charging**\n\n---\n\n### \U0001F4CB Intelligent
+    Battery Energy Control\n**High-Level Intent**\nOptimizes home battery storage
+    by charging from the grid during low-cost night windows. The system calculates
+    required energy based on current state-of-charge (SoC), solar forecasts, and user-defined
+    buffers to ensure sufficient power for the following day at minimum cost.\n\n**Operational
+    Strategy**\n* **Cost-Efficient:** Leverages night-time electricity rates when
+    solar availability is insufficient.\n* **Dynamic Adjustment:** Real-time updates
+    to charge amperage and SoC targets if underlying requirements change during the
+    active window.\n* **Automation Window:** Strictly active between **00:05** and
+    **04:59** to align with typical off-peak utility periods.\n\n**Reliability Mechanisms**\n*
+    **Robust Execution:** Utilizes `script.retry_action_with_backoff` for critical
+    switch toggles, ensuring hardware commands (e.g., Deye Inverter settings) succeed
+    despite potential transient network issues.\n* **Parallel Execution:** Mode set
+    to **Parallel** to allow simultaneous processing of SoC and Amperage updates.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **State** | `binary_sensor.charge_battery_at_night`
+    (**on**) | `On` | Initiation of the charging logic based on demand. |\n| **Time**
+    | **00:05:00** | `On` | Scheduled start of the night charging window. |\n| **Time**
+    | **04:59:00** / **05:00:00** | `Off` | Scheduled termination of grid charging.
+    |\n| **State** | `attribute: required_charge_amps` | `amps` | Adjusts charging
+    speed if demand attributes change. |\n| **State** | `attribute: offset_charge_target_percent`
+    | `SoC target` | Updates the maximum SoC limit dynamically. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### \U0001F311 Charging Initiation (Night Window)\n* **Purpose:**
+    Secure energy storage for the next day.\n* **Logic Overview:** Triggered by time
+    or sensor state within the **00:05** to **04:59** window. Only executes if the
+    `binary_sensor` is **on** and the inverter grid-charge switch is currently **off**.\n*
+    **Effect:** * Sends a detailed **Notification** via `notify.duncan` with calculated
+    kWh requirements and cost savings.\n    * Sets `number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto`
+    to the calculated target percentage.\n    * Forces `number.esp32_s3_zero_deye8k_time_point_1_power`
+    to **0** to prioritize charging.\n    * Enables `switch.esp32_s3_zero_deye8k_battery_charge_grid`
+    and `switch.bett_powerbank_charger`.\n    * Increments `input_number.save_through_night_battery_charging`
+    with predicted savings.\n\n#### ☀️ Window Termination\n* **Purpose:** Cease grid
+    reliance before peak rates or solar production begins.\n* **Logic Overview:**
+    Triggered at **04:59** or **05:00**.\n* **Effect:** * Disables all grid-charging
+    switches.\n    * Resets `number.esp32_s3_zero_deye8k_time_point_1_power` to **7000W**
+    for normal discharge operations.\n    * Turns off auxiliary chargers (`switch.bett_powerbank_charger`).\n\n####
+    ⚡ Dynamic Parameter Adjustment\n* **Purpose:** Adapt to changing energy requirements
+    in real-time.\n* **Logic Overview:** Monitors changes in `required_charge_amps`
+    or `offset_charge_target_percent`.\n* **Effect:** Updates inverter registers immediately
+    to match the new `binary_sensor` attributes without restarting the full charging
+    cycle.\n\n---\n\n### Technical Overview\n\n* **Automation Mode:** `parallel` (Max:
+    10)\n* **Execution Method:** `script.retry_action_with_backoff`\n* **Key Inputs:**
+    * `binary_sensor.charge_battery_at_night` (Logic controller)\n    * `input_number.battery_charge_percent_offset`
+    (User-defined safety margin)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_battery_charge_grid`\n
+    \   * `number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current`\n    *
+    `switch.bett_powerbank_charger`\n* **Safety Mechanisms:** 10x retry limit with
+    exponential backoff on hardware commands; SoC targets are clamped at a maximum
+    of **100%**.\n\n---\n\n### \U0001F4A1 Notes\n* **Financial Tracking:** The automation
+    calculates `saved_cost_eur` per session and logs it to a global helper for long-term
+    ROI tracking.\n* **Predictive Buffer:** Logic includes a `dynamic_margin_kwh`
+    which accounts for solar forecast uncertainty, ensuring the battery isn't overcharged
+    if a very sunny day is expected.\n* **Calculated Duration:** The notification
+    includes a \"Time Remaining\" calculation to inform the user exactly how long
+    the high-current charge phase will last."
   triggers:
   - entity_id: binary_sensor.charge_battery_at_night
     to: 'on'
@@ -11165,7 +10871,7 @@
   - trigger: time
     at: 00:05:00
     id: 'On'
-  - at: 04:55:00
+  - at: 04:59:00
     trigger: time
     id: 'Off'
   - at: 05:00:00
@@ -11176,18 +10882,20 @@
     - binary_sensor.charge_battery_at_night
     attribute: required_charge_amps
     id: amps
+  - trigger: state
+    entity_id:
+    - binary_sensor.charge_battery_at_night
+    attribute: offset_charge_target_percent
+    id: SoC target
   conditions:
   - condition: or
     conditions:
-    - alias: On / amp branch
+    - alias: On / amp / soc branch
       condition: and
       conditions:
       - condition: time
-        after: 00:04:55
-        before: 04:45:00
-      - condition: state
-        entity_id: binary_sensor.charge_battery_at_night
-        state: 'on'
+        after: 00:04:59
+        before: 04:59:00
       - condition: state
         entity_id: binary_sensor.charge_battery_at_night
         state: 'on'
@@ -11203,20 +10911,34 @@
             state:
             - 'off'
           alias: On branch specific
-        - condition: and
+        - alias: 'Amp branch specific '
+          condition: and
           conditions:
           - condition: trigger
             id:
             - amps
           - condition: template
-            value_template: '{% set req = state_attr(''binary_sensor.charge_battery_at_night'',
+            value_template: '{% set requested = state_attr(''binary_sensor.charge_battery_at_night'',
               ''required_charge_amps'') | default(30, true) | int %}
 
               {% set current = states(''number.esp32_s3_zero_deye8k_maximum_battery_grid_charge_current'')
               | default(0, true) | int %}
 
-              {{ req != current }}'
-          alias: 'Amp branch specific '
+              {{ requested != current }}'
+        - alias: SoC Branch specific
+          condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - SoC target
+          - condition: template
+            value_template: '{% set requested = state_attr(''binary_sensor.charge_battery_at_night'',
+              ''offset_charge_target_percent'') | default(100, true) | int %}
+
+              {% set current = states(''number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto'')
+              | default(0, true) | int %}
+
+              {{ requested != current }}'
     - condition: trigger
       id:
       - 'Off'
@@ -11251,7 +10973,7 @@
             }} kWh + {{ state_attr(''binary_sensor.charge_battery_at_night'',''charge_offset_kwh'')}}
             kWh (+{{ state_attr(''binary_sensor.charge_battery_at_night'',''battery_charge_percent_offset'')
             | default(states(''input_number.battery_charge_percent_offset''), true)
-            | float(0) | round(0) }}% SoC) -> missing {{ state_attr(''binary_sensor.charge_battery_at_night'',''charge_needed_kwh'')|round(2)
+            | float(0) | round(0) }}% SoC) -> missing {{ state_attr(''binary_sensor.charge_battery_at_night'',''effective_missing_kwh'')|round(2)
             }} kWh
 
             {% set remaining_sec = (state_attr(''binary_sensor.charge_battery_at_night'',''remaining_hours'')
@@ -11323,6 +11045,19 @@
         data:
           value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
             | default(30, true) | int }}'
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'on'
+          entity_id: switch.bett_powerbank_charger
     - conditions:
       - condition: trigger
         id:
@@ -11360,6 +11095,19 @@
           entity_id: switch.esp32_s3_zero_deye8k_battery_charge_external_amp_control
           target_state: 'off'
           max_delay: 120
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          target_state: 'off'
+          entity_id: switch.bett_powerbank_charger
     - conditions:
       - condition: trigger
         id:
@@ -11385,6 +11133,19 @@
         data:
           value: '{{ state_attr(''binary_sensor.charge_battery_at_night'',''required_charge_amps'')
             | default(30, true) | int }}'
+    - conditions:
+      - condition: trigger
+        id:
+        - SoC target
+      sequence:
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id:
+          - number.esp32_s3_zero_deye8k_battery_charge_from_grid_upto
+        data:
+          value: '{% set target = state_attr(''binary_sensor.charge_battery_at_night'',''offset_charge_target_percent'')
+            | float(0) %} {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
   mode: parallel
   max: 10
 - id: '1763753257619'
@@ -11541,7 +11302,7 @@
   mode: restart
   max_exceeded: silent
 - id: '1763832773682'
-  alias: Daily Mama Temperature Notification
+  alias: Daily Garage & Gartenhaus Temperature Notification
   description: "\n  ## \U0001F321️ Daily Mama Temperature Notification\n\n  ### \U0001F4CB
     **Automated Temperature Snapshot for Key Areas**\n\n  This automation sends a
     daily **14:00 temperature update** summarizing both the **current temperature**
@@ -11790,16 +11551,15 @@
     der Bett-Powerbank** abhängig von Sonnenaufgang/-untergang und der PV-Prognose.
     \ \nDie Automation reagiert außerdem auf Änderungen des **Low-Power-Modus**.\n\n###
     \U0001F4CB Logik\n\n- **\U0001F305 Sonnenaufgang:** Steckdose **einschalten**,
-    wenn die heutige PV-Prognose > 20 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
+    wenn die heutige PV-Prognose > 15 kWh.  \n  - Wird mit **Retry + Backoff** ausgeführt,
     um sicherzustellen, dass die Steckdose eingeschaltet wird.\n\n- **\U0001F307 Sonnenuntergang:**
     Steckdose **ausschalten**, um unnötigen Nachtverbrauch zu vermeiden.  \n  - Benachrichtigung
     an `notify.duncan` erfolgt, damit der Low-Power-Modus überprüft werden kann.\n\n-
     **Low-Power-Modus deaktiviert:** Benachrichtigungen werden **gelöscht**, falls
     der Nutzer manuell den Low-Power-Modus abschaltet.\n\n### \U0001F527 Bedingungen\n\n-
     `input_boolean.bett_powerbank_low_power = on`  \n  - Ausnahme: Wenn Boolean manuell
-    ausgeschaltet wurde, wird trotzdem die Notification gelöscht.\n\n- `sensor.solcast_pv_forecast_prognose_heute
-    > 15 kWh`  \n  - Nur relevant für Sonnenaufgangs-Trigger.\n\n### ⚡ Hinweise /
-    Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
+    ausgeschaltet wurde, wird trotzdem die Notification gelöscht\n\n### ⚡ Hinweise
+    / Best Practices\n\n- Retry-Logik sorgt für maximale Zuverlässigkeit bei Steckdosensteuerung.\n-
     Benachrichtigungen am Abend unterstützen die Kontrolle des Powerbank-Ladestatus.\n-
     Low-Power-Modus sollte korrekt gepflegt werden, um ungewollte Ladung zu vermeiden."
   triggers:
@@ -12258,7 +12018,7 @@
   description: "Complete winter control for the rollo using IR commands. input_boolean.rollo_state:\n
     \ ON = rollo assumed closed\n  OFF = rollo assumed open\n\nFunctions: - Sunset:
     close if safe, otherwise notify - Sunrise: open if safe, otherwise notify - Delayed
-    open: open later when conditions are safe (temp >= 5°C or at noon)\n"
+    open: open later when conditions are safe (temp >= 3°C or at noon)\n"
   triggers:
   - trigger: sun
     event: sunset
@@ -12269,8 +12029,9 @@
     id: sunrise
     offset: +00:15:00
   - trigger: numeric_state
-    entity_id: sensor.gw1100a_outdoor_temperature
-    above: 5
+    entity_id:
+    - sensor.gw1100a_outdoor_temperature
+    above: 3
     id: temp_safe
   - trigger: numeric_state
     entity_id: sensor.gw1100a_outdoor_temperature
@@ -12399,6 +12160,9 @@
           - condition: state
             entity_id: input_boolean.rollo_was_wet
             state: 'on'
+          - condition: numeric_state
+            entity_id: sensor.gw1100a_outdoor_temperature
+            above: 3
       sequence:
       - action: cover.open_cover
         target:
@@ -12421,6 +12185,9 @@
         - condition: state
           entity_id: input_boolean.rollo_was_wet
           state: 'on'
+        - condition: numeric_state
+          entity_id: sensor.gw1100a_outdoor_temperature
+          below: 3.1
       sequence:
       - action: notify.duncan
         data:
@@ -12567,152 +12334,131 @@
   mode: single
 - id: '1767622395757'
   alias: 'Garden House: Freeze Protection Heating'
-  description: "❄️ **Garden House: Freeze Protection Heating**\n\n---\n\n### \U0001F4CB
-    Intelligent Garden House Thermal Control\n\nThis automation manages the climate
-    of the Garden House through a dual-strategy approach: **Emergency Freeze Protection**
-    and **Opportunistic Solar Heating**. It ensures the structure remains above critical
-    freezing thresholds while intelligently utilizing excess solar production to maintain
-    a buffer temperature. \n\nTo ensure high availability in remote environments,
-    the system employs a **retry-with-backoff** reliability mechanism. This ensures
-    that even if a network command fails, the heater state is synchronized through
-    repeated attempts and administrative notifications.\n\n---\n\n### Trigger Overview
-    Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- |
-    :--- |\n| Time Pattern | Every **15 minutes** | N/A | Periodic heartbeat to check
-    thermal conditions and apply logic. |\n| Numeric State | **sensor.solar_power_total**
-    > **2000** | N/A | Immediate activation of opportunistic heating when solar yield
-    is high. |\n\n---\n\n### Operational Logic Sections\n\n#### \U0001F6A8 Emergency
-    Freeze Protection\n* **Purpose:** Prevent structural damage by maintaining temperatures
-    above freezing.\n* **Logic Overview:** Triggered if the heater is **off** and
-    current temperature is **≤ 1.5°C** or the 24h minimum temperature is **≤ -0.5°C**.\n*
-    **Effect:** Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
-    to **3600** (if before 05:00) or **900** (if after 05:00).\n\n#### ☀️ Opportunistic
-    Solar Heating\n* **Purpose:** Utilize free energy to warm the interior during
-    the day.\n* **Logic Overview:** Triggered if the heater is **off**, temperature
-    is between **1.5°C and 10.0°C**, and solar power is **≥ 2000W**.\n* **Effect:**
-    Activates **switch.gartenhaus_heizlufter**. Sets **number.gartenhaus_heizlufter_countdown**
-    to **900**.\n\n#### \U0001F6D1 Thermal Cut-off (Hard OFF)\n* **Purpose:** Prevent
-    overheating and energy waste once target temperature is reached.\n* **Logic Overview:**
-    Triggered if the heater is **on** and current temperature is **≥ 11.0°C**.\n*
-    **Effect:** Deactivates **switch.gartenhaus_heizlufter**.\n\n---\n\n### Technical
-    Overview\n\n* **Automation Mode:** `single` (Silent suppression of concurrent
-    runs).\n* **Execution Method:** Utilizes `script.retry_action_with_backoff` (10
-    retries, linear backoff, notification via `notify.duncan`).\n* **Key Inputs:**
-    * **sensor.esp32_c3_zero_epever_bme280_temperature** (Current Temp)\n    * **sensor.bme280_temperature_min**
-    (24h Low)\n    * **sensor.solar_power_total** (Solar Yield)\n* **Controlled Entities:**
-    * **switch.gartenhaus_heizlufter**\n    * **number.gartenhaus_heizlufter_countdown**\n*
-    **Safety Mechanisms:** Fail-safe `float(99)` values prevent accidental heating
-    on sensor failure; 10-step retry logic for command reliability.\n\n---\n\n###
-    \U0001F4A1 Notes\n\n* **Dynamic Countdown:** The automation intelligently adjusts
-    the heater duration based on the time of day during emergency events; longer runs
-    (**1 hour**) are prioritized in the early morning hours (pre-05:00) to combat
-    the coldest daily troughs.\n* **Hysteresis & Efficiency:** The system targets
-    a wide gap between activation (**1.5°C**) and deactivation (**11.0°C**) to prevent
-    rapid cycling of the heating hardware and to store thermal energy during solar
-    peaks.\n* **Resilience:** By using a 15-minute time pattern, the automation self-heals
-    if a state change was missed or manually overridden.\n"
+  description: "❄️ **Garden House: Freeze Protection Heating**\n\n### \U0001F4CB Intelligent
+    Climate Preservation Control\n\nThis automation manages the heating system within
+    the garden house to prevent structural damage from freezing temperatures. It employs
+    a **two-tier operational strategy**: maintaining a critical safety floor to prevent
+    ice formation and utilizing excess renewable energy to pre-heat the space during
+    high solar output.\n\nReliability is ensured through a **linear backoff retry
+    mechanism**, which validates state changes against potential network instability,
+    and a tiered countdown timer to prevent short-cycling or runaway power consumption.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| Time Pattern | Every **15 minutes** | N/A | Periodic
+    temperature and condition check. |\n| Numeric State | **sensor.solar_power_total**
+    | N/A | Monitors for solar production above **2000W** to trigger opportunistic
+    heating. |\n\n---\n\n### Operational Logic Sections\n\n#### Emergency Freeze Prevention\n*
+    **Purpose**: Protect infrastructure when temperatures reach critical levels.\n*
+    **Logic Overview**: Triggered if the heater is **off** AND current temperature
+    is **≤ 1.5°C** OR the 24-hour minimum has dropped to **≤ 0.5°C**.\n* **Effect**:
+    Activates **switch.gartenhaus_heizlufter** via retry script. Sets a **3600s**
+    (1 hour) countdown if before 04:00, or **900s** (15 mins) otherwise.\n\n#### Opportunistic
+    Solar Heating\n* **Purpose**: Increase ambient temperature using free solar energy.\n*
+    **Logic Overview**: Triggered if heater is **off**, temperature is between **1.5°C**
+    and **6.0°C**, solar production is **≥ 2000W**, daily heater consumption is **<
+    1.5kWh**, and battery SoC is **> 50%**.\n* **Effect**: Activates **switch.gartenhaus_heizlufter**
+    via retry script and sets a **900s** (15 mins) operation countdown.\n\n#### Hard
+    Thermal Cutoff\n* **Purpose**: Prevent overheating and energy waste.\n* **Logic
+    Overview**: Triggered if the heater is currently **on** and the temperature reaches
+    or exceeds **11.0°C**.\n* **Effect**: Disengages **switch.gartenhaus_heizlufter**
+    via retry script with mandatory state confirmation.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode**: `single` (Quietly ignores new triggers if currently running
+    logic).\n* **Execution Method**: Utilizes `script.retry_action_with_backoff` for
+    resilient hardware state switching.\n* **Key Inputs**:\n    * **sensor.esp32_c3_zero_epever_bme280_temperature**
+    (Live Temp)\n    * **sensor.solar_power_total** (Solar Production)\n    * **sensor.felicity_ess_soc_avg**
+    (Battery SoC)\n* **Controlled Entities**:\n    * **switch.gartenhaus_heizlufter**
+    (Main Heater)\n    * **number.gartenhaus_heizlufter_countdown** (Run-time logic)\n*
+    **Safety Mechanisms**:\n    * **Linear Backoff**: 10 retries with 5s-60s delays.\n
+    \   * **Notifications**: Direct alerts to **notify.duncan** upon hardware failure.\n
+    \   * **Energy Cap**: Limits opportunistic heating to **1.5kWh** daily.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Logic Rationale**: The **1.5°C** threshold provides a
+    buffer above freezing to account for sensor variance and thermal inertia. \n*
+    **Battery Protection**: Solar heating is strictly inhibited if the battery is
+    below **50%**, ensuring base load capacity for the household is prioritized over
+    garden house pre-heating.\n* **Smart Timing**: The 1-hour emergency run-time before
+    04:00 anticipates the coldest part of the night, reducing the frequency of start/stop
+    cycles during high-risk hours."
   triggers:
-  - minutes: /15
-    trigger: time_pattern
-  - entity_id: sensor.solar_power_total
+  - trigger: time_pattern
+    minutes: /15
+  - trigger: numeric_state
+    entity_id: sensor.solar_power_total
     above: 2000
-    trigger: numeric_state
   conditions:
-  - condition: or
-    conditions:
-    - alias: Emergency heating needed
-      condition: template
-      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
-        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) <=
-        1.5 or states(''sensor.bme280_temperature_min'') | float(99) <= 0.5) }}'
-    - condition: template
-      value_template: '{{ not is_state(''switch.gartenhaus_heizlufter'', ''on'') and
-        (states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99) >
-        1.5 and states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
-        < 10.0 and states(''sensor.solar_power_total'') | float(0) >= 2000) }}'
-      alias: Solar opportunistic heating
-    - condition: template
-      value_template: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') and states(''sensor.esp32_c3_zero_epever_bme280_temperature'')
-        | float(99) >= 11.0 }}'
-      alias: Hard OFF
+  - condition: template
+    value_template: '{{ is_emergency or is_opportunistic or is_hard_off }}'
   actions:
-  - variables:
-      temp_now: '{{ states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
-        }}'
-      temp_min_24h: '{{ states(''sensor.bme280_temperature_min'') | float(99) }}'
-      solar_power: '{{ states(''sensor.solar_power_total'') | float(0) }}'
-      heater_on: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') }}'
-      heater_energy_today: '{{ states(''sensor.gartenhaus_heizlufter_energy_today'')
-        | float(0) }}'
-      battery: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0) }}'
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <=
-          0.5) }}
-
-          '
+        value_template: '{{ is_emergency }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_on
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'on'
-      - target:
+      - action: number.set_value
+        target:
           entity_id: number.gartenhaus_heizlufter_countdown
         data:
           value: '{{ 3600 if now().hour < 4 else 900 }}'
-        action: number.set_value
     - conditions:
       - condition: template
-        value_template: "{{ not heater_on\n   and temp_now > 1.5\n   and temp_now
-          < 10.0\n   and solar_power >= 2000 \n   and heater_energy_today < 2.0\n
-          \  and battery > 50 }}\n"
+        value_template: '{{ is_opportunistic }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_on
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'on'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'on'
-      - target:
+      - action: number.set_value
+        target:
           entity_id: number.gartenhaus_heizlufter_countdown
         data:
           value: 900
-        action: number.set_value
     - conditions:
       - condition: template
-        value_template: '{{ heater_on and temp_now >= 11.0 }}
-
-          '
+        value_template: '{{ is_hard_off }}'
       sequence:
       - action: script.retry_action_with_backoff
-        metadata: {}
         data:
           action_domain: switch
           action_type: turn_off
+          entity_id: switch.gartenhaus_heizlufter
+          target_state: 'off'
           max_retries: 10
           base_delay: 5
           max_delay: 60
           backoff_type: linear
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.gartenhaus_heizlufter
-          target_state: 'off'
+  variables:
+    temp_now: '{{ states(''sensor.esp32_c3_zero_epever_bme280_temperature'') | float(99)
+      }}'
+    temp_min_24h: '{{ states(''sensor.bme280_temperature_min'') | float(99) }}'
+    solar_power: '{{ states(''sensor.solar_power_total'') | float(0) }}'
+    heater_on: '{{ is_state(''switch.gartenhaus_heizlufter'', ''on'') }}'
+    heater_energy_today: '{{ states(''sensor.gartenhaus_heizlufter_energy_today'')
+      | float(0) }}'
+    battery: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0) }}'
+    is_emergency: '{{ not heater_on and (temp_now <= 1.5 or temp_min_24h <= 0.5) }}'
+    is_opportunistic: '{{ not heater_on and 1.5 < temp_now < 6.0 and solar_power >=
+      2000 and heater_energy_today < 1.5 and battery > 50 }}'
+    is_hard_off: '{{ heater_on and temp_now >= 11.0 }}'
   mode: single
   max_exceeded: silent
 - id: '1767700454624'
@@ -12733,8 +12479,8 @@
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_outdoor_temperature
-    id: temp below 2
-    below: 2
+    id: temp below
+    below: 1
   - trigger: numeric_state
     entity_id:
     - sensor.gw1100a_rain_rate
@@ -12802,7 +12548,7 @@
               < 10 or low_temp < 10 %}\n              {% set ns.is_low = true %}\n
               \           {% endif %}\n            {% set is_precip = item.condition
               in ['rainy', 'pouring', 'snowy', 'hail', 'lightning-rainy', 'snowy-rainy']
-              %}\n            {% set is_cold = current_temp < 2 or low_temp < 2 %}\n
+              %}\n            {% set is_cold = current_temp < 1 or low_temp < 1 %}\n
               \           {% if is_precip and is_cold %}\n              {% set ns.is_wet
               = true %}\n            {% endif %}\n        {% endif %}\n        {%
               if ns.is_low and ns.is_wet %}\n            {% break %}\n        {% endif
@@ -12838,8 +12584,8 @@
       - condition: trigger
         id:
         - wet
-        - temp below 2
         - 30m
+        - temp below
       - condition: sun
         after: sunset
         before: sunrise
@@ -12849,15 +12595,15 @@
         - conditions:
           - condition: trigger
             id:
-            - temp below 2
             - 30m
+            - temp below
           - condition: state
             entity_id: input_boolean.rollo_was_cold
             state:
             - 'off'
           - condition: numeric_state
             entity_id: sensor.gw1100a_outdoor_temperature
-            below: 2
+            below: 1
           sequence:
           - action: input_boolean.turn_on
             metadata: {}
@@ -13365,6 +13111,8 @@
               message: Das {{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger_entity].last_changed)
                 | timestamp_custom('%H:%M', True) }}.
               tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
           - delay:
               hours: 3
     - conditions:
@@ -13443,25 +13191,526 @@
             '
       - stop: Cleanup failed with {{ failed_count }} error(s).
     default:
-    - variables:
-        report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
-          %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
-          %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
-          + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete |
-          string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\" %}\n
-          \ {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
-          %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete | int(0))
-          %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb / 1024) |
-          round(2), 'count': ns.total_files} }}\n"
-    - action: notify.persistent_notification
+    - if:
+      - condition: state
+        entity_id: input_boolean.notify_on_nas_sync_success
+        state:
+        - 'on'
+      then:
+      - variables:
+          report_json: "{% set ns = namespace(total_mb=0, total_files=0, list=\"\")
+            %} {% for r in results if r.stdout is defined and r.stdout | trim != \"\"
+            %}\n  {% set data = r.stdout | from_json %}\n  {% set ns.list = ns.list
+            + \"- **\" + data.type | capitalize + \":** \" + data.files_to_delete
+            | string + \" files (\" + data.space_to_free_MB | string + \" MB)\\n\"
+            %}\n  {% set ns.total_mb = ns.total_mb + (data.space_to_free_MB | float(0))
+            %}\n  {% set ns.total_files = ns.total_files + (data.files_to_delete |
+            int(0)) %}\n{% endfor %} {{ {'list': ns.list, 'total_gb': (ns.total_mb
+            / 1024) | round(2), 'count': ns.total_files} }}\n"
+      - action: notify.persistent_notification
+        data:
+          title: "\U0001F4BE Backup Cleanup Summary"
+          message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
+            info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
+            Files Removed:** {{ info.count }}\n"
+      - action: notify.duncan
+        data:
+          title: NAS Maintenance Complete
+          message: "{% set info = report_json %}\nBackup cleanup report for today:\n
+            \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
+            }} GB.\n"
+          data:
+            tag: nas_maintenance_complete
+- id: '1769546818976'
+  alias: NAS Connectivity Monitor
+  description: "\U0001F4BE **NAS Connectivity Monitor**\n\n### \U0001F4CB Intelligent
+    Storage Connectivity Control\n\nThis automation provides real-time oversight of
+    Network Attached Storage (NAS) mount points. It is designed with a **safety-first**
+    communication strategy, ensuring that administrative personnel are immediately
+    alerted to storage disconnections while maintaining a clean notification history
+    through automated dismissal logic.\n\nThe operational strategy relies on **state-tracking
+    with persistence validation** to prevent flapping and ensures that high-priority
+    alerts are delivered only when a genuine interruption occurs.\n\n---\n\n### Trigger
+    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
+    | :--- | :--- |\n| **State** | `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`
+    | `disconnected` | Detects when a NAS share transition from **on** to **off**.
+    |\n| **State** | `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`
+    | `reconnected` | Confirms a stable reconnection after a **1-minute** duration.
+    |\n\n---\n\n### Operational Logic Sections\n\n#### ⚠️ Disconnected Mode\n- **Purpose**:
+    Immediate notification of storage unavailability.\n- **Logic Overview**: Triggered
+    instantly when a monitored sensor reports an **off** state.\n- **Effect**: Sends
+    a **high-priority** notification to `notify.admin` containing the specific entity
+    name and a timestamp. The alert is assigned a unique **tag** based on the entity
+    ID for targeted management.\n\n#### ✅ Reconnected Mode\n- **Purpose**: Automated
+    workspace cleanup and status restoration.\n- **Logic Overview**: Triggered when
+    a sensor returns to **on** and remains stable for **00:01:00**.\n- **Effect**:
+    Issues a `clear_notification` command to the admin device, removing the specific
+    alert associated with the restored share.\n\n---\n\n### Technical Overview\n\n-
+    **Automation Mode**: `parallel` (Allows simultaneous monitoring of multiple shares)\n-
+    **Execution Method**: Direct `notify.admin` action calls with dynamic data templates.\n-
+    **Key Inputs**: `binary_sensor.nas_share_verbunden`, `binary_sensor.nas_filme_verbunden`\n-
+    **Controlled Entities**: Administrative notification engine (`notify.admin`).\n-
+    **Safety Mechanisms**: \n    - **Notification Tagging**: Uses `nas-alert-{{ trigger.entity_id
+    }}` to ensure the system only clears the alert for the specific share that reconnected.\n
+    \   - **Stability Delay**: A 1-minute `for` duration on reconnection prevents
+    premature \"all-clear\" messages during intermittent network toggling.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n- **Rationale**: The use of `priority: high` ensures that
+    connection drops bypass \"Do Not Disturb\" settings on supported devices, reflecting
+    the critical nature of storage availability.\n- **Logic Highlight**: The automation
+    utilizes **Parallel mode** to ensure that if both `share` and `filme` sensors
+    drop simultaneously, both notification paths are processed independently without
+    queuing or cancellation.\n- **Fail-safe**: Reconnection triggers require a 60-second
+    dwell time to filter out \"flapping\" network states that might otherwise spam
+    the administrator.\n"
+  triggers:
+  - trigger: state
+    entity_id:
+    - binary_sensor.nas_share_verbunden
+    - binary_sensor.nas_filme_verbunden
+    from: 'on'
+    to: 'off'
+    id: disconnected
+  - trigger: state
+    entity_id:
+    - binary_sensor.nas_share_verbunden
+    - binary_sensor.nas_filme_verbunden
+    from: 'off'
+    to: 'on'
+    for:
+      minutes: 1
+    id: reconnected
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: disconnected
+      sequence:
+      - action: notify.admin
+        data:
+          title: ⚠️ NAS Connection Alert
+          message: 'The sensor {{ trigger.to_state.name }} reported a status of  {{
+            trigger.to_state.state }} at {{ now().strftime(''%H:%M:%S'') }}.
+
+            '
+          data:
+            tag: nas-alert-{{ trigger.entity_id }}
+            group: NAS Status
+            priority: high
+    - conditions:
+      - condition: trigger
+        id: reconnected
+      sequence:
+      - action: notify.admin
+        data:
+          message: clear_notification
+          data:
+            tag: nas-alert-{{ trigger.entity_id }}
+  mode: parallel
+- id: 1705101110242_battery_plus_low
+  alias: 'Notify: Offline or Low Battery Devices (Detailed)'
+  description: "# \U0001F50B **Notify: Offline or Low Battery Devices**\n\n### \U0001F4CB
+    Intelligent Battery Monitoring System Control\n\n**Intent**\nAutomated health
+    monitoring for the smart home ecosystem, designed to preemptively identify and
+    notify the administrator of hardware maintenance requirements.\n\n**Operational
+    Strategy**\nThe system performs a daily deep-scan of the entity registry at a
+    scheduled time. It evaluates all battery-class sensors for two critical failure
+    states: communication loss (**Unavailable/Unknown**) or power depletion (**Below
+    Threshold**). \n\n**Reliability Mechanisms**\nUses a comprehensive template-based
+    aggregation method that dynamically filters a global exclusion list to prevent
+    false positives from mobile devices or transient entities. It leverages `battery_plus`
+    integration data to provide actionable maintenance information (battery types
+    and quantities) directly within the alert.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time**
+    | `10:30:00` | N/A | Initiates the daily maintenance scan during active morning
+    hours. |\n\n---\n\n### Operational Logic Sections\n\n#### Battery Health Evaluation\n\n**Purpose**\nTo
+    identify hardware requiring physical intervention (recharging, replacement, or
+    reconnection).\n\n**Logic Overview**\nThe automation triggers only if the `battery_alert_list`
+    is not empty and the current day matches the `day` variable (0 = Daily). It inspects
+    all `sensor` and `binary_sensor` entities with a `device_class` of **battery**.\n*
+    **Offline Check:** Detects if state is **unavailable** or **unknown**.\n* **Level
+    Check:** Detects if numeric state is **≤ 15%** or if binary state is **on**.\n\n**Effect**\nGenerates
+    a formatted list and dispatches a persistent notification via **notify.duncan**
+    with the tag `offline_devices`.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode:** `single`\n* **Execution Method:** Direct action via `notify.duncan`.\n*
+    **Key Inputs:** * `low_battery_threshold`: **15**\n    * `day`: **0** (All days)\n*
+    **Controlled Entities:** Notification service (`notify.duncan`).\n* **Safety Mechanisms:**
+    * **Exclusion Filter:** Hardcoded list of mobile devices (e.g., `sensor.fp4_battery_level`)
+    to ignore non-static hardware.\n    * **Battery Plus Integration:** Automatically
+    attempts to pull `battery_type_and_quantity` attributes to assist in hardware
+    replacement.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Dynamic Discovery:** The template
+    automatically discovers new battery devices without manual configuration, provided
+    they have the correct `device_class`.\n* **Contextual Awareness:** By checking
+    `device_id(s.entity_id)`, the logic links generic sensors to their parent device
+    to pull specific battery hardware requirements (e.g., \"2x CR2032\"), reducing
+    maintenance friction.\n* **Noise Reduction:** Uses a `trim` check in the condition
+    to ensure the notification engine is never fired for an empty list.\n"
+  triggers:
+  - at: '10:30:00'
+    trigger: time
+  conditions:
+  - condition: template
+    value_template: '{{ battery_alert_list|trim != '''' and (day == 0 or day == now().isoweekday())
+      }}'
+  actions:
+  - action: notify.duncan
+    data:
+      title: "\U0001FAAB Battery Issues Detected"
+      message: 'The following battery-powered devices need attention:
+
+
+        {{ battery_alert_list }}
+
+        '
       data:
-        title: "\U0001F4BE Backup Cleanup Summary"
-        message: "{% set info = report_json %}\n### Generational Cleanup Status\n{{
-          info.list }} \n--- \n**Total Reclaimed:** {{ info.total_gb }} GB\n**Total
-          Files Removed:** {{ info.count }}\n"
+        tag: offline_devices
+  variables:
+    day: 0
+    low_battery_threshold: 15
+    exclude:
+    - sensor.fp4_battery_level
+    - sensor.iphone_von_enya_battery_level
+    - sensor.poco_f7_battery_level
+    - sensor.mi_9t_battery_level
+    - sensor.wvgzzze2zpe005371_battery_level
+    battery_alert_list: "{%- set entities =\n    (states.sensor\n      | selectattr('attributes.device_class',
+      'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
+      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n
+      \   +\n    (states.binary_sensor\n      | selectattr('attributes.device_class',
+      'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
+      \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n-%}\n\n{%-
+      set result = namespace(items=[]) -%}\n\n{%- for s in entities -%}\n  {%- if
+      s.entity_id in exclude -%}\n    {%- continue -%}\n  {%- endif -%}\n\n  {%- set
+      state = s.state -%}\n\n  {# Determine if the sensor is offline #}\n  {%- set
+      is_offline = state in ['unavailable', 'unknown'] -%}\n\n  {# Determine if the
+      sensor is low battery #}\n  {%- set is_low = false -%}\n  {%- if not is_offline
+      -%}\n    {%- if s.domain == 'sensor' -%}\n      {%- set value = state | float(-1)
+      -%}\n      {%- set is_low = value >= 0 and value <= low_battery_threshold -%}\n
+      \   {%- elif s.domain == 'binary_sensor' -%}\n      {%- set is_low = state ==
+      'on' -%} {# on = low battery #}\n    {%- endif -%}\n  {%- endif -%}\n\n  {%-
+      if not (is_offline or is_low) -%}\n    {%- continue -%}\n  {%- endif -%}\n\n
+      \ {# Lookup _battery_plus info if available #}\n  {%- set dev_id = device_id(s.entity_id)
+      -%}\n  {%- set battery_info = none -%}\n  {%- for e in device_entities(dev_id)
+      -%}\n    {%- if e.endswith('_battery_plus') -%}\n      {%- set battery_info
+      = state_attr(e, 'battery_type_and_quantity') -%}\n      {%- break -%}\n    {%-
+      endif -%}\n  {%- endfor -%}\n\n  {# Set status text #}\n  {%- set status =\n
+      \     \"Offline\"\n      if is_offline\n      else \"Low battery\"\n      if
+      s.domain == 'binary_sensor'\n      else \"Low battery (\" ~ value | int ~ \"%)\"\n
+      \ -%}\n\n  {# Build single-line alert #}\n  {%- set line =\n    \"• \"\n    ~
+      s.name ~ \" (\" ~ s.entity_id ~ \")\"\n    ~ \" — \" ~ status\n    ~ (\n      \"
+      — \" ~ battery_info\n      if battery_info is not none\n      else \"\"\n    )\n
+      \ -%}\n\n  {%- set result.items = result.items + [line] -%}\n{%- endfor -%}\n\n{{
+      result.items | join('\\n') }}"
+  mode: single
+- id: '1769760819099'
+  alias: 'ESPHome: Controlled Firmware Auto-Update'
+  description: "# ⚡ **ESPHome: Controlled Firmware Auto-Update**\n\n### \U0001F4CB
+    Intelligent ESPHome Lifecycle Control\nThis automation manages the lifecycle of
+    ESPHome firmware updates across the fleet. It employs a **throttled deployment
+    strategy** to ensure network stability and avoid mass-failure scenarios. By evaluating
+    version strings, the system distinguishes between routine maintenance and critical
+    version jumps, ensuring devices remain secure without requiring manual intervention
+    for every patch.\n\nThe strategy relies on a **safety-first approach**: it ignores
+    devices already in an active update state and uses **Spook** integrations to manage
+    visibility and suppress secondary update alerts during the automated process.\n\n---\n\n###
+    Trigger Overview Table\n| Type | Entity / Condition | ID | Purpose |\n| :--- |
+    :--- | :--- | :--- |\n| **Time** | `10:00:00` | N/A | Initiates the daily update
+    cycle during peak monitoring hours. |\n\n---\n\n### Operational Logic Sections\n\n####
+    #### \U0001F50D Update Eligibility Assessment\n* **Purpose**: Identify which devices
+    require firmware installation based on version history.\n* **Logic Overview**:
+    Filters all **ESPHome** update entities. A device is marked eligible if it is
+    not currently `in_progress` and meets one of two criteria:\n    * **Month Change**:
+    The latest version reflects a new monthly release (Year/Month).\n    * **Patch
+    Gap**: The difference between the installed and latest patch version is **>= 2**.\n*
+    **Effect**: Generates a list of target entities and prepares the `eligible_updates`
+    variable.\n\n#### #### \U0001F6E0 Controlled Deployment (Daily Batch)\n* **Purpose**:
+    Execute the updates while preventing network congestion.\n* **Logic Overview**:
+    Limits the execution to a maximum of **5 devices** per day (`updates_today`).\n*
+    **Effect**: \n    * Applies the `haghs_ignore` label to all eligible entities
+    to silence external managers.\n    * Sequentially removes the label for the specific
+    batch item and calls `update.install`.\n\n#### #### \U0001F4E2 Notification &
+    Reporting\n* **Purpose**: Provide visibility into automated changes.\n* **Logic
+    Overview**: Only triggers if the `update_message` contains processed devices.\n*
+    **Effect**: Sends a mobile notification via `notify.duncan` and creates a **Persistent
+    Notification** in the UI with direct links to the ESPHome dashboard and Update
+    settings.\n\n---\n\n### Technical Overview\n* **Automation Mode**: `single` (Prevents
+    overlapping execution runs).\n* **Execution Method**: Direct action calls with
+    `repeat.for_each` looping.\n* **Key Inputs**: `patch_gap_threshold` (Set to **2**).\n*
+    **Controlled Entities**: All entities belonging to the **ESPHome** integration
+    matching the `update.` domain.\n* **Safety Mechanisms**: \n    * **State Check**:
+    Skips devices where `in_progress` is true.\n    * **Throttling**: Strict limit
+    of **5** installs per 24-hour cycle.\n    * **Label Management**: Uses `haghs_ignore`
+    to prevent conflicting automation logic (via HAGHS).\n\n---\n\n### \U0001F4A1
+    Notes\n* **Version Parsing**: The logic manually splits the version strings (Year.Month.Patch)
+    to calculate the `latest_months` vs `installed_months`, allowing it to catch updates
+    even if the patch number resets in a new month.\n* **Label Logic**: By adding
+    labels to all eligible updates but only removing them for the ones being updated,
+    the automation ensures that \"pending\" updates for tomorrow stay hidden from
+    other notification systems.\n* **Maintenance**: If a device fails to update, it
+    will naturally remain in the `eligible_updates` list for the next day's cycle."
+  triggers:
+  - trigger: time
+    at: '10:00:00'
+  conditions:
+  - condition: template
+    value_template: '{{ eligible_updates | length > 0 }}'
+  actions:
+  - action: homeassistant.add_label_to_entity
+    data:
+      label_id:
+      - haghs_ignore
+      entity_id: '{{ eligible_updates | map(attribute=''entity'') | list }}'
+    enabled: true
+  - repeat:
+      for_each: '{{ updates_today }}'
+      sequence:
+      - action: homeassistant.remove_label_from_entity
+        data:
+          label_id:
+          - haghs_ignore
+          entity_id:
+          - '{{ repeat.item.entity }}'
+      - target:
+          entity_id: '{{ repeat.item.entity }}'
+        action: update.install
+    enabled: true
+  - if:
+    - condition: template
+      value_template: '{{ update_message | trim | length > 0 }}'
+    then:
     - action: notify.duncan
       data:
-        title: NAS Maintenance Complete
-        message: "{% set info = report_json %}\nBackup cleanup report for today:\n
-          \ {{ info.list | replace('**', '') }}\nTotal space freed: {{ info.total_gb
-          }} GB.\n"
+        title: ESPHome Firmware Updates Installed
+        message: '{{ update_message }}'
+        data:
+          actions:
+          - action: URI
+            title: Open ESPHome
+            uri: /hassio/ingress/5c53de3b_esphome
+          - action: URI
+            title: Open Updates
+            uri: /config/updates
+    - action: persistent_notification.create
+      data:
+        title: ESPHome Firmware Updates Installed
+        message: '{{ update_message |replace(''
+
+          '',''<br>'') }}'
+  mode: single
+  variables:
+    patch_gap_threshold: 1
+    esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
+      '^update\\\\.')\n   | list }}"
+    eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
+      %}\n  {% set installed = state_attr(e, 'installed_version') %}\n  {% set latest
+      = state_attr(e, 'latest_version') %}\n  {% set in_progress = state_attr(e, 'in_progress')
+      %}\n\n  {% if installed and latest and not in_progress %}\n    {% set i = installed.split('.')[:3]
+      %}\n    {% set l = latest.split('.')[:3] %}\n\n    {% if i | length >= 2 and
+      l | length >= 2 %}\n      {% set installed_year = i[0] | int %}\n      {% set
+      installed_month = i[1] | int %}\n      {% set installed_patch = i[2] | int if
+      i | length > 2 else 0 %}\n\n      {% set latest_year = l[0] | int %}\n      {%
+      set latest_month = l[1] | int %}\n      {% set latest_patch = l[2] | int if
+      l | length > 2 else 0 %}\n\n      {% set installed_months = installed_year *
+      12 + installed_month %}\n      {% set latest_months = latest_year * 12 + latest_month
+      %}\n\n      {% set month_changed = (latest_months - installed_months) >= 1 %}\n
+      \     {% set patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold
+      %}\n\n      {% if month_changed or patch_gap %}\n        {% set ns.items = ns.items
+      + [\n          {\n            \"entity\": e,\n            \"name\": state_attr(e,
+      'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
+      latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
+      endif %}\n{% endfor %} {{ ns.items }}"
+    updates_today: '{{ eligible_updates[:5] }}'
+    update_message: "{% for item in updates_today %} \n• {{ item.name }} updated from
+      {{ item.from}} → {{ item.to }}\n{% endfor %}\n"
+- id: '1770413807856'
+  alias: Tablet Battery Status Alerts
+  description: Sends notifications based on battery bands and clears them when 'ok'.
+    Consolidated low-level alerts to reduce repetition.
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.lenovo_p11_battery
+    attribute: band
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.from_state is not none and \n   trigger.to_state.attributes.band
+      != trigger.from_state.attributes.band }}"
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.band in [''critical'', ''very_low'',
+          ''low'', ''warn''] and (trigger.from_state.state | float(100)) > (trigger.to_state.state
+          | float(0))}}'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: "{% set titles = {\n  'critical': '\U0001F534 Tablet Battery Critical!',\n
+            \ 'very_low': '\U0001F7E0 Tablet Battery Low',\n  'low': '\U0001F7E1 Tablet
+            Battery Getting Low',\n  'warn': '⚠️ Tablet Battery Notice'\n} %} {{ titles.get(trigger.to_state.attributes.band)
+            }}"
+          message: Lenovo Tab P11 battery is at {{ states('sensor.lenovo_p11_battery')
+            }}%. {{ 'Plug it in now!' if trigger.to_state.attributes.band == 'critical'
+            }} {{ 'Charger issue?' if trigger.to_state.attributes.band == 'very_low'
+            }}
+          data:
+            tag: lenovo_p11_battery_warning
+      - if:
+        - condition: template
+          value_template: '{{ trigger.to_state.attributes.band in [''critical'', ''very_low'',
+            ''low''] }}'
+        then:
+        - action: script.restart_charging_process
+      alias: Warn and Restart Charging
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.to_state.attributes.band == ''ok'' }}'
+      sequence:
+      - action: notify.duncan
+        data:
+          message: clear_notification
+          data:
+            tag: lenovo_p11_battery_warning
+      alias: Clear Warning
+  mode: single
+- id: '1770812457380'
+  alias: Night Battery Charge/Discharge Energy
+  description: "\U0001F319 **Night Battery Charge/Discharge Energy**\n\n### \U0001F4CB
+    Intelligent Battery Energy Monitoring Control\n\nThis automation manages the historical
+    logging and cycling of battery energy statistics based on the solar cycle. Its
+    primary intent is to capture and archive total energy charged and discharged during
+    distinct day and night periods before resetting the active counters for the next
+    phase.\n\nThe operational strategy relies on the **Sun** entity to provide precise
+    temporal boundaries, ensuring that daily solar production and nightly consumption
+    are compartmentalized accurately. By utilizing a sequential \"Capture-then-Reset\"
+    logic, the system maintains high data integrity for long-term energy tracking.\n\n---\n\n###
+    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
+    | :--- | :--- | :--- |\n| **Sun** | `sunrise` (+00:00:01) | `Rise` | Archive night-time
+    performance and prepare for solar charging phase. |\n| **Sun** | `sunset` (+00:00:01)
+    | `Set` | Archive daytime performance and prepare for nocturnal discharge phase.
+    |\n\n---\n\n#### \U0001F305 Sunrise (End of Night Phase)\n* **Purpose**: Archive
+    energy metrics from the preceding night and reset sensors for the day.\n* **Logic
+    Overview**: Triggered 1 second after **sunrise**.\n* **Effect**: \n    * Copies
+    **sensor.day_night_battery_charged_energy** to **input_number.last_night_battery_charged**.\n
+    \   * Copies **sensor.night_battery_energy_discharged** to **input_number.last_night_battery_discharged**.\n\n####
+    \U0001F307 Sunset (End of Day Phase)\n* **Purpose**: Archive energy metrics from
+    the preceding day and reset sensors for the night.\n* **Logic Overview**: Triggered
+    1 second after **sunset**.\n* **Effect**: \n    * Copies **sensor.day_night_battery_charged_energy**
+    to **input_number.last_day_battery_charged**.\n    * Copies **sensor.night_battery_energy_discharged**
+    to **input_number.last_day_battery_discharged**.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode**: `single`\n* **Execution Method**: Direct state snapshots
+    and `utility_meter.reset` service calls.\n* **Key Inputs**: `sensor.day_night_battery_charged_energy`,
+    `sensor.night_battery_energy_discharged`.\n* **Controlled Entities**: \n    *
+    `input_number.last_night_battery_charged`\n    * `input_number.last_night_battery_discharged`\n
+    \   * `input_number.last_day_battery_charged`\n    * `input_number.last_day_battery_discharged`\n*
+    **Safety Mechanisms**: \n    * **1-second offset** on triggers ensures the solar
+    state transition is fully registered by the system.\n    * **2-second delay**
+    between data archival and sensor reset prevents race conditions, ensuring values
+    are saved before the sensors are cleared.\n    * **Float casting** with a default
+    of **0** ensures the automation does not fail if a sensor is temporarily unavailable.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Precision**: Values are rounded to **2 decimal places**
+    to maintain clean historical records without floating-point errors.\n* **Data
+    Integrity**: The use of `utility_meter.reset` allows for a clean slate at every
+    transition, making these sensors ideal for use in custom energy dashboards or
+    long-term statistics.\n* **Timing**: The slight delay in the action sequence acts
+    as a \"buffer\" to ensure the database write for the `input_number` entities is
+    initiated before the source sensors are zeroed out.\n"
+  triggers:
+  - event: sunrise
+    offset: +00:00:01
+    id: Rise
+    trigger: sun
+  - event: sunset
+    offset: +00:00:01
+    id: Set
+    trigger: sun
+  conditions: []
+  actions:
+  - alias: 'Save last night '
+    if:
+    - condition: trigger
+      id:
+      - Rise
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_charged
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_night_battery_discharged
+  - alias: Save last day
+    if:
+    - condition: trigger
+      id:
+      - Set
+    then:
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.day_night_battery_charged_energy'') | float(0)
+          | round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_charged
+    - action: input_number.set_value
+      metadata: {}
+      data:
+        value: '{{ states(''sensor.night_battery_energy_discharged'') | float(0) |
+          round(2) }}
+
+          '
+      target:
+        entity_id: input_number.last_day_battery_discharged
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - action: utility_meter.reset
+    data: {}
+    target:
+      entity_id:
+      - sensor.day_night_battery_charged_energy
+      - sensor.night_battery_energy_discharged
+  mode: single
+- id: '1771184791625'
+  alias: Dreame Zone Cleanup Test
+  description: ''
+  triggers: []
+  conditions: []
+  actions:
+  - action: dreame_vacuum.vacuum_clean_zone
+    target:
+      entity_id: vacuum.d9_max_gen_2
+    data:
+      zone:
+      - - -9089
+        - -4250
+        - -5904
+        - 7120
+      - - -6749
+        - -532
+        - -3354
+        - 6775
+      - - -4966
+        - 3418
+        - 2509
+        - 5955
+      repeats: 2
+  mode: single

@@ -143,13 +143,53 @@ config:
             unit: MB
           - bar_size: large
             decimal: 1
-            entity: sensor.system_monitor_festplattennutzung_2
+            entity: sensor.system_monitor_massenspeicher_auslastung
             icon: mdi:harddisk
             layout: horizontal
             name: ROM
             show_more_info: true
             type: custom:entity-progress-card
             unit: '%'
+          - cards:
+            - aggregate_func: diff
+              align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.netzwerkausgang_today
+              font_size: 65
+              group_by: hour
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Ausgang
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            - aggregate_func: diff
+              align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.netzwerkeingang_today
+              font_size: 65
+              group_by: hour
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Eingang
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            type: horizontal-stack
           type: vertical-stack
         conditions:
         - entity: input_boolean.show_server_details
@@ -364,81 +404,6 @@ config:
           state: 'on'
         type: conditional
       type: vertical-stack
-    - cards:
-      - double_tap_action:
-          action: call-service
-          service: script.1707895746671
-          target: {}
-        entity: input_boolean.show_speedtest_details
-        features_position: bottom
-        icon: ''
-        primary: "{% set x = ['unknown','unavailable'] %} {% set unavailable_data\
-          \ =\n  states('sensor.speedtest_ping') in x or\n  states('sensor.speedtest_upload')\
-          \ in x or\n  states('sensor.speedtest_download') in x\n%} {% set text =\n\
-          \  \"Ping: \" ~ states('sensor.speedtest_ping') ~ \"ms, \" ~\n  states('sensor.speedtest_upload')\
-          \ ~ \" Mbps, \" ~\n  states('sensor.speedtest_download') ~ \" Mbps\"\n%}\
-          \ {{ \"\" if unavailable_data else text }}"
-        secondary: '{% set script = is_state(''script.1707895746671'',''on'') %}   {%
-          set unavailable_data = states(''sensor.speedtest_download'') in [''unknown'',''unavailable'']
-          %} {% set last_run = states(''sensor.speedtest_last_run'') %}  {{ "Start
-          SpeedTest, Last: " + last_run + " ago" if not script else ("Testing" if
-          unavailable_data else "Wrapping up") }}'
-        tap_action:
-          action: toggle
-        type: custom:mushroom-template-card
-        vertical: true
-      - card:
-          cards:
-          - cards:
-            - align_header: center
-              align_state: center
-              cache: true
-              decimals: 2
-              entities:
-              - sensor.speedtest_upload
-              - entity: sensor.upload_avg_24h
-              font_size: 65
-              hour24: true
-              hours_to_show: 24
-              line_width: 2
-              name: Upload
-              points_per_hour: 30
-              show:
-                average: true
-                extrema: true
-                icon: false
-                labels: false
-                legend: false
-                points: false
-              type: custom:mini-graph-card
-            - align_header: center
-              align_state: center
-              cache: true
-              decimals: 2
-              entities:
-              - sensor.speedtest_download
-              - entity: sensor.download_avg_24h
-              font_size: 65
-              hour24: true
-              hours_to_show: 24
-              line_width: 2
-              name: Download
-              points_per_hour: 30
-              show:
-                average: true
-                extrema: true
-                icon: false
-                labels: false
-                legend: false
-                points: false
-              type: custom:mini-graph-card
-            type: horizontal-stack
-          type: vertical-stack
-        conditions:
-        - entity: input_boolean.show_speedtest_details
-          state: 'on'
-        type: conditional
-      type: vertical-stack
     - color: blue
       entity: sensor.tibber_node_battery_voltage
       features_position: bottom
@@ -450,21 +415,35 @@ config:
         action: more-info
       type: custom:mushroom-template-card
       vertical: true
-    - content: "{% set x = ['unavailable','unknown'] %}\n\n{%- for d in states|groupby('domain')\
-        \ %}\n  {% if loop.first %} \n    <details><summary><b>Domains: {{loop.length}}</b>\
-        \ </summary>\n  {% endif %}\n   <details>\n    <summary>{{- d[0] | title }}:\
-        \ <b>{{states[d[0]]|rejectattr('state','in',x)|list|count}}</b></summary>\n\
-        \    {% for i in d[1] if i.state not in x -%}\n      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-\
-        \ {{i.name}}: <b>{{i.state}}</b><br>\n    {% endfor %}\n   </details>\n{%-\
-        \ endfor -%}\n</details>"
+    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
+        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
+        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
+        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
+        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
+        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
+        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
+        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
+        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
+        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
+        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
+        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
+        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
+        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
+        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
+        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
+        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
+        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
+        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
+        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
+        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
+        \ -%}\n{%- endfor -%}\n</details>"
       type: markdown
     - entity: todo.to_do_duncan
       hide_completed: true
       type: todo-list
     - cards:
       - entities:
-        - attribute: beta_version
-          entity: binary_sensor.home_assistant_beta_release_notes
+        - entity: sensor.home_assistant_beta_release_notes
           hold_action:
             action: more-info
           tap_action:
@@ -472,13 +451,11 @@ config:
             perform_action: input_button.press
             target:
               entity_id: input_button.update_beta_release_notes
-          type: attribute
         type: entities
-      - content: '## [Beta Release]({{ state_attr("binary_sensor.home_assistant_beta_release_notes",''beta_url'')}}):
-          {{state_attr("binary_sensor.home_assistant_beta_release_notes", "beta_version")
-          }}
+      - content: '## [Beta Release]({{ state_attr("sensor.home_assistant_beta_release_notes",''beta_url'')}}):
+          {{states("sensor.home_assistant_beta_release_notes") }}
 
-          {{ state_attr("binary_sensor.home_assistant_beta_release_notes","ai_summary")
+          {{ state_attr("sensor.home_assistant_beta_release_notes","ai_summary")
 
           }}'
         type: markdown
@@ -488,22 +465,8 @@ config:
       type: vertical-stack
       visibility:
       - condition: state
-        entity: binary_sensor.home_assistant_beta_release_notes
+        entity: binary_sensor.home_assistant_beta_release_notes_window
         state: 'on'
-    - card_mod:
-        style:
-          ha-markdown:
-            $: "ha-markdown-element:first-of-type hr{\n  border-color: #303030;\n\
-              }\n"
-      content: '<h2> <img src="https://brands.home-assistant.io/watchman/icon.png"
-        alt="WM Logo" width="32" height="32"> Watchman report</h2> <h3>Missing Entities:
-        {{ states.sensor.watchman_missing_entities.state }} </h3> {%- for item in
-        state_attr("sensor.watchman_missing_entities", "entities") %} <hr> <table><tr>
-        <td> <ha-icon icon=''mdi:{%- if item.state=="missing"-%}cloud-alert'' {%-
-        elif item.state=="unavail" -%}cloud-off-outline'' {%- else-%}cloud-question''
-        {%- endif -%} ></ha-icon> {{ item.id }} [{{item.state}}] <a title="{{item.occurrences}}">
-        {{item.occurrences.split(''/'')[-1]}}</a> </td></tr></table> {%- endfor %}'
-      type: markdown
     - content: "I want you to act as a Home Assistant Documentation Expert.\n\nI will\
         \ provide YAML for an automation. Your task is to generate a high-quality,\n\
         professional Markdown description suitable for the Home Assistant automation\n\
@@ -530,6 +493,38 @@ config:
         - Wrap everything in a **single Markdown code block**\n- Do not include commentary\
         \ or analysis\n\n### YAML Input\n"
       type: markdown
+    - cards:
+      - entity: sensor.system_ha_global_health_score
+        name: HAGHS
+        needle: true
+        severity:
+          green: 90
+          red: 0
+          yellow: 75
+        type: gauge
+      - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} {%\
+          \ set recommendations = state_attr(entity_id, 'recommendations') %} {% set\
+          \ z_raw = state_attr(entity_id, 'zombie_entities') | default('', true) %}\n\
+          ### \U0001F6E1\uFE0F Advisor Recommendations  {% if recommendations not\
+          \ in [none, 'unknown', 'unavailable', 'none', 'None', ''] %}\n  {{ recommendations\
+          \ }}\n{% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\
+          \uFE0F **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705\
+          \ System healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw not\
+          \ in ['None', '', none] %}\n  {#- Process list and map to Device Names -#}\n\
+          \  {% set z_list = z_raw.split(',') | map('trim') | select('search', '\\\
+          \\.') | list %}\n  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list\
+          \ %}\n    {% set d_name = device_attr(eid, 'name') | default('No Device\
+          \ / Independent', true) %}\n    {% set ns.items = ns.items + [{'entity':\
+          \ eid, 'device': d_name}] %}\n  {% endfor %}\n  {% set grouped_devices =\
+          \ ns.items | groupby('device') %}\n\n<details> <summary><b>Zombie Devices:\
+          \ {{ grouped_devices | length }}</b></summary> {% for d in grouped_devices\
+          \ %}<br> <details> <summary>{{ d[0] }}: <b>{{ d[1] | count }}</b></summary>\
+          \  {% for i in d[1] -%} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \u2022 {{ state_attr(i.entity,\
+          \ 'friendly_name') | default(i.entity, true) }}: <b>{{ states(i.entity)\
+          \ }}</b><br> {% endfor %} </details>  {% endfor %}  </details>\n{% else\
+          \ %} \u2705 **No zombie entities detected.** {% endif %}\n"
+        type: markdown
+      type: vertical-stack
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
@@ -626,9 +621,10 @@ config:
           - entity_id: sensor.*_battery_plus
             options:
               bar_color: "{% set level = states(entity) | int %} {% if level > 80\
-                \ %}\n linear-gradient(90deg, lightgreen, green)\n{% elif level >\
-                \ 20 %}\n linear-gradient(90deg, yellow, orange)\n{% else %}\n linear-gradient(90deg,\
-                \ orange, red)\n{% endif %}"
+                \ %}\n linear-gradient(90deg, red, orange, yellow, lightgreen, green)\n\
+                {% elif level > 20 %}\n linear-gradient(90deg, red, orange, yellow,\
+                \ lightgreen)\n{% else %}\n linear-gradient(90deg, red, orange)\n\
+                {% endif %}"
               color: "{% set level = states(entity) | int %} {% if level < 30 %}\n\
                 \ red\n{% elif level < 60 %}\n orange\n{% else %}\n green\n{% endif\
                 \ %}"

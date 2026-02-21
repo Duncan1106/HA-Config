@@ -90,6 +90,8 @@ template:
         event: start
       - platform: time_pattern
         minutes: "/5"
+      - platform: time
+        at: "00:00:30"
       - platform: event
         event_type: event_template_reloaded
       - platform: state
@@ -125,15 +127,17 @@ template:
           buffer_kwh: "{{ [dyn_margin_kwh, min_soc_kwh] | max }}"
           
           # Resulting Energy State
-          net_energy: "{{ battery_usable_kwh + forecast_kwh - buffer_kwh }}"
-          charge_needed: "{{ (target_kwh - net_energy) | clamp(0, target_kwh) }}"
-                    
+          net_energy: "{{ battery_usable_kwh + forecast_kwh - buffer_kwh }}" # available battery + solar - buffers
+          charge_needed: "{{ (target_kwh - net_energy) }}" #raw
+          
           # Offset
           charge_offset: "{{ states('input_number.battery_charge_percent_offset') | float(0) }}"
-          charge_offset_kwh: "{{ (cap|float(0)) * (charge_offset|float(0) / 100) }}"
-          effective_target_kwh: "{{ (target_kwh|float(0)) + (charge_offset_kwh|float(0)) }}"
-          effective_charge_needed: "{{ ((charge_needed | float(0)) + (charge_offset_kwh | float(0))) | clamp(0, battery_missing_kwh) }}"
-
+          charge_offset_base_kwh: "{{ ((cap|float(0)) * (charge_offset|float(0) / 100)) }}"
+          effective_target_kwh: "{{ (target_kwh|float(0)) + (charge_offset_base_kwh|float(0)) }}"
+          effective_missing_kwh: "{{ effective_target_kwh - net_energy }}"
+          charge_offset_kwh: "{{ charge_offset_base_kwh | clamp(0, effective_missing_kwh) }}"
+          effective_charge_needed: "{{ (charge_needed + charge_offset_kwh ) | clamp(0, battery_missing_kwh) }}"
+          
           # Charging Power Calculation Inputs
           battery_voltage: 51.2
           efficiency: 0.95
@@ -160,7 +164,7 @@ template:
               {{ full_window }}
             {% endif %}
           raw_amps: >
-            {% set charge_kwh = effective_charge_needed | float(0) %}
+            {% set charge_kwh = effective_missing_kwh | float(0) %}
             {% if charge_kwh > 0 %}
               {% set voltage = battery_voltage | float %}
               {% set efficiency_val = efficiency | float %}
@@ -194,15 +198,16 @@ template:
           potential_target: "{{ potential_target | round(2) }}"
           charge_kwh: ''
           charge_needed_kwh: "{{ charge_needed | round(2) }}"
-          charge_offset_kwh: "{{ charge_offset_kwh | round(2) }}"
-          charge_needed_effective_kwh: "{{ effective_charge_needed }}"
+          charge_offset_kwh: "{{ charge_offset_base_kwh | round(2) }}"
+          effective_missing_kwh: "{{ effective_missing_kwh | round(2)}}"
+          charge_target: ''
           charge_target_percent: >
             {% set target_pct = ((battery_usable_kwh + charge_needed) / cap) * 100 if cap > 0 else 0 %}
-            {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
+            {{ target_pct | clamp(0, 100) | round(0, 'ceil', 100) }}
           battery_charge_percent_offset: "{{ charge_offset }}"
           offset_charge_target_percent: >
-            {% set target_pct = (((battery_usable_kwh + charge_needed) / cap) * 100) + charge_offset if cap > 0 else 0 %}
-            {{ target_pct | clamp(soc, 100) | round(0, 'ceil', 100) }}
+            {% set target_pct = (((battery_usable_kwh + effective_missing_kwh) / cap) * 100) if cap > 0 else 0 %}
+            {{ target_pct | clamp(0, 100) | round(0, 'ceil', 100) }}
           buffer: ''
           dynamic_margin_kwh: "{{ dyn_margin_kwh | round(2) }}"
           minimum_soc_kwh: "{{ min_soc_kwh | round(2) }}"
@@ -210,7 +215,7 @@ template:
           saved_cost_eur: >
             {% set night_tariff = 0.187425 %}
             {% set day_tariff = 0.302379 %}
-            {{ ((day_tariff - night_tariff) * charge_needed_effective_kwh|float(0)) | round(2) }}
+            {{ ((day_tariff - night_tariff) * effective_charge_needed|float(0)) | round(2) }}
           charging_window: ''
           remaining_hours: "{{ remaining_hours | round(2) }}"
           amps: ''
@@ -1006,10 +1011,33 @@ template:
         event: start
       - platform: event
         event_type: event_template_reloaded
+    binary_sensor:
+      - unique_id: home_assistant_beta_release_notes_window
+        name: Home Assistant Beta Release Notes Window
+        icon: mdi:home-assistant
+        state: >
+            {% set today = now().date() %}
+            {% if today.day <= 7 %}
+              {% set fdom = today.replace(day=1) %}
+            {% else %}
+              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
+            {% endif %}
+            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
+            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
       - trigger: state
         entity_id:
          - input_button.update_beta_release_notes
          - input_select.conversation_agents
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.home_assistant_beta_release_notes_window
+        state:
+          - "on"
     actions:
       - action: multiscrape.scrape
         response_variable: beta_scrape
@@ -1067,21 +1095,11 @@ template:
             {{ beta_scrape.beta_notes_content }}
             
           agent_id: "{{ states('input_select.conversation_agents')}}"
-    binary_sensor:
+    sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
         state: >
-            {% set today = now().date() %}
-            {% if today.day <= 7 %}
-              {% set fdom = today.replace(day=1) %}
-            {% else %}
-              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
-            {% endif %}
-            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
-            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
-        attributes:
-          beta_version: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {% set url = beta_scrape.beta_url.value|string|trim %}
               {% if 'release-' in url %}
@@ -1095,6 +1113,7 @@ template:
             {% else %}
               Unknown
             {% endif %}
+        attributes:
           beta_url: >
             {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
               {{beta_scrape.beta_url.value|string }}
@@ -1215,3 +1234,54 @@ template:
         - action: script.wintergarten_dachfenster_rolladen_stop
         name: Wintergarten Rolladen Dachfenster
         state: "{{ is_state('input_boolean.rollo_state', 'off') }}"
+
+  # Lenovo Wallpanel
+  - triggers:
+    - trigger: homeassistant
+      event: start
+    - platform: event
+      event_type: event_template_reloaded
+    - platform: state
+      entity_id:
+        - sensor.lenovo_tab_p11_batterie
+        - sensor.lenovo_tb_j606f_battery_level
+    sensor:
+      - name: "Lenovo P11 Battery"
+        unit_of_measurement: "%"
+        device_class: battery
+        unique_id: lenovo_p11_battery
+        variables:
+          sources:
+            - "sensor.lenovo_tab_p11_batterie"
+            - "sensor.lenovo_tb_j606f_battery_level"
+          levels: >
+            {{ sources
+               | map('states')
+               | map('float', none)
+               | select('!=', none)
+               | list }}
+          level: >
+            {% if levels | length > 0 %}
+              {{ levels | min }}
+            {% else %}
+              none
+            {% endif %}
+        availability: >
+          {{ levels | length > 0 }}
+        state: "{{ level }}"
+        attributes:
+          levels: "{{ levels }}"
+          band: >
+            {% if level is none %}
+              unknown
+            {% elif level < 10 %}
+              critical
+            {% elif level < 20 %}
+              very_low
+            {% elif level < 30 %}
+              low
+            {% elif level < 39 %}
+              warn
+            {% else %}
+              ok
+            {% endif %}
