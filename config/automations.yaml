@@ -12870,40 +12870,39 @@
   mode: single
 - id: '1768073928361'
   alias: Smart Meter Status Alert
-  description: "⚠️ **Smart Meter Status Alert**\n\n### \U0001F4CB Intelligent Utility
-    Monitoring Control\n\nThis automation provides proactive oversight of the household's
-    smart meter communication and hardware health. Its primary intent is to ensure
-    data integrity by alerting the administrator immediately if the meter reports
-    an internal fault or ceases communication entirely. \n\nThe operational strategy
-    is **safety-first**, utilizing a 30-second verification delay to filter out transient
-    network blips while ensuring that genuine hardware failures or communication timeouts
-    are addressed before data gaps occur.\n\n---\n\n### Trigger Overview Table\n\n|
-    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State**
-    | **binary_sensor.smart_meter_mqtt_data** | N/A | Detects internal hardware status
-    fault (**on**) |\n| **State** | **binary_sensor.smart_meter_mqtt_data** | N/A
-    | Detects communication loss (**unavailable**) |\n\n---\n\n### Operational Logic
-    Sections\n\n#### Hardware Fault Mode\n- **Purpose**: To notify when the meter's
-    internal diagnostics report a \"Hardware Status 0\" or general failure.\n- **Logic
-    Overview**: Triggered when **binary_sensor.smart_meter_mqtt_data** remains in
-    the **on** state for at least **30 seconds**.\n- **Effect**: Sends a high-priority
-    notification to **notify.duncan** with the tag **smart_meter_problem**.\n\n####
-    Communication Timeout Mode\n- **Purpose**: To identify instances where the MQTT
-    stream has stopped or the bridge has gone offline.\n- **Logic Overview**: Triggered
-    when the entity state changes to **unavailable** for at least **30 seconds**.\n-
-    **Effect**: Dispatches a \"Communication timeout\" alert to **notify.duncan**.\n\n---\n\n###
-    Technical Overview\n\n- **Automation Mode**: **single** (prevents redundant notifications
-    during rapid state flickering).\n- **Execution Method**: Direct YAML action block
-    using the **notify.duncan** service.\n- **Key Inputs**: **binary_sensor.smart_meter_mqtt_data**.\n-
-    **Controlled Entities**: Notification service (**notify.duncan**).\n- **Safety
-    Mechanisms**: 30-second **for** duration on triggers to prevent \"false positive\"
-    notifications during service restarts.\n\n---\n\n### \U0001F4A1 Notes\n\n- **De-duplication**:
-    The use of the **tag: smart_meter_problem** ensures that consecutive alerts overwrite
-    each other on the mobile device, preventing notification spam.\n- **Threshold
-    Rationale**: The **30-second** delay is calibrated to ignore standard MQTT broker
-    restarts while remaining fast enough to allow for manual intervention before significant
-    data loss in energy dashboards.\n- **Dynamic Messaging**: Uses Jinja2 templating
-    to provide specific context (Hardware vs. Communication) within a single automation
-    flow.\n"
+  description: "  ⚠️ **Smart Meter Status Alert**\n\n\n  ### \U0001F4CB Intelligent
+    Utility Monitoring Control\n\n  This automation provides proactive oversight of
+    the household's smart meter\n  communication and hardware health. It ensures data
+    integrity by alerting the \n  administrator if the meter reports an internal fault
+    or ceases communication, \n  and automatically clears those alerts once the system
+    recovers.\n\n\n  The operational strategy is **resilient**, utilizing a 30-second
+    verification \n  delay to filter out transient \"blips\" while ensuring that genuine
+    failures \n  are addressed before data gaps occur in the energy dashboard.\n\n\n
+    \ ---\n\n\n  ### Trigger Overview Table\n\n\n  | Type | State Change | ID | Purpose
+    |\n  | :--- | :--- | :--- | :--- |\n  | **State** | **to: \"on\"** | Problem |
+    Detects internal hardware status fault |\n  | **State** | **to: unavailable**
+    | Problem | Detects MQTT communication loss |\n  | **State** | **to: \"off\"**
+    | Solved | Confirms recovery and clears active alerts |\n\n\n  ---\n\n\n  ###
+    Operational Logic Sections\n\n\n  #### \U0001F6A8 Alert Phase (Problem ID)\n  -
+    **Hardware Fault**: Triggered if the meter reports a \"Hardware Status 0\" (`on`)
+    for 30s.\n  - **Comm Timeout**: Triggered if the MQTT stream becomes `unavailable`
+    for 30s.\n  - **Effect**: Sends a high-priority notification to **notify.duncan**
+    using dynamic \n    Jinja2 templating to specify the exact failure mode.\n\n\n
+    \ #### ✅ Recovery Phase (Solved ID)\n  - **Purpose**: To clean up the mobile notification
+    tray once the sensor returns to `off`.\n  - **Logic**: Triggered when the entity
+    moves from an error state back to `off` for 30s.\n  - **Effect**: Dispatches a
+    `clear_notification` command to remove the specific \n    **smart_meter_problem**
+    tag from the device.\n\n\n  ---\n\n\n  ### Technical Overview\n\n\n  - **Automation
+    Mode**: **single** (prevents notification \"flapping\" during rapid state changes).\n
+    \ - **Safety Mechanisms**: 30-second `for` duration on all triggers to ignore
+    broker restarts.\n  - **Notification Tagging**: Uses `tag: smart_meter_problem`
+    for both delivery and dismissal, \n    ensuring only one relevant alert exists
+    at a time.\n\n\n  ---\n\n\n  ### \U0001F4A1 Notes\n\n\n  - **Auto-Dismissal**:
+    The addition of the **Solved** trigger means you no longer \n    have to manually
+    swipe away alerts if the connection briefly drops and restores itself.\n  - **Template
+    Logic**: The notification message dynamically switches between \"Hardware status\"
+    \n    and \"Communication timeout\" based on the specific state that triggered
+    the automation.\n"
   triggers:
   - entity_id:
     - binary_sensor.smart_meter_mqtt_data
@@ -12914,6 +12913,7 @@
       hours: 0
       minutes: 0
       seconds: 30
+    id: Problem
   - entity_id:
     - binary_sensor.smart_meter_mqtt_data
     to:
@@ -12923,18 +12923,51 @@
       hours: 0
       minutes: 0
       seconds: 30
+    id: Problem
+  - entity_id:
+    - binary_sensor.smart_meter_mqtt_data
+    trigger: state
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+    id: Solved
+    from:
+    - unavailable
+    - unknown
+    - 'on'
+    to:
+    - 'off'
   conditions: []
   actions:
-  - data:
-      title: ⚠️ Smart Meter Alert
-      message: "{% if trigger.to_state.state == \"on\" %}\n  The Smart Meter reports
-        a problem (Hardware status = 0).\n{% elif trigger.to_state.state == \"unavailable\"
-        %}\n  The Smart Meter stopped reporting (Communication timeout).\n{% else
-        %}\n  The Smart Meter status changed to {{ trigger.to_state.state }}.\n{%
-        endif %}\n"
-      data:
-        tag: smart_meter_problem
-    action: notify.duncan
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Problem
+      sequence:
+      - data:
+          title: ⚠️ Smart Meter Alert
+          message: "{% if trigger.to_state.state == \"on\" %}\n  The Smart Meter reports
+            a problem (Hardware status = 0).\n{% elif trigger.to_state.state == \"unavailable\"
+            %}\n  The Smart Meter stopped reporting (Communication timeout).\n{% else
+            %}\n  The Smart Meter status changed to {{ trigger.to_state.state }}.\n{%
+            endif %}\n"
+          data:
+            tag: smart_meter_problem
+        action: notify.duncan
+      alias: Problem
+    - conditions:
+      - condition: trigger
+        id:
+        - Solved
+      sequence:
+      - data:
+          data:
+            tag: smart_meter_problem
+          message: clear_notification
+        action: notify.duncan
+      alias: Clear
   mode: single
 - id: '1768908825981'
   alias: Timemachine NAS Sync (Hourly with Notifications)

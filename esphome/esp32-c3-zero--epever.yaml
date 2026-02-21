@@ -89,7 +89,7 @@ light:
 time:
   - platform: sntp
     id: sntp_time
-    servers: "pool.ntp.org"
+    servers: "pool.ntp.org" # gets rewritten in adguard dns to 192.168.2.205, but leaving it in here to be workign even when chrony(ntp app in homeassistant) isn't working
     on_time: 
       at: 04:00
       then: 
@@ -118,17 +118,6 @@ modbus_controller:
     update_interval: 2s
 
 number:
-  # - platform: modbus_controller
-  #   modbus_controller_id: epever
-  #   id: backlight_time
-  #   address: 0x9063
-  #   name: "Backlight time"
-  #   register_type: holding
-  #   unit_of_measurement: "s"
-  #   value_type: U_WORD  
-  #   entity_category: config
-  #   disabled_by_default: True
-
   - platform: modbus_controller
     modbus_controller_id: epever
     id: lcd_backlight_time
@@ -478,9 +467,13 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "A"
     accuracy_decimals: 2
-    lambda: |-
-      return x / 100.0;
     entity_category: diagnostic
+    filters: 
+      - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True 
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -491,10 +484,13 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "A"
     accuracy_decimals: 2
-    lambda: |-
-      // The register reports current * 100, so scale it down
-      return x / 100.0;
     entity_category: diagnostic
+    filters: 
+      - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -507,6 +503,10 @@ sensor:
     entity_category: diagnostic
     filters: 
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
 
   ## LOAD DATA
   - platform: modbus_controller
@@ -520,6 +520,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -532,6 +536,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -544,14 +552,13 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
-      - or:
-        - throttle_average: 15s 
-        - delta: 5%
-    # Example configuration entry
       - clamp:
           min_value: 0
           max_value: 1020
           ignore_out_of_range: true
+      - or:
+        - throttle_average: 15s 
+        - delta: 5%
           
   ## PV DATA
   - platform: modbus_controller
@@ -565,6 +572,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: true
     device_class: voltage
 
   - platform: modbus_controller
@@ -572,12 +583,16 @@ sensor:
     id: pv_input_current
     name: "PV array input current"
     address: 0x3101
-    unit_of_measurement: "A" ## for any other unit the value is returned in minutes
+    unit_of_measurement: "A"
     register_type: read
     value_type: U_WORD
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: true
     device_class: current
 
   - platform: modbus_controller
@@ -585,12 +600,16 @@ sensor:
     id: pv_input_power
     name: "PV array input power"
     address: 0x3102
-    unit_of_measurement: "W" ## for any other unit the value is returned in minutes
+    unit_of_measurement: "W"
     register_type: read
     value_type: U_DWORD_R
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 1020
+          ignore_out_of_range: true
     device_class: power
 
   ## CHARGER DATA
@@ -605,6 +624,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: true
     device_class: voltage
 
   - platform: modbus_controller
@@ -618,6 +641,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 40
+          ignore_out_of_range: True
     device_class: current
 
   - platform: modbus_controller
@@ -631,6 +658,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -1040
+          max_value: 1040
+          ignore_out_of_range: True
     device_class: power
 
   ## TEMPERATURES
@@ -648,11 +679,14 @@ sensor:
     entity_category: "diagnostic"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4% 
             
-
   - platform: modbus_controller
     modbus_controller_id: epever
     id: device_temperature
@@ -665,6 +699,10 @@ sensor:
     entity_category: "diagnostic"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -100
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4%
@@ -681,6 +719,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -100
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4%
@@ -696,6 +738,11 @@ sensor:
     value_type: U_WORD
     accuracy_decimals: 0
     device_class: battery
+    filters: 
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     on_value_range: 
       below: 10
       then:
@@ -712,6 +759,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
 
   - platform: modbus_controller
@@ -726,6 +777,10 @@ sensor:
     unit_of_measurement: "A"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 40
+          ignore_out_of_range: True
     device_class: current
 
   - platform: template
@@ -739,6 +794,10 @@ sensor:
     filters:
       - round: 2
       - multiply: -1
+      - clamp:
+          min_value: -1040
+          max_value: 1040
+          ignore_out_of_range: True
           
   ## MINs & MAXs
   # min & Max Voltage PV
@@ -753,6 +812,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -767,6 +830,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -782,6 +849,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -796,6 +867,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -949,7 +1024,7 @@ binary_sensor:
   - platform: status
     name: Status
     id: status_connected
-    on_state: 
+    on_state_change:  
       then:
         if:
           condition:
