@@ -1,3 +1,35 @@
+###########################################################################################
+# ESPHome Configuration for EPEVER MPPT Solar Charge Controller
+# Model:    XTRA4210N G3
+# Hardware: ESP32-C3-Zero
+# 
+# 
+#
+# ========================== ELECTRICAL PARAMETERS ========================================
+#  - Battery Rated Voltage:    12/24VDC or Auto
+#  - Rated Charge/Discharge:   40A
+#  - PV Max Open-circuit:      100V (at min temp) / 92V (at 25°C)
+#  - MPPT Voltage Range:       (Battery + 2V) to 72V
+#  - Rated Charging Power:     520W (12V) / 1040W (24V)
+#  - Static Losses:            ≤15mA (Comms Enabled) / ≤8mA (Comms Disabled)
+#  - Grounding:                Common Negative
+#
+# ========================== MECHANICAL & ENVIRONMENT =====================================
+#  - Dimensions:               255 x 185 x 67.8 mm (Mounting: 200 x 176 mm)
+#  - Terminals/Wire:           6AWG (16mm²)
+#  - Net Weight:               1.72 kg
+#  - IP Rating:                IP33
+#  - Operating Temp:           -25°C to 50°C
+#
+# ========================== PINOUT CONFIGURATION =========================================
+#  - Modbus TX (to RJ45):      GPIO21
+#  - Modbus RX (to RJ45):      GPIO20
+#  - I2C SDA (BME280):         GPIO6  (Green)
+#  - I2C SCL (BME280):         GPIO7  (Yellow)
+#  - Status LED (WS2812):      GPIO10
+#  - RS485 Interface:          5VDC / 200mA (RJ45)
+###########################################################################################
+
 # Enable logging
 logger:
   level: INFO
@@ -20,7 +52,6 @@ wifi:
     subnet: 255.255.255.0
     dns1: 192.168.2.1
     static_ip: 192.168.2.42
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Esp32-C3-Zero--Epever"
     password: !secret ap_password
@@ -104,16 +135,13 @@ uart:
   stop_bits: 1
 
 modbus:
-  #flow_control_pin: 23
   send_wait_time: 100ms
   id: mod_bus_epever
 
 modbus_controller:
   - id: epever
-    ## the Modbus device addr
     address: 0x1
     modbus_id: mod_bus_epever
-    #command_throttle: 200ms
     setup_priority: -10
     update_interval: 2s
 
@@ -458,6 +486,7 @@ sensor:
         - delta: 5%
         - throttle: 120s
 
+  ## RATED DATA
   - platform: modbus_controller
     modbus_controller_id: epever
     id: rated_load_current
@@ -1020,6 +1049,30 @@ sensor:
       - lambda: return (id(length_of_night_minutes).state  + ( 60 * x)) / 60;
     entity_category: "diagnostic"
 
+  ## Efficiency/ Losses
+  # Import the AC Power from the other device
+  - platform: homeassistant
+    id: ac_output_power
+    entity_id: sensor.bkw_outlet_1_energy_power
+    internal: true
+
+  # The Calculation
+  - platform: template
+    name: "Epever & Converter Power Losses"
+    id: inverter_loss
+    unit_of_measurement: "W"
+    accuracy_decimals: 2
+    device_class: power
+    lambda: |-
+      // Use .state for the switch (true if ON, false if OFF)
+      if (id(bkw_inverter_switch).state) {
+        float loss = id(load_power).state - id(ac_output_power).state;
+        return std::max(loss, 0.0f);
+      } else {
+        return 0.0f;
+      }
+    update_interval: 5s
+
 binary_sensor:
   - platform: status
     name: Status
@@ -1067,6 +1120,10 @@ select:
       "LCNM7S": 10
 
 switch:
+  - platform: homeassistant
+    id: bkw_inverter_switch
+    entity_id: switch.bkw_outlet_1_bkw_outlet_1
+  
   - platform: modbus_controller
     modbus_controller_id: epever
     id: manual_control_load
