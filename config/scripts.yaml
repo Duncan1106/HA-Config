@@ -1394,9 +1394,18 @@ wintergarten_dachfenster_stop:
   alias: Wintergarten Dachfenster Stop
   description: ''
 boiler_save_energy_script:
+  alias: Boiler Save Energy Script
+  description: Locks in timings at start based on temperature and status
+  fields: {}
+  variables:
+    on_seconds: "{% set temp = states('sensor.boiler_temperature') | float(0) %} {%
+      if temp >= 60 %}\n  {{ 5 * 60 }}\n{% elif is_state('input_select.smart_home_status',
+      'Vacation') %}\n  {{ 1.5 * 60 }}\n{% else %}\n  {{ 3 * 60 }}\n{% endif %}\n"
+    off_seconds: "{% set temp = states('sensor.boiler_temperature') | float(0) %}
+      {% if temp >= 60 %}\n  {{ 5 * 60 }}\n{% elif is_state('input_select.smart_home_status',
+      'Vacation') %}\n  {{ 8.5 * 60 }}\n{% else %}\n  {{ 7 * 60 }}\n{% endif %}\n"
   sequence:
   - action: script.retry_action_with_backoff
-    metadata: {}
     data:
       action_domain: switch
       action_type: turn_on
@@ -1409,10 +1418,8 @@ boiler_save_energy_script:
       entity_id: switch.zirkulationspumpe_zigbee
       target_state: 'on'
   - delay:
-      seconds: "{% if is_state('input_select.smart_home_status', 'Vacation') %}\n
-        \ {{ 1.5 * 60 }}\n{% else %}\n  {{ 3 * 60 }}\n{% endif %}\n"
+      seconds: '{{ on_seconds }}'
   - action: script.retry_action_with_backoff
-    metadata: {}
     data:
       action_domain: switch
       action_type: turn_off
@@ -1425,10 +1432,7 @@ boiler_save_energy_script:
       entity_id: switch.zirkulationspumpe_zigbee
       target_state: 'off'
   - delay:
-      seconds: "{% if is_state('input_select.smart_home_status', 'Vacation') %}\n
-        \ {{ 8.5 * 60 }}\n{% else %}\n  {{ 7 * 60}}\n{% endif %}\n"
-  alias: Boiler Save Energy Script
-  description: ''
+      seconds: '{{ off_seconds }}'
 restart_internet:
   sequence:
   - sequence:
