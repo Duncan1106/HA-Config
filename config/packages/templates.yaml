@@ -43,6 +43,11 @@ template:
           sunset_45_hhmm: >
             {% set dt = next_setting | as_datetime %}
             {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
+          weekday_morning_on: '04:30'
+          weekday_evening_off: '22:30'
+          weekend_morning_on: '06:00'
+          weekend_morning_off: '10:00'
+          weekend_evening_off: '23:00'
         availability: >
           {{ 
             states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
@@ -52,33 +57,33 @@ template:
           }}
         state: >
           {% if workday %}
-            {% set morning_on = '04:30' <= time < sunrise_15_hhmm %}
-            {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
+            {% set morning_on = weekday_morning_on <= time < sunrise_15_hhmm %}
+            {% set evening_on = sunset_30_hhmm <= time < weekday_evening_off %}
           {% else %}
-            {% set morning_on = '06:00' <= time < '10:00' %}
-            {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
+            {% set morning_on = weekend_morning_on <= time < weekend_morning_off %}
+            {% set evening_on = sunset_45_hhmm <= time < weekend_evening_off %}
           {% endif %}
           {{ morning_on or evening_on }}
         attributes:
           schedule_type: "{{ 'workday' if workday else 'weekend' }}"
           period: >
             {% if workday %}
-              {% if '04:30' <= time < sunrise_15_hhmm %} morning
-              {% elif sunset_30_hhmm <= time < '22:30' %} evening
+              {% if weekday_morning_on <= time < sunrise_15_hhmm %} morning
+              {% elif sunset_30_hhmm <= time < weekday_evening_off %} evening
               {% else %} off {% endif %}
             {% else %}
-              {% if '06:00' <= time < '10:00' %} morning
-              {% elif sunset_45_hhmm <= time < '23:00' %} evening
+              {% if weekend_morning_on <= time < weekend_morning_off %} morning
+              {% elif sunset_45_hhmm <= time < weekend_evening_off %} evening
               {% else %} off {% endif %}
             {% endif %}
           reason: >
             {% if workday %}
-              {% if '04:30' <= time < sunrise_15_hhmm %} Workday morning window: 04:30 - {{ sunrise_15_hhmm }}
-              {% elif sunset_30_hhmm <= time < '22:30' %} Workday evening window: {{ sunset_30_hhmm }} - 22:30
+              {% if weekday_morning_on <= time < sunrise_15_hhmm %} Workday morning window: {{ weekday_morning_on }} - {{ sunrise_15_hhmm }}
+              {% elif sunset_30_hhmm <= time < weekday_evening_off %} Workday evening window: {{ sunset_30_hhmm }} - {{ weekday_evening_off }}
               {% else %} Outside workday schedule {% endif %}
             {% else %}
-              {% if '06:00' <= time < '10:00' %} Weekend morning window: 06:00 - 10:00
-              {% elif sunset_45_hhmm <= time < '23:00' %} Weekend evening window: {{ sunset_45_hhmm }} - 23:00
+              {% if weekend_morning_on <= time < weekend_morning_off %} Weekend morning window: {{ weekend_morning_on }} - {{ weekend_morning_off }}
+              {% elif sunset_45_hhmm <= time < weekend_evening_off %} Weekend evening window: {{ sunset_45_hhmm }} - {{ weekend_evening_off }}
               {% else %} Outside weekend schedule {% endif %}
             {% endif %}
           updated: "{{ time }}"
