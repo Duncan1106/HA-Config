@@ -9012,16 +9012,16 @@
     and defined variables for durations (**5m ON / 15m OFF**).\n* **Controlled Entities:**
     * `switch.desk_paludarium_turm_links_l1/2/3`\n    * `switch.desk_paludarium_links_l1/2/3`\n
     \   * `switch.desk_paludarium_turm_rechts_l1/2/3`\n    * `switch.schreibtisch_links_power_strip_l1`\n
-    \   * `switch.schreibtisch_rechts_power_strip_l5`\n    * `switch.terrarium_zigbee_l5`\n*
-    **Safety Mechanisms:** Automated retries with exponential backoff (up to 10 attempts)
-    and persistent notifications to **notify.duncan** upon hardware failure.\n\n---\n\n###
-    \U0001F4A1 Notes\n\n* **Zone Isolation:** Each zone (Left, Right, Kallax) operates
-    its pump/fan cycle independently within the daytime logic, preventing a failure
-    in one zone from impacting others.\n* **Power Sequencing:** Daytime logic includes
-    a fallback check; if a zone light is off, it checks if the main power strip is
-    on before attempting to engage the light, ensuring power is available before sending
-    sub-device commands.\n* **Cooling Integration:** The fan is explicitly triggered
-    by the end of a pump cycle, likely to manage humidity spikes or motor heat post-circulation."
+    \   * `switch.schreibtisch_rechts_power_strip_l5`\n* **Safety Mechanisms:** Automated
+    retries with exponential backoff (up to 10 attempts) and persistent notifications
+    to **notify.duncan** upon hardware failure.\n\n---\n\n### \U0001F4A1 Notes\n\n*
+    **Zone Isolation:** Each zone (Left, Right, Kallax) operates its pump/fan cycle
+    independently within the daytime logic, preventing a failure in one zone from
+    impacting others.\n* **Power Sequencing:** Daytime logic includes a fallback check;
+    if a zone light is off, it checks if the main power strip is on before attempting
+    to engage the light, ensuring power is available before sending sub-device commands.\n*
+    **Cooling Integration:** The fan is explicitly triggered by the end of a pump
+    cycle, likely to manage humidity spikes or motor heat post-circulation."
   triggers:
   - minutes: /5
     trigger: time_pattern
@@ -9042,7 +9042,6 @@
       light_right: switch.desk_paludarium_turm_rechts_l3
       main_left: switch.schreibtisch_links_power_strip_l1
       main_right: switch.schreibtisch_rechts_power_strip_l5
-      main_kallax: switch.terrarium_zigbee_l5
   - alias: DAYTIME
     if:
     - condition: sun
@@ -9118,8 +9117,7 @@
     - alias: Kallax Light
       if:
       - condition: template
-        value_template: '{{ is_state(light_kallax, ''off'') and is_state(main_kallax,
-          ''on'')}}'
+        value_template: '{{ is_state(light_kallax, ''off'') }}'
       then:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -9133,20 +9131,6 @@
           notify_on_failure: true
           notify_service: notify.duncan
           entity_id: '{{ light_kallax }}'
-          target_state: 'on'
-      else:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ main_kallax }}'
           target_state: 'on'
     - alias: Left Pump & Fan
       choose:
@@ -9240,8 +9224,6 @@
       choose:
       - alias: Kallax Zone Control
         conditions:
-        - condition: template
-          value_template: '{{ is_state(main_kallax, ''on'') }}'
         - condition: or
           conditions:
           - condition: state
