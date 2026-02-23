@@ -1292,7 +1292,11 @@ template:
             {% endif %}
 
   # Pellet Heating System Status
-  - sensor:
+  - trigger:
+    - platform: state
+      entity_id:
+        - sensor.heizung_power
+    sensor:
       - name: "ETA Heating Status"
         unique_id: eta_heating_status
         availability: "{{ has_value('sensor.heizung_power') }}"
@@ -1307,7 +1311,6 @@ template:
           is_standby_active: "{{ power >= 33 and power < 55 }}"
           is_standby_powered: "{{ power > 15 and power < 33 }}"
           is_off: "{{ power <= 15 }}"
-          
         state: >
           {% if is_transport %} Pellet Transport
           {% elif is_ignition %} Ignition
@@ -1316,7 +1319,6 @@ template:
           {% elif is_standby_powered %} Standby (Powered)
           {% else %} Off / Deep Sleep
           {% endif %}
-          
         icon: >
           {% if is_transport %} mdi:database-export-outline
           {% elif is_ignition %} mdi:fire-alert
