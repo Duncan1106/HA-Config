@@ -1290,3 +1290,30 @@ template:
             {% else %}
               ok
             {% endif %}
+
+  # Pellet Heating System Status
+  - sensor:
+      - name: "ETA Heating Status"
+        unique_id: eta_heating_status
+        variables:
+          # Define your thresholds here once
+          power: "{{ states('sensor.heizung_power') | float(0) }}"
+          is_transport: "{{ power >= 1600 }}"
+          is_ignition: "{{ power >= 600 and power < 1600 }}"
+          is_heating: "{{ power >= 55 and power < 600 }}"
+          is_standby: "{{ power < 55 }}"
+        state: >
+          {% if is_transport %} Pellet Transport
+          {% elif is_ignition %} Ignition
+          {% elif is_heating %} Heating
+          {% else %} Standby
+          {% endif %}
+        icon: >
+          {% if is_transport %} mdi:database-export-outline
+          {% elif is_ignition %} mdi:fire-alert
+          {% elif is_heating %} mdi:fire
+          {% else %} mdi:power-sleep
+          {% endif %}
+        attributes:
+          raw_wattage: "{{ states('sensor.heizung_power') }}"
+          
