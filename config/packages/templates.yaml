@@ -1297,24 +1297,35 @@ template:
         unique_id: eta_heating_status
         availability: "{{ has_value('sensor.heizung_power') }}"
         variables:
-          # Define your thresholds here once
+          # Read the current power
           power: "{{ states('sensor.heizung_power') | float(0) }}"
+          
+          # Define the distinct operational bands found in your data
           is_transport: "{{ power >= 1600 }}"
           is_ignition: "{{ power >= 600 and power < 1600 }}"
           is_heating: "{{ power >= 55 and power < 600 }}"
-          is_standby: "{{ power < 55 }}"
+          is_standby_active: "{{ power >= 33 and power < 55 }}"
+          is_standby_powered: "{{ power > 15 and power < 33 }}"
+          is_off: "{{ power <= 15 }}"
+          
         state: >
           {% if is_transport %} Pellet Transport
           {% elif is_ignition %} Ignition
           {% elif is_heating %} Heating
-          {% else %} Standby
+          {% elif is_standby_active %} Standby (Active)
+          {% elif is_standby_powered %} Standby (Powered)
+          {% else %} Off / Deep Sleep
           {% endif %}
+          
         icon: >
           {% if is_transport %} mdi:database-export-outline
           {% elif is_ignition %} mdi:fire-alert
           {% elif is_heating %} mdi:fire
-          {% else %} mdi:power-sleep
+          {% elif is_standby_active %} mdi:power-settings
+          {% elif is_standby_powered %} mdi:power-sleep
+          {% else %} mdi:power-off
           {% endif %}
+          
         attributes:
           raw_wattage: "{{ states('sensor.heizung_power') }}"
           
