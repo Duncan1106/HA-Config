@@ -5149,14 +5149,15 @@ config:
             \  'watering': 'mdi:water',\n    'cleaning': 'mdi:spray-bottle',\n   \
             \ 'fertilizer_liquid': 'mdi:water-outline',\n    'fertilizer_sticks':\
             \ 'mdi:eyedropper',\n    'done': 'mdi:check',\n    'all_done': 'mdi:flower'\n\
-            \  },\n  'liquid_mediums': ['semi', 'hydro', 'air', 'pon', 'leca', 'seramis'],\n\
-            \  'tasks': [\n    {'key': 'geplante_bewasserung', 'label': 'Watering\
-            \ Needed', 'icon': 'mdi:water'},\n    {'key': 'geplante_dungung', 'label':\
-            \ 'Fertilizing Needed', 'icon': 'mdi:sprout'},\n    {'key': 'geplante_reinigung',\
-            \ 'label': 'Cleaning Needed', 'icon': 'mdi:spray-bottle'}\n  ],\n  'weekdays':\
-            \ [\"Montag\", \"Dienstag\", \"Mittwoch\", \"Donnerstag\", \"Freitag\"\
-            , \"Samstag\", \"Sonntag\"]\n} %} {# ------------------------------ #}\n\
-            {% set today = now().date() %} {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
+            \  },\n  'colors': {\n    'watering': 'blue',\n    'standard': 'green',\n\
+            \    'overdue': 'red'\n  },\n  'liquid_mediums': ['semi', 'hydro', 'air',\
+            \ 'pon', 'leca', 'seramis'],\n  'tasks': [\n    {'key': 'geplante_bewasserung',\
+            \ 'label': 'Watering Needed', 'type': 'watering'},\n    {'key': 'geplante_dungung',\
+            \ 'label': 'Fertilizing Needed', 'type': 'fertilizing'},\n    {'key':\
+            \ 'geplante_reinigung', 'label': 'Cleaning Needed', 'type': 'cleaning'}\n\
+            \  ],\n  'weekdays': [\"Montag\", \"Dienstag\", \"Mittwoch\", \"Donnerstag\"\
+            , \"Freitag\", \"Samstag\", \"Sonntag\"]\n} %} {# ------------------------------\
+            \ #}\n{% set today = now().date() %} {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
             \ %}\n{% set ns = namespace(cards=[\n  {\n    \"type\": \"custom:mushroom-number-card\"\
             ,\n    \"entity\": \"input_number.plant_days_ahead\",\n    \"layout\"\
             : \"horizontal\",\n    \"display_mode\": \"buttons\"\n  }\n]) %}\n{% for\
@@ -5183,21 +5184,28 @@ config:
             \ if img_entity and btn_entity %}\n        {% set is_overdue = diff <\
             \ 0 %}\n        {% if is_overdue %} {% set type_group.overdue_count =\
             \ type_group.overdue_count + 1 %} {% endif %}\n        {% set type_group.found\
-            \ = 'true' %}\n        \n        {% set current_icon = task.icon %}\n\
-            \        {% if task.key == 'geplante_dungung' %}\n          {% set med_cleaned\
-            \ = medium_val.lower() | replace(' ', '') %}\n          {# Check if any\
-            \ keyword in liquid_mediums is part of the cleaned medium name #}\n  \
+            \ = 'true' %}\n        \n        {# 1. Icon Selection #}\n        {% set\
+            \ current_icon = config.icons.watering if task.type == 'watering' else\
+            \ (config.icons.cleaning if task.type == 'cleaning' else 'mdi:help') %}\n\
+            \        \n        {# 2. Color Logic #}\n        {% set main_color = config.colors.watering\
+            \ if task.type == 'watering' else config.colors.standard %}\n        {%\
+            \ set done_color = config.colors.standard %}\n\n        {# Fertilizer\
+            \ Icon Logic #}\n        {% if task.type == 'fertilizing' %}\n       \
+            \   {% set med_cleaned = medium_val.lower() | replace(' ', '') %}\n  \
             \        {% set is_liquid = namespace(check='false') %}\n          {%\
             \ for m in config.liquid_mediums %}\n            {% if m in med_cleaned\
             \ %} {% set is_liquid.check = 'true' %} {% endif %}\n          {% endfor\
             \ %}\n\n          {% if is_liquid.check == 'true' %}\n            {% set\
             \ current_icon = config.icons.fertilizer_liquid %}\n          {% else\
             \ %}\n            {% set current_icon = config.icons.fertilizer_sticks\
-            \ %}\n          {% endif %}\n        {% endif %}\n\n        {% set secondary_lines\
-            \ = [] %}\n        {% if is_overdue %} {% set secondary_lines = secondary_lines\
+            \ %}\n          {% endif %}\n        {% endif %}\n\n        {# Overdue\
+            \ Override #}\n        {% if is_overdue %}\n          {% set main_color\
+            \ = config.colors.overdue %}\n          {% set done_color = config.colors.overdue\
+            \ %}\n        {% endif %}\n\n        {% set secondary_lines = [] %}\n\
+            \        {% if is_overdue %} {% set secondary_lines = secondary_lines\
             \ + ['\u26A0\uFE0F F\xC4LLIG'] %} {% endif %}\n        {% set secondary_lines\
-            \ = secondary_lines + [date_label] %}\n        \n        {% if task.key\
-            \ == 'geplante_dungung' %}\n          {% set secondary_lines = secondary_lines\
+            \ = secondary_lines + [date_label] %}\n        \n        {% if task.type\
+            \ == 'fertilizing' %}\n          {% set secondary_lines = secondary_lines\
             \ + ['Medium: ' ~ medium_val] %}\n        {% endif %}\n\n        {% set\
             \ row_data = {\n          \"date\": dt.timestamp(),\n          \"area\"\
             : area,\n          \"card\": {\n            \"type\": \"horizontal-stack\"\
@@ -5210,12 +5218,11 @@ config:
             : secondary_lines | join('\\n'), \n                \"entity\": state.entity_id,\
             \ \n                \"icon\": current_icon, \n                \"multiline_secondary\"\
             : 'true', \n                \"vertical\": 'true', \n                \"\
-            icon_color\": \"red\" if is_overdue else \"green\", \n               \
-            \ \"tap_action\": { \"action\": \"more-info\" } \n              },\n \
-            \             { \"type\": \"custom:mushroom-template-card\", \"primary\"\
-            : \"Done\", \"icon\": config.icons.done, \"icon_color\": \"red\" if is_overdue\
-            \ else \"green\", \"layout\": \"vertical\", \"tap_action\": { \"action\"\
-            : \"perform-action\", \"perform_action\": \"button.press\", \"target\"\
+            icon_color\": main_color, \n                \"tap_action\": { \"action\"\
+            : \"more-info\" } \n              },\n              { \"type\": \"custom:mushroom-template-card\"\
+            , \"primary\": \"Done\", \"icon\": config.icons.done, \"icon_color\":\
+            \ done_color, \"layout\": \"vertical\", \"tap_action\": { \"action\":\
+            \ \"perform-action\", \"perform_action\": \"button.press\", \"target\"\
             : { \"entity_id\": btn_entity } } }\n            ]\n          }\n    \
             \    } %}\n        {% set type_group.items = type_group.items + [row_data]\
             \ %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n\n  {% if type_group.found\
@@ -5243,7 +5250,7 @@ config:
             \ Aufgaben f\xFCr \" ~ config.days_ahead ~ \" \" ~ days_label %}\n  {%\
             \ set ns.cards = ns.cards + [{\n    \"type\": \"custom:mushroom-template-card\"\
             ,\n    \"primary\": \"Alles erledigt!\",\n    \"secondary\": secondary,\n\
-            \    \"icon\": config.icons.all_done,\n    \"icon_color\": \"green\",\n\
+            \    \"icon\": config.icons.all_done,\n    \"icon_color\": config.colors.standard,\n\
             \    \"layout\": \"vertical\"\n  }] %}\n{% endif %}\n{{ ns.cards | tojson\
             \ }}"
         type: custom:auto-entities

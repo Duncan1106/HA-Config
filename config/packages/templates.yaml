@@ -1293,41 +1293,51 @@ template:
 
   # Pellet Heating System Status
   - trigger:
-    - platform: state
-      entity_id:
-        - sensor.heizung_power
+      - platform: state
+        entity_id:
+          - sensor.heizung_power
     sensor:
       - name: "ETA Heating Status"
         unique_id: eta_heating_status
         availability: "{{ has_value('sensor.heizung_power') }}"
         variables:
-          # Read the current power
           power: "{{ states('sensor.heizung_power') | float(0) }}"
           
-          # Define the distinct operational bands found in your data
+          # Use standard boolean (True/False)
+          is_scheduled: "{{ is_state('schedule.heating_schedule', 'on') }}"
+
+          # Physical Thresholds (Using 60W to avoid the 55W flickering found in logs)
           is_transport: "{{ power >= 1600 }}"
           is_ignition: "{{ power >= 600 and power < 1600 }}"
-          is_heating: "{{ power >= 55 and power < 600 }}"
-          is_standby_active: "{{ power >= 33 and power < 55 }}"
-          is_standby_powered: "{{ power > 15 and power < 33 }}"
+          is_heating: "{{ power >= 60 and power < 600 }}"
+          is_ready: "{{ power >= 33 and power < 60 }}"
+          is_setback: "{{ power > 15 and power < 33 }}"
           is_off: "{{ power <= 15 }}"
+
         state: >
           {% if is_transport %} Pellet Transport
           {% elif is_ignition %} Ignition
           {% elif is_heating %} Heating
-          {% elif is_standby_active %} Standby (Active)
-          {% elif is_standby_powered %} Standby (Powered)
+          {% elif is_ready %} Standby (Active)
+          {% elif is_setback %} Standby (Nacht Mode)
           {% else %} Off / Deep Sleep
           {% endif %}
+
         icon: >
           {% if is_transport %} mdi:database-export-outline
           {% elif is_ignition %} mdi:fire-alert
           {% elif is_heating %} mdi:fire
-          {% elif is_standby_active %} mdi:power-settings
-          {% elif is_standby_powered %} mdi:power-sleep
+          {% elif is_ready %} mdi:power-settings
+          {% elif is_setback %} mdi:moon-waning-crescent
           {% else %} mdi:power-off
           {% endif %}
-          
+
         attributes:
           raw_wattage: "{{ states('sensor.heizung_power') }}"
-          
+          heating_scheduled: "{{ is_scheduled }}"
+          status_note: >
+            {% if is_heating and not is_scheduled %} Overtime Burn
+            {% elif is_ready and not is_scheduled %} Outside Heating Window
+            {% else %} Following Schedule
+            {% endif %}
+            
