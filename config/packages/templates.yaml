@@ -1101,7 +1101,7 @@ template:
             
           agent_id: "{{ states('input_select.conversation_agents')}}"
       - action: conversation.process
-        response_variable: agent_short
+        response_variable: agent_short_try
         data:
           agent_id: "{{ states('input_select.conversation_agents')}}"
           text: >-
@@ -1111,8 +1111,21 @@ template:
             Ensure the summary is grammatically correct, coherent, and preserves the original meaning.
             Do not exceed the limit under any circumstance.
             
-            
             {{ agent.response.speech.plain.speech }}
+      - action: conversation.process
+        response_variable: agent_short
+        data:
+          agent_id: "{{ states('input_select.conversation_agents')}}"
+          text: >-
+            Summarize the following text to a maximum of 250 words or 750 characters — whichever is shorter.
+            Extract only the most critical features, integrations, and breaking changes.
+            Remove all filler, examples, UI details, minor notes, and secondary information.
+            Preserve clarity and grammar.
+            Do not explain, justify, or comment.
+            Do not include any text before or after the summary.
+            Output ONLY the condensed summary.
+           
+            {{ agent_short_try.response.speech.plain.speech }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
@@ -1137,6 +1150,7 @@ template:
               {{beta_scrape.beta_url.value|string }}
             {% endif %}
           ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}" 
+          ai_summar_short_try: "{{ agent_short_try.response.speech.plain.speech }}"
           ai_summary_short: "{{ agent_short.response.speech.plain.speech }}"
           updated_by: "{{ trigger.description | default('manual') }}"
 
