@@ -1064,6 +1064,7 @@ template:
       - action: conversation.process
         response_variable: agent
         data:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
           text: >-
             You are an expert software release notes summarizer.
 
@@ -1098,12 +1099,10 @@ template:
             Here is the release notes text:   
             
             {{ beta_scrape.beta_notes_content }}
-            
-          agent_id: "{{ states('input_select.conversation_agents')}}"
       - action: conversation.process
         response_variable: agent_short_try
         data:
-          agent_id: "{{ states('input_select.conversation_agents')}}"
+          agent_id: "{{ states('input_select.conversation_agents') }}"
           text: >-
             Summarize the provided text to a maximum of 250 words or 750 characters — whichever is shorter.
             Extract and retain only the core concepts and essential information.
@@ -1115,7 +1114,7 @@ template:
       - action: conversation.process
         response_variable: agent_short
         data:
-          agent_id: "{{ states('input_select.conversation_agents')}}"
+          agent_id: "{{ states('input_select.conversation_agents') }}"
           text: >-
             Summarize the following text to a maximum of 250 words or 750 characters — whichever is shorter.
             Extract only the most critical features, integrations, and breaking changes.
@@ -1146,14 +1145,30 @@ template:
             {% endif %}
         attributes:
           beta_url: >
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
-              {{beta_scrape.beta_url.value|string }}
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined %}
+              {{ beta_scrape.beta_url.value }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'beta_url') }}
             {% endif %}
-          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}" 
-          ai_summar_short_try: "{{ agent_short_try.response.speech.plain.speech }}"
-          ai_summary_short: "{{ agent_short.response.speech.plain.speech }}"
-          updated_by: "{{ trigger.description | default('manual') }}"
-
+          ai_summary: >
+            {% if agent is defined %}
+              {{ agent.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary') | default('Pending...') }}
+            {% endif %}
+          ai_summar_short_try: >
+            {% if agent_short_try is defined %}
+              {{ agent_short_try.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summar_short_try') | default('Pending...') }}
+            {% endif %}
+          ai_summary_short: >
+            {% if agent_short is defined %}
+              {{ agent_short.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary_short') | default('Pending...') }}
+            {% endif %}
+            
   # Birthdays
   - triggers:
     - trigger: homeassistant
