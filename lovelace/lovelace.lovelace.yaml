@@ -16,30 +16,34 @@ config:
     - cards:
       - card_mod:
           style: "{% set test_mode = false %}\n{% set is_birthday = is_state('binary_sensor.upcoming_birthdays',\
-            \ 'on') %}\n{# If not testing, only show the confetti during the first\
-            \ minute of the hour #}\n{% set show_confetti = test_mode or (is_birthday\
-            \ and now().minute == 0) %}\n\nha-card {\n  overflow: visible !important;\n\
-            \  position: relative;\n}\n\nha-state-icon {\n  animation: wobbling 0.7s\
-            \ linear infinite alternate;\n  position: relative;\n  z-index: 1;\n}\n\
-            \nha-card::after {\n  content: \"\u2728\"; \n  position: absolute;\n \
-            \ top: 50%; left: 50%;\n  transform: translate(-50%, -50%) scale(0);\n\
-            \  font-size: 35px;\n  pointer-events: none;\n  z-index: 999; \n  opacity:\
-            \ 0;\n\n  {%- if show_confetti -%}\n    /* The animation itself is always\
-            \ 5s long so the fall is snappy */\n    animation: confetti-snappy 5s\
-            \ ease-out infinite;\n  {%- endif -%}\n}\n\n@keyframes wobbling {\n  0%\
-            \ { transform: rotate(-40deg); }\n  100% { transform: rotate(40deg); }\n\
-            }\n\n@keyframes confetti-snappy {\n  0% { \n    opacity: 0; \n    transform:\
-            \ translate(-50%, -50%) scale(0);\n  }\n  5% { \n    opacity: 1;\n   \
-            \ transform: translate(-50%, -70%) scale(1.2);\n    text-shadow: \n  \
-            \    -30px -20px 0px #FFD700, 30px -20px 0px #FF69B4, \n      -40px 10px\
-            \ 0px #00BFFF, 40px 10px 0px #ADFF2F, 0px -40px 0px #FF4500;\n  }\n  20%\
-            \ { \n    opacity: 1;\n    transform: translate(-50%, -50%) scale(1.3);\n\
-            \    text-shadow: \n      -55px -40px 1px #FFD700, 55px -40px 1px #FF69B4,\
-            \ \n      -70px 30px 1px #00BFFF, 70px 30px 1px #ADFF2F, 0px -75px 1px\
-            \ #FF4500;\n  }\n  40%, 100% { \n    opacity: 0; \n    transform: translate(-50%,\
-            \ 30%) scale(1.4);\n    text-shadow: \n      -80px 60px 10px transparent,\
-            \ 80px 60px 10px transparent, \n      -100px 100px 10px transparent, 100px\
-            \ 100px 10px transparent;\n  }\n}\n"
+            \ 'on') %}\n{% set show_confetti = test_mode or (is_birthday and now().minute\
+            \ % 15 == 0) %}\n\nha-card {\n  overflow: visible !important;\n  position:\
+            \ relative;\n}\n\nha-state-icon {\n  animation: wobbling 0.7s linear infinite\
+            \ alternate;\n  position: relative;\n  z-index: 1;\n}\n\nha-card::after\
+            \ {\n  content: \"\"; \n  position: absolute;\n  top: 50%; left: 50%;\n\
+            \  /* The \"Confetti Paper\" shape */\n  width: 8px;\n  height: 12px;\n\
+            \  background: #FFD700;\n  pointer-events: none;\n  z-index: 999; \n \
+            \ opacity: 0;\n\n  {%- if show_confetti -%}\n  animation: \n    confetti-heavy-gravity\
+            \ 4s ease-in infinite,\n    angle-drift 3.1s linear infinite;\n  {%- endif\
+            \ -%}\n}\n\n@keyframes wobbling {\n  0% { transform: rotate(-40deg); }\n\
+            \  100% { transform: rotate(40deg); }\n}\n\n@keyframes angle-drift {\n\
+            \  0%, 100% { --tilt: -20deg; }\n  50% { --tilt: 20deg; }\n}\n\n@keyframes\
+            \ confetti-heavy-gravity {\n  0% { \n    opacity: 0; \n    transform:\
+            \ translate(-50%, -50%) rotate(var(--tilt, 0deg)) scale(0);\n    box-shadow:\
+            \ 0 0 transparent;\n  }\n  /* 1. The Burst: Each coordinate gets a unique\
+            \ color */\n  10% { \n    opacity: 1;\n    transform: translate(-50%,\
+            \ -90%) rotate(var(--tilt, 0deg)) scale(1);\n    box-shadow: \n      -40px\
+            \ -30px #FFD700, 40px -30px #FF69B4, \n      -60px -10px #00BFFF, 60px\
+            \ -10px #ADFF2F,\n      -20px -70px #FF4500, 20px -70px #FFD700,\n   \
+            \   -70px -40px #FF69B4, 70px -40px #00BFFF,\n      -10px -90px #ADFF2F,\
+            \ 10px -90px #FF4500;\n  }\n  /* 2. Heavy Fall: Shadows move down and\
+            \ spread out */\n  40% {\n    opacity: 0;\n    transform: translate(-50%,\
+            \ 100px) rotate(0deg) scale(1.1);\n    box-shadow: \n      -50px 100px\
+            \ #FFD700, 50px 100px #FF69B4, \n      -90px 130px #00BFFF, 90px 130px\
+            \ #ADFF2F,\n      -30px 150px #FF4500, 30px 150px #FFD700,\n      -100px\
+            \ 120px #FF69B4, 100px 120px #00BFFF,\n      -15px 170px #ADFF2F, 15px\
+            \ 170px #FF4500;\n  }\n  100% {\n    opacity: 0;\n    transform: translate(-50%,\
+            \ 120px) scale(0);\n  }\n}\n"
         color: green
         entity: binary_sensor.upcoming_birthdays
         features_position: bottom
