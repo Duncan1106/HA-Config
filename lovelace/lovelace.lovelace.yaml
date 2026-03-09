@@ -2232,11 +2232,12 @@ config:
               \ = states('sensor.go_e_22kw_car') %}\n{% if car11 == 'MG4' %}\n  MG4\
               \ (11 kW)\n{% elif car22 == 'MG4' %}\n  MG4 (22 kW)\n{% else %}\n  MG4\
               \ nicht angesteckt\n{% endif %}"
-            secondary: '{% set soc = states(entity, with_unit=true) %} {% set rem_hrs
-              = states(''sensor.lsjwh4097rn105299_remaining_charging_time'') | float(0)
-              %} {% set finish = now() + timedelta(hours = rem_hrs) %} {{ soc }},
-              fertig in {{ time_until(finish, 2) if rem_hrs > 0 else ''0 minutes''
-              }}'
+            secondary: "{% set soc = states(entity, with_unit=true) %} {% set rem_raw\
+              \ = states('sensor.lsjwh4097rn105299_remaining_charging_time') %} {%\
+              \ if rem_raw not in ['unknown', 'unavailable', 'none', ''] and (rem_raw\
+              \ | float(0)) > 0 %}\n  {% set finish = now() + timedelta(hours=(rem_raw\
+              \ | float(0))) %}\n  {{ soc }}, fertig in {{ time_until(finish, 2) }}\n\
+              {% else %}\n  {{ soc }}\n{% endif %}"
             tap_action:
               action: more-info
             type: custom:mushroom-template-card

@@ -805,6 +805,19 @@
       target:
         entity_id: script.boiler_save_energy_script
       data: {}
+    - action: script.retry_action_with_backoff
+      metadata: {}
+      data:
+        action_domain: switch
+        action_type: turn_off
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: switch.zirkulationspumpe_zigbee
+        target_state: 'off'
   - alias: Re Execute if Still in Time Frame
     if:
     - condition: trigger
@@ -10535,6 +10548,16 @@
       minutes: 1
       seconds: 0
     id: switch.plant_box
+  - trigger: state
+    entity_id:
+    - switch.wintergarten_plant_light
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+    id: switch.wintergarten_plant_light
   actions:
   - variables:
       entities:
@@ -10646,6 +10669,7 @@
         - switch.plant_tent
         - switch.tisch
         - switch.plant_box
+        - switch.wintergarten_plant_light
       - condition: sun
         before: sunrise
         before_offset: +00:15:01
