@@ -5335,6 +5335,58 @@ config:
             \    \"layout\": \"vertical\"\n  }] %}\n{% endif %}\n{{ ns.cards | tojson\
             \ }}"
         type: custom:auto-entities
+      - card:
+          apex_config:
+            stroke:
+              curve: smooth
+              dashArray:
+              - 0
+              - 0
+              - 4
+              width:
+              - 3
+              - 3
+              - 2
+          graph_span: ${SPAN_CALC}
+          header:
+            colorize_states: true
+            show: true
+            show_states: true
+            title: StromGedacht Prognose (Dynamisch)
+          now:
+            label: Jetzt
+            show: true
+          series:
+          - data_generator: "return entity.attributes.data_series.map((entry) => {\n\
+              \  return [new Date(entry.dateTime).getTime(), entry.value];\n});\n"
+            entity: sensor.stromgedacht_69231_erneuerbare_energie
+            extend_to: false
+            name: Erneuerbare
+          - data_generator: "return entity.attributes.data_series.map((entry) => {\n\
+              \  return [new Date(entry.dateTime).getTime(), entry.value];\n});\n"
+            entity: sensor.stromgedacht_69231_netzlast
+            extend_to: false
+            name: Netzlast
+          - data_generator: "return entity.attributes.data_series.map((entry) => {\n\
+              \  return [new Date(entry.dateTime).getTime(), entry.value];\n});\n"
+            entity: sensor.stromgedacht_69231_residuallast
+            extend_to: false
+            name: Residuallast
+          span:
+            offset: -2h
+            start: hour
+          type: custom:apexcharts-card
+        entities:
+        - sensor.stromgedacht_69231_erneuerbare_energie
+        type: custom:config-template-card
+        variables:
+          PROGN_DATA: states['sensor.stromgedacht_69231_erneuerbare_energie'].attributes.data_series
+          SPAN_CALC: "(vars) => {\n  if (!vars.PROGN_DATA || vars.PROGN_DATA.length\
+            \ === 0) return \"24h\";\n  const lastDate = new Date(vars.PROGN_DATA[vars.PROGN_DATA.length\
+            \ - 1].dateTime).getTime();\n  const now = new Date().getTime();\n  const\
+            \ hours = (lastDate - now) / 3600000;\n  // Wir nehmen die Restzeit +\
+            \ 2h Offset, aber mindestens 6h Gesamtl\xE4nge\n  return Math.max(6, Math.round(hours\
+            \ + 2)) + \"h\";\n}\n"
       type: grid
     title: Planta
     type: sections
@@ -5680,14 +5732,6 @@ config:
         type: vertical-stack
       - cards:
         - badges:
-          - color: state
-            entity: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-            icon: mdi:bed-outline
-            show_icon: true
-            show_state: false
-            tap_action:
-              action: more-info
-            type: entity
           - entity: sensor.bett_plug_left_power
             name: Left
             show_icon: false
@@ -5695,8 +5739,6 @@ config:
             state_content:
             - name
             - state
-            tap_action:
-              action: more-info
             type: entity
           - entity: sensor.bett_plug_right_power
             name: Right
@@ -5705,67 +5747,16 @@ config:
             state_content:
             - name
             - state
-            tap_action:
-              action: more-info
             type: entity
+          card_mod:
+            style:
+              .: ".title ha-icon {\n  --icon-primary-color: {{ 'var(--state-binary_sensor-active-color)'\
+                \ if is_state('binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied',\
+                \ 'on') else 'var(--state-icon-color)' }};\n}\n"
           heading: Bett
           heading_style: title
           icon: mdi:bed-outline
           type: heading
-        - cards:
-          - entity: switch.paludarien_left
-            fill_container: true
-            icon: ''
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: toggle
-            type: custom:mushroom-entity-card
-          - entity: switch.paludarien_right
-            fill_container: true
-            icon: ''
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: toggle
-            type: custom:mushroom-entity-card
-          - entity: switch.paludarien_center
-            fill_container: true
-            icon: ''
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: toggle
-            type: custom:mushroom-entity-card
-          - entity: switch.bett_powerbank_charger
-            fill_container: true
-            icon: ''
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: toggle
-            type: custom:mushroom-entity-card
-          type: horizontal-stack
-        - cards:
-          - entity: switch.bett_plug_left
-            fill_container: true
-            icon: ''
-            layout: vertical
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: more-info
-            type: custom:mushroom-entity-card
-          - entity: switch.bett_plug_right
-            fill_container: true
-            icon: ''
-            layout: vertical
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: more-info
-            type: custom:mushroom-entity-card
-          type: horizontal-stack
         - cards:
           - entity: switch.bett_strip_l1
             fill_container: true
@@ -5806,6 +5797,26 @@ config:
             secondary_info: state
             tap_action:
               action: toggle
+            type: custom:mushroom-entity-card
+          type: horizontal-stack
+        - cards:
+          - entity: switch.bett_plug_left
+            fill_container: true
+            icon: ''
+            layout: vertical
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
+            type: custom:mushroom-entity-card
+          - entity: switch.bett_plug_right
+            fill_container: true
+            icon: ''
+            layout: vertical
+            primary_info: name
+            secondary_info: state
+            tap_action:
+              action: more-info
             type: custom:mushroom-entity-card
           type: horizontal-stack
         type: vertical-stack
@@ -5907,7 +5918,7 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
-        - entity: switch.tisch
+        - entity: switch.bett_strip_l4
           fill_container: false
           tap_action:
             action: toggle
@@ -5922,17 +5933,7 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
-        - entity: switch.paludarien_left
-          fill_container: false
-          tap_action:
-            action: toggle
-          type: custom:mushroom-entity-card
-        - entity: switch.paludarien_right
-          fill_container: false
-          tap_action:
-            action: toggle
-          type: custom:mushroom-entity-card
-        - entity: switch.paludarien_center
+        - entity: switch.bett_strip_l3
           fill_container: false
           tap_action:
             action: toggle
