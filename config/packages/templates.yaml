@@ -13,7 +13,7 @@ template:
         at:
           - "04:30:01"
           - "06:00:01"
-          - "11:00:01"
+          - "10:00:01"
           - "22:30:01"
           - "23:00:01"
       - platform: sun
@@ -43,6 +43,11 @@ template:
           sunset_45_hhmm: >
             {% set dt = next_setting | as_datetime %}
             {{ (dt | as_local - timedelta(minutes=45)).strftime('%H:%M') if dt is not none else '00:00' }}
+          weekday_morning_on: '04:30'
+          weekday_evening_off: '22:30'
+          weekend_morning_on: '06:00'
+          weekend_morning_off: '10:00'
+          weekend_evening_off: '23:00'
         availability: >
           {{ 
             states('binary_sensor.workday_sensor') not in ['unknown', 'unavailable']
@@ -52,33 +57,33 @@ template:
           }}
         state: >
           {% if workday %}
-            {% set morning_on = '04:30' <= time < sunrise_15_hhmm %}
-            {% set evening_on = sunset_30_hhmm <= time < '22:30' %}
+            {% set morning_on = weekday_morning_on <= time < sunrise_15_hhmm %}
+            {% set evening_on = sunset_30_hhmm <= time < weekday_evening_off %}
           {% else %}
-            {% set morning_on = '06:00' <= time < '11:00' %}
-            {% set evening_on = sunset_45_hhmm <= time < '23:00' %}
+            {% set morning_on = weekend_morning_on <= time < weekend_morning_off %}
+            {% set evening_on = sunset_45_hhmm <= time < weekend_evening_off %}
           {% endif %}
           {{ morning_on or evening_on }}
         attributes:
           schedule_type: "{{ 'workday' if workday else 'weekend' }}"
           period: >
             {% if workday %}
-              {% if '04:30' <= time < sunrise_15_hhmm %} morning
-              {% elif sunset_30_hhmm <= time < '22:30' %} evening
+              {% if weekday_morning_on <= time < sunrise_15_hhmm %} morning
+              {% elif sunset_30_hhmm <= time < weekday_evening_off %} evening
               {% else %} off {% endif %}
             {% else %}
-              {% if '06:00' <= time < '11:00' %} morning
-              {% elif sunset_45_hhmm <= time < '23:00' %} evening
+              {% if weekend_morning_on <= time < weekend_morning_off %} morning
+              {% elif sunset_45_hhmm <= time < weekend_evening_off %} evening
               {% else %} off {% endif %}
             {% endif %}
           reason: >
             {% if workday %}
-              {% if '04:30' <= time < sunrise_15_hhmm %} Workday morning window: 04:30 - {{ sunrise_15_hhmm }}
-              {% elif sunset_30_hhmm <= time < '22:30' %} Workday evening window: {{ sunset_30_hhmm }} - 22:30
+              {% if weekday_morning_on <= time < sunrise_15_hhmm %} Workday morning window: {{ weekday_morning_on }} - {{ sunrise_15_hhmm }}
+              {% elif sunset_30_hhmm <= time < weekday_evening_off %} Workday evening window: {{ sunset_30_hhmm }} - {{ weekday_evening_off }}
               {% else %} Outside workday schedule {% endif %}
             {% else %}
-              {% if '06:00' <= time < '11:00' %} Weekend morning window: 06:00 - 11:00
-              {% elif sunset_45_hhmm <= time < '23:00' %} Weekend evening window: {{ sunset_45_hhmm }} - 23:00
+              {% if weekend_morning_on <= time < weekend_morning_off %} Weekend morning window: {{ weekend_morning_on }} - {{ weekend_morning_off }}
+              {% elif sunset_45_hhmm <= time < weekend_evening_off %} Weekend evening window: {{ sunset_45_hhmm }} - {{ weekend_evening_off }}
               {% else %} Outside weekend schedule {% endif %}
             {% endif %}
           updated: "{{ time }}"
@@ -982,7 +987,7 @@ template:
           {% set diff = (home - known) | round(2) %}
           {{ diff if diff > 0 else 0 }}
         availability: >
-          {{ states('sensor.known_power') not in ['unavailable','unknown'] and states('sensor.home_power') not in ['unavailable','unknown'] }}
+          {{ has_value('sensor.known_power') and has_value('sensor.home_power') }}
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
@@ -1059,6 +1064,7 @@ template:
       - action: conversation.process
         response_variable: agent
         data:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
           text: >-
             You are an expert software release notes summarizer.
 
@@ -1093,8 +1099,32 @@ template:
             Here is the release notes text:   
             
             {{ beta_scrape.beta_notes_content }}
+      - action: conversation.process
+        response_variable: agent_short_try
+        data:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
+          text: >-
+            Summarize the provided text to a maximum of 250 words or 750 characters — whichever is shorter.
+            Extract and retain only the core concepts and essential information.
+            Aggressively remove all filler words, redundant phrases, and secondary details.
+            Ensure the summary is grammatically correct, coherent, and preserves the original meaning.
+            Do not exceed the limit under any circumstance.
             
-          agent_id: "{{ states('input_select.conversation_agents')}}"
+            {{ agent.response.speech.plain.speech }}
+      - action: conversation.process
+        response_variable: agent_short
+        data:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
+          text: >-
+            Summarize the following text to a maximum of 250 words or 750 characters — whichever is shorter.
+            Extract only the most critical features, integrations, and breaking changes.
+            Remove all filler, examples, UI details, minor notes, and secondary information.
+            Preserve clarity and grammar.
+            Do not explain, justify, or comment.
+            Do not include any text before or after the summary.
+            Output ONLY the condensed summary.
+           
+            {{ agent_short_try.response.speech.plain.speech }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
@@ -1115,12 +1145,30 @@ template:
             {% endif %}
         attributes:
           beta_url: >
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
-              {{beta_scrape.beta_url.value|string }}
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined %}
+              {{ beta_scrape.beta_url.value }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'beta_url') }}
             {% endif %}
-          ai_summary: "{{ agent.response.speech.plain.speech | default('AI summary not available or failed to generate.') }}" 
-          updated_by: "{{ trigger.description | default('manual') }}"
-
+          ai_summary: >
+            {% if agent is defined %}
+              {{ agent.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary') | default('Pending...') }}
+            {% endif %}
+          ai_summar_short_try: >
+            {% if agent_short_try is defined %}
+              {{ agent_short_try.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summar_short_try') | default('Pending...') }}
+            {% endif %}
+          ai_summary_short: >
+            {% if agent_short is defined %}
+              {{ agent_short.response.speech.plain.speech }}
+            {% else %}
+              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary_short') | default('Pending...') }}
+            {% endif %}
+            
   # Birthdays
   - triggers:
     - trigger: homeassistant
@@ -1177,7 +1225,7 @@ template:
                     
                     {% set days_until = (next_birthday - today).days %}
                     {% set age = next_birthday.year - dob.year %}
-                    {% set label = '🎉 HEUTE' if days_until == 0 else days_until ~ ' Tage' %}
+                    {% set label = '🎉 HEUTE' if days_until == 0 else ('MORGEN' if days_until == 1 else days_until ~ ' Tage') %}
                     {% set name = state_attr(entity, 'friendly_name') or entity %}
                     
                     {# Store as a list: [days_remaining, formatted_string] #}
@@ -1285,3 +1333,55 @@ template:
             {% else %}
               ok
             {% endif %}
+
+  # Pellet Heating System Status
+  - trigger:
+      - platform: state
+        entity_id:
+          - sensor.heizung_power
+    sensor:
+      - name: "ETA Heating Status"
+        unique_id: eta_heating_status
+        availability: "{{ has_value('sensor.heizung_power') }}"
+        variables:
+          power: "{{ states('sensor.heizung_power') | float(0) }}"
+          
+          # Use standard boolean (True/False)
+          is_scheduled: "{{ is_state('schedule.heating_schedule', 'on') }}"
+
+          # Physical Thresholds (Using 60W to avoid the 55W flickering found in logs)
+          is_transport: "{{ power >= 1600 }}"
+          is_ignition: "{{ power >= 600 and power < 1600 }}"
+          is_heating: "{{ power >= 60 and power < 600 }}"
+          is_ready: "{{ power >= 33 and power < 60 }}"
+          is_setback: "{{ power > 15 and power < 33 }}"
+          is_off: "{{ power <= 15 }}"
+
+        state: >
+          {% if is_transport %} Pellet Transport
+          {% elif is_ignition %} Ignition
+          {% elif is_heating %} Heating
+          {% elif is_ready %} Standby (Active)
+          {% elif is_setback %} Standby (Nacht Mode)
+          {% else %} Off / Deep Sleep
+          {% endif %}
+
+        icon: >
+          {% if is_transport %} mdi:database-export-outline
+          {% elif is_ignition %} mdi:fire-alert
+          {% elif is_heating %} mdi:fire
+          {% elif is_ready %} mdi:power-settings
+          {% elif is_setback %} mdi:moon-waning-crescent
+          {% else %} mdi:power-off
+          {% endif %}
+
+        attributes:
+          raw_wattage: "{{ states('sensor.heizung_power') }}"
+          heating_scheduled: "{{ is_scheduled }}"
+          status_note: >
+            {% if is_heating and not is_scheduled %} Overtime Burn
+            {% elif is_ready and not is_scheduled %} Outside Heating Window
+            {% elif is_ignition and not is_scheduled %} Outside Window Ignition
+            {% else %} Following Schedule
+            {% endif %}
+            

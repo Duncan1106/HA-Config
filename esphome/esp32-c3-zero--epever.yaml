@@ -1,3 +1,32 @@
+###########################################################################################
+# ESPHome Configuration for EPEVER MPPT Solar Charge Controller
+# Model:    XTRA4210N G3 / G3 BLE
+# Hardware: ESP32-C3-Zero
+#
+# ========================== ELECTRICAL PARAMETERS ========================================
+#  - Battery Rated Voltage:    12/24VDC Auto
+#  - Rated Charge/Discharge:   40A / 40A
+#  - Rated Charging Power:     520W (12V) / 1040W (24V)
+#  - Max Conversion Eff.:      98.60%
+#  - Max Load Efficiency:      96.50%
+#  - Static Losses (Comms(RS485) ON): ≤15mA (12V) / ≤9mA (24V)
+#  - Static Losses (Comms(RS485) OFF):≤8mA (12V) / ≤5mA (24V)
+#
+# ========================== MECHANICAL & ENVIRONMENT =====================================
+#  - Dimensions:               255 x 185 x 67.8 mm
+#  - Mounting Size:            200 x 176 mm
+#  - Terminals/Wire:           6AWG (16mm²)
+#  - Net Weight:               1.72 kg
+#  - IP Rating:                IP33
+#
+# ========================== PINOUT CONFIGURATION =========================================
+#  - Modbus TX (to RJ45):      GPIO21
+#  - Modbus RX (to RJ45):      GPIO20
+#  - I2C SDA (BME280):         GPIO6  (Green)
+#  - I2C SCL (BME280):         GPIO7  (Yellow)
+#  - Status LED (WS2812):      GPIO10
+###########################################################################################
+
 # Enable logging
 logger:
   level: INFO
@@ -20,7 +49,6 @@ wifi:
     subnet: 255.255.255.0
     dns1: 192.168.2.1
     static_ip: 192.168.2.42
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Esp32-C3-Zero--Epever"
     password: !secret ap_password
@@ -89,7 +117,7 @@ light:
 time:
   - platform: sntp
     id: sntp_time
-    servers: "pool.ntp.org"
+    servers: "pool.ntp.org" # gets rewritten in adguard dns to 192.168.2.205, but leaving it in here to be working even when chrony(ntp app in homeassistant) isn't working
     on_time: 
       at: 04:00
       then: 
@@ -104,31 +132,17 @@ uart:
   stop_bits: 1
 
 modbus:
-  #flow_control_pin: 23
   send_wait_time: 100ms
   id: mod_bus_epever
 
 modbus_controller:
   - id: epever
-    ## the Modbus device addr
     address: 0x1
     modbus_id: mod_bus_epever
-    #command_throttle: 200ms
     setup_priority: -10
     update_interval: 2s
 
 number:
-  # - platform: modbus_controller
-  #   modbus_controller_id: epever
-  #   id: backlight_time
-  #   address: 0x9063
-  #   name: "Backlight time"
-  #   register_type: holding
-  #   unit_of_measurement: "s"
-  #   value_type: U_WORD  
-  #   entity_category: config
-  #   disabled_by_default: True
-
   - platform: modbus_controller
     modbus_controller_id: epever
     id: lcd_backlight_time
@@ -469,6 +483,7 @@ sensor:
         - delta: 5%
         - throttle: 120s
 
+  ## RATED DATA
   - platform: modbus_controller
     modbus_controller_id: epever
     id: rated_load_current
@@ -478,9 +493,13 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "A"
     accuracy_decimals: 2
-    lambda: |-
-      return x / 100.0;
     entity_category: diagnostic
+    filters: 
+      - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True 
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -491,10 +510,13 @@ sensor:
     value_type: U_WORD
     unit_of_measurement: "A"
     accuracy_decimals: 2
-    lambda: |-
-      // The register reports current * 100, so scale it down
-      return x / 100.0;
     entity_category: diagnostic
+    filters: 
+      - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -507,6 +529,10 @@ sensor:
     entity_category: diagnostic
     filters: 
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
 
   ## LOAD DATA
   - platform: modbus_controller
@@ -520,6 +546,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -532,6 +562,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: True
 
   - platform: modbus_controller
     modbus_controller_id: epever
@@ -544,14 +578,13 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
-      - or:
-        - throttle_average: 15s 
-        - delta: 5%
-    # Example configuration entry
       - clamp:
           min_value: 0
           max_value: 1020
           ignore_out_of_range: true
+      - or:
+        - throttle_average: 15s 
+        - delta: 5%
           
   ## PV DATA
   - platform: modbus_controller
@@ -565,6 +598,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: true
     device_class: voltage
 
   - platform: modbus_controller
@@ -572,12 +609,16 @@ sensor:
     id: pv_input_current
     name: "PV array input current"
     address: 0x3101
-    unit_of_measurement: "A" ## for any other unit the value is returned in minutes
+    unit_of_measurement: "A"
     register_type: read
     value_type: U_WORD
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 40
+          ignore_out_of_range: true
     device_class: current
 
   - platform: modbus_controller
@@ -585,12 +626,16 @@ sensor:
     id: pv_input_power
     name: "PV array input power"
     address: 0x3102
-    unit_of_measurement: "W" ## for any other unit the value is returned in minutes
+    unit_of_measurement: "W"
     register_type: read
     value_type: U_DWORD_R
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 1020
+          ignore_out_of_range: true
     device_class: power
 
   ## CHARGER DATA
@@ -605,6 +650,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: true
     device_class: voltage
 
   - platform: modbus_controller
@@ -618,6 +667,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 40
+          ignore_out_of_range: True
     device_class: current
 
   - platform: modbus_controller
@@ -631,6 +684,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -1040
+          max_value: 1040
+          ignore_out_of_range: True
     device_class: power
 
   ## TEMPERATURES
@@ -648,11 +705,14 @@ sensor:
     entity_category: "diagnostic"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4% 
             
-
   - platform: modbus_controller
     modbus_controller_id: epever
     id: device_temperature
@@ -665,6 +725,10 @@ sensor:
     entity_category: "diagnostic"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -100
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4%
@@ -681,6 +745,10 @@ sensor:
     accuracy_decimals: 1
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -100
+          max_value: 100
+          ignore_out_of_range: True
       - or:
         - throttle: 30s
         - delta: 4%
@@ -696,6 +764,11 @@ sensor:
     value_type: U_WORD
     accuracy_decimals: 0
     device_class: battery
+    filters: 
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     on_value_range: 
       below: 10
       then:
@@ -712,6 +785,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
 
   - platform: modbus_controller
@@ -726,6 +803,10 @@ sensor:
     unit_of_measurement: "A"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: -40
+          max_value: 40
+          ignore_out_of_range: True
     device_class: current
 
   - platform: template
@@ -739,6 +820,10 @@ sensor:
     filters:
       - round: 2
       - multiply: -1
+      - clamp:
+          min_value: -1040
+          max_value: 1040
+          ignore_out_of_range: True
           
   ## MINs & MAXs
   # min & Max Voltage PV
@@ -753,6 +838,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -767,6 +856,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 0
+          max_value: 100
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -782,6 +875,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -796,6 +893,10 @@ sensor:
     unit_of_measurement: "V"
     filters:
       - multiply: 0.01
+      - clamp:
+          min_value: 8
+          max_value: 32
+          ignore_out_of_range: True
     device_class: voltage
     entity_category: "diagnostic"
 
@@ -945,20 +1046,69 @@ sensor:
       - lambda: return (id(length_of_night_minutes).state  + ( 60 * x)) / 60;
     entity_category: "diagnostic"
 
+  ## Efficiency/ Losses
+  # Import the AC Power from the other device
+  - platform: homeassistant
+    id: ac_output_power
+    entity_id: sensor.bkw_outlet_1_energy_power
+    internal: true
+
+  # The Calculation
+  - platform: template
+    name: "Epever & Converter Power Losses"
+    id: inverter_loss
+    unit_of_measurement: "W"
+    accuracy_decimals: 2
+    device_class: power
+    state_class: measurement
+    lambda: |-
+      // If the switch is off, we know the loss is 0. 
+      // We don't need to check PV/AC sensors yet.
+      if (!id(bkw_inverter_switch).state) {
+        return 0.0f;
+      }
+
+      float load = id(load_power).state;
+      float ac_out = id(ac_output_power).state;
+
+      // Guard against communication errors
+      if (std::isnan(load) || std::isnan(ac_out)) {
+        return {}; // Publish no value; keeps the state 'Unknown' in HA
+      }
+
+      float loss = load - ac_out;
+      return std::max(loss, 0.0f);
+    update_interval: 5s
+    filters:
+      # Smoothes out the timing offset between the two devices
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 1
+
+  - platform: total_daily_energy
+    name: "Daily System Loss"
+    id: daily_system_loss
+    power_id: inverter_loss
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+    filters:
+      #Converts integrated W (Wh) to kWh
+      - multiply: 0.001
+
 binary_sensor:
   - platform: status
     name: Status
     id: status_connected
-    on_state: 
+    on_release:
       then:
-        if:
-          condition:
-            for:
-              time: 1min
-              condition:
-                binary_sensor.is_off: status_connected
-          then: 
-            button.press: restart_btn
+        - delay: 1min
+        - if:
+            condition:
+              binary_sensor.is_off: status_connected
+            then:
+              button.press: restart_btn
 
 select:
   - platform: modbus_controller
@@ -992,6 +1142,10 @@ select:
       "LCNM7S": 10
 
 switch:
+  - platform: homeassistant
+    id: bkw_inverter_switch
+    entity_id: switch.bkw_outlet_1_bkw_outlet_1
+  
   - platform: modbus_controller
     modbus_controller_id: epever
     id: manual_control_load
