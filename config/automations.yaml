@@ -1723,13 +1723,13 @@
   alias: Terrarium Humidifier Empty Detection
   description: "## \U0001F4A7 Terrarium Humidifier Empty Detection (Dynamic)\n\nDetects
     if the **terrarium humidifier tank is empty** by monitoring power usage.  \nAssumes
-    a functioning humidifier will draw **Δ ≥ 5 W** shortly after turning on.  \nUses
+    a functioning humidifier will draw **Δ ≥ 3 W** shortly after turning on.  \nUses
     a **dynamic baseline** measured at startup. Runs only when `input_boolean.luftbefeuchter_aktiv`
     is on.\n\n---\n\n### \U0001F4CC Flow\n\n1. **Set baseline**  \n   - Record current
     power (`sensor.terrarium_power_plug_zigbee_power`) at automation start.\n\n2.
     **Wait for device**  \n   - Pauses until `switch.terrarium_zigbee_l1` is on or
-    3min30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+5W increase**
-    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <5W → notify `notify.duncan`
+    3min30s timeout.\n\n3. **Monitor power**  \n   - Wait up to 60s for **+3W increase**
+    over baseline.\n\n4. **Notify if empty**  \n   - Power increase <3W → notify `notify.duncan`
     \ \n   - Reset `counter.luftbefeuchter`  \n   - Include previous activation count
     for context\n\n---\n\n### \U0001F527 Conditions\n\n- `input_boolean.luftbefeuchter_aktiv
     = on`\n\n---\n\n### ⚡ Actions\n\n- Record baseline  \n- Wait for humidifier to
@@ -1758,8 +1758,8 @@
       seconds: 30
       milliseconds: 0
     continue_on_timeout: false
-  - wait_template: '{{ states(''sensor.terrarium_zigbee_strip_power'')|float(0) >
-      baseline + 5 }}'
+  - wait_template: '{{ states(''sensor.terrarium_zigbee_strip_power'')|float(0) >=
+      baseline + 3 }}'
     timeout: 00:01:00
     continue_on_timeout: true
   - variables:
@@ -1768,7 +1768,7 @@
       delta_power: '{{ (current_power - baseline)|round(2) }}'
   - if:
     - condition: template
-      value_template: '{{ delta_power <= 5 }}'
+      value_template: '{{ delta_power <= 3 }}'
     - condition: state
       entity_id: input_boolean.luftbefeuchter_aktiv
       state: 'on'
