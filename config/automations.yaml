@@ -3907,25 +3907,25 @@
       - switch.duncan_lichtschalter_right
   mode: single
 - id: '1730367818444'
-  alias: VW Unlocked Reminder
-  description: Sends a notification if the VW vehicle remains unlocked for 15 minutes
+  alias: Cupra Unlocked Reminder
+  description: Sends a notification if the Cupra vehicle remains unlocked for 15 minutes
     while stationary, and clears the notification once the vehicle is locked.
   triggers:
-  - type: not_locked
-    device_id: 9914e6e4fe991b11910d0b307255e881
-    entity_id: 365363c4aaf4c5618cda78ca034b4878
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.cupra_tavascan_doors_locked
+    to:
+    - 'on'
     for:
       hours: 0
       minutes: 15
       seconds: 0
     id: Unlocked
-  - type: locked
-    device_id: 9914e6e4fe991b11910d0b307255e881
-    entity_id: 365363c4aaf4c5618cda78ca034b4878
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.cupra_tavascan_doors_locked
+    to:
+    - 'off'
     id: Locked
   conditions: []
   actions:
@@ -3935,7 +3935,7 @@
         id:
         - Unlocked
       - condition: state
-        entity_id: binary_sensor.wvgzzze2zpe005371_vehicle_moving
+        entity_id: binary_sensor.cupra_tavascan_vehicle_moving
         state: 'off'
       sequence:
       - action: notify.duncan
@@ -4763,7 +4763,7 @@
     a secondary proximity zone (**Big Home 2**).\n* **Cleanup:** Automatically clears
     the notification from the target device once the **Home** zone is reached to maintain
     a clutter-free UI.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
-    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.wvgzzze2zpe005371_vehicle_moving`
+    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | `binary_sensor.cupra_tavascan_vehicle_moving`
     | `Arbeit` | Detects when the vehicle starts moving to initiate the departure
     sequence. |\n| **Zone** | `person.stephan` (Leaves `zone.papa_arbeit`) | `Arbeit`
     | Triggers the departure sequence. |\n| **Zone** | `person.stephan` (Enters `zone.big_home_2`)
@@ -4801,9 +4801,10 @@
   triggers:
   - trigger: state
     entity_id:
-    - binary_sensor.wvgzzze2zpe005371_vehicle_moving
+    - binary_sensor.cupra_tavascan_vehicle_moving
     from:
-    to: 'on'
+    to:
+    - 'on'
     id: Arbeit
     enabled: true
   - trigger: zone
@@ -7161,8 +7162,8 @@
     |\n  | `binary_sensor.octopus_a_10a76963_volkswagen_id_4_intelligent_dispatching`
     → `on` | Intelligent dispatch begins | On_dispatch |\n  | `binary_sensor.octopus_a_10a76963_volkswagen_id_4_intelligent_dispatching`
     → `off` | Intelligent dispatch ends | Off_dispatch |\n  | `sensor.renault_zoe_batterie
-    > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.wvgzzze2zpe005371_battery_level
-    > 99% for 1 min` | ID.4 battery full | car_full_id4 |\n  | `sensor.lsjwh4097rn105299_soc
+    > 98.1% for 15 min` | Zoe battery full | car_full_zoe |\n  | `sensor.cupra_tavascan_battery_level
+    > 99% for 1 min` | Tavascan battery full | car_full_tavascan |\n  | `sensor.lsjwh4097rn105299_soc
     > 99.9% for 3 min` | MG4 battery full | car_full_mg4 |\n  | Template trigger |
     Prevents battery discharge if EVs draw > grid power | prevent_battery_discharge
     |\n\n  ---\n\n  ### ✅ **Mode Logic**\n\n  - **Dumb Mode:** Follows a fixed time-based
@@ -7235,8 +7236,8 @@
     above: 98.1
   - trigger: numeric_state
     entity_id:
-    - sensor.wvgzzze2zpe005371_battery_level
-    id: car_full_id4
+    - sensor.cupra_tavascan_battery_level
+    id: car_full_tavascan
     for:
       hours: 0
       minutes: 1
@@ -7401,7 +7402,7 @@
               entity_id: button.renault_zoe_ladevorgang_starten
             data: {}
           alias: 'Start Charging Zoe and force the update '
-      - alias: Car Update ID.4
+      - alias: Car Update Tavascan
         choose:
         - conditions:
           - condition: or
@@ -7409,18 +7410,18 @@
             - condition: state
               entity_id: sensor.go_e_11kw_car
               state:
-              - ID.4
+              - Tavascan
             - condition: state
               entity_id: sensor.go_e_22kw_car
               state:
-              - ID.4
+              - Tavascan
           sequence:
           - action: switch.turn_on
             metadata: {}
             target:
-              entity_id: switch.wvgzzze2zpe005371_charging
+              entity_id: switch.cupra_tavascan_charging
             data: {}
-          alias: 'Start Charging ID.4 and force the update '
+          alias: 'Start Charging Tavascan and force the update '
       - alias: Only wait for Power to Rise if not already risen
         if:
         - condition: and
@@ -7652,16 +7653,16 @@
             conditions:
             - condition: trigger
               id:
-              - car_full_id4
+              - car_full_tavascan
             - condition: or
               conditions:
               - condition: state
                 entity_id: sensor.go_e_11kw_car
-                state: ID.4
+                state: Tavascan
               - condition: state
                 entity_id: sensor.go_e_22kw_car
-                state: ID.4
-            alias: 'ID4 full and was charging '
+                state: Tavascan
+            alias: 'Tavascan full and was charging '
           - condition: and
             conditions:
             - condition: trigger
@@ -7716,15 +7717,15 @@
               - condition: state
                 entity_id: sensor.go_e_11kw_car
                 state: Zoe
-            - alias: 'ID4 full and was charging '
+            - alias: 'Tavascan full and was charging '
               condition: and
               conditions:
               - condition: trigger
                 id:
-                - car_full_id4
+                - car_full_tavascan
               - condition: state
                 entity_id: sensor.go_e_11kw_car
-                state: ID.4
+                state: Tavascan
             - alias: 'MG4 full and was charging '
               condition: and
               conditions:
@@ -7740,7 +7741,7 @@
           - condition: trigger
             id:
             - car_full_zoe
-            - car_full_id4
+            - car_full_tavascan
             - car_full_mg4
           - condition: numeric_state
             entity_id: sensor.go_echarger_270862_nrg_12
@@ -7798,15 +7799,15 @@
               - condition: state
                 entity_id: sensor.go_e_22kw_car
                 state: Zoe
-            - alias: 'ID4 full and was charging '
+            - alias: 'Tavascan full and was charging '
               condition: and
               conditions:
               - condition: trigger
                 id:
-                - car_full_id4
+                - car_full_tavascan
               - condition: state
                 entity_id: sensor.go_e_22kw_car
-                state: ID.4
+                state: Tavascan
             - alias: 'MG4 full and was charging '
               condition: and
               conditions:
@@ -7822,7 +7823,7 @@
           - condition: trigger
             id:
             - car_full_zoe
-            - car_full_id4
+            - car_full_tavascan
             - car_full_mg4
           - condition: numeric_state
             entity_id: sensor.go_echarger_252682_nrg_12
@@ -7991,7 +7992,7 @@
       - condition: state
         entity_id: sensor.go_e_11kw_car
         state:
-        - ID.4
+        - Tavascan
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -8039,7 +8040,7 @@
       - condition: state
         entity_id: sensor.go_e_11kw_car
         state:
-        - ID.4
+        - Tavascan
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
