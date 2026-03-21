@@ -3251,16 +3251,16 @@
     (`treppenlicht`) lights based on motion sensors, ambient light levels, and adds
     robust sync & reliability fixes to ensure lights turn on/off correctly.  \n\n---\n\n###
     \U0001F506 **Turn ON Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
-    **Motion (below)** | `binary_sensor.aqara_p1_occupancy`, `binary_sensor.gang_bewegung_keller_tur_occupancy`
+    **Motion (below)** | `binary_sensor.gang_bewegung_presence`, `binary_sensor.gang_bewegung_keller_tur_occupancy`
     | State = **on** |\n| **Motion (above)** | `binary_sensor.treppenhaus_presence`
     | State = **on** |\n| **Sync ON** | `sensor.light_brighness` | Above **0.1** |\n\n---\n\n###
     \U0001F319 **Turn OFF Triggers**  \n| Condition | Entity | Threshold |\n|-----------|--------|-----------|\n|
     **Sync OFF** | `sensor.light_brighness` | Below **0.1** |\n| **Illuminance** |
-    `sensor.aqara_p1_illuminance` | Above **79 / 100 / 150 / 200 lux** |\n| **Force
+    `sensor.gang_bewegung_illuminance` | Above **200 / 250 / 300 lux** |\n| **Force
     OFF** | `light.ganglicht_zigbee_led` | Off for **5 min / 15 min** |\n\n---\n\n###
     \U0001F3AF **Smart Logic**  \n\n#### **\U0001F506 Motion-Driven ON**  \n- **Downstairs
-    motion** (dark < 80 lux & no timed light)  \n  → `ganglicht` ON at **100%**  \n
-    \ → `treppenlicht` OFF  \n- **Upstairs motion** (dark < 80 lux & no timed light)
+    motion** (dark < 175 lux & no timed light)  \n  → `ganglicht` ON at **100%**  \n
+    \ → `treppenlicht` OFF  \n- **Upstairs motion** (dark < 175 lux & no timed light)
     \ \n  → `treppenlicht` ON at **10%**  \n  → `ganglicht` ON at **75%** after 0.5s
     \ \n  → Wait 1min for downstairs motion → adjust ganglicht/treppenlicht accordingly
     \ \n\n---\n\n#### **\U0001F319 Auto-OFF**  \n- **After 5 min of no motion** →
@@ -3273,8 +3273,8 @@
     up to 10× until ganglicht confirms **OFF**  \n- **Failsafe OFF**: If stuck, cycle
     ON (1%) → OFF  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Targets:**
     \ \n  - Hallway: `light.ganglicht_zigbee_led`  \n  - Stairway: `light.esp32_c3_mini_treppenhaus_licht`
-    \ \n- **Sensors:**  \n  - Motion: `aqara_p1`, `treppenhaus`, `keller_tur`  \n
-    \ - Lux: `sensor.aqara_p1_illuminance`  \n  - Brightness state: `sensor.light_brighness`
+    \ \n- **Sensors:**  \n  - Motion: `gang_bewegung`, `treppenhaus`, `keller_tur`
+    \ \n  - Lux: `sensor.gang_bewegung_illuminance`  \n  - Brightness state: `sensor.light_brighness`
     \ \n- **Brightness Profiles:**  \n  - Hallway (motion below): **100%**  \n  -
     Hallway (motion above): **75%**  \n  - Stairway: **10%**  \n- **Delays & Retries:**
     0.5s between retries, up to 10 attempts  \n- **Mode:** `parallel` (max 6 concurrent
@@ -3282,10 +3282,10 @@
   triggers:
   - trigger: state
     entity_id:
-    - binary_sensor.aqara_p1_occupancy
+    - binary_sensor.gang_bewegung_presence
     - binary_sensor.gang_bewegung_keller_tur_occupancy
     to: 'on'
-    id: 'On motion '
+    id: On motion
   - trigger: state
     entity_id:
     - binary_sensor.treppenhaus_presence
@@ -3303,24 +3303,19 @@
     below: 0.1
   - trigger: numeric_state
     entity_id:
-    - sensor.aqara_p1_illuminance
+    - sensor.gang_bewegung_illuminance
+    above: 300
+    id: Light Above 300
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gang_bewegung_illuminance
+    above: 250
+    id: Light Above 250
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gang_bewegung_illuminance
     above: 200
     id: Light Above 200
-  - trigger: numeric_state
-    entity_id:
-    - sensor.aqara_p1_illuminance
-    above: 150
-    id: Light Above 150
-  - trigger: numeric_state
-    entity_id:
-    - sensor.aqara_p1_illuminance
-    above: 100
-    id: Light Above 100
-  - trigger: numeric_state
-    entity_id:
-    - sensor.aqara_p1_illuminance
-    above: 79
-    id: Light Above 79
   - trigger: state
     entity_id:
     - light.ganglicht_zigbee_led
@@ -3342,7 +3337,7 @@
   conditions: []
   actions:
   - variables:
-      lux_threshold: 80
+      lux_threshold: 175
       ganglicht_brightness: 100
       treppenlicht_brightness: 10
       ganglicht_brightness_oben: 75
@@ -3355,10 +3350,10 @@
       conditions:
       - condition: trigger
         id:
-        - 'On motion '
+        - On motion
       - condition: numeric_state
-        entity_id: sensor.aqara_p1_illuminance
-        below: 80
+        entity_id: sensor.gang_bewegung_illuminance
+        below: 175
         enabled: true
       - condition: numeric_state
         entity_id: sensor.light_brighness
@@ -3401,8 +3396,8 @@
         id:
         - On motion oben
       - condition: numeric_state
-        entity_id: sensor.aqara_p1_illuminance
-        below: 80
+        entity_id: sensor.gang_bewegung_illuminance
+        below: 175
         enabled: true
       - condition: numeric_state
         entity_id: sensor.light_brighness
@@ -3444,7 +3439,7 @@
       - wait_for_trigger:
         - trigger: state
           entity_id:
-          - binary_sensor.aqara_p1_occupancy
+          - binary_sensor.gang_bewegung_presence
           - binary_sensor.gang_bewegung_keller_tur_occupancy
           to: 'on'
         timeout:
@@ -3468,7 +3463,7 @@
             - condition: or
               conditions:
               - condition: state
-                entity_id: binary_sensor.aqara_p1_occupancy
+                entity_id: binary_sensor.gang_bewegung_presence
                 state:
                 - 'on'
               - condition: state
@@ -3521,7 +3516,7 @@
       conditions:
       - condition: trigger
         id:
-        - 'On motion '
+        - On motion
         - On motion oben
       - condition: numeric_state
         entity_id: sensor.light_brighness
@@ -3585,7 +3580,7 @@
       - condition: or
         conditions:
         - condition: state
-          entity_id: binary_sensor.aqara_p1_occupancy
+          entity_id: binary_sensor.gang_bewegung_presence
           state: 'on'
         - condition: state
           entity_id: binary_sensor.treppenhaus_presence
@@ -3613,13 +3608,12 @@
     if:
     - condition: trigger
       id:
-      - Light Above 79
-      - Light Above 100
-      - Light Above 150
       - Light Above 200
+      - Light Above 250
+      - Light Above 300
     - condition: numeric_state
-      entity_id: sensor.aqara_p1_illuminance
-      above: 79
+      entity_id: sensor.gang_bewegung_illuminance
+      above: 175
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
