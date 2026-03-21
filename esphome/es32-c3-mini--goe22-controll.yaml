@@ -203,17 +203,17 @@ number:
     unit_of_measurement: '%'
     step: 0.5
 
-  - platform: template
-    min_value: 1
-    max_value: 10
-    optimistic: true
-    restore_value: true
-    name: Wait Time ${variant}
-    id: wait_time
-    step: 0.5
-    initial_value: 5
-    unit_of_measurement: s
-    mode: BOX
+  # - platform: template
+  #   min_value: 1
+  #   max_value: 10
+  #   optimistic: true
+  #   restore_value: true
+  #   name: Wait Time ${variant}
+  #   id: wait_time
+  #   step: 0.5
+  #   initial_value: 5
+  #   unit_of_measurement: s
+  #   mode: BOX
     
   - platform: template
     step: 1
@@ -287,6 +287,31 @@ text_sensor:
         - 2 -> Force Charge
 
   - platform: mqtt_subscribe
+    topic: ${main_topic}fsp
+    name: Go-e Phase ${variant}
+    internal: false
+    id: goe_fsp
+    filters: 
+      - map: 
+        - true -> 1 Phase
+        - false -> 3 Phase
+    on_value: 
+      then:
+        - if: 
+            condition:
+              - text_sensor.state: 
+                  id: goe_fsp
+                  state: 1 Phase
+            then:
+              - sensor.template.publish:
+                  id: goe_amp_divider
+                  state: 1
+            else:
+              - sensor.template.publish:
+                  id: goe_amp_divider
+                  state: 3
+
+  - platform: mqtt_subscribe
     topic: ${main_topic}nrg
     id: goe_nrg_txt
     name: Goe Charger Power Text ${variant}
@@ -314,12 +339,6 @@ text_sensor:
           std::string power_str = raw.substr(start);
           id(goe_power).publish_state(std::stof(power_str));
           return x;
-
-  - platform: mqtt_subscribe
-    name: "Go-e Phase Raw ${variant}"
-    id: goe_phase_raw
-    topic: ${main_topic}fsp
-    internal: true
 
   - platform: mqtt_subscribe
     topic: ${main_topic}car
@@ -369,20 +388,6 @@ sensor:
       - or:
         - delta: 5%
         - throttle: 120s            
-
-  - platform: template
-    accuracy_decimals: 0
-    name: Go-e Phase ${variant}
-    internal: false
-    id: goe_amp_divider
-    update_interval: 1s
-    filters: 
-      - lambda: |-
-          if (id(goe_phase_raw).state == "true") {
-            return 1.0;
-          } else {
-            return 3.0;
-          }
 
   - platform: mqtt_subscribe
     topic: ${main_topic}amp
@@ -509,11 +514,11 @@ sensor:
     internal: false
     name: Goe Charger Power ${variant}       
 
-  # - platform: template
-  #   id: goe_amp_divider
-  #   name: Goe Amps Divider ${variant}
-  #   accuracy_decimals: 0
-  #   internal: false
+  - platform: template
+    id: goe_amp_divider
+    name: Goe Amps Divider ${variant}
+    accuracy_decimals: 0
+    internal: false
 
   ## Availbale Amps (Surplus)
   - platform: template
