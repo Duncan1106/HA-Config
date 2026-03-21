@@ -7,7 +7,6 @@ substitutions:
   fallback_ap: "Esp32-C3-Mini--Goe22kw-Controll"
 
 wifi:
-  output_power: 10dB
   networks:
     - ssid: !secret wifi_ssid
       password: !secret wifi_password
@@ -139,7 +138,7 @@ switch:
     optimistic: true
     id: never_stop_charging
     name: Dont Stop Charging ${variant}
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
 
   - platform: template
     optimistic: true
@@ -288,31 +287,6 @@ text_sensor:
         - 2 -> Force Charge
 
   - platform: mqtt_subscribe
-    topic: ${main_topic}fsp
-    name: Go-e Phase ${variant}
-    internal: false
-    id: goe_fsp
-    filters: 
-      - map: 
-        - true -> 1 Phase
-        - false -> 3 Phase
-    on_value: 
-      then:
-        - if: 
-            condition:
-              - text_sensor.state: 
-                  id: goe_fsp
-                  state: 1 Phase
-            then:
-              - sensor.template.publish:
-                  id: goe_amp_divider
-                  state: 1
-            else:
-              - sensor.template.publish:
-                  id: goe_amp_divider
-                  state: 3
-
-  - platform: mqtt_subscribe
     topic: ${main_topic}nrg
     id: goe_nrg_txt
     name: Goe Charger Power Text ${variant}
@@ -340,6 +314,12 @@ text_sensor:
           std::string power_str = raw.substr(start);
           id(goe_power).publish_state(std::stof(power_str));
           return x;
+
+  - platform: mqtt_subscribe
+    name: "Go-e Phase Raw ${variant}"
+    id: goe_phase_raw
+    topic: ${main_topic}fsp
+    internal: true
 
   - platform: mqtt_subscribe
     topic: ${main_topic}car
@@ -389,6 +369,20 @@ sensor:
       - or:
         - delta: 5%
         - throttle: 120s            
+
+  - platform: template
+    accuracy_decimals: 0
+    name: Go-e Phase ${variant}
+    internal: false
+    id: goe_amp_divider
+    update_interval: 1s
+    filters: 
+      - lambda: |-
+          if (id(goe_phase_raw).state == "true") {
+            return 1.0;
+          } else {
+            return 3.0;
+          }
 
   - platform: mqtt_subscribe
     topic: ${main_topic}amp
@@ -497,6 +491,30 @@ sensor:
       - lambda: |-
           return id(battery_power_offset).state - id(battery_discharge_power).state;
 
+  - platform: template
+    accuracy_decimals: 2
+    state_class: measurement
+    device_class: voltage
+    unit_of_measurement: V
+    id: goe_voltage
+    internal: False
+    name: Goe Charger Voltage ${variant}
+
+  - platform: template
+    accuracy_decimals: 2
+    state_class: measurement
+    device_class: power
+    unit_of_measurement: W
+    id: goe_power
+    internal: false
+    name: Goe Charger Power ${variant}       
+
+  # - platform: template
+  #   id: goe_amp_divider
+  #   name: Goe Amps Divider ${variant}
+  #   accuracy_decimals: 0
+  #   internal: false
+
   ## Availbale Amps (Surplus)
   - platform: template
     accuracy_decimals: 1
@@ -543,30 +561,6 @@ sensor:
           return id(battery_discharge_power).state / id(goe_voltage).state;
 
   - platform: template
-    accuracy_decimals: 2
-    state_class: measurement
-    device_class: power
-    unit_of_measurement: W
-    id: goe_power
-    internal: false
-    name: Goe Charger Power ${variant}       
-
-  - platform: template
-    accuracy_decimals: 2
-    state_class: measurement
-    device_class: voltage
-    unit_of_measurement: V
-    id: goe_voltage
-    internal: true
-    name: Goe Charger Voltage ${variant}
-
-  - platform: template
-    id: goe_amp_divider
-    name: Goe Amps Divider
-    accuracy_decimals: 0
-    internal: false
-
-  - platform: template
     accuracy_decimals: 1
     name: Go-e Amps ${variant}
     unit_of_measurement: A
@@ -585,7 +579,7 @@ sensor:
     internal: False
     update_interval: 1s
     lambda: |-
-      return (id(available_grid_amps).state + (id(goe_amps).state * id(goe_amp_divider).state) + id(available_battery_amps).state) / id(goe_amp_divider).state;
+      return (id(available_grid_amps).state + (id(goe_amps).state * id(goe_amp_divider).state) + (id(available_battery_amps).state) / id(goe_amp_divider).state);
     filters: 
       - clamp: 
           min_value: 0
