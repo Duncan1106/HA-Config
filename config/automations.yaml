@@ -3266,7 +3266,7 @@
     \ \n\n---\n\n#### **\U0001F319 Auto-OFF**  \n- **After 5 min of no motion** →
     `script.5_min_turn_off_ganglicht`  \n- **Sync OFF** (sensor < 0.1 & no motion
     detected) → Retry up to 10× with 0.5s delays until confirmed OFF  \n- **High Lux
-    Override** (above 79–200 lux) → Retry up to 10× until confirmed OFF  \n- **Force
+    Override** (above 200–300 lux) → Retry up to 10× until confirmed OFF  \n- **Force
     OFF failsafe** (light stuck off for 5–15 min) → Briefly set `brightness=1%` →
     then OFF again  \n\n---\n\n#### **\U0001F501 Sync & Reliability Fixes**  \n- **Sync
     ON**: Retry up to 10× until ganglicht confirms **ON**  \n- **Sync OFF**: Retry
@@ -3337,7 +3337,7 @@
   conditions: []
   actions:
   - variables:
-      lux_threshold: 175
+      lux_threshold: 200
       ganglicht_brightness: 100
       treppenlicht_brightness: 10
       ganglicht_brightness_oben: 75
@@ -3353,7 +3353,7 @@
         - On motion
       - condition: numeric_state
         entity_id: sensor.gang_bewegung_illuminance
-        below: 175
+        below: 200
         enabled: true
       - condition: numeric_state
         entity_id: sensor.light_brighness
@@ -3390,19 +3390,19 @@
         entity_id: '{{ light_treppenlicht }}'
   - alias: On motion oben
     if:
-    - condition: and
+    - alias: motion oben & dark enough & no timed light
+      condition: and
       conditions:
       - condition: trigger
         id:
         - On motion oben
       - condition: numeric_state
         entity_id: sensor.gang_bewegung_illuminance
-        below: 175
+        below: 200
         enabled: true
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
-      alias: motion oben & dark enough & no timed light
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
@@ -3613,7 +3613,7 @@
       - Light Above 300
     - condition: numeric_state
       entity_id: sensor.gang_bewegung_illuminance
-      above: 175
+      above: 200
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
