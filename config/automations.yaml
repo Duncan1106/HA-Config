@@ -3536,26 +3536,6 @@
       entity_id: sensor.light_brighness
       above: 0.1
     then:
-    - alias: turn on until on or we tried 10 times
-      repeat:
-        sequence:
-        - action: light.turn_on
-          metadata: {}
-          data:
-            brightness_pct: '{{ ganglicht_brightness }}'
-          target:
-            entity_id: '{{ light_ganglicht }}'
-        - delay: '{{ light_delay }}'
-        until:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: light.ganglicht_zigbee_led
-            state: 'on'
-          - condition: template
-            value_template: '{{ repeat.index >= 10 }}'
-          alias: either light on or we tried 10 times and failed
-      enabled: false
     - action: script.retry_action_with_backoff
       metadata: {}
       data:
@@ -3615,6 +3595,9 @@
     - condition: numeric_state
       entity_id: sensor.gang_bewegung_illuminance
       above: 200
+    - condition: numeric_state
+      entity_id: sensor.light_brighness
+      below: 0.1
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
