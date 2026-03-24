@@ -13651,3 +13651,100 @@
         - 5955
       repeats: 2
   mode: single
+- id: '1774379053766'
+  alias: Heizungsverteiler EG Überstrom dynamisch
+  description: "⚡ **Heizungsverteiler EG Überstrom dynamisch**\n\n\n  ### \U0001F4CB
+    Intelligent Overcurrent Protection Control\n\n\n  This automation provides a multi-tiered
+    safety layer for the\n  **Heizungsverteiler EG** by monitoring electrical current
+    in real-time. It\n  acts as a digital circuit breaker, responding dynamically
+    to different load\n  intensities to prevent hardware damage or electrical hazards.\n\n\n
+    \ **Operational Strategy:**\n\n  * **Proactive Monitoring:** Uses staggered `numeric_state`
+    thresholds to\n  identify escalating power draws.\n\n  * **Risk-Based Response:**
+    Implements an inverse-time characteristic where\n  higher currents trigger faster
+    shutdown responses.\n\n  * **Reliability Mechanism:** Utilizes a robust retry
+    script with linear\n  backoff to ensure the **turn_off** command is successfully
+    executed and\n  verified, even during transient interference.\n\n\n  ---\n\n\n
+    \ ### Trigger Overview Table\n  \n\n  | Type | Entity / Condition | ID | Purpose
+    |\n  | :--- | :--- | :--- | :--- |\n  | Numeric State | **Current** 1A - 2A for
+    30s | `zone_1` | Low-level overload detection (sustained) |\n  | Numeric State
+    | **Current** 2A - 4A for 15s | `zone_2` | Moderate overload detection |\n  |
+    Numeric State | **Current** > 4A for 5s | `zone_3` | High-level/Critical overload
+    (rapid response) |\n\n\n  ---\n\n\n  ### Operational Logic Sections\n\n\n  ####
+    Zone 1: Sustained Low Overload\n\n  * **Purpose:** Protects against minor but
+    persistent overcurrent conditions.\n\n  * **Logic Overview:** Triggered when current
+    stays between **1A** and **2A**\n  for at least **30 seconds**.\n\n  * **Effect:**
+    Executes the retry-based shutdown and sends a Zone 1 specific\n  notification
+    to **notify.duncan**.\n\n\n  #### Zone 2: Moderate Overload\n\n  * **Purpose:**
+    Responds to significant load increases that exceed normal\n  operating parameters.\n\n
+    \ * **Logic Overview:** Triggered when current stays between **2A** and **4A**\n
+    \ for **15 seconds**.\n\n  * **Effect:** Executes the retry-based shutdown and
+    sends a Zone 2 specific\n  notification to **notify.duncan**.\n\n\n  #### Zone
+    3: Critical Overload\n\n  * **Purpose:** Immediate safety intervention for high-current
+    spikes or\n  faults.\n\n  * **Logic Overview:** Triggered when current exceeds
+    **4A** for only **5\n  seconds**.\n\n  * **Effect:** Executes the retry-based
+    shutdown and sends a high-priority\n  \"Immediate\" notification to **notify.duncan**.\n\n\n
+    \ ---\n\n\n  ### Technical Overview\n\n\n  * **Automation Mode:** `single` (Prevents
+    overlapping execution during a\n  single event)\n\n  * **Execution Method:** `script.retry_action_with_backoff`\n\n
+    \ * **Key Inputs:** `sensor.heizungsverteiler_eg_current`\n\n  * **Controlled
+    Entities:** `switch.heizungsverteiler_eg`\n\n  * **Safety Mechanisms:** * **Verified
+    Shutdown:** 10 retries with linear\n  backoff (5s to 60s delay).\n      * **State
+    Condition:** Only runs if the switch is currently **on**.\n      * **Failure Notification:**
+    Direct alert if the retry script fails to confirm the \"off\" state.\n\n  ---\n\n\n
+    \ ### \U0001F4A1 Notes\n\n\n  * **Inverse-Time Logic:** The automation mimics
+    professional circuit breakers\n  where the time-to-trip decreases as the current
+    increases, providing a balance\n  between avoiding nuisance trips and ensuring
+    safety.\n\n  * **Retry Script:** By using `script.retry_action_with_backoff`,
+    the system\n  accounts for potential Zigbee/Z-Wave mesh congestion that might
+    otherwise\n  cause a single \"off\" command to fail.\n\n  * **Informative Alerts:**
+    Templates are used to provide the exact amperage\n  that triggered the shutdown,
+    allowing for faster troubleshooting of the\n  connected load."
+  triggers:
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 1
+    below: 2
+    for:
+      seconds: 30
+    id: zone_1
+    trigger: numeric_state
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 2
+    below: 4
+    for:
+      seconds: 15
+    id: zone_2
+    trigger: numeric_state
+  - entity_id: sensor.heizungsverteiler_eg_current
+    above: 4
+    for:
+      seconds: 5
+    id: zone_3
+    trigger: numeric_state
+  conditions:
+  - condition: state
+    entity_id: switch.heizungsverteiler_eg
+    state:
+    - 'on'
+  actions:
+  - data:
+      entity_id: switch.heizungsverteiler_eg
+      target_state: 'off'
+      max_retries: 10
+      base_delay: 5
+      max_delay: 60
+      backoff_type: linear
+      notify_on_failure: true
+      notify_service: notify.duncan
+      action_domain: switch
+      action_type: turn_off
+    action: script.retry_action_with_backoff
+  - data:
+      title: "{% if trigger.id == 'zone_1' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
+        (1-2 A)\n{% elif trigger.id == 'zone_2' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
+        (2-4 A)\n{% elif trigger.id == 'zone_3' %}\n  ⚠️ Heizungsverteiler EG sofort
+        abgeschaltet (>4 A)\n{% endif %}\n"
+      message: 'Der Heizungsverteiler EG wurde abgeschaltet, weil der Strom {{ trigger.to_state.state
+        }} A erreicht hat. Das ersetzt vorübergehend die Sicherung.
+
+        '
+    action: notify.duncan
+  mode: single
