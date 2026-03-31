@@ -1109,6 +1109,20 @@ template:
             Aggressively remove all filler words, redundant phrases, and secondary details.
             Ensure the summary is grammatically correct, coherent, and preserves the original meaning.
             Do not exceed the limit under any circumstance.
+             
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
+              {% set url = beta_scrape.beta_url.value|string|trim %}
+              {% if 'release-' in url %}
+                {% set build = url.split('/')[-2]|trim %}
+                {% set year = build.split('-')[1][0:4] %}
+                {% set month = build.split('-')[1][4:]|int %}
+                Homeassistant {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
+              {% else %}
+                Invalid URL
+              {% endif %}
+            {% else %}
+              Unknown
+            {% endif %}
             
             {{ agent.response.speech.plain.speech }}
       - action: conversation.process
@@ -1123,7 +1137,21 @@ template:
             Do not explain, justify, or comment.
             Do not include any text before or after the summary.
             Output ONLY the condensed summary.
-           
+            
+            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
+              {% set url = beta_scrape.beta_url.value|string|trim %}
+              {% if 'release-' in url %}
+                {% set build = url.split('/')[-2]|trim %}
+                {% set year = build.split('-')[1][0:4] %}
+                {% set month = build.split('-')[1][4:]|int %}
+                Homeassistant {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
+              {% else %}
+                Invalid URL
+              {% endif %}
+            {% else %}
+              Unknown
+            {% endif %}
+            
             {{ agent_short_try.response.speech.plain.speech }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
