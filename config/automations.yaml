@@ -9730,13 +9730,34 @@
         entity_id: input_select.smart_home_status
         state: Vacation
       sequence:
-      - action: switch.turn_off
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
         metadata: {}
-        data: {}
-        target:
-          entity_id:
-          - switch.garagentor_tasmota
-          - switch.sauger_tasmota
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.garagentor_tasmota
+          target_state: 'off'
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.sauger_tasmota
+          target_state: 'off'
       alias: Power off all the way
   mode: queued
   max: 3
