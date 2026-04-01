@@ -624,46 +624,6 @@
       cycle_counter_helper: counter.spulmaschine
       end_notify_tag: spuelmaschine_fertig
       end_notify_icon: mdi:dishwasher
-- id: '1708932016459'
-  alias: Update System Metrics Sensors
-  description: "## ⚙️ System Metrics Update Automation\n\n### \U0001F4CB Purpose\nAutomates
-    the update of system metrics and device states at different intervals:\n- Every
-    **2 hours**: Reloads AnkerMake controller if it is running.\n---\n\n### ⏱ Triggers\n-
-    **2-hour interval**: `time_pattern` trigger every 2 hours (`hours: /2`).\n---\n\n###
-    ✅ Conditions\n- None globally; each action block checks the corresponding trigger
-    ID to ensure correct execution.\n- For the 2-hour action, also checks that `binary_sensor.ankerctl_lauft`
-    is \"on\" before reloading the AnkerMake controller.\n\n---\n\n### \U0001F3AF
-    Actions\n- **2-hour trigger (`2h`)**:\n    - If AnkerMake is running (`binary_sensor.ankerctl_lauft`
-    == \"on\"), presses `button.ankermake_m5c_reload_ankerctl` to reload the controller.\n\n---\n\n###
-    \U0001F527 Technical Notes\n- Mode: `queued` with `max: 10` to handle overlapping
-    triggers safely.\n- Individual action blocks are conditionally executed based
-    on the trigger ID.\n- Designed to minimize unnecessary actions while keeping devices
-    and sensors up-to-date."
-  triggers:
-  - hours: /2
-    id: 2h
-    trigger: time_pattern
-  conditions: []
-  actions:
-  - alias: 2h
-    if:
-    - condition: trigger
-      id:
-      - 2h
-    then:
-    - if:
-      - condition: state
-        entity_id: binary_sensor.ankerctl_lauft
-        state: 'on'
-      then:
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: button.ankermake_m5c_reload_ankerctl
-        action: button.press
-        enabled: true
-  mode: queued
-  max: 10
 - id: '1709073413848'
   alias: Auto Boiler
   description: "## \U0001F525 Auto Boiler  \n\n### \U0001F4CB **Boiler Automation
@@ -3098,7 +3058,7 @@
     ✅ **Conditions**  \n- **Printer switch is on**: `switch.ankermake_1`\n\nThis prevents
     taking snapshots if the printer is powered off.  \n\n---\n\n### \U0001F3AF **Actions
     / Workflow**  \n\n1. **Capture Timelapse Pictures**  \n   - Runs **every 15 seconds**
-    while the printer is powered and actively printing (sensor `c8c1983e6bcaf5b9c2acf5d654cf7bc2`
+    while the printer is powered and actively printing (sensor `sensor.ankermake_power`
     above 15).  \n   - Snapshot filename format:  \n     ```\n     /media/m5ccam/pictures/{{
     job_name }}_YYYYMMDD-HHMMSS.jpg\n     ```\n   - Captures images using `camera.ankermake_m5c_camera_mainstream`.
     \ \n\n2. **Create Timelapse Video**  \n   - Triggered when `sensor.ankermake_m5c_progress`
@@ -3139,11 +3099,8 @@
       - condition: trigger
         id:
         - every_15th_second
-      - type: is_power
-        condition: device
-        device_id: 7b50ca1fdd0a5ceb179537cac54ed999
-        entity_id: c8c1983e6bcaf5b9c2acf5d654cf7bc2
-        domain: sensor
+      - condition: numeric_state
+        entity_id: sensor.ankermake_power
         above: 15
     then:
     - metadata: {}
@@ -5865,9 +5822,36 @@
   mode: single
 - id: '1740690228362'
   alias: UPS, on battery -> Stop Non necessary services
-  description: When the UPS goes offline, this automation stops non-essential addons
-    (Frigate, Ankerctl, Google Drive Backup, OneDrive Backup) and turns off the NAS
-    WOL switch to conserve power. When power is restored, it restarts these addons.
+  description: "## ⚡ **UPS Power State Management**\n\n### \U0001F4CB Intelligent
+    Power Conservation Control\n\nThis automation monitors the operational status
+    of the primary UPS system to manage energy consumption during power outages. Its
+    primary intent is to extend battery runtime by shedding non-essential software
+    loads when utility power is lost and restoring services once the system returns
+    to an online state.\n\nThe operational strategy follows a **resource-preservation**
+    approach, immediately halting high-performance or non-critical add-ons to reduce
+    the discharge rate on the UPS batteries.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State**
+    | `sensor.ups0_status` | N/A | Detects when the UPS switches from utility power
+    to battery. |\n| **State** | `sensor.ups0_status` | N/A | Detects when utility
+    power is restored and the UPS is **Online**. |\n\n---\n\n### Operational Logic
+    Sections\n\n#### Outage / Battery Mode\n* **Purpose**: Maximize UPS battery longevity
+    during a power failure.\n* **Logic Overview**: Triggered when **sensor.ups0_status**
+    is no longer **Online**. \n* **Effect**: \n    * Stops **Frigate** (NVR/AI processing).\n
+    \   * Stops **Ankerctl**.\n\n#### Power Restored Mode\n* **Purpose**: Restore
+    full system functionality once stable power is available.\n* **Logic Overview**:
+    Triggered when **sensor.ups0_status** returns to the **Online** state.\n* **Effect**:
+    \n    * Starts **Frigate**.\n    * Starts **Ankerctl**.\n\n---\n\n### Technical
+    Overview\n\n* **Automation Mode**: `single`\n* **Execution Method**: Direct Home
+    Assistant Supervisor Service Calls (`hassio.addon_start`, `hassio.addon_stop`).\n*
+    **Key Inputs**: `sensor.ups0_status`.\n* **Controlled Entities**: \n    * `addon_ccab4aaf_frigate-fa`
+    (Frigate)\n    * `addon_cff83567_ankerctl` (Ankerctl)\n* **Safety Mechanisms**:
+    Logical `OR` condition gate ensures the automation only proceeds if a definitive
+    state change to or from **Online** is confirmed.\n\n---\n\n### \U0001F4A1 Notes\n\n*
+    **Load Shedding**: By stopping **Frigate**, the system significantly reduces CPU/GPU
+    utilization, which is typically the highest contributor to power draw in Home
+    Assistant environments.\n* **State Consistency**: The use of a `choose` block
+    ensures that the system always synchronizes the add-on states with the current
+    UPS status, preventing services from remaining offline after power restoration."
   triggers:
   - trigger: state
     entity_id:
@@ -5909,14 +5893,6 @@
           metadata: {}
           data:
             addon: cff83567_ankerctl
-        - action: hassio.addon_stop
-          metadata: {}
-          data:
-            addon: cebe7a76_hassio_google_drive_backup
-        - action: hassio.addon_stop
-          metadata: {}
-          data:
-            addon: de91e161_hassio_onedrive_backup
     - conditions:
       - condition: state
         entity_id: sensor.ups0_status
@@ -5932,14 +5908,6 @@
           metadata: {}
           data:
             addon: cff83567_ankerctl
-        - action: hassio.addon_start
-          metadata: {}
-          data:
-            addon: cebe7a76_hassio_google_drive_backup
-        - action: hassio.addon_start
-          metadata: {}
-          data:
-            addon: de91e161_hassio_onedrive_backup
       alias: Ups Back Online
   mode: single
 - id: '1740741927183'
@@ -6781,28 +6749,58 @@
       topic: cmnd/tasmota_157F88/Rule3
       payload: ' '
 - id: '1749115504854'
-  alias: Adjust Addon Status based on AnkerMake M5C Usage
-  description: "## ⚡ Adjust Addon Status based on AnkerMake M5C Usage\n\n### \U0001F4CB
-    **Purpose**\n\nThis automation manages the Ankerctl Home Assistant addon based
-    on the usage of the AnkerMake M5C 3D printer.  \nIt ensures the addon runs only
-    when the printer is active, reducing unnecessary resource usage.\n\n---\n\n###
-    ⏰ **Triggers**\n\n| Trigger Entity       | State Change | Trigger ID |\n|---------------------|--------------|------------|\n|
-    `switch.ankermake_1` | `→ on`   | \"ON\"       |\n| `switch.ankermake_1` | `→
-    off`   | \"OFF\"      |\n\n> **Note:** The triggers monitor the printer's main
-    switch, starting or stopping the addon accordingly.  \n\n---\n\n### ✅ **Conditions**\n\n-
-    None. The automation acts directly on the switch triggers.  \n\n---\n\n### \U0001F3AF
-    **Actions / Workflow**\n\n1. **Printer Turned On (\"ON\")**  \n   - Triggered
-    when `switch.ankermake_1` changes to `\"on\"`.  \n   - Action: Starts the `cff83567_ankerctl`
-    addon.  \n\n2. **Printer Turned Off (\"OFF\")**  \n   - Triggered when `switch.ankermake_1`
-    changes to `\"off\"`.  \n   - Action: Stops the `cff83567_ankerctl` addon.  \n\n>
-    **Rationale:** Keeps the addon running only when needed, preventing unnecessary
-    load on Home Assistant.  \n\n---\n\n### \U0001F527 **Technical Specs**\n\n- **Addon
-    Target:** `cff83567_ankerctl`  \n- **Mode:** `single` (ensures only one instance
-    runs at a time; prevents overlapping addon start/stop commands)  \n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- This approach is ideal for addons tied to specific
-    hardware usage.  \n- Ensures efficient resource management on your Home Assistant
-    system.  \n- Can be extended to other devices by duplicating triggers and adjusting
-    the addon target."
+  alias: AnkerMake M5C Resource & Lifecycle Manage
+  description: "# \U0001F5A8️ **AnkerMake M5C Resource & Lifecycle Manager**\n\n---\n\n###
+    \U0001F4CB Intelligent 3D Printer Control\n**High-level intent**\nThis automation
+    synchronizes the lifecycle of supporting software services with the physical hardware
+    state of the **AnkerMake M5C**. It ensures that the **Ankerctl Addon** is only
+    consuming system resources when the printer is active and manages the automated
+    power-down sequence upon job completion.\n\n**Operational strategy**\nThe system
+    employs a \"resource-on-demand\" strategy combined with an efficiency-focused
+    shutdown logic. It monitors power consumption and print progress to determine
+    when the hardware is idle, ensuring the printer does not remain powered on unnecessarily
+    after a task concludes.\n\n**Reliability mechanisms**\nTo prevent communication
+    failures during the shutdown sequence, the automation utilizes the `script.retry_action_with_backoff`.
+    This ensures that the **AnkerMake 1** switch receives the **off** command even
+    during transient network instability, with a maximum of **10** retries and mobile
+    notifications via **notify.duncan** if the operation fails.\n\n---\n\n### Trigger
+    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
+    | :--- | :--- |\n| **State** | **switch.ankermake_1** | `ON` | Detects when the
+    printer is manually or externally powered on. |\n| **State** | **switch.ankermake_1**
+    | `OFF` | Detects when the printer is manually or externally powered off. |\n|
+    **Time Pattern** | Every **2** hours | `2h` | Periodic maintenance trigger to
+    refresh the integration. |\n| **Numeric State** | **sensor.ankermake_m5c_progress**
+    > **99.9** | `Switch Off` | Detects print completion sustained for **15** minutes.
+    |\n| **Numeric State** | **sensor.ankermake_power** < **15** W | `Switch Off`
+    | Detects idle power state sustained for **30** minutes. |\n\n---\n\n### Operational
+    Logic Sections\n\n#### Power-Up Routine\n- **Purpose**: Initialize software environment
+    for printer management.\n- **Logic Overview**: Triggered when **switch.ankermake_1**
+    transitions to **on**.\n- **Effect**: Starts the **cff83567_ankerctl** Addon.\n\n####
+    Power-Down Routine (Manual)\n- **Purpose**: Clean up software resources when hardware
+    is disabled.\n- **Logic Overview**: Triggered when **switch.ankermake_1** transitions
+    to **off**.\n- **Effect**: Stops the **cff83567_ankerctl** Addon to free system
+    memory and CPU.\n\n#### Automated Shutdown (Efficiency)\n- **Purpose**: Securely
+    power off the printer after job completion or prolonged idle.\n- **Logic Overview**:
+    Triggered if progress exceeds **99.9%** for **15** minutes OR power draw drops
+    below **15W** for **30** minutes.\n- **Effect**: Executes a retry-guaranteed shutdown
+    of **switch.ankermake_1** via backoff script.\n\n#### Maintenance Cycle\n- **Purpose**:
+    Ensure integration stability during long-running sessions.\n- **Logic Overview**:
+    Occurs every **2** hours, provided **binary_sensor.ankerctl_lauft** is **on**.\n-
+    **Effect**: Presses **button.ankermake_m5c_reload_ankerctl** to refresh the connection.\n\n---\n\n###
+    Technical Overview\n- **Automation Mode**: `single`\n- **Execution method**: Direct
+    addon calls (`hassio.addon_start/stop`), Button presses, and `script.retry_action_with_backoff`.\n-
+    **Key Inputs**: **sensor.ankermake_m5c_progress**, **sensor.ankermake_power**\n-
+    **Controlled Entities**: **switch.ankermake_1**, **button.ankermake_m5c_reload_ankerctl**,
+    **Addon cff83567_ankerctl**\n- **Safety Mechanisms**: 10-tier exponential backoff
+    for power-off commands; notification alerts on failure to **notify.duncan**.\n\n---\n\n###
+    \U0001F4A1 Notes\n- **Dual-Threshold Shutdown**: The use of both **progress %**
+    and **wattage** creates a redundant safety net; if the progress sensor fails to
+    hit 100%, the drop in heater/motor power consumption will eventually trigger the
+    shutdown.\n- **Resource Management**: By stopping the **Ankerctl Addon** when
+    the printer is **OFF**, the host system saves overhead, which is critical for
+    users running Home Assistant on lower-spec hardware.\n- **Stability**: The 2-hour
+    reload interval addresses known integration drift or \"stale\" data issues often
+    found in custom 3D printer integrations."
   triggers:
   - trigger: state
     entity_id:
@@ -6814,6 +6812,27 @@
     - switch.ankermake_1
     to: 'off'
     id: 'OFF'
+  - trigger: time_pattern
+    hours: /2
+    id: 2h
+  - entity_id:
+    - sensor.ankermake_m5c_progress
+    for:
+      hours: 0
+      minutes: 15
+      seconds: 0
+    above: 99.9
+    trigger: numeric_state
+    id: Switch Off
+  - trigger: numeric_state
+    entity_id:
+    - sensor.ankermake_power
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+    below: 15
+    id: Switch Off
   conditions: []
   actions:
   - choose:
@@ -6837,6 +6856,40 @@
         data:
           addon: cff83567_ankerctl
       alias: Stop Ankerctl Addon When Printer Turned Off
+    - conditions:
+      - condition: trigger
+        id:
+        - 2h
+      - condition: state
+        entity_id: binary_sensor.ankerctl_lauft
+        state: 'on'
+      sequence:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: button.ankermake_m5c_reload_ankerctl
+        action: button.press
+        enabled: true
+      alias: 'Reload ankerctl if running '
+    - conditions:
+      - condition: trigger
+        id:
+        - Switch Off
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.ankermake_1
+          target_state: 'off'
+      alias: Turn AnkerMake Plug OFF if print finished
   mode: single
 - id: '1749768402037'
   alias: Gang Light Brightness Control
@@ -11316,11 +11369,13 @@
     - sensor.light_brighness
     above: 29
     id: On_above_29
+    enabled: false
   - trigger: numeric_state
     entity_id:
     - sensor.light_brighness
     below: 30
     id: Off_below_30
+    enabled: false
   - trigger: homeassistant
     event: start
     id: start
