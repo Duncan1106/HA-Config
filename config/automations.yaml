@@ -2960,60 +2960,6 @@
       target:
         entity_id: switch.pool_pumpe
   mode: single
-- id: '1721345437021'
-  alias: AnkerMake 3D Printer Auto Turn Off
-  description: "## \U0001F5A8️ AnkerMake 3D Printer Auto Turn Off Automation\n\n###
-    \U0001F4CB **Purpose**\n\nThis automation automatically powers off the AnkerMake
-    3D printer to save energy and prevent unnecessary idle time once a print is finished
-    or the printer is no longer drawing significant power.\n\n---\n\n### ⏰ **Triggers**\n\n|
-    Trigger Entity | Condition / Threshold | Trigger ID |\n|----------------|---------------------|------------|\n|
-    `sensor.ankermake_m5c_progress` | Above 99.9% for 15 minutes | Print Finished
-    |\n| `sensor.ankermake_power` | Below 15W for 30 minutes | Idle Power |\n\n> Note:
-    Ensures the printer only turns off after a print has completed or it has been
-    idle for a significant duration.\n\n---\n\n### ✅ **Conditions**\n\n- No explicit
-    conditions; triggers act directly on the printer switch.\n\n---\n\n### \U0001F3AF
-    **Actions / Workflow**\n\n- Turns off the printer switch (`switch.ankermake_1`)
-    when any of the above triggers occur.\n\n---\n\n### \U0001F527 **Technical Specs**\n\n-
-    **Mode:** `single`  \n- **Device Controlled:** `switch.ankermake_1` (3D printer
-    main switch)  \n- **Monitoring Entities:**  \n  - `sensor.ankermake_m5c_progress`
-    (print progress)  \n  - `sensor.ankermake_power` (printer power draw)\n\n---\n\n###
-    ⚡ **Notes / Best Practices**\n\n- Provides energy efficiency by automatically
-    shutting down idle or finished prints.  \n- Delay thresholds prevent premature
-    shutdown during normal printer operation.  \n- Can be adjusted for longer idle
-    periods or different power thresholds depending on printer usage patterns.\n"
-  triggers:
-  - entity_id:
-    - sensor.ankermake_m5c_progress
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    above: 99.9
-    trigger: numeric_state
-  - trigger: numeric_state
-    entity_id:
-    - sensor.ankermake_power
-    for:
-      hours: 0
-      minutes: 30
-      seconds: 0
-    below: 15
-  conditions: []
-  actions:
-  - action: script.retry_action_with_backoff
-    metadata: {}
-    data:
-      action_domain: switch
-      action_type: turn_off
-      max_retries: 10
-      base_delay: 5
-      max_delay: 60
-      backoff_type: simple
-      notify_on_failure: true
-      notify_service: notify.duncan
-      entity_id: switch.ankermake_1
-      target_state: 'off'
-  mode: single
 - id: '1723670137701'
   alias: Reload Dreame Robots After Internet Recovery
   description: This automation reloads the Dreame Robots configuration after the internet
@@ -3045,84 +2991,6 @@
     data:
       addon: bf995ce7_saic_python_mqtt_gateway-pre
   mode: single
-- id: '1723675237746'
-  alias: 3D Printer Timelapse
-  description: "## \U0001F5A8️ 3D Printer Timelapse  \n\n### \U0001F4CB **Timelapse
-    Capture Automation**  \nThis automation captures snapshots from the 3D printer
-    camera at regular intervals during a print and generates a timelapse video when
-    the print finishes.  \n\nIt ensures that snapshots are only taken when the printer
-    is powered and actively printing, preventing unnecessary captures.  \n\n---\n\n###
-    ⏰ **Triggers**  \n\n| Trigger | Event / Condition |\n|---------|-----------------|\n|
-    `time_pattern` | Every 15 seconds (`/15` seconds) |\n| `sensor.ankermake_m5c_progress`
-    | Numeric state above 99.99% for 10 minutes → indicates print finished |\n\n---\n\n###
-    ✅ **Conditions**  \n- **Printer switch is on**: `switch.ankermake_1`\n\nThis prevents
-    taking snapshots if the printer is powered off.  \n\n---\n\n### \U0001F3AF **Actions
-    / Workflow**  \n\n1. **Capture Timelapse Pictures**  \n   - Runs **every 15 seconds**
-    while the printer is powered and actively printing (sensor `sensor.ankermake_power`
-    above 15).  \n   - Snapshot filename format:  \n     ```\n     /media/m5ccam/pictures/{{
-    job_name }}_YYYYMMDD-HHMMSS.jpg\n     ```\n   - Captures images using `camera.ankermake_m5c_camera_mainstream`.
-    \ \n\n2. **Create Timelapse Video**  \n   - Triggered when `sensor.ankermake_m5c_progress`
-    exceeds 99.99% for 10 minutes (print finished).  \n   - Calls `script.create_timelapse`
-    to generate the video from captured snapshots.  \n\n---\n\n### \U0001F527 **Technical
-    Specs**  \n- **Camera:** `camera.ankermake_m5c_camera_mainstream`  \n- **Power
-    Sensor:** `c8c1983e6bcaf5b9c2acf5d654cf7bc2`  \n- **Job Name Sensor:** `sensor.job_name_2`
-    \ \n- **Snapshot Interval:** 15 seconds  \n- **Print Finish Detection:** 99.99%
-    completion for 10 minutes  \n- **Mode:** `parallel` (max 3 concurrent executions)
-    \ \n\n---\n\n### ⚡ **Notes / Best Practices**  \n- Ensures snapshots are only
-    taken if the printer is on and actively printing.  \n- Timelapse creation triggers
-    automatically when the print completes.  \n- Filenames are timestamped to avoid
-    overwriting previous snapshots.  \n- Running in `parallel` mode allows overlapping
-    snapshot intervals if needed, but max 3 concurrent executions prevent overload.\n"
-  triggers:
-  - seconds: /15
-    id: every_15th_second
-    trigger: time_pattern
-  - entity_id:
-    - sensor.ankermake_m5c_progress
-    for:
-      hours: 0
-      minutes: 10
-      seconds: 0
-    above: 99.99
-    id: Print finished
-    enabled: true
-    trigger: numeric_state
-  conditions:
-  - condition: state
-    entity_id: switch.ankermake_1
-    state: 'on'
-  actions:
-  - alias: Time lapse pictures
-    if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - every_15th_second
-      - condition: numeric_state
-        entity_id: sensor.ankermake_power
-        above: 15
-    then:
-    - metadata: {}
-      data:
-        filename: /media/m5ccam/pictures/{{states('sensor.job_name_2') | string }}_{{
-          now().strftime("%Y%m%d-%H%M%S") }}.jpg
-      target:
-        entity_id:
-        - camera.ankermake_m5c_camera_mainstream
-      action: camera.snapshot
-      enabled: true
-  - if:
-    - condition: trigger
-      id:
-      - Print finished
-    then:
-    - action: script.create_timelapse
-      metadata: {}
-      data: {}
-    alias: Create Timelapse
-  mode: parallel
-  max: 3
 - id: '1724944606723'
   alias: Vacation or Daily Mode
   description: Automatically adjusts home settings for vacation or daily living modes.
@@ -5149,42 +5017,6 @@
       entity_id:
       - switch.duncan_lichtschalter_left
   mode: single
-- id: '1738338302199'
-  alias: WallPanelBrightness
-  description: ''
-  triggers:
-  - entity_id:
-    - sensor.average_illuminance
-    trigger: state
-  - entity_id: sun.sun
-    attribute: elevation
-    trigger: state
-  conditions:
-  - condition: template
-    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
-      default(as_datetime(''0''), true)) > timedelta(minutes=2) }}'
-  actions:
-  - action: number.set_value
-    metadata: {}
-    target:
-      entity_id: number.lenovo_tab_p11_bildschirmhelligkeit
-    data:
-      value: "{% set light_max = 250 %}\n{% if states('sensor.average_illuminance')
-        == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
-        = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif %}\n{%
-        if states.sun.sun.attributes.elevation >= 0 %}\n  {{ light_max }} \n{% else
-        %}\n  {{ max(light_max * light_float, 10) }}\n{% endif %}\n"
-  - action: number.set_value
-    metadata: {}
-    target:
-      entity_id: number.lenovo_tab_p11_bildschirmschoner_helligkeit
-    data:
-      value: "{% set light_max = 200 %}\n{% if states('sensor.average_illuminance')
-        == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
-        = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif %}\n{%
-        if states.sun.sun.attributes.elevation >= 0 %}\n  {{ light_max }} \n{% else
-        %}\n  {{ max(light_max * light_float, 10)/2 }}\n{% endif %}\n"
-  mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
   description: "# \U0001F34A **Orangina Lamp Light**\n\n### \U0001F4CB Intelligent
@@ -5751,45 +5583,6 @@
           message: clear_notification
   mode: parallel
   max: 10
-- id: '1740094506579'
-  alias: Wallpanel Browser Reload on Low Memory and time based
-  description: Reloads the browser on the wall panel if RAM usage exceeds 90% or at
-    02:00 every day. This automation ensures smooth performance by resetting the browser
-    when memory is low.
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.lenovo_tab_p11_ram_usage
-    above: 90
-  - trigger: time
-    at: 02:00:00
-  conditions: []
-  actions:
-  - sequence:
-    - action: button.press
-      metadata: {}
-      data: {}
-      target:
-        entity_id: button.lenovo_tab_p11_browser_neu_starten
-    - delay:
-        hours: 0
-        minutes: 5
-        seconds: 0
-        milliseconds: 0
-    - type: turn_off
-      device_id: b2f8744d05fbc0df49c0036eeb2fe41c
-      entity_id: 2421c34f010ad80ffb49d8e4ea205770
-      domain: switch
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-    - type: turn_on
-      device_id: b2f8744d05fbc0df49c0036eeb2fe41c
-      entity_id: 2421c34f010ad80ffb49d8e4ea205770
-      domain: switch
-  mode: single
 - id: '1740525979043'
   alias: Turn all off if going to bed
   description: Turns off various lights and power strips in the bedroom when a person
@@ -6129,27 +5922,60 @@
   max: 10
 - id: '1742316986881'
   alias: Wall Panel Display Control
-  description: "## \U0001F5A5 Wall Panel Display Control Automation\n\n### \U0001F4CB
-    Purpose\nManages the Lenovo Tab P11 wall panel display to optimize usage and reduce
-    unnecessary power consumption:\n\n- Turns **off** the display every night at **23:00**.\n-
-    Turns **on** the display at **sunrise**.\n- If the display is manually or automatically
-    switched on **after 23:00** but before sunrise, it will automatically switch **off
-    after 15 seconds**.\n\n---\n\n### ⏱ Triggers\n- **23:00 time trigger** → forces
-    display off.\n- **Sunrise event** → turns the display back on.\n- **State trigger**
-    on `switch.lenovo_tab_p11_bildschirmschoner` to detect manual/other activations:\n
-    \ - Fires if the screensaver switch changes **to `on` for 15 seconds**.\n\n---\n\n###
-    ✅ Conditions\n- No global conditions.\n- Inside **Bildschirm changed** sequence:\n
-    \ - Ensures the current time is **between 23:00 and sunrise**.\n  - Ensures `switch.lenovo_tab_p11_bildschirm`
-    is still `on` before forcing it off.\n\n---\n\n### \U0001F3AF Actions\n- **Display
-    Off at 23:00 (`Display Off`)**  \n  → Turns off `switch.lenovo_tab_p11_bildschirm`.\n-
-    **Display On at Sunrise (`Display On`)**  \n  → Turns on `switch.lenovo_tab_p11_bildschirm`.\n-
-    **Screen On after Midnight (`Bildschirm changed`)**  \n  → If screensaver is on
-    after 23:00 and before sunrise:\n    - Waits 15 seconds.\n    - Then switches
-    off the display.\n\n---\n\n### \U0001F527 Technical Notes\n- Mode: `single` →
-    prevents overlapping executions.  \n- `max_exceeded: silent` → avoids log spam
-    if retriggers happen quickly.  \n- Uses both **time** and **sun events** for robust
-    scheduling.  \n- The delayed off sequence ensures the display won’t stay on unintentionally
-    during the night."
+  description: "# \U0001F5A5️ **Wall Panel Display Control**\n\n---\n\n### \U0001F4CB
+    Intelligent Display Control\nThis automation manages the lifecycle, performance,
+    and environmental adaptation of the **Lenovo Tab P11** wall panel. \n\n* **High-level
+    intent:** To automate display power states based on time and solar position, maintain
+    system performance via RAM management, and dynamically adjust screen brightness
+    based on ambient light levels.\n* **Operational strategy:** Employs a time-and-solar
+    schedule for power, a reactive approach to environmental changes (illuminance),
+    and a performance-first maintenance cycle.\n* **Reliability mechanisms:** Utilizes
+    a robust `retry_action_with_backoff` script for critical state changes and `parallel`
+    execution mode to ensure overlapping tasks (like brightness updates and maintenance)
+    do not interfere with one another.\n\n---\n\n### \U0001F4CB Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time**
+    | **23:00:00** | `Display Off` | Standard evening shutdown of the panel display.
+    |\n| **Sun** | **Sunrise** (0 offset) | `Display On` | Standard morning activation
+    of the panel display. |\n| **State** | **switch.lenovo_tab_p11_bildschirmschoner**
+    | `Display changed` | Detects when the screensaver activates to enforce night-time
+    rules. |\n| **Numeric State** | **sensor.lenovo_tab_p11_ram_usage** > 90 | `High
+    RAM usage` | Reactive trigger to prevent panel sluggishness or crashes. |\n| **Time**
+    | **02:00:00** | `High RAM usage` | Scheduled daily maintenance to refresh the
+    browser environment. |\n| **State** | **sensor.average_illuminance** | `Brightness`
+    | Monitors ambient light levels to adjust screen visibility. |\n\n---\n\n### \U0001F4CB
+    Operational Logic Sections\n\n#### #### Day/Night Scheduling\n* **Purpose:** Ensures
+    the screen is active during daylight hours and off during the night.\n* **Logic
+    Overview:** Operates when **input_select.smart_home_status** is set to **Daily**.
+    It triggers at **23:00** or **Sunrise**. Additionally, if the screensaver turns
+    **on** between **23:00** and **Sunrise** while the screen is still active, it
+    triggers a forced shutdown.\n* **Effect:** Toggles **switch.lenovo_tab_p11_bildschirm**
+    **on** or **off**.\n\n#### #### Performance Maintenance (High RAM)\n* **Purpose:**
+    Clears system resources to maintain a fluid user interface.\n* **Logic Overview:**
+    Triggered either by RAM usage exceeding **90%** or at the **02:00** maintenance
+    window.\n* **Effect:** Presses **button.lenovo_tab_p11_browser_neu_starten** and
+    executes a retry-loop to cycle the **switch.lenovo_tab_p11_bildschirmschoner**
+    to ensure a clean UI reload.\n\n#### #### Ambient Brightness Adjustment\n* **Purpose:**
+    Dynamically matches display intensity to room lighting.\n* **Logic Overview:**
+    Triggers on illuminance changes, restricted by a **2-minute** throttle (via template)
+    to prevent flickering. \n* **Effect:** Adjusts **number.lenovo_tab_p11_bildschirmhelligkeit**
+    and **number.lenovo_tab_p11_bildschirmschoner_helligkeit** based on solar elevation
+    and lux values.\n\n---\n\n### \U0001F4CB Technical Overview\n\n* **Automation
+    Mode:** `parallel` (Max: 10)\n* **Execution method:** Calls `script.retry_action_with_backoff`
+    for robust state synchronization.\n* **Key Inputs:** `sensor.average_illuminance`,
+    `sensor.sun_next_rising`, `input_select.smart_home_status`.\n* **Controlled Entities:**
+    * `switch.lenovo_tab_p11_bildschirm`\n    * `switch.lenovo_tab_p11_bildschirmschoner`\n
+    \   * `number.lenovo_tab_p11_bildschirmhelligkeit`\n    * `button.lenovo_tab_p11_browser_neu_starten`\n*
+    **Safety Mechanisms:** Throttle on brightness updates (120s) and a sophisticated
+    backoff/retry logic (10 retries) with notifications to `notify.duncan` upon failure.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Solar Logic:** The brightness logic uses a fallback: during
+    the day (elevation >= 0), it pins to a high constant (**250/200**); at night,
+    it scales mathematically based on the `average_illuminance` with a hard floor
+    of **10** to prevent total darkness.\n* **Persistence:** The use of `retry_action_with_backoff`
+    for the screensaver toggle during maintenance accounts for potential network latency
+    or tablet unresponsiveness during a browser restart.\n* **Night-Time Enforcement:**
+    The \"Redo Screensaver\" logic is a clever fail-safe that ensures if the screen
+    somehow turns on or the screensaver activates after hours, the automation forces
+    the display back to an **off** state.\n"
   triggers:
   - trigger: time
     at: '23:00:00'
@@ -6167,7 +5993,58 @@
       hours: 0
       minutes: 0
       seconds: 15
-  conditions: []
+  - trigger: numeric_state
+    entity_id:
+    - sensor.lenovo_tab_p11_ram_usage
+    above: 90
+    id: High RAM usage
+  - trigger: time
+    at: 02:00:00
+    id: High RAM usage
+  - entity_id:
+    - sensor.average_illuminance
+    trigger: state
+    id: Brightness
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: state
+        entity_id: input_select.smart_home_status
+        state:
+        - Daily
+      - condition: or
+        conditions:
+        - condition: trigger
+          id:
+          - Display On
+          - Display Off
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - Display changed
+          - condition: time
+            after: '23:00:00'
+            before: sensor.sun_next_rising
+          - condition: state
+            entity_id: switch.lenovo_tab_p11_bildschirm
+            state: 'on'
+          alias: Redo Screensaver
+        - alias: Screen Brightness
+          condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - Brightness
+          - condition: template
+            value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
+              | default(as_datetime(''0''), true)) > timedelta(minutes=2) }}'
+    - alias: High RAM
+      condition: trigger
+      id:
+      - High RAM usage
   actions:
   - choose:
     - conditions:
@@ -6198,12 +6075,6 @@
       - condition: trigger
         id:
         - Display changed
-      - condition: time
-        after: '23:00:00'
-        before: sensor.sun_next_rising
-      - condition: state
-        entity_id: switch.lenovo_tab_p11_bildschirm
-        state: 'on'
       sequence:
       - delay:
           hours: 0
@@ -6218,8 +6089,80 @@
           entity_id:
           - switch.lenovo_tab_p11_bildschirm
       alias: Bildschirm Aus wenn nach Mitternacht, vor Sonnenaufgang
-  mode: single
+    - conditions:
+      - condition: trigger
+        id:
+        - High RAM usage
+      sequence:
+      - action: button.press
+        metadata: {}
+        data: {}
+        target:
+          entity_id: button.lenovo_tab_p11_browser_neu_starten
+      - delay:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_off
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.lenovo_tab_p11_bildschirmschoner
+          target_state: 'off'
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.lenovo_tab_p11_bildschirmschoner
+          target_state: 'on'
+    - conditions:
+      - condition: trigger
+        id:
+        - Brightness
+      sequence:
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.lenovo_tab_p11_bildschirmhelligkeit
+        data:
+          value: "{% set light_max = 250 %}\n{% if states('sensor.average_illuminance')
+            == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
+            = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif
+            %}\n{% if state_attr('sun.sun','elevation') >= 0 %}\n  {{ light_max }}
+            \n{% else %}\n  {{ max(light_max * light_float, 10) }}\n{% endif %}"
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.lenovo_tab_p11_bildschirmschoner_helligkeit
+        data:
+          value: "{% set light_max = 200 %}\n{% if states('sensor.average_illuminance')
+            == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
+            = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif
+            %}\n{% if state_attr('sun.sun','elevation') >= 0 %}\n  {{ light_max }}
+            \n{% else %}\n  {{ max(light_max * light_float, 10)/2 }}\n{% endif %}\n"
+  mode: parallel
   max_exceeded: silent
+  max: 10
 - id: '1744046298527'
   alias: Enya kommt heim
   description: "\U0001F3E0 **Enya Arrival Tracking**\n\n### \U0001F4CB Intelligent
@@ -6751,56 +6694,58 @@
 - id: '1749115504854'
   alias: AnkerMake M5C Resource & Lifecycle Manage
   description: "# \U0001F5A8️ **AnkerMake M5C Resource & Lifecycle Manager**\n\n---\n\n###
-    \U0001F4CB Intelligent 3D Printer Control\n**High-level intent**\nThis automation
-    synchronizes the lifecycle of supporting software services with the physical hardware
-    state of the **AnkerMake M5C**. It ensures that the **Ankerctl Addon** is only
-    consuming system resources when the printer is active and manages the automated
-    power-down sequence upon job completion.\n\n**Operational strategy**\nThe system
-    employs a \"resource-on-demand\" strategy combined with an efficiency-focused
-    shutdown logic. It monitors power consumption and print progress to determine
-    when the hardware is idle, ensuring the printer does not remain powered on unnecessarily
-    after a task concludes.\n\n**Reliability mechanisms**\nTo prevent communication
-    failures during the shutdown sequence, the automation utilizes the `script.retry_action_with_backoff`.
-    This ensures that the **AnkerMake 1** switch receives the **off** command even
-    during transient network instability, with a maximum of **10** retries and mobile
-    notifications via **notify.duncan** if the operation fails.\n\n---\n\n### Trigger
-    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
-    | :--- | :--- |\n| **State** | **switch.ankermake_1** | `ON` | Detects when the
-    printer is manually or externally powered on. |\n| **State** | **switch.ankermake_1**
-    | `OFF` | Detects when the printer is manually or externally powered off. |\n|
-    **Time Pattern** | Every **2** hours | `2h` | Periodic maintenance trigger to
-    refresh the integration. |\n| **Numeric State** | **sensor.ankermake_m5c_progress**
-    > **99.9** | `Switch Off` | Detects print completion sustained for **15** minutes.
-    |\n| **Numeric State** | **sensor.ankermake_power** < **15** W | `Switch Off`
-    | Detects idle power state sustained for **30** minutes. |\n\n---\n\n### Operational
-    Logic Sections\n\n#### Power-Up Routine\n- **Purpose**: Initialize software environment
-    for printer management.\n- **Logic Overview**: Triggered when **switch.ankermake_1**
-    transitions to **on**.\n- **Effect**: Starts the **cff83567_ankerctl** Addon.\n\n####
-    Power-Down Routine (Manual)\n- **Purpose**: Clean up software resources when hardware
-    is disabled.\n- **Logic Overview**: Triggered when **switch.ankermake_1** transitions
-    to **off**.\n- **Effect**: Stops the **cff83567_ankerctl** Addon to free system
-    memory and CPU.\n\n#### Automated Shutdown (Efficiency)\n- **Purpose**: Securely
-    power off the printer after job completion or prolonged idle.\n- **Logic Overview**:
-    Triggered if progress exceeds **99.9%** for **15** minutes OR power draw drops
-    below **15W** for **30** minutes.\n- **Effect**: Executes a retry-guaranteed shutdown
-    of **switch.ankermake_1** via backoff script.\n\n#### Maintenance Cycle\n- **Purpose**:
-    Ensure integration stability during long-running sessions.\n- **Logic Overview**:
-    Occurs every **2** hours, provided **binary_sensor.ankerctl_lauft** is **on**.\n-
-    **Effect**: Presses **button.ankermake_m5c_reload_ankerctl** to refresh the connection.\n\n---\n\n###
-    Technical Overview\n- **Automation Mode**: `single`\n- **Execution method**: Direct
-    addon calls (`hassio.addon_start/stop`), Button presses, and `script.retry_action_with_backoff`.\n-
-    **Key Inputs**: **sensor.ankermake_m5c_progress**, **sensor.ankermake_power**\n-
-    **Controlled Entities**: **switch.ankermake_1**, **button.ankermake_m5c_reload_ankerctl**,
-    **Addon cff83567_ankerctl**\n- **Safety Mechanisms**: 10-tier exponential backoff
-    for power-off commands; notification alerts on failure to **notify.duncan**.\n\n---\n\n###
-    \U0001F4A1 Notes\n- **Dual-Threshold Shutdown**: The use of both **progress %**
-    and **wattage** creates a redundant safety net; if the progress sensor fails to
-    hit 100%, the drop in heater/motor power consumption will eventually trigger the
-    shutdown.\n- **Resource Management**: By stopping the **Ankerctl Addon** when
-    the printer is **OFF**, the host system saves overhead, which is critical for
-    users running Home Assistant on lower-spec hardware.\n- **Stability**: The 2-hour
-    reload interval addresses known integration drift or \"stale\" data issues often
-    found in custom 3D printer integrations."
+    \U0001F4CB Intelligent 3D Printer Control\nThis automation orchestrates the lifecycle
+    of the **AnkerMake M5C** printer, ensuring that supporting software resources
+    (Add-ons) are synchronized with hardware power states. It utilizes a **resource-efficient**
+    operational strategy to manage system overhead while prioritizing data integrity
+    through robust shutdown sequences and automated media generation.\n\n**Key Objectives:**\n*
+    **Dynamic Resource Allocation:** Starts/Stops the **Ankerctl Addon** only when
+    required.\n* **Autonomous Power Management:** Safely powers down the printer hardware
+    after print completion or prolonged inactivity.\n* **Data Capture:** Orchestrates
+    a high-frequency timelapse capture during active print jobs.\n* **System Resilience:**
+    Employs a backoff-retry mechanism for critical power-off commands to ensure the
+    hardware reaches the desired state.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State**
+    | `switch.ankermake_1` | `ON` | Detects when the printer is manually or externally
+    powered on. |\n| **State** | `switch.ankermake_1` | `OFF` | Detects when the printer
+    is powered off. |\n| **Time Pattern** | Every 2 hours | `2h` | Periodic maintenance
+    heartbeat for the control bridge. |\n| **Numeric State** | `sensor.ankermake_m5c_progress`
+    > 99.9% | `Switch Off` | Detects completion of a print job (15-minute soak). |\n|
+    **Numeric State** | `sensor.ankermake_power` < 15W | `Switch Off` | Detects idle
+    state/cooldown completion (30-minute soak). |\n| **Time Pattern** | Every 15 seconds
+    | `Timelapse` | High-frequency snapshot trigger for progress tracking. |\n\n---\n\n####
+    \U0001F680 System Initialization\n* **Purpose:** Synchronize software services
+    with hardware availability.\n* **Logic Overview:** Triggered immediately when
+    **switch.ankermake_1** transitions to **on**.\n* **Effect:** Executes a service
+    call to start the **cff83567_ankerctl** (Ankerctl) Addon.\n\n#### \U0001F4C9 Shutdown
+    & Cleanup\n* **Purpose:** Automated decommissioning of services and power.\n*
+    **Logic Overview:** Triggered by hardware power-off (**OFF** ID) or detected completion/idle
+    states (**Switch Off** ID). \n* **Effect:** Stops the **Ankerctl** Addon. If triggered
+    by completion, it initiates `script.create_timelapse` and executes a managed shutdown
+    of **switch.ankermake_1**.\n\n#### \U0001F4F8 Media Acquisition (Timelapse)\n*
+    **Purpose:** Generate a visual record of the printing process.\n* **Logic Overview:**
+    Runs every 15 seconds, but only if **binary_sensor.ankerctl_lauft** is **on**
+    and **sensor.ankermake_power** is above **15W**.\n* **Effect:** Takes a snapshot
+    from **camera.ankermake_m5c_camera_mainstream** and saves it to media storage
+    with a timestamped filename based on the current job name.\n\n#### \U0001F6E0️
+    Maintenance & Stability\n* **Purpose:** Prevent stale connections between Home
+    Assistant and the printer.\n* **Logic Overview:** Every 2 hours, provided the
+    control addon is active.\n* **Effect:** Presses **button.ankermake_m5c_reload_ankerctl**
+    to refresh the integration bridge.\n\n---\n\n### Technical Overview\n* **Automation
+    Mode:** `queued` (Max: 10) - Ensures sequential execution of snapshots and power
+    commands without overlap interference.\n* **Execution Method:** Utilizes `script.retry_action_with_backoff`
+    for power-off reliability.\n* **Key Inputs:** Power consumption (Watts), Print
+    Progress (%), and Addon Status.\n* **Controlled Entities:** `switch.ankermake_1`,
+    `button.ankermake_m5c_reload_ankerctl`, `camera.ankermake_m5c_camera_mainstream`.\n*
+    **Safety Mechanisms:** Employs a 10-retry backoff strategy with notifications
+    to **notify.duncan** if the printer fails to power off.\n\n---\n\n### \U0001F4A1
+    Notes\n* **Idle Detection:** The 30-minute delay on the **15W** power trigger
+    ensures the hotend has sufficient time to cool down before the main power is cut,
+    protecting the hardware.\n* **Conditional Snapshots:** The timelapse logic includes
+    a power-draw check (**> 15W**) to prevent filling storage with identical images
+    of an idle or failed printer.\n* **Reliability:** The use of a backoff script
+    for the final power-down addresses potential Zigbee/Wi-Fi mesh instability during
+    high-traffic periods.\n"
   triggers:
   - trigger: state
     entity_id:
@@ -6833,7 +6778,29 @@
       seconds: 0
     below: 15
     id: Switch Off
-  conditions: []
+  - trigger: time_pattern
+    seconds: /15
+    id: Timelapse
+  conditions:
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - 'ON'
+      - 'OFF'
+      - 2h
+      - Switch Off
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Timelapse
+      - condition: state
+        entity_id: binary_sensor.ankerctl_lauft
+        state: 'on'
+      - condition: numeric_state
+        entity_id: sensor.ankermake_power
+        above: 15
   actions:
   - choose:
     - conditions:
@@ -6875,6 +6842,10 @@
       - condition: trigger
         id:
         - Switch Off
+      - condition: state
+        entity_id: switch.ankermake_1
+        state:
+        - 'on'
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -6889,8 +6860,26 @@
           notify_service: notify.duncan
           entity_id: switch.ankermake_1
           target_state: 'off'
+      - action: script.create_timelapse
+        metadata: {}
+        data: {}
       alias: Turn AnkerMake Plug OFF if print finished
-  mode: single
+    - conditions:
+      - condition: trigger
+        id:
+        - Timelapse
+      sequence:
+      - metadata: {}
+        data:
+          filename: /media/m5ccam/pictures/{{states('sensor.job_name_2') | string
+            }}_{{ now().strftime("%Y%m%d-%H%M%S") }}.jpg
+        target:
+          entity_id:
+          - camera.ankermake_m5c_camera_mainstream
+        action: camera.snapshot
+        enabled: true
+  mode: queued
+  max: 10
 - id: '1749768402037'
   alias: Gang Light Brightness Control
   description: "## \U0001F6B6‍♂️ Gang Light Brightness Control  \n\n### \U0001F4CB
@@ -9817,10 +9806,9 @@
       - condition: template
         value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
           | default( as_datetime(''0''), true)) > timedelta(days=1) }}'
-      - condition: template
-        value_template: '{{ states(''sensor.wasserenthartung'') | float > 42 }}
-
-          '
+      - condition: numeric_state
+        entity_id: sensor.wasserenthartung
+        above: 42
       sequence:
       - target:
           entity_id:
