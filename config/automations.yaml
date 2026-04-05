@@ -2461,7 +2461,7 @@
     routines, periodic heat checks, and humidity control.\n\n\n---\n\n\n### ⏰ Triggers\n\n-
     **Every 5 minutes:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
     turns **on**  \n- **Sunrise:** Executes 30 minutes **after** sunrise  \n- **Sunset:**
-    Executes 30 minutes **before** sunset  \n- **Humidifier switch:** (`switch.terrarium_tasmota3`)
+    Executes 30 minutes **before** sunset  \n- **Humidifier switch:** (`switch.terrarium_zigbee_strip_l1`)
     turns **off**\n  → keeps the boolean state synchronized  \n\n\n---\n\n\n### ✅
     Conditions\n\n- Operates **only during daytime** (between sunrise and sunset)
     \ \n- Requires **terrarium master switch**\n  (`input_boolean.terrarium_on`) to
@@ -2471,7 +2471,7 @@
     when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
     Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
     \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
-    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_zigbee_l1`
+    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_zigbee_strip_l1`
     turns off, resets\n  `input_boolean.luftbefeuchter_aktiv`\n  to maintain logical
     synchronization  \n\n\n---\n\n\n### \U0001F527 Technical Specs\n\n- **Mode:**
     `parallel`  \n- **Max concurrent runs:** 10  \n- Uses **`choose` blocks** to isolate
@@ -13667,14 +13667,16 @@
       action_domain: switch
       action_type: turn_off
     action: script.retry_action_with_backoff
-  - data:
-      title: "{% if trigger.id == 'zone_1' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
-        (1-2 A)\n{% elif trigger.id == 'zone_2' %}\n  ⚠️ Heizungsverteiler EG abgeschaltet
-        (2-4 A)\n{% elif trigger.id == 'zone_3' %}\n  ⚠️ Heizungsverteiler EG sofort
-        abgeschaltet (>4 A)\n{% endif %}\n"
-      message: 'Der Heizungsverteiler EG wurde abgeschaltet, weil der Strom {{ trigger.to_state.state
-        }} A erreicht hat. Das ersetzt vorübergehend die Sicherung.
-
-        '
-    action: notify.duncan
+  - if:
+    - condition: state
+      entity_id: switch.heizungsverteiler_eg
+      state:
+      - 'off'
+    then:
+    - data:
+        message: Der Heizungsverteiler EG wurde abgeschaltet, weil der Strom {{ trigger.to_state.state
+          }} A erreicht hat.
+        title: ⚠️ Heizungsverteiler EG abgeschaltet ({{ '1-2 A' if trigger.id == 'zone_1'
+          else '2-4 A' if trigger.id == 'zone_2' else '>4 A' }})
+      action: notify.duncan
   mode: single
