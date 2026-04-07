@@ -202,18 +202,6 @@ number:
     restore_value: true
     unit_of_measurement: '%'
     step: 0.5
-
-  # - platform: template
-  #   min_value: 1
-  #   max_value: 10
-  #   optimistic: true
-  #   restore_value: true
-  #   name: Wait Time ${variant}
-  #   id: wait_time
-  #   step: 0.5
-  #   initial_value: 5
-  #   unit_of_measurement: s
-  #   mode: BOX
     
   - platform: template
     step: 1
@@ -584,7 +572,7 @@ sensor:
     internal: False
     update_interval: 1s
     lambda: |-
-      return (id(available_grid_amps).state + id(goe_amps).state + (id(available_battery_amps).state) / id(goe_amp_divider).state);
+      return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 
           min_value: 0
@@ -745,7 +733,6 @@ script:
             - switch.turn_on: low_amp_flag
           else:  # second consecutive time below
             - script.execute: stop_charging
-            # - switch.turn_off: low_amp_flag
   - id: above_amp_threshold
     mode: single
     then: 
@@ -768,12 +755,6 @@ script:
                         char text_amps[200];
                         sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(available_battery_amps).state, id(amps_goe_calculated_rounded).state);
                         return ((std::string) text_amps).c_str();
-                  # - text_sensor.template.publish:
-                  #     id: log_txt
-                  #     state: !lambda |-
-                  #       char text_amps[200];
-                  #       sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(available_battery_amps).state, id(amps_goe_calculated_rounded).state);
-                  #       return ((std::string) text_amps).c_str();
                   - number.increment: 
                       cycle: false
                       id: skip_counter

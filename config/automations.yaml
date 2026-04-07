@@ -6063,21 +6063,21 @@
         target:
           entity_id: number.lenovo_tab_p11_bildschirmhelligkeit
         data:
-          value: "{% set light_max = 250 %}\n{% if states('sensor.average_illuminance')
-            == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
-            = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif
-            %}\n{% if state_attr('sun.sun','elevation') >= 0 %}\n  {{ light_max }}
-            \n{% else %}\n  {{ max(light_max * light_float, 10) }}\n{% endif %}"
+          value: "  {% set light_max = 250 %}\n  {% set light_float = (states('sensor.average_illuminance')
+            | float(0)) / 1000 %}\n  {% if state_attr('sun.sun','elevation') | float(-90)
+            >= 0 %}\n    {{ light_max }}\n  {% else %}\n    {% set scaled = max(light_max
+            * light_float, 10) %}\n    {{ [scaled, light_max] | min }}\n  {% endif
+            %}"
       - action: number.set_value
         metadata: {}
         target:
           entity_id: number.lenovo_tab_p11_bildschirmschoner_helligkeit
         data:
-          value: "{% set light_max = 200 %}\n{% if states('sensor.average_illuminance')
-            == None %}\n  {% set light_float = 0.0 %}\n{% else %} \n  {% set light_float
-            = (states('sensor.average_illuminance')|float(1)) / 1000 %}\n{% endif
-            %}\n{% if state_attr('sun.sun','elevation') >= 0 %}\n  {{ light_max }}
-            \n{% else %}\n  {{ max(light_max * light_float, 10)/2 }}\n{% endif %}\n"
+          value: "{% set light_max = 200 %}\n  {% set light_float = (states('sensor.average_illuminance')
+            | float(0)) / 1000 %}\n  {% if state_attr('sun.sun','elevation') | float(-90)
+            >= 0 %}\n    {{ light_max }}\n  {% else %}\n    {% set scaled = max(light_max
+            * light_float, 10) / 2 %}\n    {{ [scaled, light_max] | min }}\n  {% endif
+            %}"
   mode: parallel
   max_exceeded: silent
   max: 10
