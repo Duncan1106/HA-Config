@@ -304,21 +304,6 @@ text_sensor:
       - map: 
         - true -> 1 Phase
         - false -> 3 Phase
-    #on_value: 
-    #  then:
-    #    - if: 
-    #        condition:
-    #          - text_sensor.state: 
-    #              id: goe_fsp
-    #              state: "1 Phase"
-    #        then:
-    #          - sensor.template.publish:
-    #              id: goe_amp_divider
-    #              state: 1
-    #        else:
-    #          - sensor.template.publish:
-    #              id: goe_amp_divider
-    #              state: 3
 
   - platform: mqtt_subscribe
     topic: ${main_topic}nrg
@@ -540,7 +525,8 @@ sensor:
     id: goe_amp_divider
     name: Goe Amps Divider
     accuracy_decimals: 0
-    internal: true
+    internal: False
+    disabled_by_default: True
     lambda: |-
       std::string fsp = id(goe_fsp).state;
       if (fsp.empty()) {
@@ -557,7 +543,7 @@ sensor:
     update_interval: 1s
     internal: true
     lambda: |-
-      return (id(goe_power).state / id(goe_voltage).state) / id(goe_amp_divider).state;
+      return id(goe_power).state / id(goe_voltage).state;
 
   - platform: template
     accuracy_decimals: 2
@@ -567,7 +553,7 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
-      return (id(available_grid_amps).state + (id(goe_amps).state * id(goe_amp_divider).state) + id(available_battery_amps).state) / id(goe_amp_divider).state;
+      return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 
           min_value: 0
