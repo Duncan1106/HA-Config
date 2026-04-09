@@ -1,0 +1,844 @@
+substitutions:
+  min_charge_threshold: "5.99"
+  min_amps: "6"
+  max_amps: "16"
+  variant: "11kW"
+  main_topic: "go-eCharger/270862/"
+  fallback_ap: "Esp32-C3-Mini--Goe11kw-Controll"
+
+wifi:
+  output_power: 10dB
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+      priority: 10
+      manual_ip: 
+        gateway: 192.168.2.1
+        subnet: 255.255.255.0
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.201
+
+    - ssid: !secret wifi_ssid2
+      password: !secret wifi_password
+      priority: 8
+      manual_ip: 
+        gateway: 192.168.2.1
+        subnet: 255.255.255.0
+        dns1: 192.168.2.1
+        static_ip: 192.168.2.201
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${fallback_ap} 
+    password: !secret ap_password
+
+esphome:
+  name: "esp32-c3-zero--goe11-controll"
+  friendly_name: esp32 c3 zero - goe11-controll
+  on_boot: 
+    then:
+      - script.execute: 
+          id: blink_led
+          repeat_count: 3
+
+esp32:
+  variant: esp32c3
+  framework:
+    type: esp-idf
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Enable logging
+logger:
+  level: VERY_VERBOSE
+  initial_level: INFO
+
+select:
+  - platform: logger
+    id: logger_select
+    name: Logger Level ${variant}
+
+captive_portal:
+
+mqtt:
+  broker: 192.168.2.205
+  username: !secret mqtt_user
+  password: !secret mqtt_pwd
+  discovery: true
+  client_id: goe11_controll
+  id: broker
+
+time:
+  - platform: sntp
+    timezone: Europe/Berlin
+
+sun:
+  latitude: !secret latitude
+  longitude: !secret longitude
+  
+output:
+  - platform: gpio
+    pin: 
+      number: GPIO8
+      inverted: true
+      ignore_strapping_warning: true
+    id: led_status
+
+light:
+  - platform: binary
+    output: led_status
+    name: Status LED ${variant}
+
+binary_sensor:
+  - platform: status
+    name: Status ${variant}
+    id: status_connected
+    on_state_change:
+      then:
+        - if:
+            condition:
+              for:
+                time: 5min
+                condition:
+                  binary_sensor.is_off: status_connected
+            then:
+              button.press: restart_btn
+
+button:
+  - platform: output
+    internal: true
+    duration: 250ms
+    output: led_status
+    name: Flash LED ${variant}
+    id: led_flash
+
+  - platform: restart
+    id: restart_btn
+    name: Restart ${variant} Controll
+
+  - platform: shutdown
+    name: Shutdown ${variant} Controll
+
+switch:
+  - platform: template
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    id: low_amp_flag
+    name: Low Amps Flag ${variant}
+    internal: false
+
+  - platform: template
+    optimistic: true
+    id: never_stop_charging
+    restore_mode: RESTORE_DEFAULT_OFF
+    name: Dont Stop Charging ${variant}
+
+  - platform: template
+    optimistic: true
+    id: enable_pv_charging
+    name: Enable Surplus Charging ${variant}
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on: 
+      then:
+        - script.execute: 
+            id: log_txt_queued
+            log_text: "PV Surplus Charging ON"
+    on_turn_off:
+      then:
+        - switch.turn_off: never_stop_charging
+        - script.execute: stop_charging
+        - number.to_min: restart_charging_counter
+
+number:
+  - platform: template
+    min_value: 0
+    max_value: 10
+    initial_value: 0
+    restore_value: true
+    id: card_zoe
+    name: RFID Card Zoe ${variant}
+    step: 1
+    optimistic: true
+    mode: BOX
+    entity_category: config
+
+  - platform: template
+    max_value: 10
+    min_value: 0
+    initial_value: 0
+    restore_value: false
+    name: Restart Charging Counter ${variant}
+    id: restart_charging_counter
+    mode: BOX
+    step: 1
+    optimistic: true
+
+  - platform: template
+    max_value: 10
+    min_value: 0
+    initial_value: 0
+    restore_value: false
+    name: Skipped Counter ${variant}
+    id: skip_counter
+    mode: BOX
+    step: 1
+    optimistic: true
+
+  - platform: template
+    min_value: -6000
+    max_value: 6000
+    initial_value: 0
+    name: Battery Power ${variant}
+    id: battery_power_offset
+    optimistic: true
+    mode: BOX
+    restore_value: false
+    unit_of_measurement: W
+    step: 50
+
+  - platform: template
+    min_value: 5
+    max_value: 100
+    initial_value: 35
+    name: Battery SoC Threshold ${variant}
+    id: battery_soc_threshold
+    optimistic: true
+    mode: BOX
+    restore_value: true
+    unit_of_measurement: '%'
+    step: 0.5
+
+  - platform: template
+    min_value: 1
+    max_value: 10
+    optimistic: true
+    restore_value: true
+    name: Wait Time ${variant}
+    id: wait_time
+    step: 0.5
+    initial_value: 5
+    unit_of_measurement: s
+    mode: BOX
+    
+  - platform: template
+    step: 1
+    max_value: 1000
+    min_value: -1000
+    initial_value: 0
+    id: buffer_power
+    optimistic: true
+    restore_value: true
+    unit_of_measurement: W
+    name: Buffer Power ${variant}
+    mode: BOX
+
+  - platform: template
+    name: Min Amperage ${variant}
+    id: min_amps
+    initial_value: ${min_amps}
+    min_value: ${min_amps}
+    max_value: ${max_amps}
+    optimistic: true
+    step: 1
+    mode: BOX
+
+  - platform: template
+    step: 1
+    min_value: ${min_amps}
+    max_value: ${max_amps}
+    optimistic: true
+    id: amps
+    name: Amp ${variant}
+    unit_of_measurement: A
+    mode: BOX
+    on_value: 
+      then:
+        - if:
+            condition:
+              - lambda: return id(amps).state != id(feedback_amps).state;
+            then:
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
+                    char text_amps[200];
+                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
+                    return ((std::string) text_amps).c_str();
+              - mqtt.publish: 
+                  id: broker
+                  topic: ${main_topic}amp/set
+                  payload: !lambda |-
+                    // Convert the float value to uint8_t
+                    uint8_t amps_uint8 = static_cast<uint8_t>(round(x));
+                    return to_string(amps_uint8);
+              - delay: 500ms
+
+text_sensor:
+  - platform: template
+    name: Log ${variant}
+    id: log_txt
+    retain: false
+    icon: mdi:math-log
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}frc
+    name: Go-e Status ${variant}
+    internal: false
+    id: goe_status
+    filters: 
+      - map: 
+        - 0 -> Neutral
+        - 1 -> Don't Charge
+        - 2 -> Force Charge
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}fsp
+    name: Go-e Phase ${variant}
+    internal: true
+    id: goe_fsp
+    filters: 
+      - map: 
+        - true -> 1 Phase
+        - false -> 3 Phase
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}nrg
+    id: goe_nrg_txt
+    name: Goe Charger Power Text ${variant}
+    internal: true
+    filters: 
+      - substitute: 
+        - "[->"
+        - "]->"
+      - lambda: |-
+          // Parse the string and update goe_power and goe_voltage sensors
+          std::string raw = x.c_str();
+          size_t start = 0;
+          size_t end = raw.find(',');
+          
+          // Publish the 0th element (voltage)
+          std::string voltage_str = raw.substr(start, end - start);
+          id(goe_voltage).publish_state(std::stof(voltage_str));
+          
+          // Move to the 11th element (power)
+          start = end + 1;
+          for (int i = 0; i < 10; i++) {
+              end = raw.find(',', start);
+              start = end + 1;
+          }
+          std::string power_str = raw.substr(start);
+          id(goe_power).publish_state(std::stof(power_str));
+          return x;
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}car
+    id: car_connected
+    name: Car State ${variant}
+    internal: true
+    filters: 
+      - map:
+        - 0 -> Unknown
+        - 1 -> Idle
+        - 2 -> Charging
+        - 3 -> WaitCar
+        - 4 -> Complete
+        - 5 -> Error
+    on_value: 
+      then:
+        - if: 
+            condition:
+              and:
+                - text_sensor.state:
+                    id: car_connected
+                    state: 'WaitCar'
+                - sun.is_above_horizon:
+                - switch.is_off: enable_pv_charging
+            then: 
+              - switch.turn_on: enable_pv_charging
+
+sensor:
+  - platform: wifi_signal
+    accuracy_decimals: 1
+    name: Wifi Signal ${variant}
+    update_interval: 5s
+    filters: 
+      - or: 
+        - delta: 5%
+        - throttle: 120s           
+  
+  - platform: uptime
+    name: Uptime ${variant}
+    update_interval: 3s
+    device_class: duration
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: min
+    filters:
+      - lambda: !lambda 'return x / 60;' 
+      - or:
+        - delta: 5%
+        - throttle: 120s            
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}amp
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: current
+    unit_of_measurement: A
+    id: feedback_amps
+    name: Goe Feedback Amperage ${variant}
+    internal: true
+
+  - platform: mqtt_subscribe
+    topic: grid/power
+    accuracy_decimals: 0
+    state_class: measurement
+    device_class: power
+    unit_of_measurement: W
+    id: grid_power
+    name: Available Grid Power ${variant}
+    internal: true
+    filters:
+      - multiply: -1
+
+  - platform: mqtt_subscribe
+    topic: grid/solar
+    accuracy_decimals: 1
+    state_class: measurement
+    unit_of_measurement: W
+    device_class: power
+    id: solar_power
+    internal: true
+    name: Solar Power ${variant}
+
+  - platform: mqtt_subscribe
+    topic: grid/battery
+    accuracy_decimals: 1
+    state_class: measurement
+    unit_of_measurement: W
+    device_class: power
+    id: battery_discharge_power
+    internal: true
+    name: Battery Power ${variant}
+
+  - platform: mqtt_subscribe
+    topic: grid/soc
+    accuracy_decimals: 1
+    state_class: total
+    unit_of_measurement: '%'
+    device_class: battery
+    id: battery_soc
+    internal: true
+    name: Battery SoC ${variant}
+    on_value_range: 
+      above: 99.9
+      then:
+        - if:
+            condition:
+              - number.in_range:
+                  id: battery_power_offset
+                  below: 0
+            then:
+              - number.set:
+                  id: battery_power_offset
+                  value: 0
+
+  - platform: copy
+    source_id: battery_discharge_power
+    id: available_battery_power
+    name: Available Battery Power ${variant}
+    device_class: power
+    unit_of_measurement: W
+    internal: true
+    filters: 
+      - lambda: |-
+          return id(battery_power_offset).state - id(battery_discharge_power).state;
+
+  ## Availbale Amps (Surplus)
+  - platform: template
+    accuracy_decimals: 1
+    name: Available Grid Amps ${variant}
+    unit_of_measurement: A
+    device_class: current
+    id: available_grid_amps
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return ((id(grid_power).state - id(buffer_power).state) / id(goe_voltage).state);
+
+  - platform: copy
+    source_id: available_battery_power
+    id: available_battery_amps
+    name: Available Battery Amps ${variant}
+    device_class: current
+    unit_of_measurement: A
+    internal: true
+    filters: 
+      - lambda: |-
+          return (id(available_battery_power).state / id(goe_voltage).state);
+
+  - platform: copy
+    source_id: solar_power
+    id: solar_amps
+    name: Available Solar Amps ${variant}
+    device_class: current
+    unit_of_measurement: A
+    internal: true
+    filters: 
+      - lambda: |-
+          return id(solar_power).state / id(goe_voltage).state;
+
+  - platform: copy
+    source_id: battery_discharge_power
+    id: battery_amps
+    name: Battery Amps ${variant}
+    device_class: current
+    unit_of_measurement: A
+    internal: true
+    filters: 
+      - lambda: |-
+          return id(battery_discharge_power).state / id(goe_voltage).state;
+
+  - platform: template
+    accuracy_decimals: 2
+    state_class: measurement
+    device_class: power
+    unit_of_measurement: W
+    id: goe_power
+    internal: true
+    name: Goe Charger Power ${variant}       
+
+  - platform: template
+    accuracy_decimals: 2
+    state_class: measurement
+    device_class: voltage
+    unit_of_measurement: V
+    id: goe_voltage
+    internal: true
+    name: Goe Charger Voltage ${variant}
+
+  - platform: template
+    id: goe_amp_divider
+    name: Goe Amps Divider
+    accuracy_decimals: 0
+    internal: False
+    disabled_by_default: True
+    lambda: |-
+      std::string fsp = id(goe_fsp).state;
+      if (fsp.empty()) {
+        return 1.0;  // Default to 1-phase until goe_fsp is available
+      }
+      return (fsp == "1 Phase") ? 1.0 : 3.0;
+
+  - platform: template
+    accuracy_decimals: 1
+    name: Go-e Amps ${variant}
+    unit_of_measurement: A
+    device_class: current
+    id: goe_amps
+    update_interval: 1s
+    internal: true
+    lambda: |-
+      return id(goe_power).state / id(goe_voltage).state;
+
+  - platform: template
+    accuracy_decimals: 2
+    id: amps_goe_calculated
+    name: Calculated Amperage ${variant}
+    unit_of_measurement: A
+    internal: true
+    update_interval: 1s
+    lambda: |-
+      return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
+    filters: 
+      - clamp: 
+          min_value: 0
+
+  - platform: copy
+    source_id: amps_goe_calculated
+    id: amps_goe_calculated_rounded
+    name: Calculated Amperage Rounded ${variant}
+    accuracy_decimals: 0
+    filters: 
+      - lambda: !lambda return floor(id(amps_goe_calculated).state);
+      - clamp:
+          min_value: 0
+          max_value: ${max_amps}
+
+  - platform: mqtt_subscribe
+    topic: ${main_topic}trx
+    name: Card Used ${variant}
+    id: card_used
+    accuracy_decimals: 0
+    filters:
+      - filter_out:
+          - nan
+      - round: 0
+    on_value: 
+      then:
+        - if:
+            condition:
+              lambda: !lambda return x == id(card_zoe).state;
+            then:
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
+                    return "Card " + to_string((int)x) + " matched Zoe card, setting min_amps to 8A";
+              - number.set:
+                  id: min_amps
+                  value: 8
+            else:
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
+                    return "Card " + to_string((int)x) + " using default min_amps";
+              - number.set:
+                  id: min_amps
+                  value: ${min_amps}
+
+interval:
+  interval: 
+    seconds: 10
+  then:
+    - if:
+        condition:
+          - switch.is_on: enable_pv_charging
+        then:
+          - script.execute: charge_ev
+          - script.execute: 
+              id: blink_led
+              repeat_count: 1 # flash button for duration of 250ms to inidcate working
+        else:
+           - script.execute: 
+              id: log_txt_queued
+              log_text: "PV Surplus Charging OFF"
+
+script:
+  - id: log_txt_queued
+    mode: queued
+    parameters:
+      log_text: string
+    then:
+      - text_sensor.template.publish:
+          id: log_txt
+          state: !lambda return log_text;
+      - delay: 500ms
+
+  - id: blink_led
+    parameters:
+      repeat_count: int
+    mode: single
+    then: 
+      - repeat: 
+          count: !lambda return repeat_count;
+          then:
+            - button.press: led_flash
+            - if:
+                condition:
+                  lambda: return iteration < (repeat_count - 1);
+                then:
+                  - delay: 750ms
+  - id: stop_charging
+    mode: single
+    then:
+      - number.set:
+          id: amps
+          value: !lambda |-
+            return std::max(
+              (float)id(amps_goe_calculated_rounded).state,
+              (float)id(min_amps).state
+            );
+      - if:
+          condition:
+            - switch.is_on: never_stop_charging
+          then:
+            - script.execute:
+                id: log_txt_queued
+                log_text: "Never Stop Charging active: set to min amps instead of stopping"
+
+      - if: # if not Don't Charge then set to Don't Charge and log that
+          condition: 
+            - and:
+                - switch.is_off: never_stop_charging
+                - not:
+                  - text_sensor.state:
+                      id: goe_status
+                      state: "Don't Charge"
+          then:
+            - mqtt.publish:
+                id: broker
+                payload: 1
+                topic: ${main_topic}frc/set
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Disallow Charging"
+  - id: start_charging
+    mode: single
+    then:
+      - if:
+          condition: 
+            - not:
+              - text_sensor.state: 
+                  id: goe_status
+                  state: "Neutral"
+          then:
+            - mqtt.publish: 
+                id: broker
+                payload: 0
+                topic: ${main_topic}frc/set
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Allow Charging"
+            - number.to_min: 
+                id: restart_charging_counter
+  - id: restart_charging
+    mode: single
+    then:
+      - number.increment: # increment counter for restart charging using turn off and back on
+          id: restart_charging_counter
+          cycle: false
+      - if: # if restart counter above 9 -> restart Charging
+          condition: 
+            - number.in_range:
+                id: restart_charging_counter
+                above: 9
+          then: 
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Car not Charging, but allowed, restarting..."
+            - mqtt.publish: 
+                id: broker
+                payload: 1
+                topic: ${main_topic}frc/set
+            - delay: 3s
+            - mqtt.publish: 
+                id: broker
+                payload: 0
+                topic: ${main_topic}frc/set
+            - number.to_min: restart_charging_counter
+  - id: stop_charging_battery
+    mode: single
+    then:
+      - if:
+          condition:
+            switch.is_on: enable_pv_charging
+          then:
+            switch.turn_off: enable_pv_charging
+      - script.wait: stop_charging
+      - script.execute: 
+          id: log_txt_queued
+          log_text: !lambda |-
+            char text_amps[200];
+            sprintf(text_amps, "SOC below Threshold(%.0f%%): %.1f%% -> Stopping discharge of Battery", id(battery_soc_threshold).state, id(battery_soc).state);
+            return ((std::string) text_amps).c_str();
+      - script.stop: charge_ev
+  - id: below_amp_threshold
+    mode: single
+    then:
+      - if:  # first time below min amps
+          condition:
+            - switch.is_off: low_amp_flag
+          then:
+            - switch.turn_on: low_amp_flag
+          else:  # second consecutive time below
+            - script.execute: stop_charging
+  - id: above_amp_threshold
+    mode: single
+    then: 
+      - switch.turn_off: low_amp_flag
+      - if: # Set amps to the calculated ones if not already done so, also skip if not enough solar or battery power is available to provide the requested amps
+          condition: 
+            - lambda: !lambda return id(amps_goe_calculated_rounded).state != id(feedback_amps).state;
+          then:
+            - if: # Skip Cycle if not enough solar or battery power available or allowed, up to a maximum of 10 skips
+                condition:
+                  - and:
+                    - number.in_range:
+                        below: 10
+                        id: skip_counter
+                    - lambda: !lambda return (id(solar_amps).state + (id(available_battery_amps).state )) <= id(amps_goe_calculated_rounded).state;
+                then:
+                  - script.execute: 
+                      id: log_txt_queued
+                      log_text: !lambda |-
+                        char text_amps[200];
+                        sprintf(text_amps, "Solar Amps %.0fA, Battery Amps %.0fA, Requested Amps: %.0fA\n -> Skipping Cycle", id(solar_amps).state, id(available_battery_amps).state, id(amps_goe_calculated_rounded).state);
+                        return ((std::string) text_amps).c_str();
+                  - number.increment: 
+                      cycle: false
+                      id: skip_counter
+                  - script.stop: charge_ev
+                else:
+                  - number.set: # set amps to calculated amps when enough solar or battery power is available
+                      id: amps
+                      value: !lambda |-
+                        return std::max(
+                          (float)id(amps_goe_calculated_rounded).state,
+                          (float)id(min_amps).state
+                        );
+                  - script.execute: start_charging
+                  - delay: 1s
+                  - number.to_min: skip_counter # resetting skip counter since we dont skip anymore
+      - if: # if not charging but not allowed, start it
+          condition: 
+            - not:
+              - text_sensor.state: 
+                  id: goe_status
+                  state: "Neutral"
+          then:
+            - script.execute: start_charging
+            - delay: 1s
+          else:
+            - delay: 1s
+            - script.execute: 
+                id: log_txt_queued
+                log_text: "Running..."
+      - if: # Restart Charging if not Charging but should be
+          condition:
+            - and:
+              - text_sensor.state: # if charging is allowed
+                  id: goe_status
+                  state: "Neutral"
+              - sensor.in_range: # if not charging, power between -20 and 20 W
+                  id: goe_power
+                  above: -20
+                  below: 20
+              - or: # either not charging or not waitCar
+                - not:
+                  - text_sensor.state:
+                      id: car_connected
+                      state: "Charging"
+                - not: 
+                  - text_sensor.state:
+                      id: car_connected
+                      state: "WaitCar"
+          then:
+            - script.execute: restart_charging 
+  - id: charge_ev
+    mode: single
+    then:
+        - if: # Exit early if charging is disabled 
+            condition:
+              - switch.is_off: enable_pv_charging
+            then:
+              - script.stop: charge_ev
+        - if: # Stop Charging if Batterybelow Threshold
+            condition:
+              - lambda: !lambda return id(battery_soc).state < id(battery_soc_threshold).state;
+            then:
+              - script.execute: stop_charging_battery
+        - if: # If Amps are below the min threshold then stop charging    
+            condition:
+              - sensor.in_range:
+                  id: amps_goe_calculated
+                  below: ${min_charge_threshold}
+            then:
+              - script.execute: below_amp_threshold
+        - if: # if Amps are above the min threshold then start charging
+            condition: 
+              - sensor.in_range: 
+                  id: amps_goe_calculated
+                  above: ${min_charge_threshold}
+            then:
+              - script.execute: above_amp_threshold
