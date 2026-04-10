@@ -4,7 +4,7 @@ substitutions:
   max_amps: "16"
   variant: "11kW"
   main_topic: "go-eCharger/270862/"
-  fallback_ap: "Esp32-C3-Mini--Goe11kw-Controll"
+  fallback_ap: "Esp32-C3-Zero--Goe11kw-Controll"
 
 wifi:
   output_power: 10dB
@@ -42,9 +42,9 @@ esphome:
           repeat_count: 3
 
 esp32:
-  variant: esp32c3
+  board: esp32-c3-devkitm-1
   framework:
-    type: esp-idf
+    type: arduino
 
 ota:
   - platform: esphome
@@ -67,7 +67,7 @@ mqtt:
   username: !secret mqtt_user
   password: !secret mqtt_pwd
   discovery: true
-  client_id: goe11_controll
+  client_id: c3_zero_goe11_controll
   id: broker
 
 time:
@@ -78,17 +78,13 @@ sun:
   latitude: !secret latitude
   longitude: !secret longitude
   
-output:
-  - platform: gpio
-    pin: 
-      number: GPIO8
-      inverted: true
-      ignore_strapping_warning: true
-    id: led_status
-
 light:
-  - platform: binary
-    output: led_status
+  - platform: esp32_rmt_led_strip
+    pin: GPIO10
+    id: led_status
+    chipset: WS2812
+    rgb_order: RGB
+    num_leds: 1
     name: Status LED ${variant}
 
 binary_sensor:
@@ -107,12 +103,12 @@ binary_sensor:
               button.press: restart_btn
 
 button:
-  - platform: output
-    internal: true
-    duration: 250ms
-    output: led_status
-    name: Flash LED ${variant}
-    id: led_flash
+  # - platform: output
+  #   internal: true
+  #   duration: 250ms
+  #   output: led_status
+  #   name: Flash LED ${variant}
+  #   id: led_flash
 
   - platform: restart
     id: restart_btn
@@ -633,12 +629,14 @@ script:
       - repeat: 
           count: !lambda return repeat_count;
           then:
-            - button.press: led_flash
+            - light.turn_on: led_status
+            - delay: 250ms
+            - light.turn_off: led_status
             - if:
                 condition:
                   lambda: return iteration < (repeat_count - 1);
                 then:
-                  - delay: 750ms
+                  - delay: 500ms
   - id: stop_charging
     mode: single
     then:
