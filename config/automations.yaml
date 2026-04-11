@@ -9403,7 +9403,7 @@
     Tasmota devices are still reconnecting to the Wi-Fi after a power cycle or reboot.\n"
   triggers:
   - trigger: time
-    at: '23:00:30'
+    at: '23:00:00'
     id: 'Off'
   - trigger: time
     at: 04:00:00
@@ -9415,133 +9415,218 @@
   actions:
   - choose:
     - conditions:
-      - condition: state
-        entity_id: input_select.smart_home_status
-        state: Daily
       - condition: trigger
         id:
-        - Start
         - 'Off'
-      - condition: time
-        after: '22:59:00'
-        before: 03:59:00
-      sequence:
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.garagentor_tasmota
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.sauger_tasmota
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.backofen_tasmota
-          target_state: 'off'
-      alias: Power off at 23
-    - conditions:
+        - 'On'
       - condition: state
         entity_id: input_select.smart_home_status
         state: Daily
+      sequence:
+      - if:
+        - condition: time
+          after: '22:59:00'
+          before: 03:59:00
+        then:
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.garagentor_tasmota
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.sauger_tasmota
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.backofen_tasmota
+            target_state: 'off'
+        else:
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.garagentor_tasmota
+            target_state: 'on'
+          enabled: true
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.sauger_tasmota
+            target_state: 'on'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.backofen_tasmota
+            target_state: 'on'
+      alias: Daily on or off
+    - conditions:
       - condition: trigger
         id:
         - Start
-        - 'On'
-      - condition: time
-        after: 03:59:00
-        before: '23:00:00'
       sequence:
-      - alias: Wait for entitys to become available after HA Start
-        if:
-        - condition: trigger
-          id:
-          - Start
+      - wait_for_trigger:
+        - trigger: template
+          value_template: "        {% set entities = expand(\n          'switch.garagentor_tasmota',\n
+            \         'switch.sauger_tasmota',\n          'switch.backofen_tasmota'\n
+            \       ) %}\n        {{ (entities | selectattr('state','in',['on','off'])
+            | list | length) == (entities | length) }}"
+          for:
+            hours: 0
+            minutes: 1
+            seconds: 0
+        continue_on_timeout: true
+        timeout:
+          hours: 0
+          minutes: 5
+          seconds: 0
+          milliseconds: 0
+      - if:
+        - condition: time
+          after: '22:59:00'
+          before: 03:59:00
         then:
-        - wait_for_trigger:
-          - trigger: template
-            value_template: "        {% set entities = expand(\n          'switch.garagentor_tasmota',\n
-              \         'switch.sauger_tasmota',\n          'switch.backofen_tasmota'\n
-              \       ) %}\n        {{ (entities | selectattr('state','in',['on','off'])
-              | list | length) == (entities | length) }}"
-            for:
-              hours: 0
-              minutes: 1
-              seconds: 0
-          continue_on_timeout: true
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.garagentor_tasmota
-          target_state: 'on'
-        enabled: true
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.sauger_tasmota
-          target_state: 'on'
-      - action: script.retry_action_with_backoff
-        continue_on_error: true
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: linear
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.backofen_tasmota
-          target_state: 'on'
-      alias: Power on at 4
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.garagentor_tasmota
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.sauger_tasmota
+            target_state: 'off'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.backofen_tasmota
+            target_state: 'off'
+        else:
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.garagentor_tasmota
+            target_state: 'on'
+          enabled: true
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.sauger_tasmota
+            target_state: 'on'
+        - action: script.retry_action_with_backoff
+          continue_on_error: true
+          metadata: {}
+          data:
+            action_domain: switch
+            action_type: turn_on
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: linear
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: switch.backofen_tasmota
+            target_state: 'on'
     - conditions:
       - condition: state
         entity_id: input_select.smart_home_status
@@ -9575,7 +9660,7 @@
           notify_service: notify.duncan
           entity_id: switch.sauger_tasmota
           target_state: 'off'
-      alias: Power off all the way
+      alias: Vacation Power off all the way
   mode: queued
   max: 3
 - id: '1757687903185'
