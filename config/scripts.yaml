@@ -1615,7 +1615,7 @@ save_counts_and_notify_purge_status:
   sequence:
   - alias: Save current row count and calculate threshold
     variables:
-      current_count: '{{ states(''sensor.maria_db_rows'') | int }}'
+      current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
       threshold: '{{ current_count - threshold_offset }}'
   - alias: Save start row count for debugging
     action: input_number.set_value
@@ -1625,7 +1625,8 @@ save_counts_and_notify_purge_status:
       value: '{{ current_count }}'
   - alias: Wait for purge to complete
     wait_for_trigger:
-    - value_template: '{{ (states(''sensor.maria_db_rows'') | int) < threshold }}
+    - value_template: '{{ (states(''sensor.maria_db_rows'') | int(0)) < threshold
+        }}
 
         '
       trigger: template
