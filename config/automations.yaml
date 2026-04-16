@@ -10084,10 +10084,38 @@
     trigger: time
   actions:
   - variables:
-      bucket_1d: '{{ label_entities(''retention_1d'') | list }}'
-      bucket_2d: '{{ label_entities(''retention_2d'') | list }}'
-      bucket_3d: '{{ label_entities(''retention_3d'') | list }}'
-      bucket_7d: '{{ label_entities(''retention_7d'') | list }}'
+      bucket_1d: "{%- set target = 'retention_1d' -%}\n{%- set all_retention = labels()
+        | select('match', '^retention_') | list -%}\n{%- set device_ents = label_devices(target)
+        | map('device_entities') | sum(start=[]) -%}\n{%- set raw_pool = (label_entities(target)
+        + device_ents) | unique | list -%}\n{%- set ns = namespace(final=[]) -%}\n{%-
+        for ent_id in raw_pool -%}\n  {%- set ent_labels = labels(ent_id) -%}\n  {%-
+        set conflicts = ent_labels | select('in', all_retention) | reject('eq', target)
+        | list -%}\n  {%- if not conflicts -%}\n    {%- set ns.final = ns.final +
+        [ent_id] -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.final }}"
+      bucket_2d: "{%- set target = 'retention_2d' -%}\n{%- set all_retention = labels()
+        | select('match', '^retention_') | list -%}\n{%- set device_ents = label_devices(target)
+        | map('device_entities') | sum(start=[]) -%}\n{%- set raw_pool = (label_entities(target)
+        + device_ents) | unique | list -%}\n{%- set ns = namespace(final=[]) -%}\n{%-
+        for ent_id in raw_pool -%}\n  {%- set ent_labels = labels(ent_id) -%}\n  {%-
+        set conflicts = ent_labels | select('in', all_retention) | reject('eq', target)
+        | list -%}\n  {%- if not conflicts -%}\n    {%- set ns.final = ns.final +
+        [ent_id] -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.final }}"
+      bucket_3d: "{%- set target = 'retention_3d' -%}\n{%- set all_retention = labels()
+        | select('match', '^retention_') | list -%}\n{%- set device_ents = label_devices(target)
+        | map('device_entities') | sum(start=[]) -%}\n{%- set raw_pool = (label_entities(target)
+        + device_ents) | unique | list -%}\n{%- set ns = namespace(final=[]) -%}\n{%-
+        for ent_id in raw_pool -%}\n  {%- set ent_labels = labels(ent_id) -%}\n  {%-
+        set conflicts = ent_labels | select('in', all_retention) | reject('eq', target)
+        | list -%}\n  {%- if not conflicts -%}\n    {%- set ns.final = ns.final +
+        [ent_id] -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.final }}"
+      bucket_7d: "{%- set target = 'retention_7d' -%}\n{%- set all_retention = labels()
+        | select('match', '^retention_') | list -%}\n{%- set device_ents = label_devices(target)
+        | map('device_entities') | sum(start=[]) -%}\n{%- set raw_pool = (label_entities(target)
+        + device_ents) | unique | list -%}\n{%- set ns = namespace(final=[]) -%}\n{%-
+        for ent_id in raw_pool -%}\n  {%- set ent_labels = labels(ent_id) -%}\n  {%-
+        set conflicts = ent_labels | select('in', all_retention) | reject('eq', target)
+        | list -%}\n  {%- if not conflicts -%}\n    {%- set ns.final = ns.final +
+        [ent_id] -%}\n  {%- endif -%}\n{%- endfor -%}\n{{ ns.final }}"
   - choose:
     - conditions:
       - condition: template
