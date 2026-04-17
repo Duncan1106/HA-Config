@@ -2126,7 +2126,7 @@
       - condition: not
         conditions:
         - condition: state
-          entity_id: binary_sensor.pool_temperatur_trend
+          entity_id: binary_sensor.pool_temperature_zigbee_pool_temperatur_trend
           state: 'off'
           for:
             hours: 0
@@ -13260,9 +13260,10 @@
     exclude:
     - sensor.fp4_battery_level
     - sensor.iphone_von_enya_battery_level
+    - sensor.enyas_iphone_battery
+    - sensor.stephans_iphone_battery_status
     - sensor.poco_f7_battery_level
     - sensor.mi_9t_battery_level
-    - sensor.wvgzzze2zpe005371_battery_level
     battery_alert_list: "{%- set entities =\n    (states.sensor\n      | selectattr('attributes.device_class',
       'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
       \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n
@@ -13713,3 +13714,17 @@
           else '2-4 A' if trigger.id == 'zone_2' else '>4 A' }})
       action: notify.duncan
   mode: single
+- id: '1776415920489'
+  alias: Monthly PV Summary
+  description: Sends a monthly notification to Duncan containing the summary data
+    of the PV system performance.
+  triggers:
+  - event_type: pv_management_event
+    event_data:
+      type: monthly_summary
+    trigger: event
+  actions:
+  - data:
+      title: PV Monthly Report
+      message: '{{ trigger.event.data.message }}'
+    action: notify.duncan
