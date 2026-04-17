@@ -272,17 +272,17 @@ config:
                     \ updates | length }} Update(s) pending:**  {% for u in updates\
                     \ %} \n  &nbsp;&nbsp; \u2022 {{ u }}\n  \n{% endfor %} [\u2192\
                     \ Open Updates](/config/updates) {% else %} \u2705 All updates\
-                    \ installed {% endif %}\n---\nDatabase: {% if db_mb > 2500 %}{%\
-                    \ elif db_mb > 1000 %}{% else %}{% endif %} {{ db_mb | round(1)\
-                    \ }} MB {% if db_mb == 0.0 %}*(external DB detected)*{% endif\
-                    \ %}\nRecorder: {% if keep not in [none, 'unknown'] %}  Purge\
-                    \ active ({{ keep }} days) {% else %}  No purge configured \u2014\
-                    \ DB may grow indefinitely {% endif %}\n{{ 'Entity filter active'\
-                    \ if filter else ' No entity filter' }}\n---\n**Metric Source:**\
-                    \ {% if psi %} \U0001F7E2 PSI active\n(CPU + RAM + I/O + Disk)\
-                    \ \u2014 Hardware score uses 4 components  {% else %} \u2699\uFE0F\
-                    \ Classic sensors (CPU + RAM + Disk) \u2014 Hardware score uses\
-                    \ 3 components  {% endif %}\n"
+                    \ installed {% endif %}\n---\nDatabase: {% if db_mb > 2500 %}\U0001F534\
+                    {% elif db_mb > 1000 %}\U0001F7E1{% else %}\U0001F7E2{% endif\
+                    \ %} {{ db_mb | round(1) }} MB {% if db_mb == 0.0 %}*(external\
+                    \ DB detected)*{% endif %}\nRecorder: {% if keep not in [none,\
+                    \ 'unknown'] %}  Purge active ({{ keep }} days) {% else %}  No\
+                    \ purge configured \u2014 DB may grow indefinitely {% endif %}\n\
+                    {{ 'Entity filter active' if filter else ' No entity filter' }}\n\
+                    ---\n**Metric Source:** {% if psi %} \U0001F7E2 PSI active\n(CPU\
+                    \ + RAM + I/O + Disk) \u2014 Hardware score uses 4 components\
+                    \  {% else %} \u2699\uFE0F Classic sensors (CPU + RAM + Disk)\
+                    \ \u2014 Hardware score uses 3 components  {% endif %}\n"
                   title: "\U0001F4E6 Updates & Maintenance"
                   type: markdown
                 conditions:
@@ -626,12 +626,11 @@ config:
       - card:
           type: entities
         filter:
-          template: '{% set latest = states(''sensor.tasmota_newest_version'').lstrip(''v'')
-            %} {% for e in states.sensor %} {% if ''firmware_version'' in e.entity_id
-            and not e.state.startswith(latest) %} {{ e.entity_id }} {% endif %} {%
-            endfor %}
-
-            '
+          template: "{% set latest = states('sensor.tasmota_newest_version').lstrip('v')\
+            \ %} {% for e in states.sensor %}\n  {% if 'firmware_version' in e.entity_id\
+            \ \n     and e.state | lower | contains('tasmota')\n     and e.entity_id\
+            \ != 'sensor.mesh_24eb_firmware_version' \n     and not e.state.startswith(latest)\n\
+            \  %}\n    {{ e.entity_id }}\n  {% endif %}\n{% endfor %}\n"
         sort:
           method: state
         type: custom:auto-entities
