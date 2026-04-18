@@ -13762,6 +13762,8 @@
   - variables:
       target_label: retention_{{ trigger.id }}
       keep_days: '{{ trigger.id | replace(''d'', '''') | int }}'
+      threshold_offset: '{{ {''1d'': 10000, ''2d'': 40000, ''3d'': 75000, ''7d'':
+        20000}.get(trigger.id, 5000) }}'
       entities_to_purge: '{% set target = target_label %} {% set all_retention = labels()
         | select(''match'', ''^retention_'') | list %}
 
@@ -13786,8 +13788,7 @@
             entity_id: script.save_counts_and_notify_purge_status
           data:
             variables:
-              threshold_offset: '{{ {''1d'': 10000, ''2d'': 40000, ''3d'': 75000,
-                ''7d'': 2000}.get(trigger.id, 5000) }}'
+              threshold_offset: '{{ threshold_offset }}'
               timeout_minutes: 30
               block_id: '{{ trigger.id }}'
         - action: recorder.purge_entities
