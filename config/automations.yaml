@@ -13730,3 +13730,75 @@
       title: PV Monthly Report
       message: '{{ trigger.event.data.message }}'
     action: notify.duncan
+- id: '1776516638185'
+  alias: DB Purge Entities under 10 days (by labels)
+  description: Optimized Label-Based Retention Purge
+  triggers:
+  - trigger: time
+    at: 01:00:00
+    id: 1d
+  - trigger: time
+    at: '13:00:00'
+    id: 1d
+  - trigger: time
+    at: 02:30:00
+    id: 2d
+  - trigger: time
+    at: '14:30:00'
+    id: 2d
+  - trigger: time
+    at: 04:00:00
+    id: 3d
+  - trigger: time
+    at: '16:00:00'
+    id: 3d
+  - trigger: time
+    at: 05:30:00
+    id: 7d
+  - trigger: time
+    at: '17:30:00'
+    id: 7d
+  actions:
+  - variables:
+      target_label: retention_{{ trigger.id }}
+      keep_days: '{{ trigger.id | replace(''d'', '''') | int }}'
+      entities_to_purge: '{% set target = target_label %} {% set all_retention = labels()
+        | select(''match'', ''^retention_'') | list %}
+
+        {# Get entities from labels and devices #} {% set target_ents = (label_entities(target)
+        + (label_devices(target) | map(''device_entities'') | sum(start=[]))) | unique
+        | list %}
+
+        {# Check for conflicts (entities that have other retention labels) #} {% set
+        other_labels = all_retention | reject(''eq'', target) | list %} {% set conflict_ents
+        = other_labels | map(''label_entities'') | sum(start=[]) | unique | list %}
+
+        {# Final list: in target, not in conflict list #} {{ target_ents | reject(''in'',
+        conflict_ents) | list }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ entities_to_purge | length > 0 }}'
+      sequence:
+      - parallel:
+        - action: script.turn_on
+          target:
+            entity_id: script.save_counts_and_notify_purge_status
+          data:
+            variables:
+              threshold_offset: '{{ {''1d'': 10000, ''2d'': 40000, ''3d'': 75000,
+                ''7d'': 2000}.get(trigger.id, 5000) }}'
+              timeout_minutes: 30
+              block_id: '{{ trigger.id }}'
+        - action: recorder.purge_entities
+          data:
+            entity_id: '{{ entities_to_purge }}'
+            keep_days: '{{ keep_days }}'
+    default:
+    - action: persistent_notification.create
+      data:
+        title: 'Purge DB: {{ trigger.id }} Skipped'
+        message: No entities found for {{ target_label }} at {{ now().strftime('%H:%M')
+          }}.
+  mode: queued
+  max: 10
