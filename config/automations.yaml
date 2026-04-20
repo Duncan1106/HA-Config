@@ -13830,33 +13830,36 @@
     below: 15
     id: battery
     trigger: numeric_state
-  - value_template: '{{ states(''sensor.shawn_fehler'') not in [''normal'', ''unavailable'',
-      ''unknown''] }}'
-    id: error
-    trigger: template
-  - entity_id: sensor.shawn_fehlercode
-    to: '5'
+  - entity_id:
+    - sensor.shawn_fehlercode
     id: error
     trigger: state
+    from:
+    - '0'
+  - trigger: time_pattern
+    minutes: /10
+    id: slacker_check
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - slacker_check
+      - condition: sun
+        before: sunset
+        after: sunrise
+      alias: During daytime check
+    - condition: trigger
+      id:
+      - lost
+      - offline
+      - battery
+      - error
+      alias: Lost, Offline, Low Battery or Error
   actions:
   - choose:
-    - conditions:
-      - condition: trigger
-        id: lost
-      - condition: not
-        conditions:
-        - condition: state
-          entity_id: sensor.shawn_rasenmaher_status
-          state: charging
-      sequence:
-      - data:
-          title: ⚠️ Shawn is Lost!
-          message: Shawn has been trying to return to base for 20 minutes. Check for
-            visual obstructions.
-          data:
-            ttl: 0
-            priority: high
-        action: notify.mobile_app_your_phone
     - conditions:
       - condition: trigger
         id: offline
@@ -13865,7 +13868,7 @@
           title: "\U0001F4F6 Shawn is Offline"
           message: 'Connection lost for 10+ minutes. Last known battery: {{ states(''sensor.shawn_batterie'')
             }}%'
-        action: notify.notify
+        action: notify.duncan
     - conditions:
       - condition: trigger
         id: battery
@@ -13879,19 +13882,50 @@
           title: "\U0001F50B Shawn Low Battery"
           message: Battery is critically low ({{ states('sensor.shawn_batterie') }}%)
             and Shawn is not currently charging.
-        action: notify.notify
+        action: notify.duncan
     - conditions:
       - condition: trigger
-        id: error
+        id:
+        - error
+        - lost
       sequence:
       - data:
           title: "\U0001F6A8 Shawn Needs Help!"
-          message: 'Error: {{ states(''sensor.shawn_fehler'') }} (Code: {{ states(''sensor.shawn_fehlercode'')
-            }})'
+          message: "                {% if is_state('sensor.shawn_fehlercode', '1')
+            %}\n                  Shawn is Tilted/Angled! He might be stuck on an
+            obstacle or a steep edge.\n                {% elif is_state('sensor.shawn_fehlercode',
+            '5') %}\n                  Shawn has been Lifted! Safety stop engaged.\n
+            \               {% elif trigger.id == 'lost' %}\n                  Shawn
+            is lost in the yard. Navigation timeout (20 mins).\n                {%
+            else %}\n                  Hardware Interrupt: {{ states('sensor.shawn_fehler')
+            }} (Code: {{ states('sensor.shawn_fehlercode') }})\n                {%
+            endif %}"
           data:
             ttl: 0
             priority: high
             clickAction: /lovelace/mower-dashboard
-        action: notify.mobile_app_your_phone
+        action: notify.duncan
+    - conditions:
+      - condition: trigger
+        id: slacker_check
+      - condition: state
+        entity_id: sun.sun
+        state: above_horizon
+      - condition: template
+        value_template: "{% set battery = states('sensor.shawn_batterie') | int(0)
+          %} {% set day = now().strftime('%A').lower() %}\n{% set sched = state_attr('sensor.shawn_arbeitsplan',
+          'schedule') %} \n{% if sched and day in sched %}\n  {% set now_time = now().strftime('%H:%M')
+          %}\n  {% set active = namespace(found=false) %}\n  {% for slot in sched[day]
+          if slot.enabled %}\n    {% if slot.starttime <= now_time <= slot.endtime
+          %}\n      {% set active.found = true %}\n    {% endif %}\n  {% endfor %}\n
+          \ {{ active.found  and states('sensor.shawn_rasenmaher_status') in ['standby',
+          'charging'] and battery > 99 and is_state('sensor.shawn_regensensor', 'dry')
+          }}\n{% else %}\n  false \n{% endif %}\n"
+      sequence:
+      - data:
+          title: "\U0001F634 Shawn is Slacking!"
+          message: It's work time and conditions are perfect, but Shawn is idling
+            at the dock.
+        action: notify.notify
   mode: parallel
   max: 10
