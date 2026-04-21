@@ -13915,19 +13915,19 @@
         state: above_horizon
       - condition: template
         value_template: "{% set battery = states('sensor.shawn_batterie') | int(0)
-          %} {% set day = now().strftime('%A').lower() %}\n{% set sched = state_attr('sensor.shawn_arbeitsplan',
-          'schedule') %} \n{% if sched and day in sched %}\n  {% set now_time = now().strftime('%H:%M')
+          %} {% set day = now().strftime('%A').lower() %} {% set sched = state_attr('sensor.shawn_arbeitsplan',
+          'schedule') %}  {% if sched and day in sched %}\n  {% set now_time = now().strftime('%H:%M')
           %}\n  {% set active = namespace(found=false) %}\n  {% for slot in sched[day]
-          if slot.enabled %}\n    {% if slot.starttime <= now_time <= slot.endtime
+          if slot.enabled %}\n    {% if slot.starttime < now_time <= slot.endtime
           %}\n      {% set active.found = true %}\n    {% endif %}\n  {% endfor %}\n
-          \ {{ active.found  and states('sensor.shawn_rasenmaher_status') in ['standby',
-          'charging'] and battery > 99 and is_state('sensor.shawn_regensensor', 'dry')
-          }}\n{% else %}\n  false \n{% endif %}\n"
+          \ {{ active.found and states('sensor.shawn_rasenmaher_status') in ['standby']
+          and battery > 99 and is_state('sensor.shawn_regensensor', 'dry') }}\n{%
+          else %}\n  false \n{% endif %}\n"
       sequence:
       - data:
           title: "\U0001F634 Shawn is Slacking!"
           message: It's work time and conditions are perfect, but Shawn is idling
             at the dock.
-        action: notify.notify
+        action: notify.duncan
   mode: parallel
   max: 10
