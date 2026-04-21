@@ -9849,37 +9849,38 @@
     \ \n\n  - No additional conditions; the automation runs daily at 08:00.  \n\n
     \ ---\n\n  ### \U0001F3AF **Workflow / Logic**  \n\n  1. **Fetch Calendar Events**
     \ \n     - Supports up to three calendars:  \n       - `calendar.looping`    \n
-    \      - `calendar.apps_by_abfall`  \n     - Fetched in a loop for efficiency,
-    with events for a **duration of 16 hours**.  \n     - If a calendar has no upcoming
-    events, it is simply skipped in the fallback notification.\n\n  2. **Fetch Weather
-    Forecast**  \n     - Uses `weather.forecast_home` for hourly forecasts.  \n     -
-    Includes condition, temperature, precipitation, UV index, wind speed, and optional
-    daily summary.\n\n  3. **Prepare AI Prompt**  \n     - Combines calendar events
-    and weather data into a concise prompt.  \n     - Instructions to AI:  \n       -
-    Provide short, precise messages without Home Assistant internal details.  \n       -
-    Highlight unusual or notable events or weather.  \n       - Include recommendations
-    if weather or temperature requires action (e.g., coat, umbrella).  \n       -
-    Format per individual if events concern multiple people.  \n       - Output in
-    **German**, in a precise, efficient style.\n\n  4. **AI Processing**  \n     -
-    Uses `conversation.google_generative_ai` to generate the notification text.  \n
-    \    - Retries up to 10 times if the response contains failure phrases like:  \n
-    \      - `\"Unable to get response\"`  \n       - `\"Sorry, I had a problem getting
-    a response from Google Generative AI.\"`  \n     - Small 5-second delay between
-    retries.\n\n  5. **Send Notification**  \n     - On success: sends AI-generated
-    message to `notify.duncan`.  \n     - On repeated failure: sends a fallback message
-    with only existing calendar events, omitting calendars without upcoming events.\n\n
-    \ ---\n\n  ### \U0001F527 **Technical Specs**  \n\n  - **Calendars Used:**  \n
-    \   - `calendar.looping`  \n    - `calendar.anniversaries`  \n    - `calendar.apps_by_abfall`
-    \ \n\n  - **Weather Entity:** `weather.forecast_home`  \n\n  - **AI Agent:** `conversation.google_generative_ai`
-    \ \n\n  - **Target Notification:** `notify.duncan`  \n\n  - **Mode:** `single`
-    \ \n\n  - **Retries:** Up to 10 attempts for AI response  \n\n  - **Delay Between
-    Retries:** 5 seconds  \n\n  ---\n\n  ### ⚡ **Notes / Best Practices**  \n\n  -
-    The prompt instructs the AI to avoid generic or trivial information.  \n\n  -
-    Fallback notifications only display events if calendars have events; empty calendars
-    are skipped.  \n\n  - Messages are tailored per individual if calendar events
-    indicate multiple people.  \n\n  - Weather summary emphasizes unusual conditions
-    or important recommendations.  \n\n  - The automation can be expanded to include
-    more calendars or different notification channels if desired.\n"
+    \      - `calendar.google_family`\n       - `calendar.apps_by_abfall`\n     -
+    Fetched in a loop for efficiency, with events for a **duration of 16 hours**.
+    \ \n     - If a calendar has no upcoming events, it is simply skipped in the fallback
+    notification.\n\n  2. **Fetch Weather Forecast**  \n     - Uses `weather.forecast_home`
+    for hourly forecasts.  \n     - Includes condition, temperature, precipitation,
+    UV index, wind speed, and optional daily summary.\n\n  3. **Prepare AI Prompt**
+    \ \n     - Combines calendar events and weather data into a concise prompt.  \n
+    \    - Instructions to AI:  \n       - Provide short, precise messages without
+    Home Assistant internal details.  \n       - Highlight unusual or notable events
+    or weather.  \n       - Include recommendations if weather or temperature requires
+    action (e.g., coat, umbrella).  \n       - Format per individual if events concern
+    multiple people.  \n       - Output in **German**, in a precise, efficient style.\n\n
+    \ 4. **AI Processing**  \n     - Uses `conversation.google_generative_ai` to generate
+    the notification text.  \n     - Retries up to 10 times if the response contains
+    failure phrases like:  \n       - `\"Unable to get response\"`  \n       - `\"Sorry,
+    I had a problem getting a response from Google Generative AI.\"`  \n     - Small
+    5-second delay between retries.\n\n  5. **Send Notification**  \n     - On success:
+    sends AI-generated message to `notify.duncan`.  \n     - On repeated failure:
+    sends a fallback message with only existing calendar events, omitting calendars
+    without upcoming events.\n\n  ---\n\n  ### \U0001F527 **Technical Specs**  \n\n
+    \ - **Calendars Used:**  \n    - `calendar.looping`  \n    - `calendar.google_family`
+    \ \n    - `calendar.apps_by_abfall`  \n\n  - **Weather Entity:** `weather.forecast_home`
+    \ \n\n  - **AI Agent:** `conversation.google_generative_ai`  \n\n  - **Target
+    Notification:** `notify.duncan`  \n\n  - **Mode:** `single`  \n\n  - **Retries:**
+    Up to 10 attempts for AI response  \n\n  - **Delay Between Retries:** 5 seconds
+    \ \n\n  ---\n\n  ### ⚡ **Notes / Best Practices**  \n\n  - The prompt instructs
+    the AI to avoid generic or trivial information.  \n\n  - Fallback notifications
+    only display events if calendars have events; empty calendars are skipped.  \n\n
+    \ - Messages are tailored per individual if calendar events indicate multiple
+    people.  \n\n  - Weather summary emphasizes unusual conditions or important recommendations.
+    \ \n\n  - The automation can be expanded to include more calendars or different
+    notification channels if desired.\n"
   triggers:
   - at: 08:00:00
     trigger: time
@@ -9890,6 +9891,7 @@
       weather_entity: weather.forecast_home
       calendars:
       - entity: calendar.looping
+      - entity: calendar.google_family
       - entity: calendar.apps_by_abfall
       calendar_duration:
         hours: 16
