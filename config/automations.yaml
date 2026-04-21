@@ -13975,14 +13975,17 @@
           base_delay: 10
         continue_on_error: true
       - data:
-          title: "\U0001F50B Balancing Soak Started"
-          message: 'SOC is {{ states(''sensor.inverter_battery'') }}%.
+          title: "\U0001F50B Balancing Soak: Active"
+          message: '{% set switch = states(''switch.esp32_s3_zero_deye8k_time_of_use'')
+            %}
 
-            Forecast is {{ states(''sensor.solcast_pv_forecast_prognose_heute'') |
-            round(1) }}kWh.
+            Result: {{ "✅ TOU Disabled" if switch == ''off'' else "⚠️ Switch Failed
+            to Toggle" }}
 
-            Discharge{{" disabled to help passive Balancers." if is_state(''switch.esp32_s3_zero_deye8k_time_of_use'',''off'')
-            else " enabled" }}'
+            SOC: {{ states(''sensor.inverter_battery'') }}%, Forecast: {{ states(''sensor.solcast_pv_forecast_prognose_heute'')
+            | round(1) }}kWh
+
+            Discharge is now restricted to prioritize cell balancing.'
         action: notify.duncan
         continue_on_error: true
     - conditions:
@@ -14004,10 +14007,13 @@
           base_delay: 10
         continue_on_error: true
       - data:
-          title: "\U0001F3E0 Normal Mode Resumed"
-          message: "Soak window finished. \n{{ \"Battery is now powering the house.\\nDischarge
-            enabled\" if is_state('switch.esp32_s3_zero_deye8k_time_of_use','on')
-            else \"Discharge still disabled\" }}"
+          title: "\U0001F3E0 Normal Mode: Resumed"
+          message: '{% set switch = states(''switch.esp32_s3_zero_deye8k_time_of_use'')
+            %} Maintenance window finished. Status: {{ "✅ \nHouse on Battery" if switch
+            == ''on'' else "❌ \nTOU Still Disabled (Check Connection)" }}
+
+            The house is {{ "now drawing from the battery" if switch == ''on'' else
+            "still running on Bypass/Solar/Grid" }}.'
         action: notify.duncan
         continue_on_error: true
   mode: restart
