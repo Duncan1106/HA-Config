@@ -63,6 +63,7 @@ select:
 button: 
   - platform: restart
     name: Restart
+    id: restart_btn
 
 uart:
   id: mod_uart
@@ -95,7 +96,17 @@ modbus_controller:
 
 binary_sensor:
   - platform: status
+    id: status_connected
     name: Status
+    on_release: 
+      then:
+        - delay: 
+            minutes: 1
+        - if: 
+            condition:
+              - binary_sensor.is_off: status_connected
+            then:
+              - button.press: restart_btn
 
   # Binary Sensor for Bit 0: Charge enable (0b0001)
   - platform: modbus_controller
