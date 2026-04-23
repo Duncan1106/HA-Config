@@ -1412,4 +1412,46 @@ template:
             {% elif is_ignition and not is_scheduled %} Outside Window Ignition
             {% else %} Following Schedule
             {% endif %}
+
+  - binary_sensor:
+      - name: "Pool Extend Condition Met"
+        unique_id: pool_extend_condition_met
+        icon: mdi:arrow-expand-plus
+        state: >
+          {% set pulse_time = states('input_number.pulsetimeactualvalue') | float(0) %}
+          {% set pv_power = states('sensor.inverter_pv_power') | float(0) %}
+          {% set extend_count = states('counter.pool_extend_counter') | int(0) %}
+          {% set pump_on = is_state('switch.pool_pumpe', 'on') %}
+          {% set stop_flag = is_state('input_boolean.stop_pool', 'on') %}
+          {% set temp_rising = is_state('binary_sensor.pool_temperature_zigbee_pool_temp_rising', 'on') %}
+
+          {{ 
+            pulse_time < 410 and
+            pv_power > 1200 and
+            extend_count < 15 and
+            pump_on == true and
+            stop_flag == false and
+            temp_rising == true
+          }}
+        availability: >
+          {% set entities = [
+            'input_number.pulsetimeactualvalue',
+            'sensor.inverter_pv_power',
+            'counter.pool_extend_counter',
+            'switch.pool_pumpe',
+            'input_boolean.stop_pool',
+            'binary_sensor.pool_temperature_zigbee_pool_temp_rising'
+          ] %}
+          {{ entities | map('states') | select('in', ['unavailable', 'unknown', 'none']) | list | count == 0 }}
+        attributes:
+          last_status_change: "{{ states.binary_sensor.pool_temperature_zigbee_pool_temp_rising.last_changed if states.binary_sensor.pool_temperature_zigbee_pool_temp_rising }}"
+          reason: >
+            {% if is_state('binary_sensor.pool_extend_condition_met', 'unavailable') %} Sensor Data Offline
+            {% elif states('input_number.pulsetimeactualvalue') | float(0) >= 410 %} High Pulse Time
+            {% elif states('sensor.inverter_pv_power') | float(0) <= 1200 %} Low Solar Power
+            {% elif states('counter.pool_extend_counter') | int(0) >= 15 %} Max Extensions Reached
+            {% elif is_state('switch.pool_pumpe', 'off') %} Pump Off
+            {% elif is_state('input_boolean.stop_pool', 'on') %} Stop Flag Active
+            {% elif not is_state('binary_sensor.pool_temperature_zigbee_pool_temp_rising', 'on') %} Temp Not Rising
+            {% else %} All Conditions Met {% endif %}
             
