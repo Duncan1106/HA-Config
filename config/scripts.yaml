@@ -1625,10 +1625,9 @@ save_counts_and_notify_purge_status:
       value: '{{ current_count }}'
   - alias: Wait for purge to complete
     wait_for_trigger:
-    - value_template: '{{ (states(''sensor.maria_db_rows'') | int(0)) < threshold
-        }}
+    - value_template: '{% set rows = states(''sensor.maria_db_rows'') %}
 
-        '
+        {{ is_number(rows) and (rows | int(0)) < (threshold | int(0)) }}'
       trigger: template
     timeout:
       minutes: '{{ timeout_minutes | int(60) }}'
