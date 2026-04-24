@@ -13945,8 +13945,51 @@
   max: 10
 - id: '1776775331415'
   alias: 'Battery Maintenance: Balancing Soak Cycle'
-  description: Disables Time of Use at 95% SOC IF forecast > 40kWh, re-enables at
-    4 PM.
+  description: "# \U0001F50B **Battery Maintenance: Balancing Soak Cycle**\n\n###
+    \U0001F4CB Intelligent Battery Maintenance Control\n\nThis automation manages
+    a \"Soak Cycle\" for the inverter battery system to facilitate cell balancing
+    at high States of Charge (SOC). By intelligently disabling the **Time of Use (TOU)**
+    switch, the system prevents heavy discharging once the battery reaches a near-full
+    state, ensuring the cells have sufficient time at high voltage for the BMS to
+    balance effectively.\n\n* **High-level intent:** Prioritize battery health by
+    restricting discharge during peak solar periods once the battery is nearly full.\n*
+    **Operational strategy:** Solar-aware maintenance triggered only when a high daily
+    yield is forecasted, ensuring enough energy is available to maintain the soak
+    without sacrificing household autonomy.\n* **Reliability mechanisms:** Utilizes
+    a robust **backoff retry script** for switch commands to ensure critical state
+    changes occur even during transient communication drops.\n\n---\n\n### Trigger
+    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
+    | :--- | :--- |\n| **Numeric State** | `sensor.inverter_battery` > **95%** | `start_soak`
+    | Initiates the maintenance window when the battery is nearly full. |\n| **Time**
+    | **16:00 (4:00 PM)** | `stop_soak` | Ends the maintenance window to resume normal
+    discharge for evening loads. |\n\n---\n\n### Operational Logic Sections\n\n####
+    #### Balancing Phase (Start Soak)\n* **Purpose:** Restrict battery discharge to
+    allow cells to balance at high voltage.\n* **Logic Overview:** Executes if the
+    battery is above **95%**, the time is between **08:00 and 15:00**, the daily solar
+    forecast (`sensor.solcast_pv_forecast_prognose_heute`) exceeds **40kWh**, and
+    the **Time of Use** switch is currently **on**.\n* **Effect:** Sets `switch.esp32_s3_zero_deye8k_time_of_use`
+    to **off** and sends a mobile notification with the current SOC and forecast data.\n\n####
+    #### Normalization Phase (Stop Soak)\n* **Purpose:** Restore standard Time of
+    Use settings for evening operation.\n* **Logic Overview:** Triggered specifically
+    at **16:00** via the `stop_soak` ID.\n* **Effect:** Sets `switch.esp32_s3_zero_deye8k_time_of_use`
+    to **on** and notifies the user of the system status, confirming whether the house
+    has successfully resumed battery power.\n\n---\n\n### Technical Overview\n\n*
+    **Automation Mode:** `restart`\n* **Execution Method:** `script.retry_action_with_backoff`\n*
+    **Key Inputs:**\n    * `sensor.inverter_battery` (Threshold: **95%**)\n    * `sensor.solcast_pv_forecast_prognose_heute`
+    (Threshold: **40kWh**)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_time_of_use`\n*
+    **Safety Mechanisms:**\n    * **Action Retries:** Up to **10 retries** with a
+    **60s max delay** and **simple backoff** to ensure the inverter registers the
+    command.\n    * **Notification Loop:** Real-time feedback via `notify.duncan`
+    if the switch fails to toggle, allowing for manual intervention.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n* **Forecast Dependency:** The **40kWh** threshold ensures
+    that maintenance only occurs on high-production days, preventing the system from
+    disabling battery discharge when solar energy might be insufficient.\n* **Time
+    Windows:** The start logic is constrained to **08:00 - 15:00** to ensure the soak
+    happens during peak sun, while the **16:00** stop time ensures the battery is
+    available for the primary evening discharge period.\n* **Fail-Safe:** By using
+    `continue_on_error: true` alongside the retry script, the automation remains resilient
+    and will continue to attempt notification even if the hardware communication is
+    temporarily interrupted."
   triggers:
   - entity_id: sensor.inverter_battery
     above: 95
