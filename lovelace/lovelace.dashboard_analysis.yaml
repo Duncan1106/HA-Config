@@ -1261,21 +1261,27 @@ config:
                 entity_id: input_select.select_view_for_labels
             type: button
           type: horizontal-stack
-        - content: "{%- set target = 'retention_1d' -%} {%- set all_retention = labels()\
-            \ | select('match', '^retention_') | list -%}\n{# 1. Gather pool from\
-            \ labeled entities and labeled devices #} {%- set device_ents = label_devices(target)\
-            \ | map('device_entities') | sum(start=[]) -%} {%- set raw_pool = (label_entities(target)\
-            \ + device_ents) | unique | list -%}\n{# 2. Apply strict filters (has_value\
-            \ and no overrides) #} {%- set ns = namespace(final_ents=[]) -%} {%- for\
-            \ ent_id in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {%- set\
-            \ conflicts = labels(ent_id) | select('in', all_retention) | reject('eq',\
-            \ target) | list -%}\n    {%- if not conflicts -%}\n      {%- set ns.final_ents\
-            \ = ns.final_ents + [ent_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n\
-            {%- endfor -%}\n{# 3. Determine all unique devices owning these final\
-            \ entities #} {%- set final_devices = ns.final_ents | map('device_id')\
-            \ | reject('none') | unique | list -%}\n### \U0001F4CA {{ target | replace('_',\
-            \ ' ') | title }} Overview\n**Total Entities:** {{ ns.final_ents | count\
-            \ }}\n**Devices Affected:** {{ final_devices | count }}\n"
+        - content: "{# --- CONFIGURATION --- #}\n{%- set target = 'retention_1d' -%}\n\
+            {%- set all_retention = labels() | select('match', '^retention_') | list\
+            \ -%}\n\n{# --- 1. POOL GENERATION --- #}\n{%- set device_ents = label_devices(target)\
+            \ | map('device_entities') | sum(start=[]) -%}\n{%- set raw_pool = (label_entities(target)\
+            \ + device_ents) | unique | list -%}\n\n{# --- 2. VALIDATION WITH OVERRIDE\
+            \ LOGIC --- #}\n{%- set ns = namespace(final_ents=[]) -%}\n\n{%- for ent_id\
+            \ in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {# Check Entity\
+            \ labels first #}\n    {%- set ent_retention = labels(ent_id) | select('in',\
+            \ all_retention) | list -%}\n    \n    {%- if ent_retention | count >\
+            \ 0 -%}\n      {# IF ENTITY HAS A LABEL: It must match target exactly\
+            \ #}\n      {%- if target in ent_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- else -%}\n\
+            \      {# IF ENTITY HAS NO LABEL: Check parent device #}\n      {%- set\
+            \ dev_id = device_id(ent_id) -%}\n      {%- set dev_retention = labels(dev_id)\
+            \ | select('in', all_retention) | list if dev_id is not none else [] -%}\n\
+            \      \n      {%- if target in dev_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n\
+            \  {%- endif -%}\n{%- endfor -%}\n\n{# --- 3. DEVICE MAPPING --- #}\n\
+            {%- set final_devices = ns.final_ents | map('device_id') | reject('none')\
+            \ | unique | list -%}\n**Total Entities:** {{ ns.final_ents | count }}\n\
+            **Devices Affected:** {{ final_devices | count }}"
           type: markdown
           visibility:
           - condition: state
@@ -1300,21 +1306,27 @@ config:
           - condition: state
             entity: input_select.select_view_for_labels
             state: 1 Day
-        - content: "{%- set target = 'retention_2d' -%} {%- set all_retention = labels()\
-            \ | select('match', '^retention_') | list -%}\n{# 1. Gather pool from\
-            \ labeled entities and labeled devices #} {%- set device_ents = label_devices(target)\
+        - content: "{# --- CONFIGURATION --- #} {%- set target = 'retention_2d' -%}\
+            \ {%- set all_retention = labels() | select('match', '^retention_') |\
+            \ list -%}\n{# --- 1. POOL GENERATION --- #} {%- set device_ents = label_devices(target)\
             \ | map('device_entities') | sum(start=[]) -%} {%- set raw_pool = (label_entities(target)\
-            \ + device_ents) | unique | list -%}\n{# 2. Apply strict filters (has_value\
-            \ and no overrides) #} {%- set ns = namespace(final_ents=[]) -%} {%- for\
-            \ ent_id in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {%- set\
-            \ conflicts = labels(ent_id) | select('in', all_retention) | reject('eq',\
-            \ target) | list -%}\n    {%- if not conflicts -%}\n      {%- set ns.final_ents\
-            \ = ns.final_ents + [ent_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n\
-            {%- endfor -%}\n{# 3. Determine all unique devices owning these final\
-            \ entities #} {%- set final_devices = ns.final_ents | map('device_id')\
-            \ | reject('none') | unique | list -%}\n### \U0001F4CA {{ target | replace('_',\
-            \ ' ') | title }} Overview\n**Total Entities:** {{ ns.final_ents | count\
-            \ }}\n**Devices Affected:** {{ final_devices | count }}\n"
+            \ + device_ents) | unique | list -%}\n{# --- 2. VALIDATION WITH OVERRIDE\
+            \ LOGIC --- #} {%- set ns = namespace(final_ents=[]) -%}\n{%- for ent_id\
+            \ in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {# Check Entity\
+            \ labels first #}\n    {%- set ent_retention = labels(ent_id) | select('in',\
+            \ all_retention) | list -%}\n  \n    {%- if ent_retention | count > 0\
+            \ -%}\n      {# IF ENTITY HAS A LABEL: It must match target exactly #}\n\
+            \      {%- if target in ent_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- else -%}\n\
+            \      {# IF ENTITY HAS NO LABEL: Check parent device #}\n      {%- set\
+            \ dev_id = device_id(ent_id) -%}\n      {%- set dev_retention = labels(dev_id)\
+            \ | select('in', all_retention) | list if dev_id is not none else [] -%}\n\
+            \    \n      {%- if target in dev_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n\
+            \  {%- endif -%}\n{%- endfor -%}\n{# --- 3. DEVICE MAPPING --- #} {%-\
+            \ set final_devices = ns.final_ents | map('device_id') | reject('none')\
+            \ | unique | list -%}  **Total Entities:** {{ ns.final_ents | count }}\
+            \  \n**Devices Affected:** {{ final_devices | count }}"
           type: markdown
           visibility:
           - condition: state
@@ -1339,21 +1351,27 @@ config:
           - condition: state
             entity: input_select.select_view_for_labels
             state: 2 Day
-        - content: "{%- set target = 'retention_3d' -%} {%- set all_retention = labels()\
-            \ | select('match', '^retention_') | list -%}\n{# 1. Gather pool from\
-            \ labeled entities and labeled devices #} {%- set device_ents = label_devices(target)\
+        - content: "{# --- CONFIGURATION --- #} {%- set target = 'retention_3d' -%}\
+            \ {%- set all_retention = labels() | select('match', '^retention_') |\
+            \ list -%}\n{# --- 1. POOL GENERATION --- #} {%- set device_ents = label_devices(target)\
             \ | map('device_entities') | sum(start=[]) -%} {%- set raw_pool = (label_entities(target)\
-            \ + device_ents) | unique | list -%}\n{# 2. Apply strict filters (has_value\
-            \ and no overrides) #} {%- set ns = namespace(final_ents=[]) -%} {%- for\
-            \ ent_id in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {%- set\
-            \ conflicts = labels(ent_id) | select('in', all_retention) | reject('eq',\
-            \ target) | list -%}\n    {%- if not conflicts -%}\n      {%- set ns.final_ents\
-            \ = ns.final_ents + [ent_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n\
-            {%- endfor -%}\n{# 3. Determine all unique devices owning these final\
-            \ entities #} {%- set final_devices = ns.final_ents | map('device_id')\
-            \ | reject('none') | unique | list -%}\n### \U0001F4CA {{ target | replace('_',\
-            \ ' ') | title }} Overview\n**Total Entities:** {{ ns.final_ents | count\
-            \ }}\n**Devices Affected:** {{ final_devices | count }}\n"
+            \ + device_ents) | unique | list -%}\n{# --- 2. VALIDATION WITH OVERRIDE\
+            \ LOGIC --- #} {%- set ns = namespace(final_ents=[]) -%}\n{%- for ent_id\
+            \ in raw_pool -%}\n  {%- if has_value(ent_id) -%}\n    {# Check Entity\
+            \ labels first #}\n    {%- set ent_retention = labels(ent_id) | select('in',\
+            \ all_retention) | list -%}\n  \n    {%- if ent_retention | count > 0\
+            \ -%}\n      {# IF ENTITY HAS A LABEL: It must match target exactly #}\n\
+            \      {%- if target in ent_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- else -%}\n\
+            \      {# IF ENTITY HAS NO LABEL: Check parent device #}\n      {%- set\
+            \ dev_id = device_id(ent_id) -%}\n      {%- set dev_retention = labels(dev_id)\
+            \ | select('in', all_retention) | list if dev_id is not none else [] -%}\n\
+            \    \n      {%- if target in dev_retention -%}\n        {%- set ns.final_ents\
+            \ = ns.final_ents + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n\
+            \  {%- endif -%}\n{%- endfor -%}\n{# --- 3. DEVICE MAPPING --- #} {%-\
+            \ set final_devices = ns.final_ents | map('device_id') | reject('none')\
+            \ | unique | list -%}  **Total Entities:** {{ ns.final_ents | count }}\
+            \  \n**Devices Affected:** {{ final_devices | count }}\n"
           type: markdown
           visibility:
           - condition: state
