@@ -13831,10 +13831,14 @@
       minutes: 20
     id: lost
     trigger: state
-  - entity_id: binary_sensor.shawn_online
-    to: 'off'
+  - entity_id:
+    - binary_sensor.shawn_online
+    to:
+    - 'off'
     for:
-      minutes: 10
+      hours: 0
+      minutes: 2
+      seconds: 0
     id: offline
     trigger: state
   - entity_id: sensor.shawn_batterie
@@ -13848,20 +13852,30 @@
     from:
     - '0'
   - trigger: time_pattern
-    minutes: /10
+    minutes: /15
     id: slacker_check
   conditions:
   - condition: or
     conditions:
-    - condition: and
+    - alias: During daytime check
+      condition: and
       conditions:
       - condition: trigger
         id:
         - slacker_check
-      - condition: sun
-        before: sunset
-        after: sunrise
-      alias: During daytime check
+      - condition: state
+        entity_id: sun.sun
+        state: above_horizon
+      - condition: template
+        value_template: "{% set battery = states('sensor.shawn_batterie') | int(0)
+          %} {% set day = now().strftime('%A').lower() %} {% set sched = state_attr('sensor.shawn_arbeitsplan',
+          'schedule') %}  {% if sched and day in sched %}\n  {% set now_time = now().strftime('%H:%M')
+          %}\n  {% set active = namespace(found=false) %}\n  {% for slot in sched[day]
+          if slot.enabled %}\n    {% if slot.starttime < now_time <= slot.endtime
+          %}\n      {% set active.found = true %}\n    {% endif %}\n  {% endfor %}\n
+          \ {{ active.found and states('sensor.shawn_rasenmaher_status') in ['standby']
+          and battery > 99 and is_state('sensor.shawn_regensensor', 'dry') }}\n{%
+          else %}\n  false \n{% endif %}\n"
     - condition: trigger
       id:
       - lost
@@ -13877,7 +13891,7 @@
       sequence:
       - data:
           title: "\U0001F4F6 Shawn is Offline"
-          message: 'Connection lost for 10+ minutes. Last known battery: {{ states(''sensor.shawn_batterie'')
+          message: 'Connection lost for 2+ minutes. Last known battery: {{ states(''sensor.shawn_batterie'')
             }}%'
         action: notify.duncan
     - conditions:
@@ -13922,19 +13936,6 @@
     - conditions:
       - condition: trigger
         id: slacker_check
-      - condition: state
-        entity_id: sun.sun
-        state: above_horizon
-      - condition: template
-        value_template: "{% set battery = states('sensor.shawn_batterie') | int(0)
-          %} {% set day = now().strftime('%A').lower() %} {% set sched = state_attr('sensor.shawn_arbeitsplan',
-          'schedule') %}  {% if sched and day in sched %}\n  {% set now_time = now().strftime('%H:%M')
-          %}\n  {% set active = namespace(found=false) %}\n  {% for slot in sched[day]
-          if slot.enabled %}\n    {% if slot.starttime < now_time <= slot.endtime
-          %}\n      {% set active.found = true %}\n    {% endif %}\n  {% endfor %}\n
-          \ {{ active.found and states('sensor.shawn_rasenmaher_status') in ['standby']
-          and battery > 99 and is_state('sensor.shawn_regensensor', 'dry') }}\n{%
-          else %}\n  false \n{% endif %}\n"
       sequence:
       - data:
           title: "\U0001F634 Shawn is Slacking!"
