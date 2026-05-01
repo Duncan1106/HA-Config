@@ -1351,17 +1351,16 @@ config:
               \ if ent_state.domain not in ignore_domains and not ent_id | regex_search(exclude_pattern)\
               \ -%}\n      {%- if ent_id not in covered_set -%}\n        {%- set ns.final\
               \ = ns.final + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n\
-              \  {%- endfor -%}\n  {{- ns.final -}}\n{%- else -%}\n  {# ... (Retention\
-              \ logic stays same) ... #}\n  {%- set day = view.split(' ')[0] -%}\n\
-              \  {%- set target = 'retention_' ~ day ~ 'd' -%}\n  {%- set device_ents\
-              \ = label_devices(target) | map('device_entities') | sum(start=[]) -%}\n\
-              \  {%- set raw_pool = (label_entities(target) + device_ents) | unique\
-              \ | list -%}\n  {%- set ns = namespace(final=[]) -%}\n  {%- for ent_id\
-              \ in raw_pool -%}\n    {%- if has_value(ent_id) -%}\n      {%- if not\
-              \ labels(ent_id) | select('in', all_retention) | reject('eq', target)\
-              \ | list -%}\n        {%- set ns.final = ns.final + [ent_id] -%}\n \
-              \     {%- endif -%}\n    {%- endif -%}\n  {%- endfor -%}\n  {{- ns.final\
-              \ -}}\n{%- endif -%}"
+              \  {%- endfor -%}\n  {{- ns.final -}}\n{%- else -%}\n  {%- set day =\
+              \ view.split(' ')[0] -%}\n  {%- set target = 'retention_' ~ day ~ 'd'\
+              \ -%}\n  {%- set device_ents = label_devices(target) | map('device_entities')\
+              \ | sum(start=[]) -%}\n  {%- set raw_pool = (label_entities(target)\
+              \ + device_ents) | unique | list -%}\n  {%- set ns = namespace(final=[])\
+              \ -%}\n  {%- for ent_id in raw_pool -%}\n    {%- if has_value(ent_id)\
+              \ -%}\n      {%- if not labels(ent_id) | select('in', all_retention)\
+              \ | reject('eq', target) | list -%}\n        {%- set ns.final = ns.final\
+              \ + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n  {%- endfor\
+              \ -%}\n  {{- ns.final -}}\n{%- endif -%}"
           show_empty: false
           type: custom:auto-entities
         type: vertical-stack
