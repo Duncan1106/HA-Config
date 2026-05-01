@@ -1489,98 +1489,6 @@
         tag: time_in_bed
     action: notify.duncan
   mode: single
-- id: '1712941263468'
-  alias: Save Pool Pulse Time
-  description: "## \U0001F4BE Save Pool Pulse Time\n\n### \U0001F4CB Purpose\nSaves
-    the current pulse time of the pool pump while it is running and updates\nHome
-    Assistant with the latest value. Ensures accurate tracking of the\nremaining runtime
-    and publishes an MQTT message for integration with Tasmota\ndevices.\n\n---\n\n###
-    ⏰ Triggers\n| Trigger Type | Details                                     |\n|--------------|--------------------------------------------|\n|
-    MQTT Message | Topic: `stat/tasmota_837238/RESULT`       |\n\n---\n\n### ✅ Conditions\n-
-    Only process if `PulseTime1` exists in the MQTT payload.\n- Pool pump must have
-    been running for at least 5 minutes.\n\n---\n\n### \U0001F3AF Actions / Workflow\n-
-    Extracts `Remaining` value from `PulseTime1` in the MQTT payload.\n- If remaining
-    time < 112, divides by 10 and rounds to nearest integer.\n- If remaining time
-    ≥ 112, subtracts 100 to get actual pulse time.\n- Updates `input_number.pulseTimeActualValue`
-    with the calculated value.\n\n---\n\n### \U0001F527 Technical Specs\n- **Mode:**
-    `single` to process each MQTT update individually.\n- Uses template logic to handle
-    different Tasmota payload formats.\n- Keeps input number synced with real-time
-    pump runtime."
-  triggers:
-  - id: frommqtt
-    topic: stat/tasmota_837238/RESULT
-    trigger: mqtt
-  conditions:
-  - condition: template
-    value_template: '{{ ''PulseTime1'' in  trigger.payload }}'
-  - condition: not
-    conditions:
-    - condition: state
-      entity_id: switch.pool_pumpe
-      state: 'off'
-      for:
-        hours: 0
-        minutes: 5
-        seconds: 0
-  actions:
-  - target:
-      entity_id: input_number.pulseTimeActualValue
-    data:
-      value: "{% set pulseTime = trigger.payload_json.PulseTime1.Remaining | int(0)
-        %}\n{% if  pulseTime < 112 %}\n  {{ pulseTime / 10 | round(0) }}\n{% else
-        %}\n  {{ ( pulseTime | int - 100 ) }}\n{% endif %}\n"
-    action: input_number.set_value
-  mode: single
-- id: '1713031049792'
-  alias: Get Pool PulseTime
-  description: "  ## \U0001F30A Get Pool PulseTime\n\n  ### \U0001F4CB **Purpose**\n
-    \ Periodically retrieves the current pulse time from the pool pump to ensure\n
-    \ it is operational. This prevents missed updates while avoiding unnecessary\n
-    \ actions when the pump is off or unavailable.\n\n  ---\n\n  ### ⏰ **Triggers**\n
-    \ | Trigger Type        | Interval / Event | Notes |\n  |-------------------|-----------------|-------|\n
-    \ | Periodic Timer     | Every 10 seconds | Checks pulse time regularly |\n  |
-    Home Assistant Start | Event `start`    | Ensures initial value retrieval on HA
-    startup |\n\n  ---\n\n  ### ✅ **Conditions**\n  - Only runs during daytime (after
-    sunrise, before sunset).  \n  - Skips execution if the pool pump (`switch.pool_pumpe`)
-    is OFF for more\n    than 5 minutes or currently unavailable.\n\n  ---\n\n  ###
-    \U0001F3AF **Actions / Workflow**\n  - Publishes an MQTT request to retrieve the
-    current pulse time:  \n    - **Topic:** `cmnd/tasmota_837238/pulsetime1`  \n\n
-    \ ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:** `single` (prevents
-    overlapping requests)  \n  - Ensures regular polling without interfering with
-    pump downtime.\n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Use alongside
-    automations that adjust pulse time to maintain consistent\n    pump operation.
-    \ \n  - Adjust interval (`/10` seconds) based on system responsiveness and\n    network
-    load.  \n  - MQTT topics must match the Tasmota device configuration for proper\n
-    \   communication."
-  triggers:
-  - seconds: /10
-    trigger: time_pattern
-  - event: start
-    trigger: homeassistant
-  conditions:
-  - condition: sun
-    before: sunset
-    after: sunrise
-  - condition: not
-    conditions:
-    - condition: or
-      conditions:
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state: unavailable
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state: 'off'
-        for:
-          hours: 0
-          minutes: 5
-          seconds: 0
-  actions:
-  - metadata: {}
-    data:
-      topic: cmnd/tasmota_837238/pulsetime1
-    action: mqtt.publish
-  mode: single
 - id: '1714554450926'
   alias: Terrarium Humidifier Empty Detection
   description: "## \U0001F4A7 Terrarium Humidifier Empty Detection (Dynamic)\n\nDetects
@@ -14101,3 +14009,71 @@
         action: notify.duncan
         continue_on_error: true
   mode: restart
+- id: '1777634714624'
+  alias: Pool Pump Pulse Sync & Monitor
+  description: 'Combined: Periodically polls Tasmota and processes the returned PulseTime1
+    value.'
+  triggers:
+  - trigger: time_pattern
+    seconds: /10
+    id: request_data
+  - trigger: homeassistant
+    event: start
+    id: startup
+  - trigger: mqtt
+    topic: stat/tasmota_837238/RESULT
+    id: process_data
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - request_data
+        - startup
+      - condition: sun
+        after: sunrise
+        before: sunset
+      - condition: not
+        conditions:
+        - condition: or
+          conditions:
+          - condition: state
+            entity_id: switch.pool_pumpe
+            state: unavailable
+          - condition: state
+            entity_id: switch.pool_pumpe
+            state: 'off'
+            for:
+              minutes: 5
+      sequence:
+      - if:
+        - condition: trigger
+          id: startup
+        then:
+        - delay: 00:00:30
+        alias: Startup Delay
+      - action: mqtt.publish
+        data:
+          topic: cmnd/tasmota_837238/pulsetime1
+    - conditions:
+      - condition: trigger
+        id: process_data
+      - condition: template
+        value_template: '{{ ''PulseTime1'' in trigger.payload }}'
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: switch.pool_pumpe
+          state: 'off'
+          for:
+            minutes: 5
+      sequence:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.pulsetimeactualvalue
+        data:
+          value: "{% set pulseTime = trigger.payload_json.PulseTime1.Remaining | int(0)
+            %} {% if pulseTime < 112 %}\n  {{ (pulseTime / 10) | round(0) }}\n{% else
+            %}\n  {{ (pulseTime - 100) }}\n{% endif %}\n"
+  mode: queued
+  max: 3
