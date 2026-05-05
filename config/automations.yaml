@@ -8102,113 +8102,6 @@
         action: notify.duncan
       - data: {}
         action: hassio.host_reboot
-- id: '1751198541612'
-  alias: Router Restart on Internet Outage (with Backoff)
-  description: Restarts the O2 router upon internet failure, with several attempts
-    and an exponential backoff timer.
-  triggers:
-  - trigger: state
-    entity_id: binary_sensor.internet_connection
-    from: 'on'
-    to: 'off'
-    for: 00:02:30
-    id: internet_offline
-  - trigger: state
-    entity_id: schedule.restart_o2_router_schedule
-    from: 'off'
-    to: 'on'
-    for: 00:00:10
-    id: scheduled_restart
-  conditions:
-  - condition: state
-    entity_id: switch.o2_router
-    state: 'on'
-    alias: Router ist eingeschaltet
-  - alias: Router verbraucht >4W
-    condition: template
-    value_template: '{{ states(''sensor.o2_router_power'') | float(0) > 4.0 }}'
-  actions:
-  - alias: Wiederhole Neustartversuche bis Internet da oder max_retries erreicht
-    repeat:
-      until:
-      - condition: or
-        conditions:
-        - condition: state
-          entity_id: binary_sensor.internet_connection
-          state: 'on'
-          alias: Internet wiederhergestellt
-        - condition: template
-          value_template: '{{ repeat.index >= max_retries }}'
-          alias: Maximale Anzahl Neustartversuche erreicht
-      sequence:
-      - action: script.restart_internet
-        data:
-          called_by_automation: true
-        alias: Router neu starten
-      - if:
-        - condition: state
-          entity_id: binary_sensor.internet_connection
-          state:
-          - 'off'
-        then:
-        - wait_for_trigger:
-          - trigger: state
-            entity_id: binary_sensor.internet_connection
-            to: 'on'
-            for: 00:00:30
-          timeout: 00:05:00
-          continue_on_timeout: true
-          alias: Warte auf Internet nach Neustart
-        alias: Wait for reconnect if not already reconnected
-      - if:
-        - condition: state
-          entity_id: binary_sensor.internet_connection
-          state: 'off'
-        then:
-        - delay:
-            minutes: '{% set delay = 2 ** (repeat.index - 1) * 2 %} {{ [delay, 15]
-              | min }}
-
-              '
-          alias: Backoff vor nächstem Versuch
-  - alias: Benachrichtigung bei endgültigem Fehler
-    sequence:
-    - condition: not
-      conditions:
-      - condition: state
-        entity_id: binary_sensor.internet_connection
-        state: 'on'
-      alias: Benachrichtigung bei Fehlschlag aller Neustartversuche
-    - action: persistent_notification.create
-      metadata: {}
-      data:
-        notification_id: router_restart_failed
-        title: Router Neustart fehlgeschlagen
-        message: Nach {{ max_retries }} Versuchen konnte keine Internetverbindung   wiederhergestellt
-          werden. Bitte überprüfe den O2 Router manuell.
-    - alias: Spätere Push-Benachrichtigung bei Rückkehr des Internets
-      wait_for_trigger:
-      - entity_id: binary_sensor.internet_connection
-        to: 'on'
-        trigger: state
-      timeout: 01:00:00
-      continue_on_timeout: false
-    - action: persistent_notification.dismiss
-      metadata: {}
-      data:
-        notification_id: router_restart_failed
-    - alias: Push-Nachricht bei verspätetem Erfolg
-      data:
-        title: Internet zurück nach Fehler
-        message: 'Das Internet war über längere Zeit nicht verfügbar. Bitte prüfe
-          den Router oder die Verbindung, es waren {{ max_retries }} Neustartversuche
-          nötig.
-
-          '
-      action: notify.duncan
-  mode: restart
-  variables:
-    max_retries: 10
 - id: '1751225518081'
   alias: Frigate Notifications (0.14.0.2w) Ding Dong
   description: Sends notification with snapshot, video, and event preview from Frigate
@@ -13751,6 +13644,11 @@
   - trigger: time_pattern
     minutes: /15
     id: slacker_check
+  - entity_id:
+    - sensor.shawn_batterie
+    above: 90
+    id: full_enough
+    trigger: numeric_state
   conditions:
   - condition: or
     conditions:
@@ -13773,13 +13671,42 @@
           \ {{ active.found and states('sensor.shawn_rasenmaher_status') in ['standby']
           and battery > 99 and is_state('sensor.shawn_regensensor', 'dry') }}\n{%
           else %}\n  false \n{% endif %}\n"
-    - condition: trigger
+    - alias: Lost, Offline, Low Battery or Error
+      condition: trigger
       id:
       - lost
       - offline
       - battery
       - error
-      alias: Lost, Offline, Low Battery or Error
+      - fully_charged
+    - alias: Edge Cutting Once Weekly
+      condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - full_enough
+      - condition: numeric_state
+        entity_id: sensor.shawn_batterie
+        above: 90
+      - condition: state
+        entity_id: sun.sun
+        state: above_horizon
+      - condition: template
+        value_template: "{# --- 1. Find the last day of the week dynamically --- #}
+          \n{% set sched = state_attr('sensor.shawn_arbeitsplan', 'schedule') %} \n{%
+          set days = ['sunday', 'saturday', 'friday', 'thursday', 'wednesday', 'tuesday',
+          'monday'] %} \n{% set ns = namespace(last_day='', last_time='') %} \n{%
+          for day in days %}\n  {% if sched[day][0].enabled and ns.last_day == ''
+          %}\n    {% set ns.last_day = day %}\n    {% set ns.last_time = sched[day][0].endtime
+          %}\n  {% endif %}\n{% endfor %}\n{# --- 2. Check if it's currently after
+          the final shift --- #} \n{% set day_now = now().strftime('%A').lower() %}\n{%
+          set time_now = now().strftime('%H:%M') %}\n{% set is_after_last_shift =
+          (day_now == ns.last_day and time_now >= ns.last_time) %}\n{# --- 3. Hardware
+          Check: When was the button last pressed? --- #} {# We check if the button
+          was pressed more than 12 hours ago #}\n{% set last_press = states.button.shawn_kanten_mahen.last_changed
+          %} \n{% set not_pressed_recently = (now() - last_press).total_seconds()
+          > 43200 %}\n{{ is_after_last_shift and not_pressed_recently }}\n"
+        alias: Find last workday and check if we are after it
   actions:
   - choose:
     - conditions:
@@ -13839,6 +13766,18 @@
           message: It's work time and conditions are perfect, but Shawn is idling
             at the dock.
         action: notify.duncan
+    - conditions:
+      - condition: trigger
+        id:
+        - full_enough
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.shawn_kanten_mahen
+      - action: notify.duncan
+        data:
+          title: '✂️ Shawn: Weekly Edge Cut'
+          message: Final charge complete. Starting edge cut.
   mode: parallel
   max: 10
 - id: '1776775331415'
