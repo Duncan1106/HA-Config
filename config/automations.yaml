@@ -2986,6 +2986,11 @@
       minutes: 15
       seconds: 0
     id: Turn off for sure 15min
+  - trigger: numeric_state
+    entity_id:
+    - sensor.gang_bewegung_illuminance
+    below: 225
+    id: 'On light '
   conditions: []
   actions:
   - variables:
@@ -2998,19 +3003,40 @@
       light_delay: '00:00:00.500'
   - alias: On motion
     if:
-    - condition: and
+    - alias: motion & dark enough & no timed light
+      condition: and
       conditions:
-      - condition: trigger
-        id:
-        - On motion
-      - condition: numeric_state
-        entity_id: sensor.gang_bewegung_illuminance
-        below: 225
-        enabled: true
+      - condition: or
+        conditions:
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - On motion
+          - condition: numeric_state
+            entity_id: sensor.gang_bewegung_illuminance
+            below: 225
+            enabled: true
+          alias: 'Motion & Dark enough '
+        - condition: and
+          conditions:
+          - condition: trigger
+            id:
+            - On light
+          - condition: or
+            conditions:
+            - condition: state
+              entity_id: binary_sensor.gang_bewegung_presence
+              state:
+              - 'on'
+            - condition: state
+              entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
+              state:
+              - 'on'
+          alias: Dimmed & occupied
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
-      alias: motion & dark enough & no timed light
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
