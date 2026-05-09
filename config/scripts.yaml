@@ -2136,69 +2136,33 @@ notify_people_at_home_with_fallbacks:
   mode: parallel
   max: 50
 shawn_weekly_edge_cut:
+  alias: 'Shawn: Weekly Edge Cut'
+  description: Orchestrates a dual edge cutting routine by waiting for the mower to
+    exit  standby/charging and then catching the transition to active work/return.
   sequence:
-  - action: button.press
-    target:
-      entity_id: button.shawn_kanten_mahen
   - action: notify.duncan
     data:
       title: '✂️ Shawn: Weekly Edge Cut'
-      message: Final charge complete. Starting edge cut.
-  - wait_for_trigger:
-    - trigger: state
-      entity_id:
-      - sensor.shawn_rasenmaher_status
-      from:
-      - return
-      to:
-      - mowing
-      - charging
-      - on_the_way_home
-    timeout:
-      hours: 0
-      minutes: 15
-      seconds: 0
-      milliseconds: 0
-  - action: button.press
-    metadata: {}
-    target:
-      entity_id: button.shawn_zum_dock_fahren
-    data: {}
-  - wait_for_trigger:
-    - trigger: state
-      entity_id:
-      - sensor.shawn_rasenmaher_status
-      to:
-      - charging
-    timeout:
-      hours: 0
-      minutes: 15
-      seconds: 0
-      milliseconds: 0
-  - action: button.press
-    target:
-      entity_id: button.shawn_kanten_mahen
-    data: {}
-  - wait_for_trigger:
-    - trigger: state
-      entity_id:
-      - sensor.shawn_rasenmaher_status
-      from:
-      - return
-      to:
-      - mowing
-      - charging
-      - on_the_way_home
-    timeout:
-      hours: 0
-      minutes: 15
-      seconds: 0
-      milliseconds: 0
-  - action: button.press
-    metadata: {}
-    target:
-      entity_id: button.shawn_zum_dock_fahren
-    data: {}
-  alias: Shawn Weekly Edge Cut
-  description: Orchestrates a dual edge cutting routine for Shawn the lawnmower, including
-    status monitoring and notifications.
+      message: Starting dual edge cut routine.
+  - repeat:
+      count: 2
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.shawn_kanten_mahen
+      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') not in [''standby'',
+          ''charging''] }}'
+        timeout: 00:05:00
+      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing'',
+          ''on_the_way_home''] }}'
+        timeout: 00:15:00
+      - action: button.press
+        target:
+          entity_id: button.shawn_zum_dock_fahren
+      - wait_template: '{{ is_state(''sensor.shawn_rasenmaher_status'', ''charging'')
+          }}'
+        timeout: 00:15:00
+  - action: notify.duncan
+    data:
+      title: '✅ Shawn: Task Complete'
+      message: Dual edge cut routine finished successfully.
