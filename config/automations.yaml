@@ -13632,8 +13632,63 @@
   max: 10
 - id: '1776685987869'
   alias: 'Shawn: Master System Monitor'
-  description: Consolidated watchdog for Vision-AI navigation, connectivity, battery
-    thresholds, and hardware safety.
+  description: "## \U0001F916 **Shawn: Master System Monitor**\n\n---\n\n### \U0001F4CB
+    Intelligent Mower Watchdog Control\n\nThis automation serves as a comprehensive
+    monitoring suite for the robotic mower \"Shawn,\" ensuring hardware safety, operational
+    efficiency, and maintenance consistency. \n\n**High-Level Intent:**  \nTo act
+    as a fail-safe layer that bridges the gap between hardware status and user awareness,
+    ensuring that the mower is neither lost, stuck, nor idling during designated work
+    windows.\n\n**Operational Strategy:**  \nThe system employs a **safety-first**
+    approach, prioritizing hardware error codes and connectivity loss. It also utilizes
+    a **schedule-aware productivity check** to ensure the mower adheres to its programmed
+    work plan when conditions (weather and battery) are optimal.\n\n**Reliability
+    Mechanisms:**  \nUses distinct trigger IDs to branch logic into specific notification
+    and maintenance paths, including a navigation timeout watchdog and a weekly edge-maintenance
+    routine.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition |
+    ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State** | **sensor.shawn_rasenmaher_status**
+    | `lost` | Detects navigation timeouts when returning home (>20m). |\n| **State**
+    | **binary_sensor.shawn_online** | `offline` | Alerts on connection loss exceeding
+    2 minutes. |\n| **Numeric** | **sensor.shawn_batterie** | `battery` | Monitors
+    for critical discharge levels (<15%). |\n| **State** | **sensor.shawn_fehlercode**
+    | `error` | Captures hardware interrupts and safety stops. |\n| **Time** | **Every
+    15 Minutes** | `slacker_check` | Periodic audit of productivity vs. schedule.
+    |\n| **Numeric** | **sensor.shawn_batterie** | `full_enough` | Maintenance trigger
+    for edge cutting after charging (>90%). |\n\n---\n\n### Operational Logic Sections\n\n####
+    Safety & Hardware Watchdog\n*   **Purpose:** Immediate intervention for physical
+    or mechanical issues.\n*   **Logic Overview:** Triggered by **sensor.shawn_fehlercode**
+    (any non-zero state), **sensor.shawn_batterie** (<15% while not charging), or
+    navigation timeouts.\n*   **Effect:** Dispatches **high-priority** notifications
+    to **notify.duncan** with translated error descriptions (e.g., Tilted, Lifted,
+    or Out of Bounds).\n\n#### Productivity Audit (Slacker Check)\n*   **Purpose:**
+    Ensures Shawn is working when the schedule and weather permit.\n*   **Logic Overview:**
+    Evaluates if **sun.sun** is **above_horizon**, **sensor.shawn_regensensor** is
+    **dry**, and **sensor.shawn_batterie** is **>99%**. It parses the JSON attribute
+    `schedule` in **sensor.shawn_arbeitsplan** to verify if the current time falls
+    within an enabled work slot.\n*   **Effect:** Alerts if the mower remains in **standby**
+    at the dock during valid work hours.\n\n#### Maintenance (Weekly Edge Cut)\n*
+    \  **Purpose:** Automated edge maintenance at the end of the work week.\n*   **Logic
+    Overview:** Triggered when battery reaches **>90%**. The logic identifies the
+    last scheduled workday of the week from the **sensor.shawn_arbeitsplan**; if the
+    current time is past that final shift and **button.shawn_kanten_mahen** has not
+    been triggered in the last 12 hours, the condition passes.\n*   **Effect:** Executes
+    **script.shawn_weekly_edge_cut**.\n\n#### Connectivity Monitoring\n*   **Purpose:**
+    Detects Wi-Fi or API dropouts.\n*   **Logic Overview:** Monitors **binary_sensor.shawn_online**
+    for a sustained **off** state.\n*   **Effect:** Sends a notification including
+    the last known battery percentage.\n\n---\n\n### Technical Overview\n\n*   **Automation
+    Mode:** `parallel` (Max: 10)\n*   **Execution Method:** Script calling (**script.shawn_weekly_edge_cut**)
+    and direct Notification actions.\n*   **Key Inputs:** **sensor.shawn_arbeitsplan**
+    (JSON Schedule), **sensor.shawn_regensensor**, **sun.sun**.\n*   **Controlled
+    Entities:** **notify.duncan**, **script.shawn_weekly_edge_cut**.\n*   **Safety
+    Mechanisms:** Condition-based filtering ensures \"Low Battery\" alerts don't trigger
+    while the unit is **charging**; logic checks for redundant edge-cutting within
+    a 12-hour window.\n\n---\n\n### \U0001F4A1 Notes\n\n*   **Dynamic Schedule Parsing:**
+    The automation uses complex Jinja2 templating to determine work hours, allowing
+    the documentation/schedule to be managed in one place without updating the automation
+    logic.\n*   **Error Translation:** Rather than sending raw codes, the logic translates
+    **sensor.shawn_fehlercode** into human-readable alerts (e.g., Code 32 = Out of
+    Bounds).\n*   **Navigation Timeout:** The 20-minute threshold for the `lost` trigger
+    prevents \"false positives\" during normal docking procedures while catching legitimate
+    navigation failures.\n"
   triggers:
   - entity_id: sensor.shawn_rasenmaher_status
     to: on_the_way_home

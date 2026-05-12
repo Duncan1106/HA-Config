@@ -2137,8 +2137,47 @@ notify_people_at_home_with_fallbacks:
   max: 50
 shawn_weekly_edge_cut:
   alias: 'Shawn: Weekly Edge Cut'
-  description: Orchestrates a dual edge cutting routine by waiting for the mower to
-    exit  standby/charging and then catching the transition to active work/return.
+  description: "\U0001F4CB Intelligent Mowing Maintenance Control\n---\n#### **High-Level
+    Intent**\nThis script orchestrates a specialized dual-pass edge cutting routine
+    for the robotic mower, \"Shawn.\" It ensures that the perimeter is maintained
+    with high precision by running the edge-specific program twice in a controlled
+    loop.\n\n#### **Operational Strategy**\nThe routine utilizes a state-aware deployment
+    strategy. Rather than relying on simple timers, it monitors the mower's real-time
+    status to confirm successful deployment and docking before proceeding to the next
+    phase of the cycle.\n\n#### **Reliability Mechanisms**\nTo prevent the automation
+    from hanging indefinitely due to hardware or connectivity issues, every transitional
+    phase is protected by strict **timeout** constraints (ranging from 5 to 15 minutes).
+    The system provides mobile notifications at the start and conclusion of the process
+    for remote monitoring.\n\n---\n\n### Sequence & Logic Overview\n\n| Type | Entity
+    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Action | **button.shawn_kanten_mahen**
+    | Start Command | Triggers the specific edge-cutting hardware routine. |\n| Wait
+    | **sensor.shawn_rasenmaher_status** | Exit Dock | Confirms mower has transitioned
+    out of **standby** or **charging**. |\n| Wait | **sensor.shawn_rasenmaher_status**
+    | Active Work | Monitors for **mowing** or **on_the_way_home** to verify movement.
+    |\n| Action | **button.shawn_zum_dock_fahren** | Return Home | Commands the mower
+    to return to the charging station. |\n| Wait | **sensor.shawn_rasenmaher_status**
+    | Dock Confirmation | Ensures the mower is **charging** before initiating the
+    second pass. |\n\n---\n\n#### Edge Cutting Routine (2x Loop)\n- **Purpose**\n
+    \ To execute two consecutive edge-trimming passes to ensure complete coverage
+    and a clean finish.\n- **Logic Overview**\n  The system triggers the edge cut
+    and enters a \"watchdog\" mode. It first waits for the mower to physically leave
+    the base (not **standby**/**charging**). Once the mower is confirmed to be in
+    an active state (**mowing** or **on_the_way_home**), the system instructs it to
+    return to the dock to reset for the next pass.\n- **Effect**\n  Cycles the **button.shawn_kanten_mahen**
+    and **button.shawn_zum_dock_fahren** entities; updates user via **notify.duncan**.\n\n---\n\n###
+    Technical Overview\n- **Sceipt Mode**: Single (Default)\n- **Execution Method**:
+    Scripted sequence with a **repeat** loop (Count: 2)\n- **Key Inputs**: **sensor.shawn_rasenmaher_status**\n-
+    **Controlled Entities**: **button.shawn_kanten_mahen**, **button.shawn_zum_dock_fahren**,
+    **notify.duncan**\n- **Safety Mechanisms**: \n    - **5-minute timeout** for initial
+    dock exit.\n    - **15-minute timeout** for work completion and return-to-dock
+    transitions.\n\n---\n\n### \U0001F4A1 Notes\n- **State Transition Logic**: The
+    script uses a clever \"not in standby/charging\" wait template. This ensures that
+    the mower has actually acknowledged the command and begun movement before the
+    logic proceeds to look for active working states.\n- **Fail-Safe**: If the mower
+    becomes stuck or fails to reach the next state within 15 minutes, the sequence
+    will terminate, preventing the script from running in the background indefinitely.\n-
+    **Notification**: The use of **notify.duncan** provides a clear audit trail of
+    when the routine started and whether it reached the final completion stage."
   sequence:
   - action: notify.duncan
     data:
