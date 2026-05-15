@@ -5,6 +5,7 @@ substitutions:
   variant: "11kW"
   main_topic: "go-eCharger/270862/"
   fallback_ap: "Esp32-C3-Zero--Goe11kw-Controll"
+  charger_ip: "192.168.2.202"
 
 wifi:
   output_power: 10dB
@@ -36,11 +37,24 @@ esphome:
   name: "esp32-c3-zero--goe11-controll"
   friendly_name: esp32 c3 zero - goe11-controll
   on_boot: 
+    priority: -100.0
     then:
       - script.execute: 
           id: blink_led
           repeat_count: 3
-
+      - http_request.get:
+          id: goe_http_get
+          url: "http://${charger_ip}/api/status?filter=fsp"
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code == 200) {
+                    std::string body = id(goe_http_get).data;
+                    // response body is e.g. {"fsp":false} or {"fsp":true}
+                    bool val = body.find("true") != std::string::npos;
+                    id(goe_fsp).publish_state(val ? "true" : "false");
+                  }
+                  
 esp32:
   board: esp32-c3-devkitm-1
   framework:
@@ -69,6 +83,11 @@ mqtt:
   discovery: true
   client_id: c3_zero_goe11_controll
   id: broker
+
+http_request:
+  id: goe_http_get
+  useragent: esphome/goe-controller
+  timeout: 5s
 
 time:
   - platform: sntp
@@ -102,13 +121,6 @@ binary_sensor:
               - button.press: restart_btn
 
 button:
-  # - platform: output
-  #   internal: true
-  #   duration: 250ms
-  #   output: led_status
-  #   name: Flash LED ${variant}
-  #   id: led_flash
-
   - platform: restart
     id: restart_btn
     name: Restart ${variant} Controll
@@ -254,12 +266,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              - script.execute: 
-                  id: log_txt_queued
-                  log_text: !lambda |-
-                    char text_amps[200];
-                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-                    return ((std::string) text_amps).c_str();
               - mqtt.publish: 
                   id: broker
                   topic: ${main_topic}amp/set
@@ -267,6 +273,12 @@ number:
                     // Convert the float value to uint8_t
                     uint8_t amps_uint8 = static_cast<uint8_t>(round(x));
                     return to_string(amps_uint8);
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
+                    char text_amps[200];
+                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
+                    return ((std::string) text_amps).c_str();
               - delay: 500ms
 
 text_sensor:

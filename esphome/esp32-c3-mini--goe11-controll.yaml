@@ -5,6 +5,7 @@ substitutions:
   variant: "11kW"
   main_topic: "go-eCharger/270862/"
   fallback_ap: "Esp32-C3-Mini--Goe11kw-Controll"
+  charger_ip: "192.168.2.202"
 
 wifi:
   output_power: 10dB
@@ -38,10 +39,23 @@ esphome:
   platformio_options:
     board_build.flash_mode: dio
   on_boot: 
+    priority: -100.0
     then:
       - script.execute: 
           id: blink_led
           repeat_count: 3
+      - http_request.get:
+          id: goe_http_get
+          url: "http://${charger_ip}/api/status?filter=fsp"
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code == 200) {
+                    std::string body = id(goe_http_get).data;
+                    // response body is e.g. {"fsp":false} or {"fsp":true}
+                    bool val = body.find("true") != std::string::npos;
+                    id(goe_fsp).publish_state(val ? "true" : "false");
+                  }
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -72,6 +86,11 @@ mqtt:
   discovery: true
   client_id: goe11_controll
   id: broker
+
+http_request:
+  id: goe_http_get
+  useragent: esphome/goe-controller
+  timeout: 5s
 
 time:
   - platform: sntp
@@ -529,7 +548,7 @@ sensor:
     lambda: |-
       std::string fsp = id(goe_fsp).state;
       if (fsp.empty()) {
-        return 1.0;  // Default to 1-phase until goe_fsp is available
+        return 3.0;  // Default to 3-phase until goe_fsp is available
       }
       return (fsp == "1 Phase") ? 1.0 : 3.0;
 
