@@ -10185,37 +10185,41 @@
   - trigger: time
     at: '12:00:00'
   - trigger: numeric_state
-    entity_id:
-    - sensor.tibber_node_bridge_status
+    entity_id: sensor.tibber_node_bridge_status
     attribute: uptime_days
     above: 2.5
-  conditions: []
   actions:
   - action: mqtt.publish
+    metadata: {}
     data:
       topic: tibber/in
       payload: reset
-  - delay:
-      seconds: 120
-  - choose:
-    - conditions:
-      - condition: or
-        conditions:
-        - condition: numeric_state
-          entity_id: sensor.tibber_node_bridge_status
-          attribute: uptime_days
-          above: 0.5
-        - condition: state
-          entity_id: sensor.tibber_node_bridge_status
-          state: unavailable
-      sequence:
-      - action: notify.duncan
-        data:
-          title: ⚠️ Tibber Bridge Restart Check Failed
-          message: 'The Tibber Pulse Bridge did not reset properly or is still offline.
-            Please verify its power and MQTT connection.
+  - alias: Wait for the uptime to drop below 0.1 days (indicating a fresh restart)
+    wait_for_trigger:
+    - trigger: numeric_state
+      entity_id: sensor.tibber_node_bridge_status
+      attribute: uptime_days
+      below: 0.1
+    timeout:
+      minutes: 2
+    continue_on_timeout: true
+  - alias: Check if the wait timed out or if the sensor is broken
+    if:
+    - condition: or
+      conditions:
+      - condition: template
+        value_template: '{{ not wait.completed }}'
+      - condition: state
+        entity_id: sensor.tibber_node_bridge_status
+        state: unavailable
+    then:
+    - action: notify.duncan
+      data:
+        title: ⚠️ Tibber Bridge Restart Check Failed
+        message: 'The Tibber Pulse Bridge did not reset properly within 2 minutes  or
+          is currently unavailable. Manual intervention may be required.
 
-            '
+          '
   mode: single
 - id: '1761770991521'
   alias: Beta Release Notification
