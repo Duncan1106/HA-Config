@@ -1543,10 +1543,16 @@ save_counts_and_notify_purge_status:
       example: 2 Days
       default: Unknown
   sequence:
-  - alias: Save current row count and calculate threshold
-    variables:
-      current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
-      threshold: '{{ current_count - threshold_offset }}'
+  - if:
+    - condition: template
+      value_template: '{{ is_number(states(''sensor.maria_db_rows'')) }}'
+    then:
+    - alias: Save current row count and calculate threshold
+      variables:
+        current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
+        threshold: '{{ current_count - threshold_offset }}'
+    else:
+    - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
   - alias: Save start row count for debugging
     action: input_number.set_value
     target:
@@ -2190,17 +2196,20 @@ shawn_weekly_edge_cut:
         target:
           entity_id: button.shawn_kanten_mahen
       - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') not in [''standby'',
-          ''charging''] }}'
+          ''charging'',''unavailable'',''unknown''] }}'
         timeout: 00:05:00
+        continue_on_timeout: false
       - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing'',
           ''on_the_way_home''] }}'
         timeout: 00:15:00
+        continue_on_timeout: false
       - action: button.press
         target:
           entity_id: button.shawn_zum_dock_fahren
       - wait_template: '{{ is_state(''sensor.shawn_rasenmaher_status'', ''charging'')
           }}'
         timeout: 00:15:00
+        continue_on_timeout: false
   - action: notify.duncan
     data:
       title: '✅ Shawn: Task Complete'
