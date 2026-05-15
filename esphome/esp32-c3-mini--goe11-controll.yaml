@@ -44,18 +44,9 @@ esphome:
       - script.execute: 
           id: blink_led
           repeat_count: 3
-      - http_request.get:
-          id: goe_http_get
-          url: "http://${charger_ip}/api/status?filter=fsp"
-          on_response:
-            then:
-              - lambda: |-
-                  if (response->status_code == 200) {
-                    std::string body = id(goe_http_get).data;
-                    // response body is e.g. {"fsp":false} or {"fsp":true}
-                    bool val = body.find("true") != std::string::npos;
-                    id(goe_fsp).publish_state(val ? "true" : "false");
-                  }
+      - delay: 5s
+      - button.press: 
+          id: refresh_fsp
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -141,6 +132,30 @@ button:
 
   - platform: shutdown
     name: Shutdown ${variant} Controll
+
+  - platform: template
+    name: "Refresh FSP from Charger"
+    id: refresh_fsp
+    icon: "mdi:refresh"
+    entity_category: diagnostic
+    on_press:
+      then:
+        - http_request.get:
+            url: "http://${charger_ip}/api/status?filter=fsp"
+            capture_response: true
+            on_response:
+              then:
+                - lambda: |-
+                    if (response->status_code == 200) {
+                      bool val = body.find("true") != std::string::npos;
+                      id(goe_fsp).publish_state(val ? "true" : "false");
+                    }
+                - script.execute:
+                    id: log_txt_queued
+                    log_text: !lambda |-
+                      char log_buf[200];
+                      sprintf(log_buf, "FSP HTTP %d: %s", response->status_code, body.c_str());
+                      return ((std::string) log_buf).c_str();
 
 switch:
   - platform: template
@@ -328,28 +343,46 @@ text_sensor:
     id: goe_nrg_txt
     name: Goe Charger Power Text ${variant}
     internal: true
-    filters: 
-      - substitute: 
+    filters:
+      - substitute:
         - "[->"
         - "]->"
       - lambda: |-
-          // Parse the string and update goe_power and goe_voltage sensors
           std::string raw = x.c_str();
           size_t start = 0;
           size_t end = raw.find(',');
-          
-          // Publish the 0th element (voltage)
-          std::string voltage_str = raw.substr(start, end - start);
-          id(goe_voltage).publish_state(std::stof(voltage_str));
-          
-          // Move to the 11th element (power)
+
+          if (end == std::string::npos) {
+            return x;
+          }
+
+          // Publish the 0th element (voltage, L1)
+          {
+            std::string voltage_str = raw.substr(start, end - start);
+            char* endptr;
+            float val = std::strtof(voltage_str.c_str(), &endptr);
+            if (endptr != voltage_str.c_str()) {
+              id(goe_voltage).publish_state(val);
+            }
+          }
+          // Advance through fields to reach index 11 (total power)
           start = end + 1;
           for (int i = 0; i < 10; i++) {
-              end = raw.find(',', start);
-              start = end + 1;
+            end = raw.find(',', start);
+            if (end == std::string::npos) {
+              return x;
+            }
+            start = end + 1;
           }
-          std::string power_str = raw.substr(start);
-          id(goe_power).publish_state(std::stof(power_str));
+          // Publish the 11th element (total power)
+          {
+            std::string power_str = raw.substr(start);
+            char* endptr;
+            float val = std::strtof(power_str.c_str(), &endptr);
+            if (endptr != power_str.c_str()) {
+              id(goe_power).publish_state(val);
+            }
+          }
           return x;
 
   - platform: mqtt_subscribe

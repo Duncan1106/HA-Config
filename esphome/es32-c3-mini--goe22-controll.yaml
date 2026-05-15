@@ -303,28 +303,48 @@ text_sensor:
     id: goe_nrg_txt
     name: Goe Charger Power Text ${variant}
     internal: true
-    filters: 
-      - substitute: 
+    filters:
+      - substitute:
         - "[->"
         - "]->"
       - lambda: |-
-          // Parse the string and update goe_power and goe_voltage sensors
           std::string raw = x.c_str();
           size_t start = 0;
           size_t end = raw.find(',');
-          
-          // Publish the 0th element (voltage)
-          std::string voltage_str = raw.substr(start, end - start);
-          id(goe_voltage).publish_state(std::stof(voltage_str));
-          
-          // Move to the 11th element (power)
+
+          // Guard: Bail if we don't even have a first comma
+          if (end == std::string::npos) {
+            return x;
+          }
+          // Publish the 0th element (voltage, L1)
+          {
+            std::string voltage_str = raw.substr(start, end - start);
+            char* endptr;
+            float val = std::strtof(voltage_str.c_str(), &endptr);
+            // Verify conversion actually happened
+            if (endptr != voltage_str.c_str()) {
+              id(goe_voltage).publish_state(val);
+            }
+          }
+          // Advance through fields to reach index 11 (total power)
           start = end + 1;
           for (int i = 0; i < 10; i++) {
-              end = raw.find(',', start);
-              start = end + 1;
+            end = raw.find(',', start);
+            if (end == std::string::npos) {
+              return x; // Return original payload if index 11 doesn't exist
+            }
+            start = end + 1;
           }
-          std::string power_str = raw.substr(start);
-          id(goe_power).publish_state(std::stof(power_str));
+          // Publish the 11th element (total power)
+          {
+            // strtof will stop at the first comma in the remaining string
+            std::string power_str = raw.substr(start);
+            char* endptr;
+            float val = std::strtof(power_str.c_str(), &endptr);
+            if (endptr != power_str.c_str()) {
+              id(goe_power).publish_state(val);
+            }
+          }
           return x;
 
   - platform: mqtt_subscribe
