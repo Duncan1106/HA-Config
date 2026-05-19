@@ -519,8 +519,9 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
+      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return ((id(grid_power).state - id(buffer_power).state) / id(goe_voltage).state);
-
+  
   - platform: copy
     source_id: available_battery_power
     id: available_battery_amps
@@ -530,6 +531,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return (id(available_battery_power).state / id(goe_voltage).state);
 
   - platform: copy
@@ -541,6 +543,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(solar_power).state / id(goe_voltage).state;
 
   - platform: copy
@@ -552,6 +555,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(battery_discharge_power).state / id(goe_voltage).state;
 
   - platform: template
@@ -594,6 +598,7 @@ sensor:
     update_interval: 1s
     internal: true
     lambda: |-
+      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return id(goe_power).state / id(goe_voltage).state;
 
   - platform: template
@@ -604,6 +609,7 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
+      if (std::isnan(id(goe_amp_divider).state) || id(goe_amp_divider).state == 0.0f) return {};
       return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 
@@ -858,7 +864,7 @@ script:
                   id: goe_power
                   above: -20
                   below: 20
-              - or: # either not charging or not waitCar
+              - and: # neither not charging nor not waitCar
                 - not:
                   - text_sensor.state:
                       id: car_connected
