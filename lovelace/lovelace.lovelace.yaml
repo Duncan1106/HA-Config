@@ -5221,74 +5221,66 @@ config:
             \ 'geplante_reinigung', 'label': 'Cleaning Needed', 'type': 'cleaning'}\n\
             \  ],\n  'weekdays': [\"Montag\", \"Dienstag\", \"Mittwoch\", \"Donnerstag\"\
             , \"Freitag\", \"Samstag\", \"Sonntag\"]\n} %}  {# ------------------------------\
-            \ #}\n{% set today = now().date() %}  {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
-            \ %}\n{% set ns = namespace(cards=[\n  {\n    \"type\": \"custom:mushroom-number-card\"\
-            ,\n    \"entity\": \"input_number.plant_days_ahead\",\n    \"layout\"\
-            : \"horizontal\",\n    \"display_mode\": \"buttons\"\n  }\n]) %}\n{% for\
-            \ task in config.tasks %}\n  {# Pre-filter unknown/unavailable states\
-            \ to prevent datetime errors #}\n  {% set task_entities = states.sensor\
-            \ \n     | selectattr('entity_id', 'search', task.key) \n     | rejectattr('state',\
-            \ 'in', ['unknown', 'unavailable']) \n     | list %}\n     \n  {% set\
-            \ type_group = namespace(found=false, items=[], overdue_count=0) %}\n\n\
-            \  {% for state in task_entities %}\n    {% set dt = as_local(as_datetime(state.state))\
-            \ %}\n    {% if dt and dt.date() <= limit_date %}\n      {% set task_date\
-            \ = dt.date() %}\n      {% set diff = (task_date - today).days %}\n  \
-            \    \n      {% if diff == 0 %} {% set date_label = \"HEUTE\" %}\n   \
-            \   {% elif diff == 1 %} {% set date_label = \"MORGEN\" %}\n      {% elif\
-            \ diff > 1 %} {% set date_label = config.weekdays[task_date.weekday()]\
-            \ %}\n      {% elif diff == -1 %} {% set date_label = \"vor 1 Tag\" %}\n\
-            \      {% else %} {% set date_label = \"vor \" ~ (diff | abs) ~ \" Tagen\"\
-            \ %}\n      {% endif %}\n\n      {% set dev_id = device_id(state.entity_id)\
-            \ %}\n      {% set area = area_name(state.entity_id) or \"No Area\" %}\n\
-            \      \n      {# Ensure device actually exists before fetching entities\
-            \ #}\n      {% if dev_id %}\n        {% set dev_entities = device_entities(dev_id)\
-            \ %}\n        \n        {% set img_entity = dev_entities | select('search',\
-            \ '^image\\.') | first | default(none) %}\n        {% set task_suffix\
-            \ = task.key.replace('geplante_', '') ~ '_abschliessen' %}\n        {%\
-            \ set btn_entity = dev_entities | select('search', task_suffix) | first\
-            \ | default(none) %}\n        \n        {% set medium_entity = dev_entities\
-            \ | select('search', '_wachstumsmedium') | first | default(none) %}\n\
-            \        {% set medium_state = states(medium_entity) if medium_entity\
-            \ else 'unknown' %}\n        {% set medium_val = medium_state if medium_state\
-            \ not in ['unknown', 'unavailable'] else 'Soil' %}\n\n        {% if img_entity\
-            \ and btn_entity %}\n          {% set is_overdue = diff < 0 %}\n     \
-            \     {% if is_overdue %} {% set type_group.overdue_count = type_group.overdue_count\
-            \ + 1 %} {% endif %}\n          {% set type_group.found = true %}\n  \
-            \        \n          {# 1. Icon Selection #}\n          {% set current_icon\
-            \ = config.icons.watering if task.type == 'watering' else (config.icons.cleaning\
-            \ if task.type == 'cleaning' else 'mdi:help') %}\n          \n       \
-            \   {# 2. Color Logic #}\n          {% set main_color = config.colors.watering\
+            \ #}\n{% set today = now().date() %}   {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
+            \ %}\n{% set ns = namespace(all_items=[]) %}\n{# STAGE 1: Gather and process\
+            \ all matching items globally #} {% for task in config.tasks %}\n  {%\
+            \ set task_entities = states.sensor \n     | selectattr('entity_id', 'search',\
+            \ task.key) \n     | rejectattr('state', 'in', ['unknown', 'unavailable'])\
+            \ \n     | list %}\n\n  {% for state in task_entities %}\n    {% set dt\
+            \ = as_local(as_datetime(state.state)) %}\n    {% if dt and dt.date()\
+            \ <= limit_date %}\n      {% set task_date = dt.date() %}\n      {% set\
+            \ diff = (task_date - today).days %}\n      \n      {% if diff == 0 %}\
+            \ {% set date_label = \"HEUTE\" %}\n      {% elif diff == 1 %} {% set\
+            \ date_label = \"MORGEN\" %}\n      {% elif diff > 1 %} {% set date_label\
+            \ = config.weekdays[task_date.weekday()] %}\n      {% elif diff == -1\
+            \ %} {% set date_label = \"vor 1 Tag\" %}\n      {% else %} {% set date_label\
+            \ = \"vor \" ~ (diff | abs) ~ \" Tagen\" %}\n      {% endif %}\n\n   \
+            \   {% set dev_id = device_id(state.entity_id) %}\n      {% set area =\
+            \ area_name(state.entity_id) or \"No Area\" %}\n      \n      {% if dev_id\
+            \ %}\n        {% set dev_entities = device_entities(dev_id) %}\n     \
+            \   {% set img_entity = dev_entities | select('search', '^image\\.') |\
+            \ first | default(none) %}\n        {% set task_suffix = task.key.replace('geplante_',\
+            \ '') ~ '_abschliessen' %}\n        {% set btn_entity = dev_entities |\
+            \ select('search', task_suffix) | first | default(none) %}\n        \n\
+            \        {% set medium_entity = dev_entities | select('search', '_wachstumsmedium')\
+            \ | first | default(none) %}\n        {% set medium_state = states(medium_entity)\
+            \ if medium_entity else 'unknown' %}\n        {% set medium_val = medium_state\
+            \ if medium_state not in ['unknown', 'unavailable'] else 'Soil' %}\n\n\
+            \        {% if img_entity and btn_entity %}\n          {% set is_overdue\
+            \ = diff < 0 %}\n          \n          {% set current_icon = config.icons.watering\
+            \ if task.type == 'watering' else (config.icons.cleaning if task.type\
+            \ == 'cleaning' else 'mdi:help') %}\n          {% set main_color = config.colors.watering\
             \ if task.type == 'watering' else config.colors.standard %}\n        \
-            \  {% set done_color = config.colors.standard %}\n\n          {# Fertilizer\
-            \ Icon Logic #}\n          {% if task.type == 'fertilizing' %}\n     \
-            \       {% set med_cleaned = medium_val | string | lower | replace(' ',\
-            \ '') %}\n            {% set is_liquid = namespace(check=false) %}\n \
-            \           {% for m in config.liquid_mediums %}\n              {% if\
-            \ m in med_cleaned %} {% set is_liquid.check = true %} {% endif %}\n \
-            \           {% endfor %}\n\n            {% if is_liquid.check %}\n   \
-            \           {% set current_icon = config.icons.fertilizer_liquid %}\n\
-            \            {% else %}\n              {% set current_icon = config.icons.fertilizer_sticks\
-            \ %}\n            {% endif %}\n          {% endif %}\n\n          {# Overdue\
-            \ Override #}\n          {% if is_overdue %}\n            {% set main_color\
-            \ = config.colors.overdue %}\n            {% set done_color = config.colors.overdue\
-            \ %}\n          {% endif %}\n\n          {% set secondary_lines = [] %}\n\
-            \          {% if is_overdue %} {% set secondary_lines = secondary_lines\
-            \ + ['\u26A0\uFE0F F\xC4LLIG'] %} {% endif %}\n          {% set secondary_lines\
-            \ = secondary_lines + [date_label] %}\n          \n          {% if task.type\
-            \ == 'fertilizing' %}\n            {% set secondary_lines = secondary_lines\
-            \ + ['Medium: ' ~ medium_val] %}\n          {% endif %}\n\n          {#\
-            \ Safe friendly name fallback #}\n          {% set safe_name = (state_attr(state.entity_id,\
+            \  {% set done_color = config.colors.standard %}\n\n          {% if task.type\
+            \ == 'fertilizing' %}\n            {% set med_cleaned = medium_val | string\
+            \ | lower | replace(' ', '') %}\n            {% set is_liquid = namespace(check=false)\
+            \ %}\n            {% for m in config.liquid_mediums %}\n             \
+            \ {% if m in med_cleaned %} {% set is_liquid.check = true %} {% endif\
+            \ %}\n            {% endfor %}\n            {% if is_liquid.check %} {%\
+            \ set current_icon = config.icons.fertilizer_liquid %}\n            {%\
+            \ else %} {% set current_icon = config.icons.fertilizer_sticks %}\n  \
+            \          {% endif %}\n          {% endif %}\n\n          {% if is_overdue\
+            \ %}\n            {% set main_color = config.colors.overdue %}\n     \
+            \       {% set done_color = config.colors.overdue %}\n          {% endif\
+            \ %}\n\n          {% set secondary_lines = [] %}\n          {% if is_overdue\
+            \ %} {% set secondary_lines = secondary_lines + ['\u26A0\uFE0F F\xC4LLIG']\
+            \ %} {% endif %}\n          {% set secondary_lines = secondary_lines +\
+            \ [date_label] %}\n          {% if task.type == 'fertilizing' %} {% set\
+            \ secondary_lines = secondary_lines + ['Medium: ' ~ medium_val] %} {%\
+            \ endif %}\n\n          {% set safe_name = (state_attr(state.entity_id,\
             \ 'friendly_name') or state.entity_id).split(' Geplante')[0] %}\n\n  \
-            \        {% set row_data = {\n            \"date\": dt.timestamp(),\n\
-            \            \"area\": area,\n            \"card\": {\n              \"\
-            type\": \"horizontal-stack\",\n              \"cards\": [\n          \
-            \      { \"type\": \"picture-entity\", \"entity\": img_entity, \"aspect_ratio\"\
-            : \"1:1\", \"fit_mode\": \"fill\", \"show_name\": '', \"show_state\":\
-            \ '', \"tap_action\": { \"action\": \"more-info\" } },\n             \
-            \   { \n                  \"type\": \"custom:mushroom-template-card\"\
-            , \n                  \"primary\": safe_name, \n                  \"secondary\"\
-            : secondary_lines | join('\\n'), \n                  \"entity\": state.entity_id,\
-            \ \n                  \"icon\": current_icon, \n                  \"multiline_secondary\"\
+            \        {% set item_data = {\n            \"date\": dt.timestamp(),\n\
+            \            \"area\": area,\n            \"task_type\": task.type,\n\
+            \            \"task_label\": task.label,\n            \"is_overdue\":\
+            \ is_overdue,\n            \"card\": {\n              \"type\": \"horizontal-stack\"\
+            ,\n              \"cards\": [\n                { \"type\": \"picture-entity\"\
+            , \"entity\": img_entity, \"aspect_ratio\": \"1:1\", \"fit_mode\": \"\
+            fill\", \"show_name\": '', \"show_state\": '', \"tap_action\": { \"action\"\
+            : \"more-info\" } },\n                { \n                  \"type\":\
+            \ \"custom:mushroom-template-card\", \n                  \"primary\":\
+            \ safe_name, \n                  \"secondary\": secondary_lines | join('\\\
+            n'), \n                  \"entity\": state.entity_id, \n             \
+            \     \"icon\": current_icon, \n                  \"multiline_secondary\"\
             : 'true', \n                  \"vertical\": 'true', \n               \
             \   \"icon_color\": main_color, \n                  \"tap_action\": {\
             \ \"action\": \"more-info\" } \n                },\n                {\
@@ -5296,36 +5288,246 @@ config:
             \ \"icon\": config.icons.done, \"icon_color\": done_color, \"layout\"\
             : \"vertical\", \"tap_action\": { \"action\": \"perform-action\", \"perform_action\"\
             : \"button.press\", \"target\": { \"entity_id\": btn_entity } } }\n  \
-            \            ]\n            }\n          } %}\n          {% set type_group.items\
-            \ = type_group.items + [row_data] %}\n        {% endif %}\n      {% endif\
-            \ %}\n    {% endif %}\n  {% endfor %}\n\n  {% if type_group.found %}\n\
-            \    {% set sorted_items = type_group.items | sort(attribute='date') |\
-            \ sort(attribute='area') %}\n    {% set inner_ns = namespace(final_cards=[],\
-            \ last_area=\"\") %}\n    \n    {% for item in sorted_items %}\n     \
-            \ {% if item.area != inner_ns.last_area %}\n        {% set inner_ns.final_cards\
-            \ = inner_ns.final_cards + [{\"type\": \"custom:mushroom-title-card\"\
-            , \"subtitle\": item.area}] %}\n        {% set inner_ns.last_area = item.area\
-            \ %}\n      {% endif %}\n      {% set inner_ns.final_cards = inner_ns.final_cards\
-            \ + [item.card] %}\n    {% endfor %}\n    \n    {% set header_title =\
-            \ task.label ~ ' (' ~ type_group.items | length ~ ')' %}\n    {% if type_group.overdue_count\
-            \ > 0 %} {% set header_title = header_title ~ ' \u2014 \u26A0\uFE0F '\
-            \ ~ type_group.overdue_count ~ ' overdue' %} {% endif %}\n    \n    {%\
-            \ set expander_base = {\n     \"type\": \"custom:expander-card\",\n  \
-            \   \"title-card-clickable\": 'true',\n     \"title-card-button-overlay\"\
-            : 'true',\n     \"child-padding\": \"0px\",\n     \"storage-id\": task.label,\n\
-            \     \"title-card\": {\n       \"type\": \"custom:mushroom-title-card\"\
-            ,\n       \"title\": header_title\n     },\n     \"cards\": inner_ns.final_cards\n\
-            \     } %}\n\n     {% set expander = expander_base | combine( {\"expanded\"\
-            : 'true'} if (ns.cards | length == 1) else {} ) %}\n     {% set ns.cards\
-            \ = ns.cards + [expander] %}\n  {% endif %}\n{% endfor %}\n{% if ns.cards\
-            \ | length == 1 %}\n  {% set days_label = \"Tag\" if config.days_ahead\
+            \            ]\n            }\n          } %}\n          {% set ns.all_items\
+            \ = ns.all_items + [item_data] %}\n        {% endif %}\n      {% endif\
+            \ %}\n    {% endif %}\n  {% endfor %}\n{% endfor %}\n{# STAGE 1.5: Build\
+            \ Card Array with Stats and Controls #} {% set total_tasks = ns.all_items\
+            \ | length %} {% set total_overdue = ns.all_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %} {% set watering_count = ns.all_items\
+            \ | selectattr('task_type', 'eq', 'watering') | list | length %} {% set\
+            \ fertilizing_count = ns.all_items | selectattr('task_type', 'eq', 'fertilizing')\
+            \ | list | length %} {% set cleaning_count = ns.all_items | selectattr('task_type',\
+            \ 'eq', 'cleaning') | list | length %}\n{% set markdown_content %} {%\
+            \ if total_tasks > 0 %} <font color=\"green\">**<ha-icon icon=\"mdi:flower\"\
+            ></ha-icon> Anstehende Aufgaben: {{ total_tasks }}**</font> {% if total_overdue\
+            \ > 0 %} <font color=\"red\">**<ha-icon icon=\"mdi:alert-circle\"></ha-icon>\
+            \ Davon \xFCberf\xE4llig: {{ total_overdue }}**</font> {% endif %}\n***\
+            \ <ha-icon icon=\"mdi:water\"></ha-icon> **Gie\xDFen:** {{ watering_count\
+            \ }} | <ha-icon icon=\"mdi:leaf\"></ha-icon> **D\xFCngen:** {{ fertilizing_count\
+            \ }} | <ha-icon icon=\"mdi:spray-bottle\"></ha-icon> **Reinigen:** {{\
+            \ cleaning_count }} {% else %} <font color=\"green\">**<ha-icon icon=\"\
+            mdi:check-all\"></ha-icon> Alles erledigt!**</font> Keine offenen Aufgaben\
+            \ f\xFCr den gew\xE4hlten Zeitraum. {% endif %} {% endset %}\n{% set cards_ns\
+            \ = namespace(cards=[\n  {\n    \"type\": \"custom:mushroom-number-card\"\
+            ,\n    \"entity\": \"input_number.plant_days_ahead\",\n    \"layout\"\
+            : \"horizontal\",\n    \"display_mode\": \"buttons\"\n  },\n  {\n    \"\
+            type\": \"markdown\",\n    \"content\": markdown_content | trim\n  }\n\
+            ]) %}\n{# STAGE 2: Group and Render (Area -> Task Type) #} {% if total_tasks\
+            \ > 0 %}\n  {% set unique_areas = ns.all_items | map(attribute='area')\
+            \ | unique | sort %}\n  \n  {% for area in unique_areas %}\n    {% set\
+            \ area_items = ns.all_items | selectattr('area', 'eq', area) | list %}\n\
+            \    {% set area_id_safe = area | lower | replace(' ', '-') | replace('_',\
+            \ '-') %}\n    {% set area_overdue_count = area_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %}\n    \n    {% set area_title = area ~\
+            \ ' (' ~ area_items | length ~ ')' %}\n    {% if area_overdue_count >\
+            \ 0 %}\n      {% set area_title = area_title ~ ' \u2014 \u26A0\uFE0F '\
+            \ ~ area_overdue_count ~ ' overdue' %}\n    {% endif %}\n\n    {% set\
+            \ area_task_cards = namespace(list=[]) %}\n    {% set unique_tasks_in_area\
+            \ = area_items | map(attribute='task_type') | unique | sort %}\n\n   \
+            \ {# Loop through individual tasks inside this area #}\n    {% for t_type\
+            \ in unique_tasks_in_area %}\n      {% set task_items = area_items | selectattr('task_type',\
+            \ 'eq', t_type) | sort(attribute='date') | list %}\n      {% set task_label\
+            \ = task_items[0].task_label %}\n      {% set task_overdue_count = task_items\
+            \ | selectattr('is_overdue', 'eq', true) | list | length %}\n      \n\
+            \      {% set task_title = task_label ~ ' (' ~ task_items | length ~ ')'\
+            \ %}\n      {% if task_overdue_count > 0 %}\n        {% set task_title\
+            \ = task_title ~ ' \u2014 \u26A0\uFE0F ' ~ task_overdue_count ~ ' overdue'\
+            \ %}\n      {% endif %}\n\n      {% set raw_cards = task_items | map(attribute='card')\
+            \ | list %}\n      \n      {# Nested Task Expander Base #}\n      {% set\
+            \ task_expander_base = {\n        \"type\": \"custom:expander-card\",\n\
+            \        \"title-card-clickable\": 'true',\n        \"title-card-button-overlay\"\
+            : 'true',\n        \"child-padding\": \"0px\",\n        \"storage-id\"\
+            : area_id_safe ~ \"-\" ~ t_type,\n        \"title-card\": {\n        \
+            \  \"type\": \"custom:mushroom-title-card\",\n          \"title\": task_title\n\
+            \        },\n        \"cards\": raw_cards\n      } %}\n      \n      {#\
+            \ Force the first task card of *each* area to start uncollapsed #}\n \
+            \     {% set task_expander = task_expander_base | combine( {\"expanded\"\
+            : 'true'} if loop.first else {} ) %}\n      {% set area_task_cards.list\
+            \ = area_task_cards.list + [task_expander] %}\n    {% endfor %}\n\n  \
+            \  {# Top-Level Area Expander #}\n    {% set area_expander_base = {\n\
+            \      \"type\": \"custom:expander-card\",\n      \"title-card-clickable\"\
+            : 'true',\n      \"title-card-button-overlay\": 'true',\n      \"child-padding\"\
+            : \"4px\",\n      \"storage-id\": \"area-\" ~ area_id_safe,\n      \"\
+            title-card\": {\n        \"type\": \"custom:mushroom-title-card\",\n \
+            \       \"title\": area_title\n      },\n      \"cards\": area_task_cards.list\n\
+            \    } %}\n    \n    {# Auto-expand the very first area card if it's the\
+            \ only one #}\n    {% set area_expander = area_expander_base | combine(\
+            \ {\"expanded\": 'true'} if (cards_ns.cards | length == 2) else {} ) %}\n\
+            \    {% set cards_ns.cards = cards_ns.cards + [area_expander] %}\n  {%\
+            \ endfor %}\n{% else %}\n  {# Fallback when all tasks are complete #}\n\
+            \  {% set days_label = \"Tag\" if config.days_ahead == 1 else \"Tagen\"\
+            \ %}\n  {% set secondary = \"Keine Aufgaben f\xFCr \" ~ config.days_ahead\
+            \ ~ \" \" ~ days_label %}\n  {% set cards_ns.cards = cards_ns.cards +\
+            \ [{\n    \"type\": \"custom:mushroom-template-card\",\n    \"primary\"\
+            : \"Alles erledigt!\",\n    \"secondary\": secondary,\n    \"icon\": config.icons.all_done,\n\
+            \    \"icon_color\": config.colors.standard,\n    \"layout\": \"vertical\"\
+            \n  }] %}\n{% endif %}\n{{ cards_ns.cards | tojson }}"
+        type: custom:auto-entities
+        visibility:
+        - condition: user
+          users: []
+      - card:
+          type: vertical-stack
+        card_param: cards
+        filter:
+          template: "{# --- CONFIGURATION SECTION --- #}  {% set config = {\n  'days_ahead':\
+            \ states('input_number.plant_days_ahead') | int(1),\n  'icons': {\n  \
+            \  'watering': 'mdi:water',\n    'cleaning': 'mdi:spray-bottle',\n   \
+            \ 'fertilizer_liquid': 'mdi:water-outline',\n    'fertilizer_sticks':\
+            \ 'mdi:eyedropper',\n    'done': 'mdi:check',\n    'all_done': 'mdi:flower'\n\
+            \  },\n  'colors': {\n    'watering': 'blue',\n    'standard': 'green',\n\
+            \    'overdue': 'red'\n  },\n  'liquid_mediums': ['semi', 'hydro', 'air',\
+            \ 'pon', 'leca', 'seramis'],\n  'tasks': [\n    {'key': 'geplante_bewasserung',\
+            \ 'label': 'Watering Needed', 'type': 'watering'},\n    {'key': 'geplante_dungung',\
+            \ 'label': 'Fertilizing Needed', 'type': 'fertilizing'},\n    {'key':\
+            \ 'geplante_reinigung', 'label': 'Cleaning Needed', 'type': 'cleaning'}\n\
+            \  ],\n  'weekdays': [\"Montag\", \"Dienstag\", \"Mittwoch\", \"Donnerstag\"\
+            , \"Freitag\", \"Samstag\", \"Sonntag\"]\n} %}  {# ------------------------------\
+            \ #}\n{% set today = now().date() %}   {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
+            \ %}\n{% set ns = namespace(all_items=[]) %}\n{# STAGE 1: Gather and process\
+            \ all matching items globally #} {% for task in config.tasks %}\n  {%\
+            \ set task_entities = states.sensor \n     | selectattr('entity_id', 'search',\
+            \ task.key) \n     | rejectattr('state', 'in', ['unknown', 'unavailable'])\
+            \ \n     | list %}\n\n  {% for state in task_entities %}\n    {% set dt\
+            \ = as_local(as_datetime(state.state)) %}\n    {% if dt and dt.date()\
+            \ <= limit_date %}\n      {% set task_date = dt.date() %}\n      {% set\
+            \ diff = (task_date - today).days %}\n      \n      {% if diff == 0 %}\
+            \ {% set date_label = \"HEUTE\" %}\n      {% elif diff == 1 %} {% set\
+            \ date_label = \"MORGEN\" %}\n      {% elif diff > 1 %} {% set date_label\
+            \ = config.weekdays[task_date.weekday()] %}\n      {% elif diff == -1\
+            \ %} {% set date_label = \"vor 1 Tag\" %}\n      {% else %} {% set date_label\
+            \ = \"vor \" ~ (diff | abs) ~ \" Tagen\" %}\n      {% endif %}\n\n   \
+            \   {% set dev_id = device_id(state.entity_id) %}\n      {% set area =\
+            \ area_name(state.entity_id) or \"No Area\" %}\n      \n      {% if dev_id\
+            \ %}\n        {% set dev_entities = device_entities(dev_id) %}\n     \
+            \   {% set img_entity = dev_entities | select('search', '^image\\.') |\
+            \ first | default(none) %}\n        {% set task_suffix = task.key.replace('geplante_',\
+            \ '') ~ '_abschliessen' %}\n        {% set btn_entity = dev_entities |\
+            \ select('search', task_suffix) | first | default(none) %}\n        \n\
+            \        {% set medium_entity = dev_entities | select('search', '_wachstumsmedium')\
+            \ | first | default(none) %}\n        {% set medium_state = states(medium_entity)\
+            \ if medium_entity else 'unknown' %}\n        {% set medium_val = medium_state\
+            \ if medium_state not in ['unknown', 'unavailable'] else 'Soil' %}\n\n\
+            \        {% if img_entity and btn_entity %}\n          {% set is_overdue\
+            \ = diff < 0 %}\n          \n          {% set current_icon = config.icons.watering\
+            \ if task.type == 'watering' else (config.icons.cleaning if task.type\
+            \ == 'cleaning' else 'mdi:help') %}\n          {% set main_color = config.colors.watering\
+            \ if task.type == 'watering' else config.colors.standard %}\n        \
+            \  {% set done_color = config.colors.standard %}\n\n          {% if task.type\
+            \ == 'fertilizing' %}\n            {% set med_cleaned = medium_val | string\
+            \ | lower | replace(' ', '') %}\n            {% set is_liquid = namespace(check=false)\
+            \ %}\n            {% for m in config.liquid_mediums %}\n             \
+            \ {% if m in med_cleaned %} {% set is_liquid.check = true %} {% endif\
+            \ %}\n            {% endfor %}\n            {% if is_liquid.check %} {%\
+            \ set current_icon = config.icons.fertilizer_liquid %}\n            {%\
+            \ else %} {% set current_icon = config.icons.fertilizer_sticks %}\n  \
+            \          {% endif %}\n          {% endif %}\n\n          {% if is_overdue\
+            \ %}\n            {% set main_color = config.colors.overdue %}\n     \
+            \       {% set done_color = config.colors.overdue %}\n          {% endif\
+            \ %}\n\n          {% set secondary_lines = [] %}\n          {% if is_overdue\
+            \ %} {% set secondary_lines = secondary_lines + ['\u26A0\uFE0F F\xC4LLIG']\
+            \ %} {% endif %}\n          {% set secondary_lines = secondary_lines +\
+            \ [date_label] %}\n          {% if task.type == 'fertilizing' %} {% set\
+            \ secondary_lines = secondary_lines + ['Medium: ' ~ medium_val] %} {%\
+            \ endif %}\n\n          {% set safe_name = (state_attr(state.entity_id,\
+            \ 'friendly_name') or state.entity_id).split(' Geplante')[0] %}\n\n  \
+            \        {% set item_data = {\n            \"date\": dt.timestamp(),\n\
+            \            \"area\": area,\n            \"task_type\": task.type,\n\
+            \            \"task_label\": task.label,\n            \"is_overdue\":\
+            \ is_overdue,\n            \"card\": {\n              \"type\": \"horizontal-stack\"\
+            ,\n              \"cards\": [\n                { \"type\": \"picture-entity\"\
+            , \"entity\": img_entity, \"aspect_ratio\": \"1:1\", \"fit_mode\": \"\
+            fill\", \"show_name\": '', \"show_state\": '', \"tap_action\": { \"action\"\
+            : \"more-info\" } },\n                { \n                  \"type\":\
+            \ \"custom:mushroom-template-card\", \n                  \"primary\":\
+            \ safe_name, \n                  \"secondary\": secondary_lines | join('\\\
+            n'), \n                  \"entity\": state.entity_id, \n             \
+            \     \"icon\": current_icon, \n                  \"multiline_secondary\"\
+            : 'true', \n                  \"vertical\": 'true', \n               \
+            \   \"icon_color\": main_color, \n                  \"tap_action\": {\
+            \ \"action\": \"more-info\" } \n                },\n                {\
+            \ \"type\": \"custom:mushroom-template-card\", \"primary\": \"Done\",\
+            \ \"icon\": config.icons.done, \"icon_color\": done_color, \"layout\"\
+            : \"vertical\", \"tap_action\": { \"action\": \"perform-action\", \"perform_action\"\
+            : \"button.press\", \"target\": { \"entity_id\": btn_entity } } }\n  \
+            \            ]\n            }\n          } %}\n          {% set ns.all_items\
+            \ = ns.all_items + [item_data] %}\n        {% endif %}\n      {% endif\
+            \ %}\n    {% endif %}\n  {% endfor %}\n{% endfor %}\n{# STAGE 1.5: Build\
+            \ Card Array with Stats and Controls #} {% set total_tasks = ns.all_items\
+            \ | length %} {% set total_overdue = ns.all_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %} {% set watering_count = ns.all_items\
+            \ | selectattr('task_type', 'eq', 'watering') | list | length %} {% set\
+            \ fertilizing_count = ns.all_items | selectattr('task_type', 'eq', 'fertilizing')\
+            \ | list | length %} {% set cleaning_count = ns.all_items | selectattr('task_type',\
+            \ 'eq', 'cleaning') | list | length %}\n{% set markdown_content %} {%\
+            \ if total_tasks > 0 %} <font color=\"green\">**<ha-icon icon=\"mdi:flower\"\
+            ></ha-icon> Anstehende Aufgaben: {{ total_tasks }}**</font> {% if total_overdue\
+            \ > 0 %} <font color=\"red\">**<ha-icon icon=\"mdi:alert-circle\"></ha-icon>\
+            \ Davon \xFCberf\xE4llig: {{ total_overdue }}**</font> {% endif %}\n***\
+            \ <ha-icon icon=\"mdi:water\"></ha-icon> **Gie\xDFen:** {{ watering_count\
+            \ }} | <ha-icon icon=\"mdi:leaf\"></ha-icon> **D\xFCngen:** {{ fertilizing_count\
+            \ }} | <ha-icon icon=\"mdi:spray-bottle\"></ha-icon> **Reinigen:** {{\
+            \ cleaning_count }} {% else %} <font color=\"green\">**<ha-icon icon=\"\
+            mdi:check-all\"></ha-icon> Alles erledigt!**</font> Keine offenen Aufgaben\
+            \ f\xFCr den gew\xE4hlten Zeitraum. {% endif %} {% endset %}\n{% set cards_ns\
+            \ = namespace(cards=[\n  {\n    \"type\": \"custom:mushroom-number-card\"\
+            ,\n    \"entity\": \"input_number.plant_days_ahead\",\n    \"layout\"\
+            : \"horizontal\",\n    \"display_mode\": \"buttons\"\n  },\n  {\n    \"\
+            type\": \"markdown\",\n    \"content\": markdown_content | trim\n  }\n\
+            ]) %}\n{# STAGE 2: Group and Render (Area -> Task Type) #} {% if total_tasks\
+            \ > 0 %}\n  {% set unique_areas = ns.all_items | map(attribute='area')\
+            \ | unique | sort %}\n  \n  {% for area in unique_areas %}\n    {% set\
+            \ area_items = ns.all_items | selectattr('area', 'eq', area) | list %}\n\
+            \    {% set area_id_safe = area | lower | replace(' ', '-') | replace('_',\
+            \ '-') %}\n    {% set area_overdue_count = area_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %}\n    \n    {% set area_title = area ~\
+            \ ' (' ~ area_items | length ~ ')' %}\n    {% if area_overdue_count >\
+            \ 0 %}\n      {% set area_title = area_title ~ ' \u2014 \u26A0\uFE0F '\
+            \ ~ area_overdue_count ~ ' overdue' %}\n    {% endif %}\n\n    {% set\
+            \ unique_tasks_in_area = area_items | map(attribute='task_type') | unique\
+            \ | sort %}\n    {% set final_area_cards = namespace(list=[]) %}\n\n \
+            \   {% if unique_tasks_in_area | length == 1 %}\n      {# Ditch the inner\
+            \ expander entirely since there is only 1 type of task in this area #}\n\
+            \      {% set final_area_cards.list = area_items | sort(attribute='date')\
+            \ | map(attribute='card') | list %}\n    {% else %}\n      {# Multiple\
+            \ task types exist, keep nesting them under inner expanders #}\n     \
+            \ {% for t_type in unique_tasks_in_area %}\n        {% set task_items\
+            \ = area_items | selectattr('task_type', 'eq', t_type) | sort(attribute='date')\
+            \ | list %}\n        {% set task_label = task_items[0].task_label %}\n\
+            \        {% set task_overdue_count = task_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %}\n        \n        {% set task_title\
+            \ = task_label ~ ' (' ~ task_items | length ~ ')' %}\n        {% if task_overdue_count\
+            \ > 0 %}\n          {% set task_title = task_title ~ ' \u2014 \u26A0\uFE0F\
+            \ ' ~ task_overdue_count ~ ' overdue' %}\n        {% endif %}\n\n    \
+            \    {% set raw_cards = task_items | map(attribute='card') | list %}\n\
+            \        \n        {% set task_expander_base = {\n          \"type\":\
+            \ \"custom:expander-card\",\n          \"title-card-clickable\": 'true',\n\
+            \          \"title-card-button-overlay\": 'true',\n          \"child-padding\"\
+            : \"0px\",\n          \"storage-id\": area_id_safe ~ \"-\" ~ t_type,\n\
+            \          \"title-card\": {\n            \"type\": \"custom:mushroom-title-card\"\
+            ,\n            \"title\": task_title\n          },\n          \"cards\"\
+            : raw_cards\n        } %}\n        \n        {% set task_expander = task_expander_base\
+            \ | combine( {\"expanded\": 'true'} if loop.first else {} ) %}\n     \
+            \   {% set final_area_cards.list = final_area_cards.list + [task_expander]\
+            \ %}\n      {% endfor %}\n    {% endif %}\n\n    {# Top-Level Area Expander\
+            \ #}\n    {% set area_expander_base = {\n      \"type\": \"custom:expander-card\"\
+            ,\n      \"title-card-clickable\": 'true',\n      \"title-card-button-overlay\"\
+            : 'true',\n      \"child-padding\": \"4px\",\n      \"storage-id\": \"\
+            area-\" ~ area_id_safe,\n      \"title-card\": {\n        \"type\": \"\
+            custom:mushroom-title-card\",\n        \"title\": area_title\n      },\n\
+            \      \"cards\": final_area_cards.list\n    } %}\n    \n    {# Auto-expand\
+            \ the very first area card if it's the only one #}\n    {% set area_expander\
+            \ = area_expander_base | combine( {\"expanded\": 'true'} if (cards_ns.cards\
+            \ | length == 2) else {} ) %}\n    {% set cards_ns.cards = cards_ns.cards\
+            \ + [area_expander] %}\n  {% endfor %}\n{% else %}\n  {# Fallback when\
+            \ all tasks are complete #}\n  {% set days_label = \"Tag\" if config.days_ahead\
             \ == 1 else \"Tagen\" %}\n  {% set secondary = \"Keine Aufgaben f\xFC\
-            r \" ~ config.days_ahead ~ \" \" ~ days_label %}\n  {% set ns.cards =\
-            \ ns.cards + [{\n    \"type\": \"custom:mushroom-template-card\",\n  \
-            \  \"primary\": \"Alles erledigt!\",\n    \"secondary\": secondary,\n\
+            r \" ~ config.days_ahead ~ \" \" ~ days_label %}\n  {% set cards_ns.cards\
+            \ = cards_ns.cards + [{\n    \"type\": \"custom:mushroom-template-card\"\
+            ,\n    \"primary\": \"Alles erledigt!\",\n    \"secondary\": secondary,\n\
             \    \"icon\": config.icons.all_done,\n    \"icon_color\": config.colors.standard,\n\
-            \    \"layout\": \"vertical\"\n  }] %}\n{% endif %}\n{{ ns.cards | tojson\
-            \ }}"
+            \    \"layout\": \"vertical\"\n  }] %}\n{% endif %}\n{{ cards_ns.cards\
+            \ | tojson }}"
         type: custom:auto-entities
       type: grid
     title: Planta
