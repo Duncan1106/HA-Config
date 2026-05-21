@@ -2117,7 +2117,7 @@
             message: 'Verlängerung hat {{ (states(''sensor.pool_temperature_zigbee_temperature'')
               | float(0) - states(''input_number.pool_temp_stop'') | float(0)) | round(2)
               }}°C gebracht, der Pool ist bei {{ states(''sensor.pool_temperature_zigbee_temperature'')
-              | float(0) }}
+              | float(0) }}°C
 
               '
             title: Pool Laufzeit Verlängerung
@@ -2164,7 +2164,7 @@
           message: 'Verlängerung hat {{ (states(''sensor.pool_temperature_zigbee_temperature'')
             | float(0) - states(''input_number.pool_temp_stop'') | float(0)) | round(2)
             }}°C gebracht, der Pool ist bei {{ states(''sensor.pool_temperature_zigbee_temperature'')
-            | float(0) }}
+            | float(0) }}°C
 
             '
           title: Pool Laufzeit Verlängerung
@@ -2201,12 +2201,12 @@
       id:
       - Force Stop
     then:
-    - if:
-      - condition: device
-        type: is_on
-        device_id: 7f4653a91cd2ef69cb48aa494a983be8
-        entity_id: 3d65e9bcde794b0149fb7d576edd1bb9
-        domain: switch
+    - alias: Save Stop Temp when was still on
+      if:
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state:
+        - 'on'
       then:
       - metadata: {}
         data:
@@ -2215,7 +2215,6 @@
         target:
           entity_id: input_number.pool_temp_stop
         action: input_number.set_value
-      alias: Save Stop Temp when was still on
     - action: switch.turn_off
       metadata: {}
       data: {}
@@ -2251,13 +2250,16 @@
           title: Pool Temperature Veränderung
           data:
             tag: pool_temp_diff
-          message: 'Heute: {%- set start = states(''input_number.pool_temp_start'')
-            | float(0) -%} {%- set stop = states(''input_number.pool_temp_stop'')
-            | float(0) -%} {%- set diff = (stop - start) | round(2) -%} {{ ''+'' if
-            diff > 0 else ''-'' }}{{ diff | abs }}°C
+          message: '{%- set start = states(''input_number.pool_temp_start'') | float(0)
+            -%}
 
-            Ende: {{ states(''sensor.pool_temperature_zigbee_temperature'') | float(0)
-            }}°C'
+            {%- set stop = states(''input_number.pool_temp_stop'') | float(0) -%}
+
+            Heute: {{ "%+.2f" | format(stop - start) }}°C
+
+            Ende: {{ stop }}°C
+
+            '
     - action: input_boolean.turn_off
       metadata: {}
       data: {}
