@@ -4116,6 +4116,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 0
               minutes: 10
@@ -4171,6 +4172,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 1
     - conditions:
@@ -4749,6 +4751,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 2
     - conditions:
@@ -4800,6 +4803,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 0
               minutes: 10
@@ -12657,6 +12661,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 0
               minutes: 10
@@ -12712,6 +12717,7 @@
               tag: '{{ notification_tag }}'
               color: red
               notification_icon: mdi:window-open
+              channel: Fenster
           - delay:
               hours: 3
     - conditions:
@@ -13967,3 +13973,86 @@
             %}\n  {{ (pulseTime - 100) }}\n{% endif %}\n"
   mode: queued
   max: 4
+- id: '1779363234982'
+  alias: 'Fenster Offen: Zentrales Monitoring'
+  description: Monitors all windows with custom initial delays and dynamic repeat
+    tracking.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.gasteklo_fenster_contact
+    to: 'on'
+    for:
+      minutes: 15
+    id: open_gasteklo
+  - trigger: state
+    entity_id:
+    - binary_sensor.duncan_fenster_contact
+    - binary_sensor.kinderbad_fenster_contact
+    - binary_sensor.bad_fenster_contact
+    to: 'on'
+    for:
+      minutes: 10
+    id: open_default
+  - trigger: state
+    entity_id:
+    - binary_sensor.waschkuche_fenster_contact
+    - binary_sensor.hobbyraum_kleines_fenster_contact
+    to: 'on'
+    for:
+      hours: 1
+    id: open_1hour
+  - trigger: state
+    entity_id:
+    - binary_sensor.gasteklo_fenster_contact
+    - binary_sensor.duncan_fenster_contact
+    - binary_sensor.kinderbad_fenster_contact
+    - binary_sensor.bad_fenster_contact
+    - binary_sensor.waschkuche_fenster_contact
+    - binary_sensor.hobbyraum_kleines_fenster_contact
+    from: 'on'
+    for:
+      seconds: 5
+    id: close_window
+  actions:
+  - variables:
+      room_slug: '{{ trigger.entity_id.split(''.'')[1].split(''_'')[0] }}'
+      notification_tag: '{{ room_slug }}_window_alert'
+      custom_friendly_name: '{{ state_attr(trigger.entity_id, ''friendly_name'') |
+        replace('' Contact'', '''') }}'
+      repeat_delay: "{% set delays = {\n  'gasteklo': 60,\n  'schlafzimmer': 30,\n
+        \ 'waschkuche': 180,\n  'hobbyraum': 120\n} %} {{ delays.get(room_slug, 10)
+        }}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id.startswith(''open_'') }}'
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{{ is_state(trigger.entity_id, ''off'') }}'
+          sequence:
+          - action: script.notify_people_at_home_with_fallbacks
+            data:
+              title: '{{ custom_friendly_name }} offen'
+              message: '{{ custom_friendly_name }} ist offen seit {{ as_timestamp(states[trigger.entity_id].last_changed)
+                | timestamp_custom(''%H:%M'', True) }}.'
+              tag: '{{ notification_tag }}'
+              color: red
+              notification_icon: mdi:window-open
+              channel: Fenster
+          - delay:
+              minutes: '{{ repeat_delay }}'
+      alias: Open
+    - conditions:
+      - condition: trigger
+        id: close_window
+      sequence:
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          message: clear_notification
+          tag: '{{ notification_tag }}'
+          title: Geschlossen
+      alias: Close
+  mode: parallel
+  max: 10
