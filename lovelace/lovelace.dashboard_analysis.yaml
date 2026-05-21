@@ -226,21 +226,106 @@ config:
         type: custom:mushroom-template-card
         vertical: true
       - card:
-          align_header: center
-          align_state: center
-          entities:
-          - sensor.entities
-          font_size: 60
-          hour24: true
-          hours_to_show: 24
-          line_width: 2
-          points_per_hour: 1
-          show:
-            fill: fade
-            icon: false
-            labels: false
-            points: false
-          type: custom:mini-graph-card
+          cards:
+          - align_header: center
+            align_state: center
+            entities:
+            - sensor.entities
+            font_size: 60
+            hour24: true
+            hours_to_show: 24
+            line_width: 2
+            points_per_hour: 1
+            show:
+              fill: fade
+              icon: false
+              labels: false
+              points: false
+            type: custom:mini-graph-card
+          - cards:
+            - cards:
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                  \ set hw = state_attr(e, 'hardware_score') | int(0) %} {% set app\
+                  \ = state_attr(e, 'application_score') | int(0) %} {% set score\
+                  \ = states(e) | int(0) %}\n| Hardware | Application |\n|----------------|-----------------|\n\
+                  | **{{ hw }}**/100 | **{{ app }}**/100 | \n\n**Global Formula:**\
+                  \ ({{ hw }} \xD7 0.4) + ({{ app }} \xD7 0.6) = **{{ score }}**\n"
+                title: Score Breakdown
+                type: markdown
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                  \ set rec = state_attr(e, 'recommendations') | default('', true)\
+                  \ %}\n{% if states(e) in ['unavailable', 'unknown'] %}\n  \u26A0\
+                  \uFE0F **Error:** Health Advisor sensor is offline.\n{% elif rec\
+                  \ and rec not in ['unknown', 'unavailable'] and '\u2705' not in\
+                  \ rec %}\n  {{ rec }}\n{% else %}\n  \u2705 System healthy. No recommendations.\n\
+                  {% endif %}\n"
+                title: "\U0001F6E1\uFE0F Advisor"
+                type: markdown
+              - card:
+                  content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                    \ set updates = state_attr(e, 'pending_updates') | default([],\
+                    \ true) | list %} {% set db_mb = state_attr(e, 'db_size_mb') |\
+                    \ float(0) %} {% set keep = state_attr(e, 'recorder_keep_days')\
+                    \ %} {% set filter = state_attr(e, 'recorder_filter_active') |\
+                    \ default(false, true) %} {% set psi = state_attr(e, 'psi_available')\
+                    \ | default(false, true) %}\n{% if updates | length > 0 %}  **{{\
+                    \ updates | length }} Update(s) pending:**  {% for u in updates\
+                    \ %} \n  &nbsp;&nbsp; \u2022 {{ u }}\n  \n{% endfor %} [\u2192\
+                    \ Open Updates](/config/updates) {% else %} \u2705 All updates\
+                    \ installed {% endif %}\n---\nDatabase: {% if db_mb > 2500 %}\U0001F534\
+                    {% elif db_mb > 1000 %}\U0001F7E1{% else %}\U0001F7E2{% endif\
+                    \ %} {{ db_mb | round(1) }} MB {% if db_mb == 0.0 %}*(external\
+                    \ DB detected)*{% endif %}\nRecorder: {% if keep not in [none,\
+                    \ 'unknown'] %}  Purge active ({{ keep }} days) {% else %}  No\
+                    \ purge configured \u2014 DB may grow indefinitely {% endif %}\n\
+                    {{ 'Entity filter active' if filter else ' No entity filter' }}\n\
+                    ---\n**Metric Source:** {% if psi %} \U0001F7E2 PSI active\n(CPU\
+                    \ + RAM + I/O + Disk) \u2014 Hardware score uses 4 components\
+                    \  {% else %} \u2699\uFE0F Classic sensors (CPU + RAM + Disk)\
+                    \ \u2014 Hardware score uses 3 components  {% endif %}\n"
+                  title: "\U0001F4E6 Updates & Maintenance"
+                  type: markdown
+                conditions:
+                - above: -1
+                  attribute: zombie_count
+                  condition: numeric_state
+                  entity: sensor.system_ha_global_health_score
+                type: conditional
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                  \ set z_raw = state_attr(e, 'zombie_entities') | default([], true)\
+                  \ %} {% set z_count = state_attr(e, 'zombie_count') | int(0) %}\n\
+                  {% if z_count == 0 %}\n  \u2705 **No zombie entities detected.**\n\
+                  {% else %}\n  {% if z_raw is string %} {% set z_list = z_raw.split(',')\
+                  \ |\n  map('trim') | list %} {% else %} {% set z_list = z_raw |\
+                  \ list %} {%\n  endif %}\n  {% set expanded = expand(z_list) | list\
+                  \ %}\n  {% set grouped = expanded[:20] | groupby('domain') %}\n\n\
+                  \  **{{ z_count }} Zombie(s)** across **{{ grouped | length }}**\
+                  \ domain(s)\n  {% if z_count > 20 %}*(showing first 20 \u2014 {{\
+                  \ z_count - 20 }} more hidden)*{% endif %}\n\n  [\u2192 Check Entities](/config/entities)\n\
+                  \n  {% for domain in grouped %}\n  <details>\n  <summary><b>{{ domain[0]\
+                  \ | title }}: {{ domain[1] | count }}</b></summary>\n  {% for item\
+                  \ in domain[1] %}\n  &nbsp;&nbsp; \u2022 {{ device_attr(item.entity_id,\
+                  \ 'name') | default('unknown device', true) }} \u2014 {{ item.name\
+                  \ }}: <b>{{ item.state\n  }}</b>\n  {% endfor %}\n  </details>\n\
+                  \  {% endfor %}\n{% endif %}\n"
+                title: "\U0001F9DF Zombie Entities"
+                type: markdown
+              title: Expander Card
+              title-card:
+                entity: sensor.system_ha_global_health_score
+                name: HAGHS
+                needle: true
+                severity:
+                  green: 90
+                  red: 0
+                  yellow: 75
+                type: gauge
+                unit: ' '
+              title-card-button-overlay: true
+              title-card-clickable: true
+              type: custom:expander-card
+            type: vertical-stack
+          type: vertical-stack
         conditions:
         - entity: input_boolean.show_ha_uptime
           state: 'on'
@@ -266,7 +351,7 @@ config:
             - entity: sensor.maria_db_size
               name: Maria DB Size
             font_size: 65
-            hours_to_show: 96
+            hours_to_show: 72
             line_width: 2
             points_per_hour: 2
             show:
@@ -281,7 +366,7 @@ config:
             - entity: sensor.maria_db_rows
               name: Maria DB Rows
             font_size: 65
-            hours_to_show: 96
+            hours_to_show: 72
             line_width: 2
             points_per_hour: 2
             show:
@@ -297,7 +382,7 @@ config:
               - entity: sensor.mariadb_cpu_prozent
                 name: Maria DB Cpu Usage
               font_size: 65
-              hours_to_show: 48
+              hours_to_show: 24
               line_width: 2
               points_per_hour: 1
               show:
@@ -312,7 +397,7 @@ config:
               - entity: sensor.mariadb_arbeitsspeicher_in_prozent
                 name: Maria DB Ram Usage
               font_size: 65
-              hours_to_show: 48
+              hours_to_show: 24
               line_width: 2
               points_per_hour: 1
               show:
@@ -486,38 +571,7 @@ config:
       - condition: state
         entity: binary_sensor.home_assistant_beta_release_notes_window
         state: 'on'
-    - cards:
-      - entity: sensor.system_ha_global_health_score
-        name: HAGHS
-        needle: true
-        severity:
-          green: 90
-          red: 0
-          yellow: 75
-        type: gauge
-      - content: "{% set entity_id = 'sensor.system_ha_global_health_score' %} {%\
-          \ set recommendations = state_attr(entity_id, 'recommendations') %} {% set\
-          \ z_raw = state_attr(entity_id, 'zombie_entities') | default('', true) %}\n\
-          ### \U0001F6E1\uFE0F Advisor Recommendations  {% if recommendations not\
-          \ in [none, 'unknown', 'unavailable', 'none', 'None', ''] %}\n  {{ recommendations\
-          \ }}\n{% elif states(entity_id) in ['unavailable', 'unknown'] %}\n  \u26A0\
-          \uFE0F **Error:** Health Advisor sensor is offline.\n{% else %}\n  \u2705\
-          \ System healthy. No recommendations.\n{% endif %}\n---\n{% if z_raw not\
-          \ in ['None', '', none] %}\n  {#- Process list and map to Device Names -#}\n\
-          \  {% set z_list = z_raw.split(',') | map('trim') | select('search', '\\\
-          \\.') | list %}\n  {% set ns = namespace(items=[]) %}\n  {% for eid in z_list\
-          \ %}\n    {% set d_name = device_attr(eid, 'name') | default('No Device\
-          \ / Independent', true) %}\n    {% set ns.items = ns.items + [{'entity':\
-          \ eid, 'device': d_name}] %}\n  {% endfor %}\n  {% set grouped_devices =\
-          \ ns.items | groupby('device') %}\n\n<details> <summary><b>Zombie Devices:\
-          \ {{ grouped_devices | length }}</b></summary> {% for d in grouped_devices\
-          \ %}<br> <details> <summary>{{ d[0] }}: <b>{{ d[1] | count }}</b></summary>\
-          \  {% for i in d[1] -%} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; \u2022 {{ state_attr(i.entity,\
-          \ 'friendly_name') | default(i.entity, true) }}: <b>{{ states(i.entity)\
-          \ }}</b><br> {% endfor %} </details>  {% endfor %}  </details>\n{% else\
-          \ %} \u2705 **No zombie entities detected.** {% endif %}\n"
-        type: markdown
-      type: vertical-stack
+    - type: custom:custom-component-monitor-card
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
@@ -573,12 +627,11 @@ config:
       - card:
           type: entities
         filter:
-          template: '{% set latest = states(''sensor.tasmota_newest_version'').lstrip(''v'')
-            %} {% for e in states.sensor %} {% if ''firmware_version'' in e.entity_id
-            and not e.state.startswith(latest) %} {{ e.entity_id }} {% endif %} {%
-            endfor %}
-
-            '
+          template: "{% set latest = states('sensor.tasmota_newest_version').lstrip('v')\
+            \ %} {% for e in states.sensor %}\n  {% if 'firmware_version' in e.entity_id\
+            \ \n     and e.state | lower | contains('tasmota')\n     and e.entity_id\
+            \ != 'sensor.mesh_24eb_firmware_version' \n     and not e.state.startswith(latest)\n\
+            \  %}\n    {{ e.entity_id }}\n  {% endif %}\n{% endfor %}\n"
         sort:
           method: state
         type: custom:auto-entities
@@ -889,32 +942,32 @@ config:
           loop_mode: infinite
           show_pagination: false
           type: custom:simple-swipe-card
+        - cards:
+          - entity: device_tracker.enyas_iphone
+            fill_container: true
+            layout: vertical
+            tap_action:
+              action: perform-action
+              data:
+                command: Locate Device(s) using iCloud
+                device_name: e146d7ea7dd792848fa6d8090a91ff6c
+              perform_action: icloud3.action
+              target: {}
+            type: custom:mushroom-entity-card
+          - entity: device_tracker.stephans_iphone
+            fill_container: true
+            layout: vertical
+            tap_action:
+              action: perform-action
+              data:
+                command: Locate Device(s) using iCloud
+                device_name: 3675fe049f5a257fe6eebb6533252e74
+              perform_action: icloud3.action
+              target: {}
+            type: custom:mushroom-entity-card
+          type: horizontal-stack
         - type: custom:icloud3-event-log-card
         type: vertical-stack
-      - cards:
-        - entity: device_tracker.stephans_iphone
-          fill_container: true
-          layout: vertical
-          tap_action:
-            action: perform-action
-            data:
-              command: Locate Device(s) using iCloud
-              device_name: 3675fe049f5a257fe6eebb6533252e74
-            perform_action: icloud3.action
-            target: {}
-          type: custom:mushroom-entity-card
-        - entity: device_tracker.enyas_iphone
-          fill_container: true
-          layout: vertical
-          tap_action:
-            action: perform-action
-            data:
-              command: Locate Device(s) using iCloud
-              device_name: e146d7ea7dd792848fa6d8090a91ff6c
-            perform_action: icloud3.action
-            target: {}
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
       type: grid
     title: Apple Icloud
     type: sections
@@ -924,7 +977,19 @@ config:
     path: 3d-printer
     sections:
     - cards:
-      - heading: Control
+      - badges:
+        - entity: binary_sensor.ankerctl_lauft
+          icon: mdi:printer-3d
+          name: Ankerctl
+          show_icon: true
+          show_state: true
+          state_content:
+          - name
+          - state
+          tap_action:
+            action: more-info
+          type: entity
+        heading: Control
         heading_style: title
         icon: mdi:cog
         type: heading
@@ -1209,99 +1274,109 @@ config:
                 entity_id: input_select.select_view_for_labels
             type: button
           type: horizontal-stack
+        - content: "{% set view = states('input_select.select_view_for_labels') %}\
+            \ {% set day = view.split(' ')[0] %} {% set target = 'retention_' ~ day\
+            \ ~ 'd' %} {% set all_retention = labels() | select('match', '^retention_')\
+            \ | list %}\n{# --- 1. POOL GENERATION --- #} {% set device_ents = label_devices(target)\
+            \ | map('device_entities') | sum(start=[]) %} {% set raw_pool = (label_entities(target)\
+            \ + device_ents) | unique | list %}\n{# --- 2. VALIDATION WITH OVERRIDE\
+            \ LOGIC --- #} {% set ns = namespace(final_ents=[]) %} {% for ent_id in\
+            \ raw_pool %}\n  {% if has_value(ent_id) %}\n    {% set ent_retention\
+            \ = labels(ent_id) | select('in', all_retention) | list %}\n    {% if\
+            \ ent_retention | count > 0 %}\n      {% if target in ent_retention %}\n\
+            \        {% set ns.final_ents = ns.final_ents + [ent_id] %}\n      {%\
+            \ endif %}\n    {% else %}\n      {% set dev_id = device_id(ent_id) %}\n\
+            \      {% set dev_retention = labels(dev_id) | select('in', all_retention)\
+            \ | list if dev_id is not none else [] %}\n      {% if target in dev_retention\
+            \ %}\n        {% set ns.final_ents = ns.final_ents + [ent_id] %}\n   \
+            \   {% endif %}\n    {% endif %}\n  {% endif %}\n{% endfor %}\n{# ---\
+            \ 3. DEVICE MAPPING --- #} {% set final_devices = ns.final_ents | map('device_id')\
+            \ | reject('none') | unique | list %}\n### \U0001F4CA {{ target | replace('_',\
+            \ ' ') | title }} Overview\n**Total Entities:** {{ ns.final_ents | count\
+            \ }}\n**Devices Affected:** {{ final_devices | count }}"
+          type: markdown
+          visibility:
+          - condition: not
+            conditions:
+            - condition: state
+              entity: input_select.select_view_for_labels
+              state: Rest
         - card:
             type: entities
           filter:
-            exclude: []
-            include:
-            - label: retention_1d
-              options: {}
-          show_empty: false
-          sort:
-            ignore_case: true
-            method: domain
-          type: custom:auto-entities
-          visibility:
-          - condition: state
-            entity: input_select.select_view_for_labels
-            state: 1 Day
-        - card:
-            type: entities
-          filter:
-            exclude: []
-            include:
-            - label: retention_2d
-              options: {}
-          show_empty: false
-          sort:
-            ignore_case: true
-            method: domain
-          type: custom:auto-entities
-          visibility:
-          - condition: state
-            entity: input_select.select_view_for_labels
-            state: 2 Day
-        - card:
-            type: entities
-          filter:
-            exclude: []
-            include:
-            - label: retention_3d
-              options: {}
-          show_empty: false
-          sort:
-            ignore_case: true
-            method: domain
-          type: custom:auto-entities
-          visibility:
-          - condition: state
-            entity: input_select.select_view_for_labels
-            state: 3 Day
-        - card:
-            type: entities
-          filter:
-            exclude: []
-            include:
-            - label: retention_7d
-              options: {}
-          show_empty: false
-          sort:
-            ignore_case: true
-            method: domain
-          type: custom:auto-entities
-          visibility:
-          - condition: state
-            entity: input_select.select_view_for_labels
-            state: 7 Day
-        - card:
-            type: entities
-          filter:
-            exclude:
-            - label: retention_1d
-              options: {}
-            - label: retention_2d
-              options: {}
-            - label: retention_3d
-              options: {}
-            - label: retention_7d
-              options: {}
-            - entity_id: switch.schedule*
-              options: {}
-            - entity_id: '*.bodypetscale*'
-              options: {}
-            - entity_id: '*.*battery_plus|battery_type|battery_replaced|battery_last_replaced*'
-              options: {}
-            - entity_id: light.|switch.|number.|ai_task.|device_tracker.|person.|automation.|assist_satellite.|button.|calendar.|camera.|conversation.|datetime.|event.|image.|lock.|input_select.|input_text.|plant.|scene.|script.|select.|siren.|sun.|time.|todo.|update.|vacuum.|weather.|zone.|sensor.known_power|sensor.known_energy|sensor.unmonitored|sensor.unmonitored_consumption|sensor.exclude_from_power_ranking|sensor.power_consumption_ranking|sensor.grid_import|sensor.grid_export|sensor.grid_export_negative|sensor.smart_meter_mqtt_data|sensor.grid_consumption|sensor.grid_production|sensor.smart_meter_mqtt_grid_power|sensor.tibber_bridge_0100100700ff|sensor.energy_summary_1st_block|sensor.energy_summary_1st_block_2|sensor.appliance_used|sensor.id_4_remaining_charging_time|sensor.zoe_remaining_charging_time|sensor.vw_status|sensor.zoe_status|sensor.total_print_time|sensor.remaining_time|sensor.elapsed_time|sensor.finish_time|sensor.wind_direction|sensor.speedtest_last_run|sensor.solar_forecast_text_tomorrow|sensor.solar_forecast_text_today|sensor.boiler_remaining_time|sensor.*uptime*|sensor.herd_ct_klemme_zigbee_power_a|sensor.herd_ct_klemme_zigbee_power_b|sensor.system_monitor_letzter_start|sensor.go_echarger_252682_nrg|sensor.go_echarger_270862_nrg|automation.publish_to_mqtt_grid_export|sensor.stephans_iphone_next_update|sensor.enyas_iphone_next_update|sensor.stephans_iphone_travel_time_hhmm|sensor.enyas_iphone_travel_time_hhmm|sensor.stephans_iphone_arrival_time|sensor.enyas_iphone_arrival_time|sensor.enyas_iphone_last_update|sensor.enyas_iphone_last_located|sensor.stephans_iphone_last_located|sensor.stephans_iphone_last_update|sensor.enyas_iphone_info|sensor.stephans_iphone_info|sensor.papa_to_arbeit_travel_time|binary_sensor.show_papa_travel_dashboard|sensor.forecast_text|sensor.remainingtototalforecast|automation.15s_ping_update|sensor.pool_pumpe_energy_power|sensor.stadt_rauenberg_vorwarnstufe|sensor.stadt_rauenberg_aktuelle_warnstufe|sensor.evs_home_and_ready_to_charge|sensor.issues|sensor.ignored_issues|sensor.active_issues|sensor.icloud3_event_log|sensor.icloud3_wazehist_track|sensor.kellervorrate_combined_filtered_items|sensor.kellervorrate_combined_filtered_items_hash|switch.153931628718174_prompt_tone|binary_sensor.water_monitor_low_flow_leak|sensor.home_assistant_beta_release_notes|sensor.cudy_data_sent|sensor.cudy_data_received|sensor.cudy_router_betriebszeit|sensor.dreamebot_d10_plus_*.|sensor.d9_max_white_*.|sensor.dwd_weather_warnings_*.|sensor.192_168_2_205_*.|sensor.*_rssi|sensor.*signal|sensor.*_signal_db|sensor.1st_max*.|sensor.2nd_max_*.|sensor.m2101k6g*.|sensor.m2010j19cg*.|sensor.24069pc21g*.|sensor.redmi_note_8t*.|sensor.fp4*.|sensor.mi_9t*.|sensor.poco_f6_*.|sensor.iphone_von_*.|sensor.*_firmware_version|sensor.*build|sensor.irauen33*.|sensor.localhost_*.*|sensor.*uptime|sensor.*linkquality|sensor.everything_presence_lite_f1c0d0|sensor.tasmota_newest_version|sensor.openbk7231t_app_newest_version|binary_sensor.upcoming_birthdays|sensor.voltage_l*|sensor.local_ip*
-              options: {}
-            include:
-            - entity_id: '*'
-              options: {}
+            template: "{%- set view = states('input_select.select_view_for_labels')\
+              \ -%}\n{%- set all_retention = labels() | select('match', '^retention_')\
+              \ | list -%}\n\n{%- if view == 'Rest' -%}\n  {# 1. PRE-CALCULATE ALL\
+              \ COVERED ENTITIES #}\n  {%- set ns_covered = namespace(entities=[])\
+              \ -%}\n  {%- for label in all_retention -%}\n    {%- set ns_covered.entities\
+              \ = ns_covered.entities + label_entities(label) -%}\n    {%- set device_ents\
+              \ = label_devices(label) | map('device_entities') | sum(start=[]) -%}\n\
+              \    {%- set ns_covered.entities = ns_covered.entities + device_ents\
+              \ -%}\n  {%- endfor -%}\n  {%- set covered_set = ns_covered.entities\
+              \ | unique | list -%}\n\n  {# 2. Ignore domains handled by Recorder\
+              \ defaults or UI helpers #}\n  {%- set ignore_domains = ['light', 'switch',\
+              \ 'number', 'ai_task', 'device_tracker', 'person', 'automation', 'assist_satellite',\
+              \ 'button', 'calendar', 'camera', 'conversation', 'datetime', 'event',\
+              \ 'image', 'lock', 'input_select', 'input_text', 'plant', 'scene', 'script',\
+              \ 'select', 'siren', 'sun', 'time', 'todo', 'update', 'vacuum', 'weather',\
+              \ 'zone', 'input_number', 'input_boolean', 'input_datetime', 'input_button',\
+              \ 'notify'] -%}\n\n  {# 3. Regex: Matches wachstumsmedium AND any scheduled\
+              \ (geplante/geplantes) attributes #}\n  {%- set exclude_pattern = '^(sensor\\\
+              ..*_(wachstumsmedium|geplante_.*|geplantes_.*).*|sensor\\.known_power|sensor\\\
+              .known_energy|sensor\\.unmonitored|sensor\\.unmonitored_consumption|sensor\\\
+              .exclude_from_power_ranking|sensor\\.power_consumption_ranking|sensor\\\
+              .grid_import|sensor\\.grid_export|sensor\\.grid_export_negative|sensor\\\
+              .smart_meter_mqtt_data|sensor\\.grid_consumption|sensor\\.grid_production|sensor\\\
+              .smart_meter_mqtt_grid_power|sensor\\.tibber_bridge_0100100700ff|sensor\\\
+              .energy_summary_1st_block|sensor\\.energy_summary_1st_block_2|sensor\\\
+              .appliance_used|sensor\\.tavascan_remaining_charging_time|sensor\\.zoe_remaining_charging_time|sensor\\\
+              .tavascan_status|sensor\\.zoe_status|sensor\\.mg4_status|sensor\\.total_print_time|sensor\\\
+              .remaining_time|sensor\\.elapsed_time|sensor\\.finish_time|sensor\\\
+              .wind_direction|sensor\\.speedtest_last_run|sensor\\.solar_forecast_text_tomorrow|sensor\\\
+              .solar_forecast_text_today|sensor\\.boiler_remaining_time|sensor\\..*uptime.*|sensor\\\
+              .herd_ct_klemme_zigbee_power_a|sensor\\.herd_ct_klemme_zigbee_power_b|sensor\\\
+              .system_monitor_letzter_start|sensor\\.go_echarger_252682_nrg|sensor\\\
+              .go_echarger_270862_nrg|automation\\.publish_to_mqtt_grid_export|sensor\\\
+              .stephans_iphone_next_update|sensor\\.enyas_iphone_next_update|sensor\\\
+              .stephans_iphone_travel_time_hhmm|sensor\\.enyas_iphone_travel_time_hhmm|sensor\\\
+              .stephans_iphone_arrival_time|sensor\\.enyas_iphone_arrival_time|sensor\\\
+              .enyas_iphone_last_update|sensor\\.enyas_iphone_last_located|sensor\\\
+              .stephans_iphone_last_located|sensor\\.stephans_iphone_last_update|sensor\\\
+              .enyas_iphone_info|sensor\\.stephans_iphone_info|sensor\\.papa_to_arbeit_travel_time|binary_sensor\\\
+              .show_papa_travel_dashboard|sensor\\.forecast_text|sensor\\.remainingtototalforecast|automation\\\
+              .15s_ping_update|sensor\\.pool_pumpe_energy_power|sensor\\.stadt_rauenberg_vorwarnstufe|sensor\\\
+              .stadt_rauenberg_aktuelle_warnstufe|sensor\\.evs_home_and_ready_to_charge|sensor\\\
+              .issues|sensor\\.ignored_issues|sensor\\.active_issues|sensor\\.icloud3_event_log|sensor\\\
+              .icloud3_wazehist_track|sensor\\.kellervorrate_combined_filtered_items|sensor\\\
+              .kellervorrate_combined_filtered_items_hash|switch\\.153931628718174_prompt_tone|sensor\\\
+              .home_assistant_beta_release_notes|sensor\\.cudy_data_sent|sensor\\\
+              .cudy_data_received|sensor\\.cudy_router_betriebszeit|sensor\\.dreamebot_d10_plus_.*|sensor\\\
+              .d9_max_white_.*|sensor\\.dwd_weather_warnings_.*|sensor\\.192_168_2_205_.*|sensor\\\
+              ..*_rssi|sensor\\..*signal|sensor\\..*_signal_db|sensor\\.1st_max.*|sensor\\\
+              .2nd_max_.*|sensor\\.m2101k6g.*|sensor\\.m2010j19cg.*|sensor\\.24069pc21g.*|sensor\\\
+              .redmi_note_8t.*|sensor\\.fp4.*|sensor\\.mi_9t.*|sensor\\.poco_f6_.*|sensor\\\
+              .iphone_von_.*|sensor\\..*_firmware_version|sensor\\..*build|sensor\\\
+              .irauen33.*|sensor\\.localhost_.*|sensor\\..*uptime|sensor\\..*linkquality|sensor.everything_presence_lite_f1c0d0_*|sensor\\\
+              .tasmota_newest_version|sensor\\.openbk7231t_app_newest_version|binary_sensor\\\
+              .upcoming_birthdays|sensor\\.voltage_l.*|sensor\\.local_ip.*|switch\\\
+              .schedule.*|.*\\.bodypetscale.*|.*(battery_plus|battery_type|battery_replaced|battery_last_replaced).*)$'\
+              \ -%}\n\n  {%- set ns = namespace(final=[]) -%}\n  {%- for ent_state\
+              \ in states -%}\n    {%- set ent_id = ent_state.entity_id -%}\n    {%-\
+              \ if ent_state.domain not in ignore_domains and not ent_id | regex_search(exclude_pattern)\
+              \ -%}\n      {%- if ent_id not in covered_set -%}\n        {%- set ns.final\
+              \ = ns.final + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n\
+              \  {%- endfor -%}\n  {{- ns.final -}}\n{%- else -%}\n  {%- set day =\
+              \ view.split(' ')[0] -%}\n  {%- set target = 'retention_' ~ day ~ 'd'\
+              \ -%}\n  {%- set device_ents = label_devices(target) | map('device_entities')\
+              \ | sum(start=[]) -%}\n  {%- set raw_pool = (label_entities(target)\
+              \ + device_ents) | unique | list -%}\n  {%- set ns = namespace(final=[])\
+              \ -%}\n  {%- for ent_id in raw_pool -%}\n    {%- if has_value(ent_id)\
+              \ -%}\n      {%- if not labels(ent_id) | select('in', all_retention)\
+              \ | reject('eq', target) | list -%}\n        {%- set ns.final = ns.final\
+              \ + [ent_id] -%}\n      {%- endif -%}\n    {%- endif -%}\n  {%- endfor\
+              \ -%}\n  {{- ns.final -}}\n{%- endif -%}"
           show_empty: false
           type: custom:auto-entities
-          visibility:
-          - condition: state
-            entity: input_select.select_view_for_labels
-            state: Rest
         type: vertical-stack
       type: grid
     title: DB Purge

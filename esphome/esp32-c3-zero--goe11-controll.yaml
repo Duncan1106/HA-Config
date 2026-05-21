@@ -4,7 +4,7 @@ substitutions:
   max_amps: "16"
   variant: "11kW"
   main_topic: "go-eCharger/270862/"
-  fallback_ap: "Esp32-C3-Mini--Goe11kw-Controll"
+  fallback_ap: "Esp32-C3-Zero--Goe11kw-Controll"
   charger_ip: "192.168.2.202"
 
 wifi:
@@ -34,10 +34,8 @@ wifi:
     password: !secret ap_password
 
 esphome:
-  name: "esp32-c3-mini--goe11-controll"
-  friendly_name: "esp32 c3 mini - goe11-controll"
-  platformio_options:
-    board_build.flash_mode: dio
+  name: "esp32-c3-zero--goe11-controll"
+  friendly_name: esp32 c3 zero - goe11-controll
   on_boot: 
     priority: -100.0
     then:
@@ -45,12 +43,11 @@ esphome:
           id: blink_led
           repeat_count: 3
       - delay: 5s
-      - button.press: 
+      - button.press:
           id: refresh_fsp
 
 esp32:
   board: esp32-c3-devkitm-1
-  variant: ESP32C3
   framework:
     type: arduino
 
@@ -75,7 +72,7 @@ mqtt:
   username: !secret mqtt_user
   password: !secret mqtt_pwd
   discovery: true
-  client_id: goe11_controll
+  client_id: c3_zero_goe11_controll
   id: broker
 
 http_request:
@@ -91,17 +88,13 @@ sun:
   latitude: !secret latitude
   longitude: !secret longitude
   
-output:
-  - platform: gpio
-    pin: 
-      number: GPIO8
-      inverted: true
-      ignore_strapping_warning: true
-    id: led_status
-
 light:
-  - platform: binary
-    output: led_status
+  - platform: esp32_rmt_led_strip
+    pin: GPIO10
+    id: led_status
+    chipset: WS2812
+    rgb_order: RGB
+    num_leds: 1
     name: Status LED ${variant}
 
 binary_sensor:
@@ -110,7 +103,7 @@ binary_sensor:
     id: status_connected
     on_release: 
       then:
-        - delay:
+        - delay: 
             minutes: 5
         - if:
             condition:
@@ -119,13 +112,6 @@ binary_sensor:
               - button.press: restart_btn
 
 button:
-  - platform: output
-    internal: true
-    duration: 250ms
-    output: led_status
-    name: Flash LED ${variant}
-    id: led_flash
-
   - platform: restart
     id: restart_btn
     name: Restart ${variant} Controll
@@ -189,9 +175,9 @@ switch:
 
 number:
   - platform: template
-    min_value: -1
+    min_value: 0
     max_value: 10
-    initial_value: -1
+    initial_value: 0
     restore_value: true
     id: card_zoe
     name: RFID Card Zoe ${variant}
@@ -295,12 +281,6 @@ number:
             condition:
               - lambda: return id(amps).state != id(feedback_amps).state;
             then:
-              - script.execute: 
-                  id: log_txt_queued
-                  log_text: !lambda |-
-                    char text_amps[200];
-                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
-                    return ((std::string) text_amps).c_str();
               - mqtt.publish: 
                   id: broker
                   topic: ${main_topic}amp/set
@@ -308,6 +288,12 @@ number:
                     // Convert the float value to uint8_t
                     uint8_t amps_uint8 = static_cast<uint8_t>(round(x));
                     return to_string(amps_uint8);
+              - script.execute: 
+                  id: log_txt_queued
+                  log_text: !lambda |-
+                    char text_amps[200];
+                    sprintf(text_amps, "Set Amps from %.0fA to %.0fA", id(feedback_amps).state, x);
+                    return ((std::string) text_amps).c_str();
               - delay: 500ms
 
 text_sensor:
@@ -343,8 +329,8 @@ text_sensor:
     id: goe_nrg_txt
     name: Goe Charger Power Text ${variant}
     internal: true
-    filters:
-      - substitute:
+    filters: 
+      - substitute: 
         - "[->"
         - "]->"
       - lambda: |-
@@ -352,15 +338,16 @@ text_sensor:
           size_t start = 0;
           size_t end = raw.find(',');
 
+          // Guard: Bail if we don't even have a first comma
           if (end == std::string::npos) {
             return x;
           }
-
           // Publish the 0th element (voltage, L1)
           {
             std::string voltage_str = raw.substr(start, end - start);
             char* endptr;
             float val = std::strtof(voltage_str.c_str(), &endptr);
+            // Verify conversion actually happened
             if (endptr != voltage_str.c_str()) {
               id(goe_voltage).publish_state(val);
             }
@@ -370,12 +357,13 @@ text_sensor:
           for (int i = 0; i < 10; i++) {
             end = raw.find(',', start);
             if (end == std::string::npos) {
-              return x;
+              return x; // Return original payload if index 11 doesn't exist
             }
             start = end + 1;
           }
           // Publish the 11th element (total power)
           {
+            // strtof will stop at the first comma in the remaining string
             std::string power_str = raw.substr(start);
             char* endptr;
             float val = std::strtof(power_str.c_str(), &endptr);
@@ -519,9 +507,8 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
-      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return ((id(grid_power).state - id(buffer_power).state) / id(goe_voltage).state);
-  
+
   - platform: copy
     source_id: available_battery_power
     id: available_battery_amps
@@ -531,7 +518,6 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
-          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return (id(available_battery_power).state / id(goe_voltage).state);
 
   - platform: copy
@@ -543,7 +529,6 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
-          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(solar_power).state / id(goe_voltage).state;
 
   - platform: copy
@@ -555,7 +540,6 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
-          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(battery_discharge_power).state / id(goe_voltage).state;
 
   - platform: template
@@ -598,7 +582,6 @@ sensor:
     update_interval: 1s
     internal: true
     lambda: |-
-      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return id(goe_power).state / id(goe_voltage).state;
 
   - platform: template
@@ -609,7 +592,6 @@ sensor:
     internal: true
     update_interval: 1s
     lambda: |-
-      if (std::isnan(id(goe_amp_divider).state) || id(goe_amp_divider).state == 0.0f) return {};
       return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 
@@ -693,12 +675,14 @@ script:
       - repeat: 
           count: !lambda return repeat_count;
           then:
-            - button.press: led_flash
+            - light.turn_on: led_status
+            - delay: 250ms
+            - light.turn_off: led_status
             - if:
                 condition:
                   lambda: return iteration < (repeat_count - 1);
                 then:
-                  - delay: 750ms
+                  - delay: 500ms
   - id: stop_charging
     mode: single
     then:

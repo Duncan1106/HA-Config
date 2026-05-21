@@ -81,7 +81,7 @@ fi
 case "$TYPE" in
   hourly)
     PATTERN="HourlyBackup*.tar"
-    MTIME="+3"
+    MTIME="+2"
     ;;
   daily)
     PATTERN="DailyBackup*.tar"
@@ -89,11 +89,11 @@ case "$TYPE" in
     ;;
   weekly)
     PATTERN="WeeklyBackup*.tar"
-    MTIME="+60"
+    MTIME="+45"
     ;;
   monthly)
     PATTERN="MonthlyBackup*.tar"
-    MTIME="+120"
+    MTIME="+90"
     ;;
   *)
     echo "ERROR: invalid backup type '$TYPE'" >&2
