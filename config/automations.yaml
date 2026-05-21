@@ -1936,11 +1936,13 @@
     - action: notify.duncan
       metadata: {}
       data:
-        title: Pool Night Temperature Loss
+        title: Pool Nacht Temperature Verlust
         data:
           tag: pool_loss_night
-        message: '{{ (states(''input_number.pool_temp_start'') | float(0) - states(''input_number.pool_temp_stop'')
-          | float(0)) | round(2) }}°C'
+        message: 'Verlust: {{ (states(''input_number.pool_temp_start'') | float(0)
+          - states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C
+
+          Jetzt: {{ states(''input_number.pool_temp_start'')}}°C'
     - action: automation.turn_on
       metadata: {}
       data: {}
@@ -1999,11 +2001,13 @@
     - action: notify.duncan
       metadata: {}
       data:
-        title: Pool Night Temperature Loss
+        title: Pool Nacht Temperature Verlust
         data:
           tag: pool_loss_night
-        message: '{{ (states(''input_number.pool_temp_start'') | float(0) - states(''input_number.pool_temp_stop'')
-          | float(0)) | round(2) }}°C'
+        message: 'Verlust: {{ (states(''input_number.pool_temp_start'') | float(0)
+          - states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C
+
+          Jetzt: {{ states(''input_number.pool_temp_start'')}}°C'
     - action: automation.turn_on
       metadata: {}
       data: {}
@@ -2153,9 +2157,13 @@
       - action: notify.duncan
         metadata: {}
         data:
-          message: Extend caused {{ (states('sensor.pool_temperature_zigbee_temperature')
-            | float(0) - states('input_number.pool_temp_stop') | float(0)) | round(2)
-            }}°C
+          message: 'Verlängerung hat {{ (states(''sensor.pool_temperature_zigbee_temperature'')
+            | float(0) - states(''input_number.pool_temp_stop'') | float(0)) | round(2)
+            }}°C gebracht, der Pool ist bei {{ states(''sensor.pool_temperature_zigbee_temperature'')
+            | float(0) }}
+
+            '
+          title: Pool Laufzeit Verlängerung
     - delay:
         hours: 0
         minutes: 0
@@ -2227,22 +2235,25 @@
         minutes: 0
         seconds: 0
         milliseconds: 100
-    - if:
+    - alias: Notify once for Temperature Change
+      if:
       - condition: state
         entity_id: input_boolean.stop_pool
         state: 'on'
       then:
-      - action: notify.duncan
-        alias: Notify of Temperature Change
+      - alias: Notify of Temperature Change
+        action: notify.duncan
         data:
-          title: Pool Temperature Change
+          title: Pool Temperature Veränderung
           data:
             tag: pool_temp_diff
-          message: '{%- set start = states(''input_number.pool_temp_start'') | float(0)
-            -%} {%- set stop = states(''input_number.pool_temp_stop'') | float(0)
-            -%} {%- set diff = (stop - start) | round(2) -%} {{ ''+'' if diff > 0
-            else ''-'' }}{{ diff | abs }}°C'
-      alias: Notify once for Temperature Change
+          message: 'Heute: {%- set start = states(''input_number.pool_temp_start'')
+            | float(0) -%} {%- set stop = states(''input_number.pool_temp_stop'')
+            | float(0) -%} {%- set diff = (stop - start) | round(2) -%} {{ ''+'' if
+            diff > 0 else ''-'' }}{{ diff | abs }}°C
+
+            Ende: {{ states(''sensor.pool_temperature_zigbee_temperature'') | float(0)
+            }}°C'
     - action: input_boolean.turn_off
       metadata: {}
       data: {}
@@ -13613,7 +13624,7 @@
           %}\n  {% set active = namespace(found=false) %}\n  {% for slot in sched[day]
           if slot.enabled %}\n    {% if slot.starttime < now_time <= slot.endtime
           %}\n      {% set active.found = true %}\n    {% endif %}\n  {% endfor %}\n
-          \ {{ active.found and states('sensor.shawn_rasenmaher_status') in ['standby']
+          \ {{ active.found and is_state('sensor.shawn_rasenmaher_status','standby')
           and battery > 99 and is_state('sensor.shawn_regensensor', 'dry') }}\n{%
           else %}\n  false \n{% endif %}\n"
     - alias: Lost, Offline, Low Battery or Error
