@@ -13776,58 +13776,76 @@
   max: 14
 - id: '1779543503925'
   alias: 'Rollos: Sonnenintensität Benachrichtigungen'
-  description: Sendet minimale Benachrichtigungen zum Öffnen oder Schließen der Rollos
-    basierend auf Sonnenposition und globaler Intensität.
+  description: Triggers notifications to lower/raise rollos based on sun alignment
+    (>50%) and solar radiation.
   triggers:
-  - entity_id:
-    - sensor.sun_wall_intensity_front
-    - sensor.sun_wall_intensity_left
-    - sensor.sun_wall_intensity_back
-    - sensor.sun_wall_intensity_right
-    above: 50
-    id: action_lower
-    trigger: numeric_state
-  - entity_id:
-    - sensor.sun_wall_intensity_front
-    - sensor.sun_wall_intensity_left
-    - sensor.sun_wall_intensity_back
-    - sensor.sun_wall_intensity_right
-    below: 20
-    id: action_raise
-    trigger: numeric_state
+  - value_template: '{{ states(''sensor.sun_wall_intensity_front'') | float(0) > 50
+      and states(''sensor.gw1100a_solar_radiation'') | float(0) >= 400 }}'
+    id: lower_front
+    trigger: template
+    alias: Vorne zu
+  - alias: Ost zu
+    value_template: '{{ states(''sensor.sun_wall_intensity_left'') | float(0) > 50
+      and states(''sensor.gw1100a_solar_radiation'') | float(0) >= 400 }}'
+    id: lower_left
+    trigger: template
+  - value_template: '{{ states(''sensor.sun_wall_intensity_back'') | float(0) > 50
+      and states(''sensor.gw1100a_solar_radiation'') | float(0) >= 400 }}'
+    id: lower_back
+    trigger: template
+    alias: 'Hinten zu '
+  - value_template: '{{ states(''sensor.sun_wall_intensity_right'') | float(0) > 50
+      and states(''sensor.gw1100a_solar_radiation'') | float(0) >= 400 }}'
+    id: lower_right
+    trigger: template
+    alias: West zu
+  - value_template: '{{ states(''sensor.sun_wall_intensity_front'') | float(0) < 20
+      }}'
+    id: raise_front
+    trigger: template
+    alias: Vorne auf
+  - value_template: '{{ states(''sensor.sun_wall_intensity_left'') | float(0) < 20
+      }}'
+    id: raise_left
+    trigger: template
+    alias: Ost auf
+  - value_template: '{{ states(''sensor.sun_wall_intensity_back'') | float(0) < 20
+      }}'
+    id: raise_back
+    trigger: template
+    alias: 'Hinten auf '
+  - value_template: '{{ states(''sensor.sun_wall_intensity_right'') | float(0) < 20
+      }}'
+    id: raise_right
+    trigger: template
+    alias: West auf
   actions:
   - variables:
+      trigger_parts: '{{ trigger.id.split(''_'') }}'
+      action_type: '{{ trigger_parts[0] }}'
+      side_key: '{{ trigger_parts[1] }}'
       side_map:
-        sensor.sun_wall_intensity_front:
-          name: Vorne
-        sensor.sun_wall_intensity_left:
-          name: Ost
-        sensor.sun_wall_intensity_back:
-          name: Hinten
-        sensor.sun_wall_intensity_right:
-          name: KiGa/West
-      friendly_name: '{{ side_map[trigger.entity_id].name }}'
-      global_solar_sensor: sensor.gw1100a_solar_radiation
-      global_solar_threshold: 400
+        front: Vorne
+        left: Ostseite
+        back: Hinten
+        right: KiGa/Westseite
+      friendly_name: '{{ side_map[side_key] }}'
   - choose:
     - conditions:
-      - condition: trigger
-        id: action_lower
       - condition: template
-        value_template: '{{ states(global_solar_sensor) | float(0) >= global_solar_threshold
-          }}'
+        value_template: '{{ action_type == ''lower'' }}'
       sequence:
       - action: notify.duncan
         data:
           title: '{{ friendly_name }}'
-          message: Rollo runter
+          message: Rollo schließen
     - conditions:
-      - condition: trigger
-        id: action_raise
+      - condition: template
+        value_template: '{{ action_type == ''raise'' }}'
       sequence:
       - action: notify.duncan
         data:
           title: '{{ friendly_name }}'
-          message: Rollo hoch
+          message: Rollo öffnen
   mode: parallel
   max: 10
