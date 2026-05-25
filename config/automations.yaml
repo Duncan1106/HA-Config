@@ -10729,44 +10729,59 @@
   max_exceeded: silent
 - id: '1763832773682'
   alias: Daily Garage & Gartenhaus Temperature Notification
-  description: "\n  ## \U0001F321️ Daily Mama Temperature Notification\n\n  ### \U0001F4CB
-    **Automated Temperature Snapshot for Key Areas**\n\n  This automation sends a
-    daily **14:00 temperature update** summarizing both the **current temperature**
-    and the **lowest temperature measured in the last 24 hours** for important monitored
-    locations.  \n  It ensures a consistent daily overview of temperature trends without
-    requiring manual checking.\n\n  ---\n\n  ### ⏱ **Trigger Overview**\n\n  | Trigger
-    | Description | ID |\n  |--------|-------------|----|\n  | `14:00` | Daily report
-    time | daily_temperature_trigger |\n\n  ---\n\n  ### ✅ **Logic Summary**\n\n  -
-    Runs exactly once per day at 14:00.\n  - Gathers the current temperature and the
-    minimum temperature in the last 24 hours for two monitored areas.\n  - Formats
-    the values neatly in a push notification.\n  - Sends the notification to the FP4
-    mobile device using Home Assistant's mobile notify service.\n\n  ---\n\n  ###
-    ⚙️ **Action Workflow**\n\n  #### Temperature Data Collection\n  - Reads the **current
-    temperature** from:\n    - `sensor.t_h_garage_zigbee_temperature` (Garage)\n    -
-    `sensor.esp32_c3_zero_epever_bme280_temperature` (Gartenhaus / EPEver Node)\n\n
-    \ - Reads the **minimum temperatures** from the last 24 hours via:\n    - `sensor.temperatur_min`\n
-    \   - `sensor.bme280_temperature_min`\n\n  - Each value is rounded to 2 decimal
-    places and gracefully falls back to `0` if unavailable.\n\n  #### Notification
-    Delivery\n  - Constructs a structured message including:\n    - Area names (resolved
-    dynamically via `area_name()`)\n    - Current temperature\n    - Minimum temperature
-    \ \n  - Sends the notification using:\n    - `notify.mobile_app_fp4`\n  - Adds
-    a unique tag: `daily_temperature_garage_gartenhaus`  \n    (ensures newer updates
-    replace older ones rather than stacking)\n\n  ---\n\n  ### \U0001F527 **Technical
-    Details**\n\n  - **Mode:** `single`  \n    Prevents overlapping notifications
-    if HA restarts around 14:00.\n  - **Sensors Included:**  \n    - Garage Zigbee
-    T/H sensor  \n    - ESP32-C3 EPEver BME280 temperature sensor  \n    - Min-temp
-    helper sensors for each area\n  - **Notification Target:**  \n    - `mobile_app_fp4`\n\n
-    \ ---\n\n  ### \U0001F324️ **Design Notes**\n\n  - Provides a simple, reliable
-    daily temperature overview for outdoor or utility zones.\n  - Uses area names
-    dynamically so messages remain correct even if devices move.\n  - The minimum-temperature
-    tracking allows spotting cold nights or unexpected drops.\n  - Clean formatting
-    enhances readability in the mobile app."
+  description: "### \U0001F4CB Intelligent Climate Monitoring Control\n\n- **High-Level
+    Intent**: Dispatches a detailed localized temperature report to designated mobile
+    devices when near-freezing or low-temperature conditions are detected in the external
+    structures.\n- **Operational Strategy**: Condition-gated time schedule. The system
+    evaluates temperature boundaries daily at a fixed time, ensuring alerts are only
+    generated when critical low thresholds are met rather than spamming daily updates.\n-
+    **Reliability Mechanisms**: Employs Jinja2 safe-floating filters (`float(0)`)
+    with fallback defaults to prevent automation termination or template rendering
+    failures if a sensor is offline. It utilizes a multi-device target array to ensure
+    redundant delivery.\n\n---\n\n### Trigger Overview\n\n| Type | Entity / Condition
+    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time | **14:00:00** | *None*
+    | Initiates the daily check for out-of-bounds low temperatures. |\n\n---\n\n###
+    Operational Logic Sections\n\n#### Daily Low-Temperature Check\n- **Purpose**:
+    Evaluates structural temperatures during the warmest part of the day and alerts
+    users if conditions are critically low.\n- **Logic Overview**: Executes only if
+    **sensor.temperatur_min** drops **below 5** OR **sensor.bme280_temperature_min**
+    drops **below 5**.\n- **Effect**: Transmits a formatted message to **notify.fp4**
+    and **notify.stephan_iphone** containing the current and 24-hour minimum temperatures
+    for both the Garage and Gartenhaus.\n\n---\n\n### Technical Overview\n\n- **Automation
+    Mode**: **single**\n- **Execution Method**: Direct call to the **notify.send_message**
+    action.\n- **Key Inputs**:\n  - **sensor.temperatur_min** (Minimum Garage temperature
+    trigger/state)\n  - **sensor.bme280_temperature_min** (Minimum Gartenhaus temperature
+    trigger/state)\n  - **sensor.t_h_garage_zigbee_temperature** (Current Garage temperature)\n
+    \ - **sensor.esp32_c3_zero_epever_bme280_temperature** (Current Gartenhaus temperature)\n-
+    **Controlled Entities**:\n  - **notify.fp4**\n  - **notify.stephan_iphone**\n-
+    **Safety Mechanisms**: An `or` conditional block filters out normal operating
+    temperatures, preventing notification fatigue by executing the notification block
+    *only* when a threshold **below 5** is verified on at least one sensor.\n\n---\n\n###
+    \U0001F4A1 Notes\n\n- **Dynamic Metadata**: The notification utilizes the `area_name()`
+    template function to dynamically derive location names based on the system configuration,
+    defaulting to **Garage** and **Gartenhaus** if the entities are moved or unassigned.\n-
+    **Data Hardening**: Numerical values are rounded to two decimal places (`round(2)`)
+    for clean formatting, and wrapped in defensive casting to handle unknown or unavailable
+    states gracefully without crashing the automation engine.\n"
   triggers:
   - trigger: time
     at: '14:00:00'
-  conditions: []
+  conditions:
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: sensor.temperatur_min
+      below: 5
+    - condition: numeric_state
+      entity_id: sensor.bme280_temperature_min
+      below: 5
   actions:
-  - action: notify.mobile_app_fp4
+  - action: notify.send_message
+    metadata: {}
+    target:
+      entity_id:
+      - notify.fp4
+      - notify.stephan_iphone
     data:
       title: Temperatur-Update
       message: "{{ area_name('sensor.t_h_garage_zigbee_temperature') | default('Garage')
@@ -10776,20 +10791,6 @@
         | default('Gartenhaus') }}:\n  - Aktuell: {{ states('sensor.esp32_c3_zero_epever_bme280_temperature')
         | float(0) | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.bme280_temperature_min')
         | float(0) | round(2) }} °C"
-      data:
-        tag: daily_temperature_garage_gartenhaus
-  - action: notify.mobile_app_stephan_iphone
-    data:
-      title: Temperatur-Update
-      message: "{{ area_name('sensor.t_h_garage_zigbee_temperature') | default('Garage')
-        }}:\n  - Aktuell: {{ states('sensor.t_h_garage_zigbee_temperature') | float(0)
-        | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.temperatur_min') |
-        float(0) | round(2)}} °C\n\n{{ area_name('sensor.esp32_c3_zero_epever_bme280_temperature')
-        | default('Gartenhaus') }}:\n  - Aktuell: {{ states('sensor.esp32_c3_zero_epever_bme280_temperature')
-        | float(0) | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.bme280_temperature_min')
-        | float(0) | round(2) }} °C"
-      data:
-        tag: daily_temperature_garage_gartenhaus
   mode: single
 - id: '1764102977901'
   alias: Adjust Battery Energy Target based on Today's Consumption
