@@ -802,43 +802,44 @@
         data:
           tag: summary_sunset
       action: notify.duncan
-  - alias: 'Message midnight '
-    if:
-    - condition: trigger
-      id:
-      - Day End
-    - condition: state
-      entity_id: input_boolean.automation_enable_midnight
-      state: 'on'
-    then:
-    - data:
-        title: Daily Energy Summary
-        message: '{{ states(''sensor.energy_summary_1st_block'') }}
+  - parallel:
+    - alias: 'Message midnight '
+      if:
+      - condition: trigger
+        id:
+        - Day End
+      - condition: state
+        entity_id: input_boolean.automation_enable_midnight
+        state: 'on'
+      then:
+      - data:
+          title: Daily Energy Summary
+          message: '{{ states(''sensor.energy_summary_1st_block'') }}
 
 
-          {{ states(''sensor.energy_summary_1st_block_2'') }}
+            {{ states(''sensor.energy_summary_1st_block_2'') }}
 
-          '
-        data:
-          tag: summary_midnight
-      action: notify.duncan
-  - alias: Appliances
-    if:
-    - condition: trigger
-      id:
-      - Day End
-    - condition: state
-      entity_id: input_boolean.automation_enable_appliance
-      state: 'on'
-    then:
-    - data:
-        title: 'Appliance Summary:'
-        message: '{{ states(''sensor.appliance_used'') }}
+            '
+          data:
+            tag: summary_midnight
+        action: notify.duncan
+    - alias: Appliances
+      if:
+      - condition: trigger
+        id:
+        - Day End
+      - condition: state
+        entity_id: input_boolean.automation_enable_appliance
+        state: 'on'
+      then:
+      - data:
+          title: 'Appliance Summary:'
+          message: '{{ states(''sensor.appliance_used'') }}
 
-          '
-        data:
-          tag: appliances
-      action: notify.duncan
+            '
+          data:
+            tag: appliances
+        action: notify.duncan
   - alias: Sunset Notification
     if:
     - condition: trigger
@@ -2995,7 +2996,7 @@
     entity_id:
     - sensor.gang_bewegung_illuminance
     below: 225
-    id: 'On light '
+    id: On light
   conditions: []
   actions:
   - variables:
@@ -3023,7 +3024,8 @@
             below: 225
             enabled: true
           alias: 'Motion & Dark enough '
-        - condition: and
+        - alias: Dimmed & occupied
+          condition: and
           conditions:
           - condition: trigger
             id:
@@ -3038,7 +3040,6 @@
               entity_id: binary_sensor.gang_bewegung_keller_tur_occupancy
               state:
               - 'on'
-          alias: Dimmed & occupied
       - condition: numeric_state
         entity_id: sensor.light_brighness
         below: 0.1
@@ -13782,7 +13783,9 @@
               notification_icon: mdi:window-open
               channel: Fenster
           - delay:
-              minutes: '{{ repeat_delay }}'
+              minutes: '{% set exponent = repeat.index - 1 %} {% set progressive_delay
+                = repeat_delay | int * (2 ** exponent) %} {{ [progressive_delay, 180]
+                | min }}'
       alias: Open
     - conditions:
       - condition: trigger
