@@ -13635,7 +13635,55 @@
 - &id001
   id: batterie_sicherungs_ueberwachung_esphome
   alias: Batterie Sicherungs-Überwachung via ESPHome
-  description: ''
+  description: "### \U0001F4CB Intelligent Battery Breaker Control\n\n- **High-Level
+    Intent:** Monitors the circuit breaker status of connected physical battery banks
+    via ESPHome and issues persistent, action-required notifications to the user if
+    a breaker trips.\n- **Operational Strategy:** Employs a safety-first monitoring
+    matrix tied to active inverter operations. It ensures alerts are dispatched only
+    when the system is actively processing battery storage metrics and running time-of-use
+    features.\n- **Reliability Mechanisms:** Uses an automated notification loop with
+    a 15-minute recurrence cadence until the physical breaker state clears, paired
+    with a matching 5-second automatic clear notification trigger when system restoration
+    is achieved.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
+    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| State | **binary_sensor.battery_1_bat1_breaker_popped**
+    to **on** for **00:05:00** | `bat1_popped` | Captures a persistent tripped state
+    on Battery 1 breaker. |\n| State | **binary_sensor.battery_1_bat1_breaker_popped**
+    to **off** for **00:00:05** | `bat1_restored` | Confirms manual reset and recovery
+    of Battery 1 breaker. |\n| State | **binary_sensor.battery_2_bat2_breaker_popped**
+    to **on** for **00:05:00** | `bat2_popped` | Captures a persistent tripped state
+    on Battery 2 breaker. |\n| State | **binary_sensor.battery_2_bat2_breaker_popped**
+    to **off** for **00:00:05** | `bat2_restored` | Confirms manual reset and recovery
+    of Battery 2 breaker. |\n\n---\n\n### Operational Logic Sections\n\n#### Breaker
+    Popped Alert Mode\n- **Purpose:** Promptly flag tripped battery hardware and maintain
+    visibility until corrected.\n- **Logic Overview:** Runs when a `popped` trigger
+    ID is verified, **switch.esp32_s3_zero_deye8k_time_of_use** is **on**, **sensor.inverter_battery**
+    is **above 0**, and the respective battery State of Charge evaluates to strictly
+    less than **99.9%**.\n- **Effect:** Executes a continuous loop that transmits
+    an alert message (\"Bitte wieder anschalten\") to **notify.duncan** every **00:15:00**
+    until the target **binary_sensor.felicity_lifepo4_battery_[X]_breaker_popped**
+    updates to **off**.\n\n#### Breaker Restored Clear Mode\n- **Purpose:** Automatically
+    clear the persistent alert from the user's notification pane once physical remediation
+    occurs.\n- **Logic Overview:** Evaluates when a `restored` trigger ID occurs alongside
+    the global conditions (**switch.esp32_s3_zero_deye8k_time_of_use** is **on** and
+    **sensor.inverter_battery** is **above 0**).\n- **Effect:** Dispatches a `clear_notification`
+    payload to **notify.duncan** utilizing a dynamic device tag to clear existing
+    alerts.\n\n---\n\n### Technical Overview\n\n- **Automation Mode:** **restart**\n-
+    **Execution Method:** Choice-based logic sequencing containing structural conditional
+    template checks, recursive `repeat-until` looping, and explicit tracking delays.\n-
+    **Key Inputs:** - **switch.esp32_s3_zero_deye8k_time_of_use**\n  - **sensor.inverter_battery**\n
+    \ - **sensor.battery_1_bat1_soc**\n  - **sensor.battery_2_bat2_soc**\n- **Controlled
+    Entities:**\n  - **notify.duncan**\n- **Safety Mechanisms:** - Global constraints
+    block execution if the inverter has zeroed out or if Time of Use configurations
+    are altered.\n  - State-of-Charge threshold constraint prevents erroneous looping
+    execution on fully topped-off batteries.\n\n---\n\n### \U0001F4A1 Notes\n\n- **Debounce
+    Optimization:** The 5-minute **for** window on breaker failure states limits notification
+    spam from voltage drops or brief communications dropouts.\n- **Dynamic Variable
+    Extraction:** Implements dynamic Jinja template slicing (`trigger.id.split('_')[0]`)
+    to gracefully map multi-battery architectures into modular code logic paths, allowing
+    clean scaling without discrete duplicate automations.\n- **State-of-Charge Guardrail:**
+    Incorporates a state validation threshold where batteries reporting at **99.9%**
+    or higher will not trigger looping notifications, preventing false loops when
+    the BMS isolates full packs.\n"
   triggers:
   - trigger: state
     entity_id: binary_sensor.battery_1_bat1_breaker_popped
