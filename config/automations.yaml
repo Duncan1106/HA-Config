@@ -13878,3 +13878,69 @@
                   message: Rollo schließen
   mode: parallel
   max: 10
+- &id001
+  id: batterie_sicherungs_ueberwachung_esphome
+  alias: Batterie Sicherungs-Überwachung via ESPHome
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.battery_1_bat1_breaker_popped
+    to: 'on'
+    for: 00:05:00
+    id: bat1_popped
+  - trigger: state
+    entity_id: binary_sensor.battery_1_bat1_breaker_popped
+    to: 'off'
+    for: 00:00:05
+    id: bat1_restored
+  - trigger: state
+    entity_id: binary_sensor.battery_2_bat2_breaker_popped
+    to: 'on'
+    for: 00:05:00
+    id: bat2_popped
+  - trigger: state
+    entity_id: binary_sensor.battery_2_bat2_breaker_popped
+    to: 'off'
+    for: 00:00:05
+    id: bat2_restored
+  conditions:
+  - condition: state
+    entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+    state:
+    - 'on'
+  - condition: numeric_state
+    entity_id: sensor.inverter_battery
+    above: 0
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id in [''bat1_popped'', ''bat2_popped''] }}'
+      - condition: template
+        value_template: '{% set num = trigger.id.split(''_'')[0][-1] %} {{ states(''sensor.battery_''
+          ~ num ~ ''_bat'' ~ num ~ ''_soc'') | float(0) < 99.9 }}'
+      sequence:
+      - repeat:
+          until:
+          - condition: template
+            value_template: '{% set bat = trigger.id.split(''_'')[0] %} {{ is_state(''binary_sensor.felicity_lifepo4_''
+              ~ bat ~ ''_breaker_popped'', ''off'') }}'
+          sequence:
+          - action: notify.duncan
+            data:
+              title: Batterie {{ trigger.id.split('_')[0][-1] }} Sicherung
+              message: Bitte wieder anschalten
+              data:
+                tag: '{{ trigger.id.split(''_'')[0] }}_breaker'
+          - delay: 00:15:00
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id in [''bat1_restored'', ''bat2_restored''] }}'
+      sequence:
+      - action: notify.duncan
+        data:
+          message: clear_notification
+          data:
+            tag: '{{ trigger.id.split(''_'')[0] }}_breaker'
+  mode: restart
+- *id001
