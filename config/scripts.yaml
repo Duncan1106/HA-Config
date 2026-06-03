@@ -2221,3 +2221,30 @@ shawn_weekly_edge_cut:
     data:
       title: '✅ Shawn: Task Complete'
       message: Dual edge cut routine finished successfully.
+pool_secure_pulsetime_update:
+  alias: Pool - Secure PulseTime Update
+  description: Disables auto-adjust, updates Tasmota, and holds the automation lock
+    safely in a background thread.
+  fields:
+    payload:
+      description: The Tasmota PulseTime payload string or template calculation
+      example: '28895'
+      required: true
+    lock_duration:
+      description: How long to keep the auto-adjust automation disabled (HH:MM:SS)
+      example: 00:05:00
+      required: true
+  sequence:
+  - action: automation.turn_off
+    data:
+      stop_actions: true
+    target:
+      entity_id: automation.pool_pulsetime_auto_adjust
+  - action: mqtt.publish
+    data:
+      topic: cmnd/tasmota_837238/pulsetime1
+      payload: '{{ payload }}'
+  - delay: '{{ lock_duration }}'
+  - action: automation.turn_on
+    target:
+      entity_id: automation.pool_pulsetime_auto_adjust

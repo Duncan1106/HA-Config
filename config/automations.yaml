@@ -1843,29 +1843,56 @@
       - condition: time
         after: 09:30:00
         before: '10:59:00'
+      - condition: trigger
+        id:
+        - On early
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state:
+        - 'off'
     - alias: Force Start Condition
       condition: and
       conditions:
+      - condition: trigger
+        id:
+        - Force Start
       - condition: time
         after: '10:59:59'
         before: '12:00:00'
       - condition: state
         entity_id: switch.pool_pumpe
         state: 'off'
-    - alias: 'Extend Condition '
-      condition: numeric_state
-      entity_id: input_number.pulsetimeactualvalue
-      below: 401
-    - condition: state
-      entity_id: switch.pool_pumpe
-      state: 'off'
-      alias: Stopped Condition
     - condition: and
       conditions:
+      - alias: 'Extend Condition '
+        condition: numeric_state
+        entity_id: input_number.pulsetimeactualvalue
+        below: 401
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state:
+        - 'on'
+      - condition: trigger
+        id:
+        - Extend
+    - alias: Stopped Cleanup (Always Allow)
+      condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Stopped
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
+    - alias: Force Stop Condition (Evening Only)
+      condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - Force Stop
       - condition: time
         after: '14:00:00'
         before: '21:00:00'
-      alias: Stop Condition
   actions:
   - alias: Early Start
     if:
@@ -1893,23 +1920,19 @@
         entity_id: sensor.solcast_pv_forecast_prognose_heute
         above: 40
     then:
-    - action: automation.turn_off
-      metadata: {}
-      data:
-        stop_actions: true
-      target:
-        entity_id: automation.pool_pulsetime_auto_adjust
     - action: switch.turn_on
       metadata: {}
       data: {}
       target:
         entity_id: switch.pool_ventil_solar
-    - alias: 8 hours
+    - action: script.turn_on
       metadata: {}
+      target:
+        entity_id: script.pool_secure_pulsetime_update
       data:
-        topic: cmnd/tasmota_837238/pulsetime1
-        payload: '28895'
-      action: mqtt.publish
+        variables:
+          payload: '28895'
+          lock_duration: 00:05:00
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -1942,11 +1965,6 @@
           - states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C
 
           Jetzt: {{ states(''input_number.pool_temp_start'')}}°C'
-    - action: automation.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id: automation.pool_pulsetime_auto_adjust
   - alias: Force Start
     if:
     - condition: and
@@ -1958,23 +1976,19 @@
         entity_id: switch.pool_pumpe
         state: 'off'
     then:
-    - action: automation.turn_off
-      metadata: {}
-      data:
-        stop_actions: true
-      target:
-        entity_id: automation.pool_pulsetime_auto_adjust
     - action: switch.turn_on
       metadata: {}
       data: {}
       target:
         entity_id: switch.pool_ventil_solar
-    - alias: 6 hours
+    - action: script.turn_on
       metadata: {}
+      target:
+        entity_id: script.pool_secure_pulsetime_update
       data:
-        topic: cmnd/tasmota_837238/pulsetime1
-        payload: '21695'
-      action: mqtt.publish
+        variables:
+          payload: '21695'
+          lock_duration: 00:05:00
     - action: switch.turn_on
       metadata: {}
       data: {}
@@ -2007,11 +2021,6 @@
           - states(''input_number.pool_temp_stop'') | float(0)) | round(2) }}°C
 
           Jetzt: {{ states(''input_number.pool_temp_start'')}}°C'
-    - action: automation.turn_on
-      metadata: {}
-      data: {}
-      target:
-        entity_id: automation.pool_pulsetime_auto_adjust
   - alias: Extend
     if:
     - condition: and
@@ -2024,12 +2033,15 @@
         state:
         - 'on'
     then:
-    - action: automation.turn_off
+    - action: script.turn_on
       metadata: {}
-      data:
-        stop_actions: true
       target:
-        entity_id: automation.pool_pulsetime_auto_adjust
+        entity_id: script.pool_secure_pulsetime_update
+      data:
+        variables:
+          payload: '{{ states(''input_number.pulsetimeactualvalue'') | int(0) + 460
+            }}'
+          lock_duration: 00:00:20
     - delay:
         hours: 0
         minutes: 0
@@ -2048,13 +2060,6 @@
           entity_id: input_number.pool_temp_stop
         action: input_number.set_value
       alias: Save Temperature before extend
-    - alias: Extend by 6min
-      metadata: {}
-      data:
-        topic: cmnd/tasmota_837238/pulsetime1
-        payload: '{{ states(''input_number.pulsetimeactualvalue'') | int(0) + 460
-          }}'
-      action: mqtt.publish
     - metadata: {}
       data: {}
       target:
@@ -2065,10 +2070,6 @@
         minutes: 0
         seconds: 20
         milliseconds: 0
-    - action: automation.turn_on
-      target:
-        entity_id: automation.pool_pulsetime_auto_adjust
-      data: {}
     else:
     - alias: Save Stop Temp when was still on
       if:
@@ -2206,12 +2207,14 @@
         entity_id:
         - switch.pool_pumpe
         - switch.pool_ventil_solar
-    - alias: '0'
+    - action: script.turn_on
       metadata: {}
+      target:
+        entity_id: script.pool_secure_pulsetime_update
       data:
-        topic: cmnd/tasmota_837238/pulsetime1
-        payload: '0'
-      action: mqtt.publish
+        variables:
+          payload: '0'
+          lock_duration: 00:00:01
     - metadata: {}
       data: {}
       target:
