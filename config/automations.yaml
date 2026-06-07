@@ -13235,8 +13235,23 @@
   - at: '16:00:00'
     id: stop_soak
     trigger: time
+  - trigger: time_pattern
+    minutes: /2
+    id: maintain_soak
   conditions: []
   actions:
+  - variables:
+      target_amps: "{% set cells = [\n  states('sensor.battery_2_bat2_cell_01')|float(0),
+        states('sensor.battery_2_bat2_cell_02')|float(0),\n  states('sensor.battery_2_bat2_cell_03')|float(0),
+        states('sensor.battery_2_bat2_cell_04')|float(0),\n  states('sensor.battery_2_bat2_cell_05')|float(0),
+        states('sensor.battery_2_bat2_cell_06')|float(0),\n  states('sensor.battery_2_bat2_cell_07')|float(0),
+        states('sensor.battery_2_bat2_cell_08')|float(0),\n  states('sensor.battery_2_bat2_cell_09')|float(0),
+        states('sensor.battery_2_bat2_cell_10')|float(0),\n  states('sensor.battery_2_bat2_cell_11')|float(0),
+        states('sensor.battery_2_bat2_cell_12')|float(0),\n  states('sensor.battery_2_bat2_cell_13')|float(0),
+        states('sensor.battery_2_bat2_cell_14')|float(0),\n  states('sensor.battery_2_bat2_cell_15')|float(0),
+        states('sensor.battery_2_bat2_cell_16')|float(0)\n] %}  {% set max_cell =
+        cells | max %} {{ 0 if max_cell >= 3.50 else (2 if max_cell >= 3.45 else 10)
+        }}"
   - choose:
     - conditions:
       - condition: trigger
@@ -13246,7 +13261,7 @@
         before: '15:00:00'
       - condition: numeric_state
         entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 40
+        above: 50
       - condition: state
         entity_id: switch.esp32_s3_zero_deye8k_time_of_use
         state:
@@ -13311,7 +13326,22 @@
         target:
           entity_id: number.inverter_battery_max_charging_current
         data:
-          value: '10'
+          value: '{{ target_amps }}'
+    - conditions:
+      - condition: trigger
+        id: maintain_soak
+      - condition: state
+        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+        state: 'off'
+      - condition: time
+        after: 08:00:00
+        before: '16:00:00'
+      sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.inverter_battery_max_charging_current
+        data:
+          value: '{{ target_amps }}'
     - conditions:
       - condition: trigger
         id: stop_soak
