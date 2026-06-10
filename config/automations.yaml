@@ -10210,19 +10210,9 @@
   conditions:
   - condition: or
     conditions:
-    - condition: not
-      conditions:
-      - condition: or
-        conditions:
-        - condition: state
-          entity_id: sensor.fp4_wifi_connection
-          state:
-          - DESK
-        - condition: state
-          entity_id: sensor.fp4_wifi_connection
-          state:
-          - Cudy-69F2
-        alias: In home Wifi
+    - condition: template
+      value_template: '{{ states(''sensor.fp4_wifi_connection'') not in [''DESK'',
+        ''Cudy-69F2''] }}'
       alias: Not In Home Wifi
     - condition: state
       entity_id: person.katalin
@@ -10232,20 +10222,9 @@
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
       until:
-      - condition: or
-        conditions:
-        - condition: not
-          conditions:
-          - condition: or
-            conditions:
-            - condition: state
-              entity_id: person.katalin
-              state: unavailable
-            - condition: state
-              entity_id: person.katalin
-              state: unknown
-        - condition: template
-          value_template: '{{ repeat.index >= 4 }}'
+      - condition: template
+        value_template: '{{ states(''person.katalin'') not in [''unavailable'', ''unknown'']
+          or repeat.index >= 4 }}'
       sequence:
       - action: notify.mobile_app_fp4
         data:
