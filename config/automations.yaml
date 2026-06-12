@@ -9446,6 +9446,10 @@
           {% set new = trigger.to_state.state | float(0) %}
 
           {{ (new // 10) > (old // 10) }}'
+      - condition: state
+        entity_id: input_boolean.salz_nachgefullt
+        state:
+        - 'off'
       sequence:
       - action: notify.admin
         metadata: {}
@@ -9463,9 +9467,9 @@
         entity_id: sensor.wasserenthartung
         above: 42
       - condition: template
-        value_template: '{{ now() - (state_attr(''automation.wasserenthartung_salz_erinnerung_mit_bestatigung'',
-          ''last_triggered'') | default( as_datetime(''0''), true)) > timedelta(days=1)
-          }}'
+        value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
+          | default( as_datetime(''0''), true)) > timedelta(days=1) }}'
+        enabled: true
       sequence:
       - target:
           entity_id:
