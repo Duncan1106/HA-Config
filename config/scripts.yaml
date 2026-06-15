@@ -1160,10 +1160,19 @@ charge_ev_message_with_optional_disable:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schreibtisch_links_power_strip_l3
+          target_state: 'on'
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
@@ -1215,10 +1224,19 @@ charge_ev_message_with_optional_disable_stephan_iphone:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schreibtisch_links_power_strip_l3
+          target_state: 'on'
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
@@ -1603,16 +1621,6 @@ save_counts_and_notify_purge_status:
               tag: db_purge_sucess_{{ block_id }}
   mode: parallel
   max: 10
-esphome_rgb_light_set:
-  alias: ESPHome Kallax Light
-  sequence:
-  - action: light.turn_on
-    data:
-      transition: 3
-      brightness_pct: 40
-    target:
-      entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
-  description: ''
 run_fan_for_duration:
   alias: Run Fan For Duration
   mode: parallel
