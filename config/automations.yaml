@@ -12454,38 +12454,38 @@
     Trigger Overview Table\n| Type | Entity / Condition | ID | Purpose |\n| :--- |
     :--- | :--- | :--- |\n| **Time** | `10:00:00` | N/A | Initiates the daily update
     cycle during peak monitoring hours. |\n\n---\n\n### Operational Logic Sections\n\n####
-    #### \U0001F50D Update Eligibility Assessment\n* **Purpose**: Identify which devices
+    \U0001F50D Update Eligibility Assessment\n* **Purpose**: Identify which devices
     require firmware installation based on version history.\n* **Logic Overview**:
     Filters all **ESPHome** update entities. A device is marked eligible if it is
     not currently `in_progress` and meets one of two criteria:\n    * **Month Change**:
     The latest version reflects a new monthly release (Year/Month).\n    * **Patch
     Gap**: The difference between the installed and latest patch version is **>= 2**.\n*
     **Effect**: Generates a list of target entities and prepares the `eligible_updates`
-    variable.\n\n#### #### \U0001F6E0 Controlled Deployment (Daily Batch)\n* **Purpose**:
+    variable.\n\n#### \U0001F6E0 Controlled Deployment (Daily Batch)\n* **Purpose**:
     Execute the updates while preventing network congestion.\n* **Logic Overview**:
     Limits the execution to a maximum of **5 devices** per day (`updates_today`).\n*
     **Effect**: \n    * Applies the `haghs_ignore` label to all eligible entities
     to silence external managers.\n    * Sequentially removes the label for the specific
-    batch item and calls `update.install`.\n\n#### #### \U0001F4E2 Notification &
-    Reporting\n* **Purpose**: Provide visibility into automated changes.\n* **Logic
-    Overview**: Only triggers if the `update_message` contains processed devices.\n*
-    **Effect**: Sends a mobile notification via `notify.duncan` and creates a **Persistent
-    Notification** in the UI with direct links to the ESPHome dashboard and Update
-    settings.\n\n---\n\n### Technical Overview\n* **Automation Mode**: `single` (Prevents
-    overlapping execution runs).\n* **Execution Method**: Direct action calls with
-    `repeat.for_each` looping.\n* **Key Inputs**: `patch_gap_threshold` (Set to **2**).\n*
-    **Controlled Entities**: All entities belonging to the **ESPHome** integration
-    matching the `update.` domain.\n* **Safety Mechanisms**: \n    * **State Check**:
-    Skips devices where `in_progress` is true.\n    * **Throttling**: Strict limit
-    of **5** installs per 24-hour cycle.\n    * **Label Management**: Uses `haghs_ignore`
-    to prevent conflicting automation logic (via HAGHS).\n\n---\n\n### \U0001F4A1
-    Notes\n* **Version Parsing**: The logic manually splits the version strings (Year.Month.Patch)
-    to calculate the `latest_months` vs `installed_months`, allowing it to catch updates
-    even if the patch number resets in a new month.\n* **Label Logic**: By adding
-    labels to all eligible updates but only removing them for the ones being updated,
-    the automation ensures that \"pending\" updates for tomorrow stay hidden from
-    other notification systems.\n* **Maintenance**: If a device fails to update, it
-    will naturally remain in the `eligible_updates` list for the next day's cycle."
+    batch item and calls `update.install`.\n\n#### \U0001F4E2 Notification & Reporting\n*
+    **Purpose**: Provide visibility into automated changes.\n* **Logic Overview**:
+    Only triggers if the `update_message` contains processed devices.\n* **Effect**:
+    Sends a mobile notification via `notify.duncan` and creates a **Persistent Notification**
+    in the UI with direct links to the ESPHome dashboard and Update settings.\n\n---\n\n###
+    Technical Overview\n* **Automation Mode**: `single` (Prevents overlapping execution
+    runs).\n* **Execution Method**: Direct action calls with `repeat.for_each` looping.\n*
+    **Key Inputs**: `patch_gap_threshold` (Set to **2**).\n* **Controlled Entities**:
+    All entities belonging to the **ESPHome** integration matching the `update.` domain.\n*
+    **Safety Mechanisms**: \n    * **State Check**: Skips devices where `in_progress`
+    is true.\n    * **Throttling**: Strict limit of **5** installs per 24-hour cycle.\n
+    \   * **Label Management**: Uses `haghs_ignore` to prevent conflicting automation
+    logic (via HAGHS).\n\n---\n\n### \U0001F4A1 Notes\n* **Version Parsing**: The
+    logic manually splits the version strings (Year.Month.Patch) to calculate the
+    `latest_months` vs `installed_months`, allowing it to catch updates even if the
+    patch number resets in a new month.\n* **Label Logic**: By adding labels to all
+    eligible updates but only removing them for the ones being updated, the automation
+    ensures that \"pending\" updates for tomorrow stay hidden from other notification
+    systems.\n* **Maintenance**: If a device fails to update, it will naturally remain
+    in the `eligible_updates` list for the next day's cycle."
   triggers:
   - trigger: time
     at: '10:00:00'
@@ -12493,73 +12493,77 @@
   - condition: template
     value_template: '{{ eligible_updates | length > 0 }}'
   actions:
-  - action: homeassistant.add_label_to_entity
-    data:
-      label_id:
-      - haghs_ignore
-      entity_id: '{{ eligible_updates | map(attribute=''entity'') | list }}'
-    enabled: true
-  - repeat:
-      for_each: '{{ updates_today }}'
-      sequence:
-      - action: homeassistant.remove_label_from_entity
-        data:
-          label_id:
-          - haghs_ignore
-          entity_id:
-          - '{{ repeat.item.entity }}'
-      - target:
-          entity_id: '{{ repeat.item.entity }}'
-        action: update.install
-    enabled: true
+  - variables:
+      patch_gap_threshold: 1
+      esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
+        '^update\\\\.')\n   | list }}"
+      eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
+        %}\n  {% set installed = state_attr(e, 'installed_version') %}\n  {% set latest
+        = state_attr(e, 'latest_version') %}\n  {% set in_progress = state_attr(e,
+        'in_progress') %}\n\n  {% if installed and latest and not in_progress %}\n
+        \   {% set i = installed.split('.')[:3] %}\n    {% set l = latest.split('.')[:3]
+        %}\n\n    {% if i | length >= 2 and l | length >= 2 %}\n      {% set installed_year
+        = i[0] | int %}\n      {% set installed_month = i[1] | int %}\n      {% set
+        installed_patch = i[2] | int if i | length > 2 else 0 %}\n\n      {% set latest_year
+        = l[0] | int %}\n      {% set latest_month = l[1] | int %}\n      {% set latest_patch
+        = l[2] | int if l | length > 2 else 0 %}\n\n      {% set installed_months
+        = installed_year * 12 + installed_month %}\n      {% set latest_months = latest_year
+        * 12 + latest_month %}\n\n      {% set month_changed = (latest_months - installed_months)
+        >= 1 %}\n      {% set patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold
+        %}\n\n      {% if month_changed or patch_gap %}\n        {% set ns.items =
+        ns.items + [\n          {\n            \"entity\": e,\n            \"name\":
+        state_attr(e, 'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
+        latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
+        endif %}\n{% endfor %} {{ ns.items }}"
+      updates_today: '{{ eligible_updates[:5] }}'
+      update_message: "{% for item in updates_today %} \n• {{ item.name }} updated
+        from {{ item.from}} → {{ item.to }}\n{% endfor %}\n          \n"
   - if:
     - condition: template
-      value_template: '{{ update_message | trim | length > 0 }}'
+      value_template: '{{ eligible_updates | length > 0 }}'
     then:
-    - action: notify.duncan
+    - action: homeassistant.add_label_to_entity
       data:
-        title: ESPHome Firmware Updates Installed
-        message: '{{ update_message }}'
+        label_id:
+        - haghs_ignore
+        entity_id: '{{ eligible_updates | map(attribute=''entity'') | list }}'
+      enabled: true
+    - repeat:
+        for_each: '{{ updates_today }}'
+        sequence:
+        - action: homeassistant.remove_label_from_entity
+          data:
+            label_id:
+            - haghs_ignore
+            entity_id:
+            - '{{ repeat.item.entity }}'
+        - target:
+            entity_id: '{{ repeat.item.entity }}'
+          action: update.install
+      enabled: true
+    - if:
+      - condition: template
+        value_template: '{{ update_message | trim | length > 0 }}'
+      then:
+      - action: notify.duncan
         data:
-          actions:
-          - action: URI
-            title: Open ESPHome
-            uri: /hassio/ingress/5c53de3b_esphome
-          - action: URI
-            title: Open Updates
-            uri: /config/updates
-    - action: persistent_notification.create
-      data:
-        title: ESPHome Firmware Updates Installed
-        message: '{{ update_message |replace(''
+          title: ESPHome Firmware Updates Installed
+          message: '{{ update_message }}'
+          data:
+            actions:
+            - action: URI
+              title: Open ESPHome
+              uri: /hassio/ingress/5c53de3b_esphome
+            - action: URI
+              title: Open Updates
+              uri: /config/updates
+      - action: persistent_notification.create
+        data:
+          title: ESPHome Firmware Updates Installed
+          message: '{{ update_message |replace(''
 
-          '',''<br>'') }}'
+            '',''<br>'') }}'
   mode: single
-  variables:
-    patch_gap_threshold: 1
-    esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
-      '^update\\\\.')\n   | list }}"
-    eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
-      %}\n  {% set installed = state_attr(e, 'installed_version') %}\n  {% set latest
-      = state_attr(e, 'latest_version') %}\n  {% set in_progress = state_attr(e, 'in_progress')
-      %}\n\n  {% if installed and latest and not in_progress %}\n    {% set i = installed.split('.')[:3]
-      %}\n    {% set l = latest.split('.')[:3] %}\n\n    {% if i | length >= 2 and
-      l | length >= 2 %}\n      {% set installed_year = i[0] | int %}\n      {% set
-      installed_month = i[1] | int %}\n      {% set installed_patch = i[2] | int if
-      i | length > 2 else 0 %}\n\n      {% set latest_year = l[0] | int %}\n      {%
-      set latest_month = l[1] | int %}\n      {% set latest_patch = l[2] | int if
-      l | length > 2 else 0 %}\n\n      {% set installed_months = installed_year *
-      12 + installed_month %}\n      {% set latest_months = latest_year * 12 + latest_month
-      %}\n\n      {% set month_changed = (latest_months - installed_months) >= 1 %}\n
-      \     {% set patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold
-      %}\n\n      {% if month_changed or patch_gap %}\n        {% set ns.items = ns.items
-      + [\n          {\n            \"entity\": e,\n            \"name\": state_attr(e,
-      'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
-      latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
-      endif %}\n{% endfor %} {{ ns.items }}"
-    updates_today: '{{ eligible_updates[:5] }}'
-    update_message: "{% for item in updates_today %} \n• {{ item.name }} updated from
-      {{ item.from}} → {{ item.to }}\n{% endfor %}\n"
 - id: '1770413807856'
   alias: Tablet Battery Status Alerts
   description: Sends notifications based on battery bands and clears them when 'ok'.
