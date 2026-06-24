@@ -13784,3 +13784,71 @@
           data:
             tag: '{{ trigger.id.split(''_'')[0] }}_breaker'
   mode: restart
+- id: '1782333444123'
+  alias: Automatic Backup Management
+  description: "## ⚡ Automatic Backup Management (Optimized & Simplified)\n\n### \U0001F4CB
+    Purpose\nSchedules and manages Home Assistant backups using a streamlined, two-action
+    system.\nHourly partial backups run every 4 hours to conserve space. Daily, weekly,
+    \nmonthly, and yearly backups automatically scale into their respective retention
+    \ntiers depending on the calendar date.\n"
+  triggers:
+  - id: daily
+    at: 02:30:00
+    trigger: time
+  - id: backup_config
+    enabled: true
+    hours: /4
+    trigger: time_pattern
+  conditions: []
+  actions:
+  - if:
+    - condition: trigger
+      id: daily
+    then:
+    - variables:
+        backup_type: '{% if now().day == 1 and now().month == 1 %}yearly {% elif now().day
+          == 1 %}monthly {% elif now().weekday() == 0 %}weekly {% else %}daily {%
+          endif %}'
+        keep_days: '{% if backup_type == ''yearly'' %}{{ none }} {% elif backup_type
+          == ''monthly'' %}365 {% elif backup_type == ''weekly'' %}30.4167 {% else
+          %}7 {% endif %}'
+        name: '{{ backup_type | title }}Backup: {{ now().strftime(''%A, %B %-d, %Y'')
+          }}'
+    - alias: Creating Standard Unified Backup
+      data:
+        name: '{{ name }}'
+        password: '{{ password }}'
+        keep_days: '{{ keep_days }}'
+        download_path:
+        - /share/NAS_Share/Backup/
+        include_folders:
+        - config
+        exclude_folders:
+        - media
+      action: auto_backup.backup
+    else:
+    - variables:
+        keep_days: 1
+        name: 'HourlyBackup: {{ now().strftime(''%A, %H:%M, %B %-d, %Y'') }}'
+    - alias: Creating Hourly Partial Backup
+      data:
+        name: '{{ name }}'
+        password: '{{ password }}'
+        keep_days: '{{ keep_days }}'
+        download_path:
+        - /share/NAS_Share/Backup/
+        include_folders:
+        - config
+        exclude_addons:
+        - '*'
+        exclude_folders:
+        - media
+        - share
+        - ssl
+        - addons
+        compressed: true
+        exclude_database: true
+      action: auto_backup.backup
+  mode: single
+  variables:
+    password: ''
