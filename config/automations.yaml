@@ -455,6 +455,10 @@
           notification_icon: mdi:restart
           tag: ha_start
       action: notify.duncan
+    - action: homeassistant.reload_config_entry
+      metadata: {}
+      data:
+        entry_id: 0b1d7f8fdd8abffe84318600de1e81f1
     - delay:
         hours: 0
         minutes: 1
@@ -13795,25 +13799,27 @@
   - id: daily
     at: 02:30:00
     trigger: time
-  - id: backup_config
+  - id: hourly
     enabled: true
     hours: /4
     trigger: time_pattern
   conditions: []
   actions:
+  - variables:
+      backup_type: "{% if trigger is defined and trigger.id == 'hourly' %}\n  hourly\n{%
+        elif now().day == 1 and now().month == 1 %}\n  yearly\n{% elif now().day ==
+        1 %}\n  monthly\n{% elif now().weekday() == 0 %}\n  weekly\n{% else %}\n  daily\n{%
+        endif %}"
+      keep_days: '{% set type = backup_type | trim %} {% if type == ''hourly'' %}1
+        {% elif type == ''yearly'' %}{{ none }} {% elif type == ''monthly'' %}365
+        {% elif type == ''weekly'' %}30.4167 {% else %}7 {% endif %}'
+      name: "{% set type = backup_type | trim %} {% if type == 'hourly' %}\n  Hourly_Backup_{{
+        now().strftime('%A, %H:%M, %B %-d, %Y') }}\n{% else %}\n  {{ type | title
+        }} Backup: {{ now().strftime('%A, %B %-d, %Y') }}\n{% endif %}"
   - if:
     - condition: trigger
       id: daily
     then:
-    - variables:
-        backup_type: '{% if now().day == 1 and now().month == 1 %}yearly {% elif now().day
-          == 1 %}monthly {% elif now().weekday() == 0 %}weekly {% else %}daily {%
-          endif %}'
-        keep_days: '{% if backup_type == ''yearly'' %}{{ none }} {% elif backup_type
-          == ''monthly'' %}365 {% elif backup_type == ''weekly'' %}30.4167 {% else
-          %}7 {% endif %}'
-        name: '{{ backup_type | title }}Backup: {{ now().strftime(''%A, %B %-d, %Y'')
-          }}'
     - alias: Creating Standard Unified Backup
       data:
         name: '{{ name }}'
@@ -13821,15 +13827,11 @@
         keep_days: '{{ keep_days }}'
         download_path:
         - /share/NAS_Share/Backup/
-        include_folders:
-        - config
         exclude_folders:
         - media
+        compressed: true
       action: auto_backup.backup
     else:
-    - variables:
-        keep_days: 1
-        name: 'HourlyBackup: {{ now().strftime(''%A, %H:%M, %B %-d, %Y'') }}'
     - alias: Creating Hourly Partial Backup
       data:
         name: '{{ name }}'
@@ -13850,5 +13852,3 @@
         exclude_database: true
       action: auto_backup.backup
   mode: single
-  variables:
-    password: ''
