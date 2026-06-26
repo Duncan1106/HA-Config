@@ -3674,360 +3674,6 @@
         title: Power Save Mode OFF
         message: 'Smart Home '
   mode: single
-- id: '1731148293801'
-  alias: Automatic Backup Management
-  description: "  ## ⚡ Automatic Backup Management\n\n  ### \U0001F4CB **Purpose**\n
-    \ This automation schedules and manages Home Assistant backups at multiple\n  intervals:
-    hourly, daily, weekly, monthly, and yearly.  \n  It applies retention rules, descriptive
-    backup names, and selectively\n  includes/excludes folders and addons to optimize
-    storage and restore workflows.\n\n  The automation ensures your Home Assistant
-    system is regularly backed up\n  without manual intervention while keeping old
-    backups according to defined\n  retention periods.\n\n  ---\n\n  ### ⏰ **Triggers**\n
-    \ | Trigger Type        | Time / Interval | Trigger ID  |\n  |--------------------|----------------|------------|\n
-    \ | Daily backup        | 02:30:00       | daily      |\n  | Hourly backup       |
-    Every 4 hours  | backup_config     |\n\n  > **Note:** Hourly backups occur every
-    N hours as defined by the `hours` pattern,  \n  daily backups are always scheduled
-    at 2:30 AM.  \n\n  ---\n\n  ### ✅ **Conditions**\n  - None. Backup creation depends
-    solely on the triggers and enabled intervals.  \n\n  ---\n\n  ### \U0001F3AF **Actions
-    / Workflow**\n  **1. Yearly Backup**\n  - Trigger: Daily backup, only on Jan 1
-    if `enable_yearly` is true.  \n  - Retention: Unlimited (`keep_days: null`).  \n
-    \ - Includes: `config` folder.  \n  - Excludes: `media` folder, certain addons
-    (e.g., InfluxDB).  \n  - Alias in actions: `\"Creating Yearly Backup\"`.\n\n  **2.
-    Monthly Backup**\n  - Trigger: Daily backup, first day of month if `enable_monthly`
-    is true.  \n  - Retention: 365 days.  \n  - Includes/excludes: same as yearly
-    backup.  \n  - Alias: `\"Creating Monthly Backup\"`.\n\n  **3. Weekly Backup**\n
-    \ - Trigger: Daily backup, Monday if `enable_weekly` is true.  \n  - Retention:
-    ~30 days.  \n  - Alias: `\"Creating Weekly Backup\"`.\n\n  **4. Daily Backup**\n
-    \ - Trigger: Daily backup if `enable_daily` is true.  \n  - Retention: 7 days.
-    \ \n  - Alias: `\"Creating Daily Backup\"`.\n\n  **5. Hourly Backup**\n  - Trigger:
-    Every 4 hours if `enable_hourly` is true.  \n  - Retention: 1 day.  \n  - Creates
-    partial backups excluding media, share, ssl, addons, and database to reduce storage
-    usage.  \n  - Alias: `\"Creating Hourly Partial Backup\"`.\n\n  **General Notes
-    on Workflow**\n  - Each backup action generates a descriptive name:\n    - `HourlyBackup:
-    Monday, 3:04 PM, January 2, 2006`\n    - `DailyBackup: Monday, January 2, 2006`\n
-    \   - `Weekly/Monthly/YearlyBackup: Monday, January 2, 2006`\n  - Conditional
-    logic checks whether to use “full backup action” or predefined backup steps.\n
-    \ - Retention is managed per backup type.\n\n  ---\n\n  ### \U0001F527 **Technical
-    Specs**\n  - **Mode:** `single` (prevents overlapping backup processes)  \n  -
-    **Backup Storage Path:** `/share/NAS_Share/Backup/`  \n  - **Variables:**\n    -
-    `password`: backup password  \n    - `enable_hourly`, `enable_daily`, `enable_weekly`,
-    `enable_monthly`, `enable_yearly`  \n    - `use_action_hourly`: whether to use
-    defined hourly backup actions  \n  - **Included Folders:** `config`  \n  - **Excluded
-    Folders:** `media`, `share`, `ssl`, `addons`, `model_cache`  \n  - **Addon Exclusions:**
-    e.g., InfluxDB (`a0d7b954_influxdb`)  \n\n  ---\n\n  ### ⚡ **Best Practices /
-    Notes**\n  - Use descriptive names for each backup type for easy identification.
-    \ \n  - Customize included/excluded folders per your needs.  \n  - Ensure `enable_*`
-    variables reflect the desired backup frequency.  \n  - Partial hourly backups
-    save space while still providing frequent restore points.  \n  - Can be extended
-    for additional backup targets or intervals as needed."
-  triggers:
-  - id: daily
-    at: 02:30:00
-    trigger: time
-  - id: backup_config
-    enabled: true
-    hours: /4
-    trigger: time_pattern
-  conditions: []
-  actions:
-  - if:
-    - condition: trigger
-      id: daily
-      alias: Daily, Weekly, Monthly and Yearly Backup
-    then:
-    - choose:
-      - conditions:
-        - condition: template
-          value_template: '{{ enable_yearly }}'
-        - condition: template
-          value_template: '{{ now().day == 1 and now().month == 1 }}'
-        sequence:
-        - variables:
-            backup_type: yearly
-            keep_days:
-        - variables:
-            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
-              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
-              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
-              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
-            backup_action:
-            - data:
-                name: '{{ name }}'
-                password: '{{ password }}'
-                keep_days: '{{ keep_days }}'
-                download_path:
-                - /share/NAS_Share/Backup/
-                exclude:
-                  addons:
-                  - a0d7b954_influxdb
-                include_folders:
-                - config
-                exclude_folders:
-                - media
-              action: auto_backup.backup
-        - if:
-          - condition: template
-            value_template: '{{ not use_action_hourly }}'
-          - condition: template
-            value_template: '{{ backup_action | length > 0 }}'
-          then:
-          - data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              include_folders:
-              - config
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-          else:
-          - alias: Creating a full backup (default action)
-            data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-        alias: Yearly Backup
-      - conditions:
-        - condition: template
-          value_template: '{{ enable_monthly }}'
-        - condition: template
-          value_template: '{{ now().day == 1 }}'
-        sequence:
-        - variables:
-            backup_type: monthly
-            keep_days: 365
-        - variables:
-            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
-              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \",\"\")\n    ~ \"%B
-              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
-              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
-            backup_action:
-            - data:
-                name: '{{ name }}'
-                password: '{{ password }}'
-                keep_days: '{{ keep_days }}'
-                download_path:
-                - /share/NAS_Share/Backup/
-                include_folders:
-                - config
-                exclude_folders:
-                - media
-              action: auto_backup.backup
-        - if:
-          - condition: template
-            value_template: '{{ not use_action_hourly }}'
-          - condition: template
-            value_template: '{{ backup_action | length > 0 }}'
-          then:
-          - data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              include_folders:
-              - config
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-          else:
-          - alias: Creating a full backup (default action)
-            data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-        alias: Monthly Backup
-      - conditions:
-        - condition: template
-          value_template: '{{ enable_weekly }}'
-        - condition: template
-          value_template: '{{ now().weekday() == 0 }}'
-        sequence:
-        - variables:
-            backup_type: weekly
-            keep_days: 30.4167
-        - variables:
-            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
-              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
-              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
-              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
-            backup_action:
-            - data:
-                name: '{{ name }}'
-                password: '{{ password }}'
-                keep_days: '{{ keep_days }}'
-                download_path:
-                - /share/NAS_Share/Backup/
-                include_folders:
-                - config
-                exclude_folders:
-                - media
-              action: auto_backup.backup
-        - if:
-          - condition: template
-            value_template: '{{ not use_action_hourly }}'
-          - condition: template
-            value_template: '{{ backup_action | length > 0 }}'
-          then:
-          - data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              include_folders:
-              - config
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-          else:
-          - alias: Creating a full backup (default action)
-            data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-        alias: Weekly Backup
-      - conditions:
-        - condition: template
-          value_template: '{{ enable_daily }}'
-        sequence:
-        - variables:
-            backup_type: daily
-            keep_days: 7
-        - variables:
-            name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A,
-              \"\n    ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B
-              %-d, %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006
-              #}\n{# DailyBackup: Monday, January 2, 2006 #}\n"
-            backup_action:
-            - data:
-                name: '{{ name }}'
-                password: '{{ password }}'
-                keep_days: '{{ keep_days }}'
-                download_path:
-                - /share/NAS_Share/Backup/
-                include_folders:
-                - config
-                exclude_folders:
-                - media
-              action: auto_backup.backup
-        - if:
-          - condition: template
-            value_template: '{{ not use_action_hourly }}'
-          - condition: template
-            value_template: '{{ backup_action | length > 0 }}'
-          then:
-          - data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              include_folders:
-              - config
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-          else:
-          - alias: Creating a full backup (default action)
-            data:
-              name: '{{ name }}'
-              password: '{{ password }}'
-              keep_days: '{{ keep_days }}'
-              download_path:
-              - /share/NAS_Share/Backup/
-              exclude_folders:
-              - media
-            action: auto_backup.backup
-        alias: Daily Backup
-    else:
-    - variables:
-        backup_type: hourly
-        keep_days: 1
-    - variables:
-        name: "{{ backup_type | title }}Backup: {{\n  now().strftime(\n    \"%A, \"\n
-          \   ~ iif(backup_type == \"hourly\", \"%H:%M, \", \"\")\n    ~ \"%B %-d,
-          %Y\"\n  )\n}}\n{# HourlyBackup: Monday, 3:04 PM, January 2, 2006 #}\n{#
-          DailyBackup: Monday, January 2, 2006 #}\n"
-        backup_action:
-        - data:
-            name: '{{ name }}'
-            password: '{{ password }}'
-            keep_days: '{{ keep_days }}'
-            exclude_database: true
-            download_path:
-            - /share/NAS_Share/Backup/
-            include_folders:
-            - config
-            exclude_folders:
-            - model_cache
-          action: auto_backup.backup
-    - if:
-      - condition: template
-        value_template: '{{ backup_action | length > 0 }}'
-      then:
-      - data:
-          name: '{{ name }}'
-          password: '{{ password }}'
-          keep_days: '{{ keep_days }}'
-          download_path:
-          - /share/NAS_Share/Backup/
-          include_folders:
-          - config
-          exclude_addons:
-          - '*'
-          exclude_folders:
-          - media
-          - share
-          - ssl
-          - addons
-          compressed: true
-          exclude_database: true
-        action: auto_backup.backup
-      else:
-      - alias: Creating a partial backup (default action)
-        data:
-          name: '{{ name }}'
-          password: '{{ password }}'
-          keep_days: '{{ keep_days }}'
-          include_folders:
-          - config
-          exclude_addons:
-          - '*'
-          exclude_folders:
-          - media
-          - share
-          - ssl
-          - addons
-          compressed: true
-          exclude_database: true
-        action: auto_backup.backup
-  mode: single
-  variables:
-    password: ''
-    enable_hourly: true
-    enable_daily: true
-    enable_weekly: true
-    enable_monthly: true
-    enable_yearly: true
-    use_action_hourly: true
 - id: '1732984794991'
   alias: 'Button Zigbee '
   description: ''
@@ -13790,14 +13436,51 @@
   mode: restart
 - id: '1782333444123'
   alias: Automatic Backup Management
-  description: "## ⚡ Automatic Backup Management (Optimized & Simplified)\n\n### \U0001F4CB
-    Purpose\nSchedules and manages Home Assistant backups using a streamlined, two-action
-    system.\nHourly partial backups run every 4 hours to conserve space. Daily, weekly,
-    \nmonthly, and yearly backups automatically scale into their respective retention
-    \ntiers depending on the calendar date.\n"
+  description: "### \U0001F4CB Intelligent Backup Management Control\n\nThis automation
+    provides a streamlined, space-conscious backup strategy for Home Assistant. It
+    utilizes a two-action execution model to handle routine point-in-time recovery
+    alongside long-term data archival. \n\nThe system operates on a dual strategy:
+    frequent, lightweight partial backups capture rolling configuration changes throughout
+    the day, while a dynamically calculated calendar-tier system determines whether
+    a full backup serves as a daily, weekly, monthly, or yearly archive. Reliability
+    is maximized by passing precise directory exclusions and custom retention variables
+    directly to the backup engine.\n\n---\n\n### Trigger Overview\n\n| Type | Entity
+    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time | **02:30:00**
+    | **daily** | Triggers the primary unified backup lifecycle evaluation. |\n| Time
+    Pattern | Every **4 hours** (`/4`) | **hourly** | Triggers the high-frequency
+    configuration snapshot sequence. |\n\n---\n\n### Operational Logic Sections\n\n####
+    Hourly Backup Mode\n* **Purpose**: Captures short-term configuration modifications
+    while keeping disk overhead minimal.\n* **Logic Overview**: Triggered when the
+    execution ID matches **hourly**.\n* **Effect**: Creates a compressed partial backup
+    saved to `/share/NAS_Share/Backup/`. It includes the **config** folder but explicitly
+    isolates and strips out heavy directories and system components. Retained for
+    **1** day.\n\n#### Standard Unified Backup Mode\n* **Purpose**: Establishes a
+    cascading archival system based on chronological significance.\n* **Logic Overview**:
+    Triggered when the execution ID matches **daily**. It evaluates the current date
+    using Jinja templates to assign a tier: **yearly** (January 1st), **monthly**
+    (1st of any month), **weekly** (Mondays), or **daily** (all other days).\n* **Effect**:
+    Creates a compressed backup saved to `/share/NAS_Share/Backup/` that includes
+    all system paths except the **media** folder. Adjusts retention dynamically: **7**
+    days for daily, **30.4167** days for weekly, **365** days for monthly, and indefinite
+    (**none**) for yearly tiers.\n\n---\n\n### Technical Overview\n\n* **Automation
+    Mode**: **single**\n* **Execution Method**: Direct action call via **auto_backup.backup**\n*
+    **Key Inputs**: `trigger.id`, `now()` system calendar attributes\n* **Controlled
+    Entities**: **auto_backup** integration engine\n* **Safety Mechanisms**: Target
+    paths like **media**, **share**, **ssl**, and **addons** are forcefully excluded
+    from the hourly cycles. The system database is also dropped from hourly snapshots
+    to prevent database locks and minimize snapshot file sizes.\n\n---\n\n### \U0001F4A1
+    Notes\n\n* **Smart Retention Cascading**: The variable logic cleanly overrides
+    smaller retention windows with longer ones if a higher tier drops on the same
+    calendar date (e.g., a monthly backup automatically supplants a weekly or daily
+    backup on the 1st of a month).\n* **Database Wear Reduction**: Omitting the Home
+    Assistant database from the 4-hour interval cycle drastically reduces host disk
+    I/O and prevents performance degradation during high-frequency write operations.\n*
+    **Storage Preservation**: Setting a precise decimal float (**30.4167** days) for
+    weekly tiers ensures exact synchronization with calendar month averages, avoiding
+    storage creeping on the network share.\n"
   triggers:
   - id: daily
-    at: 00:25:00
+    at: 02:30:00
     trigger: time
   - id: hourly
     enabled: true
