@@ -13533,3 +13533,247 @@
         exclude_database: true
       action: auto_backup.backup
   mode: single
+- id: '1782633357930'
+  alias: 'Goe11: All-In-One Configless Controller'
+  description: Consolidated charger logic, calculations, and micro-database state
+    tracking within one single automation
+  triggers:
+  - trigger: mqtt
+    topic: go-eCharger/270862/nrg
+    id: nrg
+  - trigger: mqtt
+    topic: go-eCharger/270862/amp
+    id: amp
+  - trigger: mqtt
+    topic: go-eCharger/270862/frc
+    id: frc
+  - trigger: mqtt
+    topic: go-eCharger/270862/fsp
+    id: fsp
+  - trigger: mqtt
+    topic: go-eCharger/270862/car
+    id: car
+  - trigger: mqtt
+    topic: go-eCharger/270862/trx
+    id: rfid
+  - trigger: mqtt
+    topic: grid/power
+    id: grid_p
+  - trigger: mqtt
+    topic: grid/solar
+    id: solar_p
+  - trigger: mqtt
+    topic: grid/battery
+    id: bat_p
+  - trigger: mqtt
+    topic: grid/soc
+    id: soc
+  - trigger: mqtt
+    topic: goe11/config/battery_soc_threshold
+    id: cfg_soc_limit
+  - trigger: mqtt
+    topic: goe11/config/battery_power_offset
+    id: cfg_bat_offset
+  - trigger: mqtt
+    topic: goe11/config/buffer_power
+    id: cfg_buffer
+  - trigger: mqtt
+    topic: goe11/config/never_stop_charging
+    id: cfg_never_stop
+  - trigger: mqtt
+    topic: goe11/config/enable_pv_charging
+    id: cfg_enable_pv
+  - trigger: mqtt
+    topic: goe11/config/card_zoe
+    id: cfg_zoe
+  - trigger: time_pattern
+    seconds: /10
+    id: timer
+  actions:
+  - variables:
+      raw_cache: '{{ states(''input_text.goe11_cache'') }}'
+      default:
+        epv: false
+        nst: false
+        laf: false
+        cz: -1
+        rcc: 0
+        sc: 0
+        bpo: 0
+        bst: 35
+        bp: 0
+        ma: 6
+        v: 230
+        gp: 0
+        fa: 6
+        gst: N
+        fsp: 3P
+        cc: Unk
+        grid: 0
+        sol: 0
+        bat: 0
+        soc: 100
+      base_cache: "{% if raw_cache in ['unknown', 'unavailable', ''] %}\n  {{ default
+        }}\n{% else %}\n  {{ default | combine(raw_cache | from_json) }}\n{% endif
+        %}"
+      updated_cache: "{% if trigger.id == 'nrg' %}\n  {% set nrg = trigger.payload.replace('[','').replace(']','').split(',')
+        %}\n  {{ base_cache | combine({'v': nrg[0] | float(230) | round(1), 'gp':
+        nrg[11] | float(0) | round(1)}) }}\n{% elif trigger.id == 'amp' %}\n  {{ base_cache
+        | combine({'fa': trigger.payload | float(6) | round(1)}) }}\n{% elif trigger.id
+        == 'frc' %}\n  {% set st = {'0':'N', '1':'D', '2':'F'}.get(trigger.payload,
+        'N') %}\n  {{ base_cache | combine({'gst': st}) }}\n{% elif trigger.id ==
+        'fsp' %}\n  {% set fsp = '1P' if trigger.payload == 'true' else '3P' %}\n
+        \ {{ base_cache | combine({'fsp': fsp}) }}\n{% elif trigger.id == 'car' %}\n
+        \ {% set car = {'0':'Unk', '1':'Idl', '2':'Chg', '3':'Wai', '4':'Com', '5':'Err'}.get(trigger.payload,
+        'Unk') %}\n  {% if car == 'Wai' and is_state('sun.sun', 'above_horizon') and
+        not base_cache.epv %}\n    {{ base_cache | combine({'cc': car, 'epv': true})
+        }}\n  {% else %}\n    {{ base_cache | combine({'cc': car}) }}\n  {% endif
+        %}\n{% elif trigger.id == 'rfid' %}\n  {% set card = trigger.payload | float
+        | round(0) %}\n  {% set ma = 8 if card == base_cache.cz else 6 %}\n  {{ base_cache
+        | combine({'ma': ma}) }}\n{% elif trigger.id == 'grid_p' %}\n  {{ base_cache
+        | combine({'grid': (trigger.payload | float(0) | round(1)) * -1.0}) }}\n{%
+        elif trigger.id == 'solar_p' %}\n  {{ base_cache | combine({'sol': trigger.payload
+        | float(0) | round(1)}) }}\n{% elif trigger.id == 'bat_p' %}\n  {{ base_cache
+        | combine({'bat': trigger.payload | float(0) | round(1)}) }}\n{% elif trigger.id
+        == 'soc' %}\n  {% set soc = trigger.payload | float(100) | round(1) %}\n  {%
+        set offset = 0 if (soc > 99.9 and base_cache.bpo < 0) else base_cache.bpo
+        %}\n  {{ base_cache | combine({'soc': soc, 'bpo': offset}) }}\n{% elif trigger.id
+        == 'cfg_soc_limit' %}\n  {{ base_cache | combine({'bst': trigger.payload |
+        float(35) | round(1)}) }}\n{% elif trigger.id == 'cfg_bat_offset' %}\n  {{
+        base_cache | combine({'bpo': trigger.payload | float(0) | round(1)}) }}\n{%
+        elif trigger.id == 'cfg_buffer' %}\n  {{ base_cache | combine({'bp': trigger.payload
+        | float(0) | round(1)}) }}\n{% elif trigger.id == 'cfg_never_stop' %}\n  {{
+        base_cache | combine({'nst': trigger.payload | lower == 'true'}) }}\n{% elif
+        trigger.id == 'cfg_enable_pv' %}\n  {% set next_val = trigger.payload | lower
+        == 'true' %}\n  {% if base_cache.epv and not next_val %}\n    {{ base_cache
+        | combine({'epv': false, 'nst': false, 'rcc': 0}) }}\n  {% else %}\n    {{
+        base_cache | combine({'epv': next_val}) }}\n  {% endif %}\n{% elif trigger.id
+        == 'cfg_zoe' %}\n  {{ base_cache | combine({'cz': trigger.payload | int(-1)})
+        }}\n{% else %}\n  {{ base_cache }}\n{% endif %}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.goe11_cache
+    data:
+      value: '{{ updated_cache | to_json }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''cfg_enable_pv'' and base_cache.epv and
+          not updated_cache.epv }}'
+      sequence:
+      - action: mqtt.publish
+        data:
+          topic: go-eCharger/270862/amp/set
+          payload: '{{ updated_cache.ma | int }}'
+      - action: mqtt.publish
+        data:
+          topic: go-eCharger/270862/frc/set
+          payload: '1'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.id == ''timer'' }}'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ updated_cache.epv == true }}'
+          sequence:
+          - variables:
+              v: '{{ updated_cache.v if updated_cache.v > 0 else 230.0 }}'
+              divider: '{{ 1.0 if updated_cache.fsp == ''1P'' else 3.0 }}'
+              avail_bat_p: '{{ updated_cache.bpo - updated_cache.bat }}'
+              avail_grid_a: '{{ (updated_cache.grid - updated_cache.bp) / v }}'
+              avail_bat_a: '{{ avail_bat_p / v }}'
+              goe_a: '{{ updated_cache.gp / v }}'
+              solar_amps: '{{ updated_cache.sol / v }}'
+              calc_amps: '{{ (avail_grid_a + goe_a + avail_bat_a) / divider }}'
+              clamped_calc_amps: '{{ [calc_amps | float, 0.0] | max }}'
+              amps_rounded: '{{ [clamped_calc_amps | int, 16] | min }}'
+              target_amps: '{{ [amps_rounded, updated_cache.ma | int] | max }}'
+              final_loop_cache: "{% set cc = updated_cache %} {% if cc.soc < cc.bst
+                %}\n  {{ cc | combine({'epv': false, 'laf': false}) }}\n{% elif calc_amps
+                < 5.99 %}\n  {% if not cc.laf %}\n    {{ cc | combine({'laf': true})
+                }}\n  {% else %}\n    {{ cc }}\n  {% endif %}\n{% else %}\n  {% set
+                cc = cc | combine({'laf': false}) %}\n  {% if target_amps != cc.fa
+                and (solar_amps + avail_bat_a) <= amps_rounded and cc.sc < 10 %}\n
+                \   {{ cc | combine({'sc': cc.sc + 1}) }}\n  {% else %}\n    {% set
+                cc = cc | combine({'sc': 0}) %}\n    {% set rcc = cc.rcc %}\n    {%
+                if cc.gst == 'N' and cc.gp > -20 and cc.gp < 20 and cc.cc not in ['Chg',
+                'Wai'] %}\n      {% set rcc = rcc + 1 %}\n    {% elif cc.gst != 'N'
+                %}\n      {% set rcc = 0 %}\n    {% endif %}\n    {{ cc | combine({'rcc':
+                rcc}) }}\n  {% endif %}\n{% endif %}"
+          - action: input_text.set_value
+            target:
+              entity_id: input_text.goe11_cache
+            data:
+              value: '{{ final_loop_cache | to_json }}'
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: '{{ updated_cache.soc < updated_cache.bst or (calc_amps
+                  < 5.99 and updated_cache.laf) }}'
+              sequence:
+              - action: mqtt.publish
+                data:
+                  topic: go-eCharger/270862/amp/set
+                  payload: '{{ target_amps | int }}'
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ not updated_cache.nst }}'
+                  sequence:
+                  - action: mqtt.publish
+                    data:
+                      topic: go-eCharger/270862/frc/set
+                      payload: '1'
+            - conditions:
+              - condition: template
+                value_template: '{{ calc_amps >= 5.99 and final_loop_cache.sc == 0
+                  }}'
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ target_amps | int != updated_cache.fa | int
+                      }}'
+                  sequence:
+                  - action: mqtt.publish
+                    data:
+                      topic: go-eCharger/270862/amp/set
+                      payload: '{{ target_amps | int }}'
+                  - choose:
+                    - conditions:
+                      - condition: template
+                        value_template: '{{ updated_cache.gst != ''N'' }}'
+                      sequence:
+                      - action: mqtt.publish
+                        data:
+                          topic: go-eCharger/270862/frc/set
+                          payload: '0'
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ updated_cache.gst == ''N'' and updated_cache.gp
+                      > -20 and updated_cache.gp < 20 and updated_cache.cc not in
+                      [''Chg'', ''Wai''] and updated_cache.rcc >= 9 }}'
+                  sequence:
+                  - action: mqtt.publish
+                    data:
+                      topic: go-eCharger/270862/frc/set
+                      payload: '1'
+                  - delay: 00:00:03
+                  - action: mqtt.publish
+                    data:
+                      topic: go-eCharger/270862/frc/set
+                      payload: '0'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ updated_cache.gst != ''N'' and target_amps
+                      | int == updated_cache.fa | int }}'
+                  sequence:
+                  - action: mqtt.publish
+                    data:
+                      topic: go-eCharger/270862/frc/set
+                      payload: '0'
+  mode: queued
+  max: 20
