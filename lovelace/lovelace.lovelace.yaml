@@ -2616,6 +2616,7 @@ config:
                 entity: number.go_echarger_270862_amp
                 fill_container: true
                 layout: vertical
+                name: Ampere
                 type: custom:mushroom-number-card
               type: vertical-stack
             - cards:
@@ -2634,7 +2635,7 @@ config:
                   tap_action:
                     action: call-service
                     data:
-                      option: one_phase
+                      option: Force single phase
                     service: select.select_option
                     target:
                       entity_id:
@@ -2654,7 +2655,7 @@ config:
                   tap_action:
                     action: call-service
                     data:
-                      option: three_phases
+                      option: Force three phasess
                     service: select.select_option
                     target:
                       entity_id:
@@ -2825,14 +2826,16 @@ config:
                   - 4f7767cac0c342edb25e991662a2f56c
                 type: conditional
               type: horizontal-stack
-            - content: "### \u26A1 Charger Status\n{% set cache = states('input_text.goe11_cache')\
-                \ | from_json %}\n| Parameter | Value |\n| :--- | :--- |\n| **PV Charging**\
-                \ | {{ 'Active \u2705' if cache.pv_active else 'Disabled \u274C' }}\
-                \ |\n| **Status** | {{ cache.car_status }} |\n| **Min Amps** | {{\
-                \ cache.min_amps }}A |\n| **SoC Limit** | {{ cache.soc_limit }}% |\n\
-                | **Grid Buffer** | {{ cache.grid_buffer }}W |\n| **Bat Offset** |\
-                \ {{ cache.bat_offset }}W |\n| **Restart Loop** | {{ cache.restarts\
-                \ }}/10 |"
+            - content: "### \u26A1 Charger Status\n{% set raw = states('input_text.goe11_cache')\
+                \ %}\n{% if raw in ['unavailable', 'unknown', ''] %}\n<font color=\"\
+                red\">**\u26A0\uFE0F FAULT: Cache Entity Missing/Empty**</font>\n\
+                {% else %}\n{% set cache = raw | from_json %}\n| Parameter | Value\
+                \ |\n| :--- | :--- |\n| **PV Charging** | {{ 'Active \u2705' if cache.pv_active\
+                \ else 'Disabled \u274C' }} |\n| **Status** | {{ cache.car_status\
+                \ }} |\n| **Min Amps** | {{ cache.min_amps }}A |\n| **SoC Limit**\
+                \ | {{ cache.soc_limit }}% |\n| **Grid Buffer** | {{ cache.grid_buffer\
+                \ }}W |\n| **Bat Offset** | {{ cache.bat_offset }}W |\n| **Restart\
+                \ Loop** | {{ cache.restarts }}/10 |\n{% endif %}"
               type: markdown
             type: vertical-stack
           conditions:
@@ -3068,6 +3071,7 @@ config:
                 entity: number.go_echarger_252682_amp
                 fill_container: true
                 layout: vertical
+                name: Ampere
                 type: custom:mushroom-number-card
               type: vertical-stack
             - cards:
@@ -3086,7 +3090,7 @@ config:
                   tap_action:
                     action: call-service
                     data:
-                      option: one_phase
+                      option: Force single phase
                     service: select.select_option
                     target:
                       entity_id:
@@ -3106,7 +3110,7 @@ config:
                   tap_action:
                     action: call-service
                     data:
-                      option: three_phases
+                      option: Force three phasess
                     service: select.select_option
                     target:
                       entity_id:
@@ -3208,7 +3212,7 @@ config:
               type: horizontal-stack
             - cards:
               - card_mod:
-                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                     \ \"Neutral\") %}\n      background: var(--primary-color);\n \
                     \   {% endif %}\n}\n"
                 entity: select.go_echarger_252682_frc
@@ -3228,7 +3232,7 @@ config:
                     - select.go_echarger_252682_frc
                 type: button
               - card_mod:
-                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                     \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
                     \    {% endif %}\n}\n"
                 entity: select.go_echarger_252682_frc
@@ -3241,14 +3245,14 @@ config:
                 tap_action:
                   action: call-service
                   data:
-                    option: dont_charge
+                    option: Don't Charge
                   service: select.select_option
                   target:
                     entity_id: select.go_echarger_252682_frc
                 type: button
               - card:
                   card_mod:
-                    style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                    style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                       \ 'Charge') %}\n      background: var(--primary-color);\n  \
                       \  {% endif %}\n}\n"
                   entity: select.go_echarger_252682_frc
@@ -3447,53 +3451,85 @@ config:
         type: tile
         vertical: false
       - cards:
-        - card_mod:
-            style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
-              \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-              \  {% endif %}\n}\n"
-          entity: input_text.goe11_cache
-          icon: mdi:solar-power
-          icon_height: 42px
-          name: PV Surplus
-          show_icon: true
-          show_name: true
-          tap_action:
-            action: perform-action
-            data:
-              value: '{% set c = states(''input_text.goe11_cache'') | from_json %}
-                {{ c |
-
-                combine({''pv_active'': not c.pv_active}) | to_json }}
-
-                '
-            perform_action: input_text.set_value
-            target:
-              entity_id: input_text.goe11_cache
-          type: button
-        - card_mod:
-            style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
-              \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-              \  {% endif %}\n}\n"
-          entity: input_text.goe11_cache
-          icon: mdi:battery-charging-high
-          icon_height: 42px
-          name: Force Charge
-          show_icon: true
-          show_name: true
-          tap_action:
-            action: perform-action
-            data:
-              value: '{% set c = states(''input_text.goe11_cache'') | from_json %}
-                {{ c |
-
-                combine({''never_stop'': not c.never_stop}) | to_json }}
-
-                '
-            perform_action: input_text.set_value
-            target:
-              entity_id: input_text.goe11_cache
-          type: button
-        type: vertical-stack
+        - cards:
+          - card_mod:
+              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
+                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                \  {% endif %}\n}\n"
+            entity: input_text.goe11_cache
+            icon: mdi:solar-power
+            icon_height: 42px
+            name: PV Surplus 11kW
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: perform-action
+              data:
+                key_name: pv_active
+              perform_action: script.toggle_goe11_key
+              target: {}
+            type: button
+          - card_mod:
+              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
+                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                \  {% endif %}\n}\n"
+            entity: input_text.goe11_cache
+            icon: mdi:battery-charging-high
+            icon_height: 42px
+            name: Force Charge 11kW
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: perform-action
+              data:
+                key_name: never_stop
+              perform_action: script.toggle_goe11_key
+              target: {}
+            type: button
+          - content: '{{ (states("input_text.goe11_cache")| from_json ).status_text
+              }}'
+            type: markdown
+          type: vertical-stack
+        - cards:
+          - card_mod:
+              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
+                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                \  {% endif %}\n}\n"
+            entity: input_text.goe11_cache
+            icon: mdi:solar-power
+            icon_height: 42px
+            name: PV Surplus
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: perform-action
+              data:
+                key_name: pv_active
+              perform_action: script.toggle_goe11_key
+              target: {}
+            type: button
+          - card_mod:
+              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
+                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                \  {% endif %}\n}\n"
+            entity: input_text.goe11_cache
+            icon: mdi:battery-charging-high
+            icon_height: 42px
+            name: Force Charge
+            show_icon: true
+            show_name: true
+            tap_action:
+              action: perform-action
+              data:
+                key_name: never_stop
+              perform_action: script.toggle_goe11_key
+              target: {}
+            type: button
+          - content: '{{ (states("input_text.goe11_cache")| from_json ).status_text
+              }}'
+            type: markdown
+          type: vertical-stack
+        type: horizontal-stack
       type: grid
     subview: false
     title: Goe
