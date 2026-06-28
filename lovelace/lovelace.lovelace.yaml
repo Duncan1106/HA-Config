@@ -2825,6 +2825,49 @@ config:
                   - 4f7767cac0c342edb25e991662a2f56c
                 type: conditional
               type: horizontal-stack
+            - content: "{% set raw = states('input_text.goe11_cache') %} {% if raw\
+                \ in ['unknown', 'unavailable', ''] or raw[0] != '{' %}\n  <div style=\"\
+                text-align: center; color: var(--warning-color); padding: 10px;\"\
+                >\n    \u26A0\uFE0F Cache is empty or initializing. Waiting for the\
+                \ next automation trigger...\n  </div>\n{% else %}\n  {% set c = raw\
+                \ | from_json %}\n  \n  {# --- Translation Mappings --- #}\n  {% set\
+                \ gst_map = {'N': 'Neutral (Auto)', 'D': 'Hold (Don\\'t Charge)',\
+                \ 'F': 'Force Charge'} %}\n  {% set cc_map = {'Unk': 'Unknown', 'Idl':\
+                \ 'Connected (Idle)', 'Chg': 'Charging', 'Wai': 'Waiting for Car',\
+                \ 'Com': 'Complete', 'Err': 'Error'} %}\n  {% set fsp_map = {'1P':\
+                \ '1 Phase \u26A1', '3P': '3 Phases \u26A1\u26A1\u26A1'} %}\n\n  ###\
+                \ \U0001F9ED Controller Status\n  | Mode / Target | Operational State\
+                \ |\n  | :--- | :--- |\n  | **PV Charging** | {{ '\U0001F7E2 ACTIVE'\
+                \ if c.epv else '\u26AA INACTIVE' }} |\n  | **Car Status** | `{{ cc_map.get(c.cc,\
+                \ c.cc) }}` |\n  | **Hardware Mode** | **{{ gst_map.get(c.gst, c.gst)\
+                \ }}** |\n  | **Grid Phase Config** | {{ fsp_map.get(c.fsp, c.fsp)\
+                \ }} |\n  | **RFID Card ID (Zoe)** | `{{ c.cz if c.cz != -1 else 'None'\
+                \ }}` |\n\n  ### \U0001F4CA Live Power Flow Matrix\n  | Parameter\
+                \ | Metric / Flow | Status / Value |\n  | :--- | :--- | :--- |\n \
+                \ | **Solar Generation** | `{{ c.sol | round(1) }} W` | Production\
+                \ |\n  | **Grid Flow** | `{{ (c.grid * -1) | round(1) }} W` | {{ '\U0001F4E5\
+                \ Importing' if c.grid < 0 else '\U0001F4E4 Exporting' if c.grid >\
+                \ 0 else '\u2195\uFE0F Balanced' }} |\n  | **Home Battery** | `{{\
+                \ c.bat | round(1) }} W` | **{{ c.soc | round(1) }}%** SoC |\n  |\
+                \ **EV Casing Draw** | `{{ c.gp | round(1) }} W` | `{{ c.fa | round(1)\
+                \ }} A` @ `{{ c.v | round(0) }}V` |\n\n  ### \u2699\uFE0F Loop Tuning\
+                \ & Safety Safe-Guards\n  | Setting / Counter | Active Boundary |\
+                \ State |\n  | :--- | :--- | :--- |\n  | **Min Hardware Limit** |\
+                \ `{{ c.ma }} A` | Minimum Floor |\n  | **Battery SoC Floor** | `{{\
+                \ c.bst }}%` | Target Cutout |\n  | **Battery Balance Offset**| `{{\
+                \ c.bpo }} W` | Grid Balancing |\n  | **Grid Buffer Headroom**| `{{\
+                \ c.bp }} W` | Buffer Protection |\n  | **Never Stop Rule** | {{ '\U0001F4AA\
+                \ True' if c.nst else '\U0001F6D1 False' }} | Low PV Behavior |\n\
+                \  | **Low Amp Flag** | {{ '\u26A0\uFE0F Active (Pending Stop)' if\
+                \ c.laf else '\u2705 Stable' }} | Under-threshold Check |\n  | **Cloud\
+                \ Skip Counter** | `{{ c.sc }} / 10` | Dampening Timer |\n  | **Zoe\
+                \ Standby Recovery** | `{{ c.rcc }} / 9` | Phase Lock Recovery |\n\
+                \n  <hr style=\"border: 0; border-top: 1px dashed var(--divider-color);\
+                \ margin: 12px 0;\">\n  <div style=\"font-size: 0.8em; text-align:\
+                \ right; color: var(--secondary-text-color);\">\n    Data String Size:\
+                \ <b>{{ raw | length }}</b> / 255 chars\n  </div>\n{% endif %}"
+              title: "\u26A1 Go-e11 Controller Core State"
+              type: markdown
             type: vertical-stack
           conditions:
           - condition: state
