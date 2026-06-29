@@ -1819,6 +1819,69 @@ retry_action_with_backoff:
       default: notify.duncan
       selector:
         text: {}
+    enable_power_controller:
+      name: Enable Power Controller
+      description: Monitor power consumption to confirm the device actually turned
+        on or off.
+      default: false
+      selector:
+        boolean: {}
+    power_sensor:
+      name: Power Sensor (Optional)
+      description: Explicit power sensor entity. If left blank, it will attempt auto-detection.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    power_threshold_off:
+      name: Power Threshold (Off Validation)
+      description: Power level (Watts) below which the device is considered fully
+        off.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_threshold_on:
+      name: Power Threshold (On Validation)
+      description: Minimum power level (Watts) expected when the device is turned
+        on.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 5000
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_report_delay:
+      name: Power Report Delay
+      description: Time to wait (seconds) for the sensor to update its reading after
+        a state change.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+    power_wait_timeout:
+      name: Power Wait Timeout
+      description: Additional time to wait (seconds) for power to clear the threshold
+        after the report delay.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
   variables:
     effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
       | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
@@ -1832,6 +1895,20 @@ retry_action_with_backoff:
       %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if data_str.startswith('{')
       and data_str.endswith('}') %}\n    {{ data_str }}\n  {% else %}\n    {{ {} }}\n
       \ {% endif %}\n{% else %}\n  {{ {} }}\n{% endif %}\n"
+    power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
+    power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
+    power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
+    power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
+    effective_power_sensor: "{% if enable_power_controller | default(false) %}\n  {%
+      if power_sensor is defined and power_sensor != none and power_sensor | string
+      | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set dev_id = device_id(entity_id)
+      %}\n    {% if dev_id %}\n      {% set entities = device_entities(dev_id) %}\n
+      \     {% set ns = namespace(sensors=[]) %}\n      {% for e in entities %}\n
+      \       {% if e.startswith('sensor.') and state_attr(e, 'device_class') == 'power'
+      %}\n          {% set ns.sensors = ns.sensors + [e] %}\n        {% endif %}\n
+      \     {% endfor %}\n      {% if ns.sensors | length == 1 %}\n        {{ ns.sensors[0]
+      }}\n      {% else %}\n        none\n      {% endif %}\n    {% else %}\n      none\n
+      \   {% endif %}\n  {% endif %}\n{% else %}\n  none\n{% endif %}\n"
   sequence:
   - condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
@@ -1843,9 +1920,14 @@ retry_action_with_backoff:
   - repeat:
       until:
       - condition: template
-        value_template: "{{ ((is_state(entity_id, effective_target_state) or service_data
-          is defined) or repeat.index >= max_retries | int(10)) or states(entity_id)
-          is in\n      ['unavailable','unknown'] }}\n"
+        value_template: "{% set power_ok = true %} {% if effective_power_sensor !=
+          'none' and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
+          == 'off' %}\n    {% set power_ok = states(effective_power_sensor) | float(0)
+          < power_threshold_off_val %}\n  {% elif effective_target_state == 'on' %}\n
+          \   {% set power_ok = states(effective_power_sensor) | float(0) >= power_threshold_on_val
+          %}\n  {% endif %}\n{% endif %} {{ (((is_state(entity_id, effective_target_state)
+          and power_ok) or service_data is defined) or repeat.index >= max_retries
+          | int(10)) or states(entity_id) is in ['unavailable','unknown'] }}\n"
       sequence:
       - choose:
         - conditions:
@@ -1899,6 +1981,36 @@ retry_action_with_backoff:
               %}\n  {{ [repeat.index * bd, md] | min }}\n{% elif backoff_type == 'exponential'
               %}\n  {{ [2**(repeat.index-1) * bd, md] | min }}\n{% else %}\n  {{ [bd,
               md] | min }}\n{% endif %}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ effective_power_sensor != ''none'' and is_state(entity_id,
+              effective_target_state) and effective_target_state is in [''on'', ''off'']
+              }}
+
+              '
+          sequence:
+          - alias: Wait for power to hit the target threshold direction
+            wait_template: "{% if effective_target_state == 'off' %}\n  {{ states(effective_power_sensor)
+              | float(0) < power_threshold_off_val }}\n{% else %}\n  {{ states(effective_power_sensor)
+              | float(0) >= power_threshold_on_val }}\n{% endif %}\n"
+            timeout: '{{ power_report_delay_val + power_timeout_val }}'
+            continue_on_timeout: true
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{% if effective_target_state == 'off' %}\n  {{ states(effective_power_sensor)
+                  | float(0) >= power_threshold_off_val }}\n{% else %}\n  {{ states(effective_power_sensor)
+                  | float(0) < power_threshold_on_val }}\n{% endif %}\n"
+              sequence:
+              - alias: 'Power signature invalid: Run inverted cycle step to force
+                  retry'
+                action: "{% if effective_target_state == 'off' %}\n  homeassistant.turn_on\n{%
+                  else %}\n  homeassistant.turn_off\n{% endif %}\n"
+                target:
+                  entity_id: '{{ entity_id }}'
+              - alias: Short delay before next loop iteration
+                delay: 2
   - choose:
     - conditions:
       - condition: template
@@ -1929,7 +2041,13 @@ retry_action_with_backoff:
       - condition: template
         value_template: '{{ notify_on_failure | default(true) }}'
       - condition: template
-        value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+        value_template: "{% set power_failed = false %} {% if effective_power_sensor
+          != 'none' and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
+          == 'off' %}\n    {% set power_failed = states(effective_power_sensor) |
+          float(0) >= power_threshold_off_val %}\n  {% elif effective_target_state
+          == 'on' %}\n    {% set power_failed = states(effective_power_sensor) | float(0)
+          < power_threshold_on_val %}\n  {% endif %}\n{% endif %} {{ not is_state(entity_id,
+          effective_target_state) or power_failed }}\n"
       sequence:
       - variables:
           now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
