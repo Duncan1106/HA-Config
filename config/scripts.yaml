@@ -2352,7 +2352,9 @@ pool_secure_pulsetime_update:
     data:
       topic: cmnd/tasmota_837238/pulsetime1
       payload: '{{ payload }}'
+    continue_on_error: true
   - delay: '{{ lock_duration }}'
+    continue_on_error: true
   - action: automation.turn_on
     target:
       entity_id: automation.pool_pulsetime_auto_adjust
@@ -2369,9 +2371,8 @@ toggle_goe11_key:
     target:
       entity_id: input_text.goe11_cache
     data:
-      value: '{% set c = states(''input_text.goe11_cache'') | from_json %} {% set
-        new_val = not c[key_name] %} {{ c | combine({key_name: new_val}) | to_json
-        }}
+      value: '{% set c = states(''input_text.goe11_cache'') | from_json(default={})
+        %} {% set c = c if c is mapping else {} %} {% set new_val = not c.get(key_name,
+        false) %} {{ c | combine({key_name: new_val}) | to_json }}
 
         '
-  description: ''
