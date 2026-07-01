@@ -12199,19 +12199,20 @@
       eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
         %}\n  {% set installed = state_attr(e, 'installed_version') %}\n  {% set latest
         = state_attr(e, 'latest_version') %}\n  {% set in_progress = state_attr(e,
-        'in_progress') %}\n\n  {% if installed and latest and not in_progress %}\n
-        \   {% set i = installed.split('.')[:3] %}\n    {% set l = latest.split('.')[:3]
-        %}\n\n    {% if i | length >= 2 and l | length >= 2 %}\n      {% set installed_year
-        = i[0] | int %}\n      {% set installed_month = i[1] | int %}\n      {% set
-        installed_patch = i[2] | int if i | length > 2 else 0 %}\n\n      {% set latest_year
-        = l[0] | int %}\n      {% set latest_month = l[1] | int %}\n      {% set latest_patch
-        = l[2] | int if l | length > 2 else 0 %}\n\n      {% set installed_months
-        = installed_year * 12 + installed_month %}\n      {% set latest_months = latest_year
-        * 12 + latest_month %}\n\n      {% set month_changed = (latest_months - installed_months)
-        >= 1 %}\n      {% set patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold
-        %}\n\n      {% if month_changed or patch_gap %}\n        {% set ns.items =
-        ns.items + [\n          {\n            \"entity\": e,\n            \"name\":
-        state_attr(e, 'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
+        'in_progress') %}\n\n  {% if installed and latest and not in_progress and
+        installed != latest %}\n    {% set i = installed.split('.')[:3] %}\n    {%
+        set l = latest.split('.')[:3] %}\n\n    {% if i | length >= 2 and l | length
+        >= 2 %}\n      {% set installed_year = i[0] | int %}\n      {% set installed_month
+        = i[1] | int %}\n      {% set installed_patch = i[2] | int if i | length >
+        2 else 0 %}\n\n      {% set latest_year = l[0] | int %}\n      {% set latest_month
+        = l[1] | int %}\n      {% set latest_patch = l[2] | int if l | length > 2
+        else 0 %}\n\n      {% set installed_months = installed_year * 12 + installed_month
+        %}\n      {% set latest_months = latest_year * 12 + latest_month %}\n\n      {%
+        set month_changed = (latest_months - installed_months) >= 1 %}\n      {% set
+        patch_gap = (latest_patch - installed_patch) >= patch_gap_threshold %}\n\n
+        \     {% if month_changed or patch_gap %}\n        {% set ns.items = ns.items
+        + [\n          {\n            \"entity\": e,\n            \"name\": state_attr(e,
+        'friendly_name') or e,\n            \"from\": installed,\n            \"to\":
         latest\n          }\n        ] %}\n      {% endif %}\n    {% endif %}\n  {%
         endif %}\n{% endfor %} {{ ns.items }}"
       updates_today: '{{ eligible_updates[:5] }}'
