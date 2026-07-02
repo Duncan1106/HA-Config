@@ -9114,86 +9114,82 @@
   mode: single
 - id: '1758358981299'
   alias: Wasserenthärtung – Salz Erinnerung mit Bestätigung
-  description: Erinnert bei niedrigem Salz, setzt Utility Meter erst nach Bestätigung
-    zurück.
+  description: Erinnert bei niedrigem Salz und zum Klopfen. Variablen für Traces optimiert.
   triggers:
   - entity_id: sensor.wasserenthartung
     id: usage_change
+    not_from:
+    - unknown
+    - unavailable
+    not_to:
+    - unknown
+    - unavailable
     trigger: state
-  - entity_id:
-    - input_boolean.salz_nachgefullt
+  - entity_id: input_boolean.salz_nachgefullt
+    from: 'on'
     to: 'off'
     id: confirm_reset
     trigger: state
-    from: 'on'
-  conditions: []
+  conditions:
+  - condition: template
+    value_template: '{% set is_usage = trigger.id == ''usage_change'' %} {% set old
+      = trigger.from_state.state | float(none) if is_usage else none %} {% set new
+      = trigger.to_state.state | float(none) if is_usage else none %} {% set crossed_10
+      = is_usage and old is not none and new is not none and (new // 10) > (old //
+      10) and is_state(''input_boolean.salz_nachgefullt'', ''off'') %} {% set refill_needed
+      = is_usage and new is not none and new > 42 and (now() - (this.attributes.last_triggered
+      | default(as_datetime(0), true)) > timedelta(days=1)) %} {{ trigger.id == ''confirm_reset''
+      or crossed_10 or refill_needed }}'
   actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: usage_change
-      - condition: numeric_state
-        entity_id: sensor.wasserenthartung
-        above: 42
+  - variables:
+      is_usage: '{{ trigger.id == ''usage_change'' }}'
+      old: '{{ trigger.from_state.state | float(none) if is_usage else none }}'
+      new: '{{ trigger.to_state.state | float(none) if is_usage else none }}'
+      crossed_10: '{{ is_usage and old is not none and new is not none and (new //
+        10) > (old // 10) and is_state(''input_boolean.salz_nachgefullt'', ''off'')
+        }}'
+      refill_needed: '{{ is_usage and new is not none and new > 42 and (now() - (this.attributes.last_triggered
+        | default(as_datetime(0), true)) > timedelta(days=1)) }}'
+  - if:
+    - condition: template
+      value_template: '{{ is_usage }}'
+    then:
+    - if:
       - condition: template
-        value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'')
-          | default( as_datetime(''0''), true)) > timedelta(days=1) }}'
-        enabled: true
-      sequence:
-      - target:
-          entity_id:
-          - input_boolean.salz_nachgefullt
-        action: input_boolean.turn_on
-        data: {}
-      - action: notify.admin
-        data:
-          title: "\U0001F4A7 Erinnerung: Salz nachfüllen"
-          message: 'Der Wasserenthärter hat {{ states(''sensor.wasserenthartung'')
-            }} m³ erreicht. Bitte Salz nachfüllen und danach den Schalter ''Salz nachgefüllt''
-            ausschalten.
-
-            '
-          data:
-            tag: wasserenthaertung_salz
-    - conditions:
-      - condition: trigger
-        id:
-        - usage_change
-      - condition: template
-        value_template: '{% set old = trigger.from_state.state | float(0) %}
-
-          {% set new = trigger.to_state.state | float(0) %}
-
-          {{ (new // 10) > (old // 10) }}'
-      - condition: state
-        entity_id: input_boolean.salz_nachgefullt
-        state:
-        - 'off'
-      sequence:
-      - action: notify.admin
-        metadata: {}
-        data:
-          message: "Der Wasserzähler steht jetzt auf {{ states('sensor.wasserenthartung')
-            }} m³. \nBitte kurz gegen den Enthärtungsbehälter klopfen, um Salzbrücken
-            zu lösen."
-          title: "\U0001F528 Zeit zum Klopfen!"
-          data:
-            tag: wasserenthaertung_klopfen
-    - conditions:
-      - condition: trigger
-        id: confirm_reset
-      sequence:
-      - action: utility_meter.calibrate
-        metadata: {}
-        data:
-          value: '0'
+        value_template: '{{ refill_needed }}'
+      then:
+      - action: input_boolean.turn_on
         target:
-          entity_id: sensor.wasserenthartung
-      - action: notify.admin
+          entity_id: input_boolean.salz_nachgefullt
+    - action: notify.admin
+      data:
+        title: "{% if crossed_10 and refill_needed %}\n  \U0001F4A7\U0001F528 Wasserenthärtung:
+          Salz & Klopfen fällig\n{% elif refill_needed %}\n  \U0001F4A7 Erinnerung:
+          Salz nachfüllen\n{% else %}\n  \U0001F528 Zeit zum Klopfen!\n{% endif %}"
+        message: 'Der Wasserzähler steht jetzt auf {{ new }} m³. {% if refill_needed
+          %}
+
+          Bitte Salz nachfüllen und danach den Schalter ''Salz nachgefüllt'' ausschalten.
+          {% endif %} {% if crossed_10 %}
+
+          Bitte kurz gegen den Enthärtungsbehälter klopfen, um Salzbrücken zu lösen.
+          {% endif %}'
         data:
-          message: clear_notification
-          data:
-            tag: wasserenthaertung_salz
+          tag: wasserenthaertung_info
+  - if:
+    - condition: trigger
+      id: confirm_reset
+    then:
+    - action: utility_meter.calibrate
+      target:
+        entity_id: sensor.wasserenthartung
+      data:
+        value: '0'
+    - action: notify.admin
+      data:
+        message: clear_notification
+        data:
+          tag: wasserenthaertung_info
   mode: single
 - id: '1759414302396'
   alias: Daily Agenda
