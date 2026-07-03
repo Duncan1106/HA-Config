@@ -2316,40 +2316,54 @@ shawn_weekly_edge_cut:
         target:
           entity_id: button.shawn_kanten_mahen
         data: {}
-      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') not in [''standby'',
-          ''charging'',''unavailable'',''unknown''] }}'
-        timeout: 00:05:00
-        continue_on_timeout: true
-        alias: 'Wait for wake-up '
-      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing_border'']
-          }}'
-        timeout: 00:15:00
-        continue_on_timeout: true
-        alias: 'Wait for border mode '
-      - alias: 'Wait for border finished '
-        wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing'',
-          ''on_the_way_home'',''charging''] }}'
-        timeout: 00:15:00
-        continue_on_timeout: true
+      - wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - mowing_border
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
+        alias: Wait for border start
+      - alias: Wait for returning or working -> border is finished
+        wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - returning
+          - return
+          - mowing
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
       - action: button.press
         target:
           entity_id: button.shawn_zum_dock_fahren
         data: {}
-      - wait_template: '{{ is_state(''sensor.shawn_rasenmaher_status'', ''charging'')
-          }}'
-        timeout: 00:15:00
-        continue_on_timeout: false
-        alias: 'Wait for charging started '
-      - if:
-        - condition: template
-          value_template: '{{ repeat.count == 1 }}'
-        then:
-        - delay:
-            hours: 0
-            minutes: 0
-            seconds: 30
-            milliseconds: 0
-        alias: Wait after the first iteration
+      - alias: Wait for Charging
+        wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - charging
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+        alias: 'Wait between Iterations '
   - action: notify.duncan
     data:
       title: '✅ Shawn: Task Complete'
