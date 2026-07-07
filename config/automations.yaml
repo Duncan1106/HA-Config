@@ -13824,22 +13824,46 @@
   mode: queued
   max: 10
 - id: '1783428437518'
-  alias: Dreame Vacuum Move to Standby after Charging
-  description: Moves the Dreame D9 Max vacuum to a specific coordinate once the battery
-    level reaches 100%.
+  alias: 'Dreame Vacuum: Move & Wait for Emptying'
   triggers:
   - trigger: numeric_state
-    entity_id:
-    - vacuum.d9_max_gen_2
+    entity_id: vacuum.d9_max_gen_2
     attribute: battery
     above: 99
-  conditions: []
+  conditions:
+  - condition: time
+    after: 08:00:00
+    before: '22:00:00'
   actions:
   - action: dreame_vacuum.vacuum_goto
-    metadata: {}
     target:
       entity_id: vacuum.d9_max_gen_2
     data:
       x: -2070
       y: -300
+  - action: notify.duncan
+    data:
+      title: Dreame D9 Max Gen 2 Ready to Empty
+      message: Please empty the dust container.
+      data:
+        tag: d9_max_gen2_empty_dust_container
+        actions:
+        - action: VACUUM_DONE_EMPTYING
+          title: Done! Send to Dock
+  - wait_for_trigger:
+    - trigger: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: VACUUM_DONE_EMPTYING
+    timeout: 01:00:00
+    continue_on_timeout: true
+  - action: vacuum.return_to_base
+    target:
+      entity_id: vacuum.d9_max_gen_2
+    data: {}
+  - action: notify.duncan
+    data:
+      message: clear_notification
+      data:
+        tag: d9_max_gen2_empty_dust_container
   mode: single
