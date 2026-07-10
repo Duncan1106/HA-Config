@@ -13578,6 +13578,22 @@
   - trigger: time_pattern
     seconds: /10
     id: timer
+  conditions:
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - rfid
+      - car
+      - cfg_soc_limit
+      - cfg_bat_offset
+      - cfg_zoe
+      - cfg_buffer
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - timer
   actions:
   - variables:
       raw_cache: '{{ states(''input_text.goe11_cache'') }}'
@@ -13594,8 +13610,8 @@
         min_amps: 6
         car_status: Unk
       cache: "{% if raw_cache in ['unknown', 'unavailable', ''] or raw_cache[0] !=
-        '{' %}\n  {{ default }}\n{% else %}\n  {{ default | combine(raw_cache | from_json)
-        }}\n{% endif %}"
+        '{' %}\n  {{ default }}\n{% else %}\n  {{ default | combine((raw_cache | from_json)
+        ) }}\n{% endif %}"
   - choose:
     - conditions:
       - condition: trigger
@@ -13659,8 +13675,12 @@
         conditions:
         - alias: Amps dont match min amps
           condition: template
-          value_template: '{{ states("number.go_echarger_270862_amp") != cache.min_amps
-            }}'
+          value_template: '{% set cache = states(''input_text.goe11_cache'') | from_json
+            %}
+
+            {{ cache.min_amps }}
+
+            {{ states("number.go_echarger_270862_amp") != cache.min_amps }}'
         - condition: state
           entity_id: select.go_echarger_270862_frc
           state:
@@ -13688,134 +13708,127 @@
       - condition: trigger
         id:
         - timer
+      - condition: template
+        value_template: '{{ cache.pv_active }}'
       sequence:
-      - if:
-        - condition: template
-          value_template: '{{ cache.pv_active }}'
-        then:
-        - variables:
-            v: '{{ states(''sensor.go_echarger_270862_nrg'') | float(230.0) }}'
-            gp: '{{ states(''sensor.go_echarger_270862_nrg_12'') | float(0.0) }}'
-            fa: '{{ states(''number.go_echarger_270862_amp'') | float(6.0) }}'
-            gst: '{{ states(''select.go_echarger_270862_frc'') }}'
-            fsp: '{{ states(''select.go_echarger_270862_psm'') }}'
-            grid: '{{ (states(''sensor.grid_power'') | float(0.0)) * -1.0 }}'
-            bat: '{{ states(''sensor.battery_discharge'') | float(0.0) }}'
-            sol: '{{ states(''sensor.solar_power_total'') | float(0.0) - states(''sensor.battery_charge'')
-              | float(0.0) }}'
-            soc_avg: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0.0) }}'
-            soc: '{{ soc_avg if soc_avg > 0 else states(''sensor.inverter_battery'')
-              | float(0.0) }}'
-            divider: '{{ 1.0 if fsp == ''Force single phase'' else 3.0 }}'
-            avail_bat_p: '{{ cache.bat_offset - bat }}'
-            avail_grid_a: '{{ (grid - cache.grid_buffer) / v }}'
-            avail_bat_a: '{{ avail_bat_p / v }}'
-            goe_a: '{{ gp / v }}'
-            solar_amps: '{{ sol / v }}'
-            calc_amps: '{{ (avail_grid_a + goe_a + avail_bat_a) / divider }}'
-            clamped_calc_amps: '{{ [calc_amps | float, 0.0] | max }}'
-            amps_rounded: '{{ [clamped_calc_amps | int, 16] | min }}'
-            target_amps: '{{ [amps_rounded, cache.min_amps | int] | max }}'
-            cache: "{% set cc = cache %} {% if soc > 99.9 and cc.bat_offset < 0 %}\n
-              \ {% set cc = cc | combine({'bat_offset': 0.0}) %}\n{% endif %}\n{%
-              if soc < cc.soc_limit %}\n  {% set msg = \"Stopping discharge of Battery
-              (SoC \" ~ soc ~ \"% < \" ~ cc.soc_limit ~ \"%)\" %}\n  {% set cc = cc
-              | combine({'status_text': msg}) %}\n{% elif calc_amps < 5.99 and cc.never_stop
-              %}\n  {% set msg = \"Never Stop Charging is active\" %}\n  {% set cc
-              = cc | combine({'status_text': msg}) %}\n{% elif cc.skips > 0 %}\n  {%
-              set msg = \"Skipping Cycle: Solar/Battery power too low\" %}\n  {% set
-              cc = cc | combine({'status_text': msg}) %}\n{% elif calc_amps < 5.99
-              %}\n  {% set msg = \"Waiting: Low solar surplus (\" ~ (calc_amps * 230)
-              | int ~ \"W)\" %}\n  {% set cc = cc | combine({'status_text': msg})
-              %}\n{% elif gst == 'Neutral' and gp > -20 and gp < 20 and cc.car_status
-              not in ['Chg', 'Wai'] %}\n  {% set msg = \"Restarting charging loop
-              (\" ~ cc.restarts ~ \"/10)\" %}\n  {% set cc = cc | combine({'status_text':
-              msg}) %}\n{% else %}\n  {% set msg = \"Running: \" ~ target_amps ~ \"A
-              (\" ~ (target_amps * 230) | int ~ \"W)\" %}\n  {% set cc = cc | combine({'status_text':
-              msg, 'restarts': 0}) %}\n{% endif %}\n{% if soc < cc.soc_limit %}\n
-              \ {{ cc | combine({'pv_active': false, 'low_amps': false}) }}\n{% elif
-              calc_amps < 5.99 %}\n  {% if not cc.low_amps %}\n    {{ cc | combine({'low_amps':
-              true}) }}\n  {% else %}\n    {{ cc }}\n  {% endif %}\n{% else %}\n  {%
-              set cc = cc | combine({'low_amps': false}) %}\n  {% if target_amps !=
-              fa and (solar_amps + avail_bat_a) <= amps_rounded and cc.skips < 10
-              %}\n    {{ cc | combine({'skips': cc.skips + 1}) }}\n  {% else %}\n
-              \   {% set cc = cc | combine({'skips': 0}) %}\n    {% set rcc = cc.restarts
-              %}\n\n    {% if gst == 'Neutral' and gp > -20 and gp < 20 and cc.car_status
-              not in ['Chg', 'Wai'] %}\n      {% set rcc = rcc + 1 %}\n    {% elif
-              gst != 'Neutral' %}\n      {% set rcc = 0 %}\n    {% endif %}\n\n    {{
-              cc | combine({'restarts': rcc}) }}\n  {% endif %}\n{% endif %}"
-        - choose:
-          - conditions:
+      - variables:
+          v: '{{ states(''sensor.go_echarger_270862_nrg'') | float(230.0) }}'
+          gp: '{{ states(''sensor.go_echarger_270862_nrg_12'') | float(0.0) }}'
+          fa: '{{ states(''number.go_echarger_270862_amp'') | float(6.0) }}'
+          gst: '{{ states(''select.go_echarger_270862_frc'') }}'
+          fsp: '{{ states(''select.go_echarger_270862_psm'') }}'
+          grid: '{{ (states(''sensor.grid_power'') | float(0.0)) * -1.0 }}'
+          bat: '{{ states(''sensor.battery_discharge'') | float(0.0) }}'
+          sol: '{{ states(''sensor.solar_power_total'') | float(0.0) - states(''sensor.battery_charge'')
+            | float(0.0) }}'
+          soc_avg: '{{ states(''sensor.felicity_ess_soc_avg'') | float(0.0) }}'
+          soc: '{{ soc_avg if soc_avg > 0 else states(''sensor.inverter_battery'')
+            | float(0.0) }}'
+          divider: '{{ 1.0 if fsp == ''Force single phase'' else 3.0 }}'
+          avail_bat_p: '{{ cache.bat_offset - bat }}'
+          avail_grid_a: '{{ (grid - cache.grid_buffer) / v }}'
+          avail_bat_a: '{{ avail_bat_p / v }}'
+          goe_a: '{{ gp / v }}'
+          solar_amps: '{{ sol / v }}'
+          calc_amps: '{{ (avail_grid_a + goe_a + avail_bat_a) / divider }}'
+          clamped_calc_amps: '{{ [calc_amps | float, 0.0] | max }}'
+          amps_rounded: '{{ [clamped_calc_amps | int, 16] | min }}'
+          target_amps: '{{ [amps_rounded, cache.min_amps | int] | max }}'
+          cache: "{% set cc = cache %} {% if soc > 99.9 and cc.bat_offset < 0 %}\n
+            \ {% set cc = cc | combine({'bat_offset': 0.0}) %}\n{% endif %}\n{% if
+            soc < cc.soc_limit %}\n  {% set msg = \"Stopping discharge of Battery
+            (SoC \" ~ soc ~ \"% < \" ~ cc.soc_limit ~ \"%)\" %}\n  {% set cc = cc
+            | combine({'status_text': msg}) %}\n{% elif calc_amps < 5.99 and cc.never_stop
+            %}\n  {% set msg = \"Never Stop Charging is active\" %}\n  {% set cc =
+            cc | combine({'status_text': msg}) %}\n{% elif cc.skips > 0 %}\n  {% set
+            msg = \"Skipping Cycle: Solar/Battery power too low\" %}\n  {% set cc
+            = cc | combine({'status_text': msg}) %}\n{% elif calc_amps < 5.99 %}\n
+            \ {% set msg = \"Waiting: Low solar surplus (\" ~ (calc_amps * 230) |
+            int ~ \"W)\" %}\n  {% set cc = cc | combine({'status_text': msg}) %}\n{%
+            elif gst == 'Neutral' and gp > -20 and gp < 20 and cc.car_status not in
+            ['Chg', 'Wai'] %}\n  {% set msg = \"Restarting charging loop (\" ~ cc.restarts
+            ~ \"/10)\" %}\n  {% set cc = cc | combine({'status_text': msg}) %}\n{%
+            else %}\n  {% set msg = \"Running: \" ~ target_amps ~ \"A (\" ~ (target_amps
+            * 230) | int ~ \"W)\" %}\n  {% set cc = cc | combine({'status_text': msg,
+            'restarts': 0}) %}\n{% endif %}\n{% if soc < cc.soc_limit %}\n  {{ cc
+            | combine({'pv_active': false, 'low_amps': false}) }}\n{% elif calc_amps
+            < 5.99 %}\n  {% if not cc.low_amps %}\n    {{ cc | combine({'low_amps':
+            true}) }}\n  {% else %}\n    {{ cc }}\n  {% endif %}\n{% else %}\n  {%
+            set cc = cc | combine({'low_amps': false}) %}\n  {% if target_amps !=
+            fa and (solar_amps + avail_bat_a) <= amps_rounded and cc.skips < 10 %}\n
+            \   {{ cc | combine({'skips': cc.skips + 1}) }}\n  {% else %}\n    {%
+            set cc = cc | combine({'skips': 0}) %}\n    {% set rcc = cc.restarts %}\n\n
+            \   {% if gst == 'Neutral' and gp > -20 and gp < 20 and cc.car_status
+            not in ['Chg', 'Wai'] %}\n      {% set rcc = rcc + 1 %}\n    {% elif gst
+            != 'Neutral' or gp > 20 %}\n      {% set rcc = 0 %}\n    {% endif %}\n\n
+            \   {{ cc | combine({'restarts': rcc}) }}\n  {% endif %}\n{% endif %}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ soc < cache.soc_limit or (calc_amps < 5.99 and cache.low_amps)
+              }}'
+          sequence:
+          - action: number.set_value
+            target:
+              entity_id: number.go_echarger_270862_amp
+            data:
+              value: '{{ target_amps | int }}'
+          - alias: Stopf charging if never stop is off
+            if:
             - condition: template
-              value_template: '{{ soc < cache.soc_limit or (calc_amps < 5.99 and cache.low_amps)
-                }}'
-            sequence:
+              value_template: '{{ not cache.never_stop or soc < cache.soc_limit }}'
+            then:
+            - action: select.select_option
+              target:
+                entity_id: select.go_echarger_270862_frc
+              data:
+                option: Don't charge
+          alias: Below Min Amps or below save soc
+        - conditions:
+          - condition: template
+            value_template: '{{ calc_amps >= 5.99 and cache.skips == 0 }}'
+          sequence:
+          - alias: If target amps != current amps
+            if:
+            - condition: template
+              value_template: '{{ target_amps | int != fa | int }}'
+            then:
             - action: number.set_value
               target:
                 entity_id: number.go_echarger_270862_amp
               data:
                 value: '{{ target_amps | int }}'
-            - if:
+          - if:
+            - condition: template
+              value_template: '{{ gst != ''Neutral'' }}'
+            then:
+            - action: select.select_option
+              target:
+                entity_id: select.go_echarger_270862_frc
+              data:
+                option: Neutral
+            alias: 'Allow Charging if not already allowed '
+          - choose:
+            - conditions:
               - condition: template
-                value_template: '{{ not cache.never_stop }}'
-              then:
+                value_template: '{{ gst == ''Neutral'' and gp > -20 and gp < 20 and
+                  cache.car_status not in [''Chg'', ''Wai''] and cache.restarts >=
+                  9 }}'
+              sequence:
               - action: select.select_option
                 target:
                   entity_id: select.go_echarger_270862_frc
                 data:
                   option: Don't charge
-          - conditions:
-            - condition: template
-              value_template: '{{ calc_amps >= 5.99 and cache.skips == 0 }}'
-            sequence:
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: '{{ target_amps | int != fa | int }}'
-                sequence:
-                - action: number.set_value
-                  target:
-                    entity_id: number.go_echarger_270862_amp
-                  data:
-                    value: '{{ target_amps | int }}'
-                - choose:
-                  - conditions:
-                    - condition: template
-                      value_template: '{{ gst != ''Neutral'' }}'
-                    sequence:
-                    - action: select.select_option
-                      target:
-                        entity_id: select.go_echarger_270862_frc
-                      data:
-                        option: Neutral
-            - choose:
-              - conditions:
-                - condition: template
-                  value_template: '{{ gst == ''Neutral'' and gp > -20 and gp < 20
-                    and cache.car_status not in [''Chg'', ''Wai''] and cache.restarts
-                    >= 9 }}'
-                sequence:
-                - action: select.select_option
-                  target:
-                    entity_id: select.go_echarger_270862_frc
-                  data:
-                    option: Don't charge
-                - delay: 00:00:03
-                - action: select.select_option
-                  target:
-                    entity_id: select.go_echarger_270862_frc
-                  data:
-                    option: Neutral
-              - conditions:
-                - condition: template
-                  value_template: '{{ gst != ''Neutral'' and target_amps | int ==
-                    fa | int }}'
-                sequence:
-                - action: select.select_option
-                  target:
-                    entity_id: select.go_echarger_270862_frc
-                  data:
-                    option: Neutral
+              - delay: 00:00:03
+              - action: select.select_option
+                target:
+                  entity_id: select.go_echarger_270862_frc
+                data:
+                  option: Neutral
+              alias: 'If car not charging but allowed charging '
+          alias: Above min amps
+      alias: Charging Loop
   - action: input_text.set_value
     target:
       entity_id: input_text.goe11_cache
