@@ -13594,6 +13594,8 @@
       - condition: trigger
         id:
         - timer
+      - condition: template
+        value_template: '{{ (states(''input_text.goe11_cache'') | from_json) }}'
   actions:
   - variables:
       raw_cache: '{{ states(''input_text.goe11_cache'') }}'
@@ -13808,25 +13810,24 @@
               data:
                 option: Neutral
             alias: 'Allow Charging if not already allowed '
-          - choose:
-            - conditions:
-              - condition: template
-                value_template: '{{ gst == ''Neutral'' and gp > -20 and gp < 20 and
-                  cache.car_status not in [''Chg'', ''Wai''] and cache.restarts >=
-                  9 }}'
-              sequence:
-              - action: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_frc
-                data:
-                  option: Don't charge
-              - delay: 00:00:03
-              - action: select.select_option
-                target:
-                  entity_id: select.go_echarger_270862_frc
-                data:
-                  option: Neutral
-              alias: 'If car not charging but allowed charging '
+          - if:
+            - condition: template
+              value_template: '{{ gst == ''Neutral'' and gp > -20 and gp < 20 and
+                cache.car_status not in [''Chg'', ''Wai''] and cache.restarts >= 9
+                }}'
+            then:
+            - action: select.select_option
+              target:
+                entity_id: select.go_echarger_270862_frc
+              data:
+                option: Don't charge
+            - delay: 00:00:03
+            - action: select.select_option
+              target:
+                entity_id: select.go_echarger_270862_frc
+              data:
+                option: Neutral
+            alias: Restart Charging if car isn't charging but out is allowed to
           alias: Above min amps
       alias: Charging Loop
   - action: input_text.set_value
