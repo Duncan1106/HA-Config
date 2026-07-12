@@ -5173,12 +5173,8 @@
     when chargers or desk strip are powered  \n- **Throttle:** Runs at most every
     5 seconds to prevent MQTT flooding"
   triggers:
-  - trigger: state
-    entity_id:
-    - sensor.grid_power
-    - sensor.solar_power_total
-    - sensor.battery_discharge
-    - sensor.felicity_ess_soc_avg
+  - trigger: time_pattern
+    seconds: /5
   conditions:
   - condition: or
     conditions:
@@ -7634,12 +7630,16 @@
       final_update: true
       final_delay: 10
       message: '{{ label }} detected - {{ camera_name }}'
-      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
+      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1&format=android'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       update_sub_label: true
       video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
       channel: Frigate
+      labels:
+      - cat
+      - person
+      - package
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
   description: Sends notifications with snapshots from the Keller camera using Frigate
@@ -12910,7 +12910,41 @@
   - trigger: time_pattern
     minutes: /2
     id: maintain_soak
-  conditions: []
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - maintain_soak
+      - condition: time
+        after: 08:00:00
+        before: '16:00:00'
+      - condition: state
+        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+        state: 'off'
+      alias: Maintain Soak
+    - alias: Start Soak
+      condition: and
+      conditions:
+      - condition: trigger
+        id:
+        - start_soak
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 50
+      - condition: time
+        after: 08:00:00
+        before: '15:00:00'
+      - condition: state
+        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
+        state:
+        - 'on'
+    - condition: trigger
+      id:
+      - stop_soak
+      alias: Stop Soak
   actions:
   - variables:
       target_amps: "{% set cells = [\n  states('sensor.battery_2_bat2_cell_01')|float(0),
@@ -12928,16 +12962,6 @@
     - conditions:
       - condition: trigger
         id: start_soak
-      - condition: time
-        after: 08:00:00
-        before: '15:00:00'
-      - condition: numeric_state
-        entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 50
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-        state:
-        - 'on'
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -13004,12 +13028,6 @@
     - conditions:
       - condition: trigger
         id: maintain_soak
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-        state: 'off'
-      - condition: time
-        after: 08:00:00
-        before: '16:00:00'
       sequence:
       - action: number.set_value
         target:
@@ -13066,9 +13084,11 @@
   - trigger: mqtt
     topic: stat/tasmota_837238/RESULT
     id: process_data
-  actions:
-  - choose:
-    - conditions:
+  conditions:
+  - condition: or
+    conditions:
+    - condition: and
+      conditions:
       - condition: trigger
         id:
         - request_data
@@ -13088,6 +13108,27 @@
             state: 'off'
             for:
               minutes: 5
+    - condition: and
+      conditions:
+      - condition: not
+        conditions:
+        - condition: state
+          entity_id: switch.pool_pumpe
+          state: 'off'
+          for:
+            minutes: 5
+      - condition: trigger
+        id:
+        - process_data
+      - condition: template
+        value_template: '{{ ''PulseTime1'' in trigger.payload }}'
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - request_data
+        - startup
       sequence:
       - if:
         - condition: trigger
@@ -13101,15 +13142,6 @@
     - conditions:
       - condition: trigger
         id: process_data
-      - condition: template
-        value_template: '{{ ''PulseTime1'' in trigger.payload }}'
-      - condition: not
-        conditions:
-        - condition: state
-          entity_id: switch.pool_pumpe
-          state: 'off'
-          for:
-            minutes: 5
       sequence:
       - action: input_number.set_value
         target:
