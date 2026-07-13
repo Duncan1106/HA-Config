@@ -9116,27 +9116,13 @@
     trigger: state
   conditions:
   - condition: template
-    value_template: '{% set is_usage = trigger.id == ''usage_change'' %} {% set old
-      = trigger.from_state.state | float(none) if is_usage else none %} {% set new
-      = trigger.to_state.state | float(none) if is_usage else none %} {% set crossed_10
-      = is_usage and old is not none and new is not none and (new // 10) > (old //
-      10) and is_state(''input_boolean.salz_nachgefullt'', ''off'') %} {% set refill_needed
-      = is_usage and new is not none and new > 52 and (now() - (this.attributes.last_triggered
-      | default(as_datetime(0), true)) > timedelta(days=1)) %} {{ trigger.id == ''confirm_reset''
-      or crossed_10 or refill_needed }}'
+    value_template: '{{ trigger.id == ''confirm_reset'' or crossed_10 or refill_needed
+      }}'
   actions:
-  - variables:
-      is_usage: '{{ trigger.id == ''usage_change'' }}'
-      old: '{{ trigger.from_state.state | float(none) if is_usage else none }}'
-      new: '{{ trigger.to_state.state | float(none) if is_usage else none }}'
-      crossed_10: '{{ is_usage and old is not none and new is not none and (new //
-        10) > (old // 10) and is_state(''input_boolean.salz_nachgefullt'', ''off'')
-        }}'
-      refill_needed: '{{ is_usage and new is not none and new > 52 and (now() - (this.attributes.last_triggered
-        | default(as_datetime(0), true)) > timedelta(days=1)) }}'
   - if:
-    - condition: template
-      value_template: '{{ is_usage }}'
+    - condition: trigger
+      id:
+      - usage_change
     then:
     - if:
       - condition: template
@@ -9160,6 +9146,7 @@
           {% endif %}'
         data:
           tag: wasserenthaertung_info
+    alias: 'Usage '
   - if:
     - condition: trigger
       id: confirm_reset
@@ -9174,6 +9161,15 @@
         message: clear_notification
         data:
           tag: wasserenthaertung_info
+    alias: Reset
+  variables:
+    is_usage: '{{ trigger.id == ''usage_change'' }}'
+    old: '{{ trigger.from_state.state | float(none) if is_usage else none }}'
+    new: '{{ trigger.to_state.state | float(none) if is_usage else none }}'
+    crossed_10: '{{ is_usage and old is not none and new is not none and (new // 10)
+      > (old // 10) and is_state(''input_boolean.salz_nachgefullt'', ''off'') }}'
+    refill_needed: '{{ is_usage and new is not none and new > 52 and (now() - (this.attributes.last_triggered
+      | default(as_datetime(0), true)) > timedelta(days=1)) }}'
   mode: single
 - id: '1759414302396'
   alias: Daily Agenda
@@ -12168,12 +12164,10 @@
   triggers:
   - trigger: time
     at: '10:00:00'
-  - trigger: time
-    at: '11:00:00'
   conditions: []
   actions:
   - variables:
-      patch_gap_threshold: 1
+      patch_gap_threshold: 2
       esphome_update_entities: "{{ integration_entities('esphome')\n   | select('match',
         '^update\\\\.')\n   | list }}"
       eligible_updates: "{% set ns = namespace(items=[]) %} {% for e in esphome_update_entities
@@ -12885,7 +12879,7 @@
     has successfully resumed battery power.\n\n---\n\n### Technical Overview\n\n*
     **Automation Mode:** `restart`\n* **Execution Method:** `script.retry_action_with_backoff`\n*
     **Key Inputs:**\n    * `sensor.inverter_battery` (Threshold: **95%**)\n    * `sensor.solcast_pv_forecast_prognose_heute`
-    (Threshold: **40kWh**)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_time_of_use`\n*
+    (Threshold: **50kWh**)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_time_of_use`\n*
     **Safety Mechanisms:**\n    * **Action Retries:** Up to **10 retries** with a
     **60s max delay** and **simple backoff** to ensure the inverter registers the
     command.\n    * **Notification Loop:** Real-time feedback via `notify.duncan`
@@ -13470,8 +13464,9 @@
       - repeat:
           until:
           - condition: template
-            value_template: '{% set bat = trigger.id.split(''_'')[0] %} {{ is_state(''binary_sensor.felicity_lifepo4_''
-              ~ bat ~ ''_breaker_popped'', ''off'') }}'
+            value_template: '{% set bat = trigger.id.split(''_'')[0] %} {% set num
+              = trigger.id.split(''_'')[0][-1] %}{{ is_state(''binary_sensor.battery_''
+              ~ num ~ "_" ~ bat ~ ''_breaker_popped'', ''off'') }}'
           sequence:
           - action: notify.duncan
             data:
@@ -13635,8 +13630,8 @@
       - condition: or
         conditions:
         - condition: template
-          value_template: '{{ (states("input_text.goe11_cache") | from_json).pv_active
-            }}'
+          value_template: '{{ (states("input_text.goe11_cache") | from_json(default={})).get("pv_active",
+            false) }}'
         - condition: state
           entity_id: select.go_echarger_270862_frc
           state:
@@ -13726,12 +13721,8 @@
         conditions:
         - alias: Amps dont match min amps
           condition: template
-          value_template: '{% set cache = states(''input_text.goe11_cache'') | from_json
-            %}
-
-            {{ cache.min_amps }}
-
-            {{ states("number.go_echarger_270862_amp") != cache.min_amps }}'
+          value_template: '{{ states("number.go_echarger_270862_amp")|int != cache.min_amps|int(6)
+            }}'
         - condition: state
           entity_id: select.go_echarger_270862_frc
           state:
@@ -13743,7 +13734,7 @@
         target:
           entity_id: number.go_echarger_270862_amp
         data:
-          value: '{{ cache.min_amps | int }}'
+          value: '{{ cache.min_amps | int(6) }}'
       - action: select.select_option
         target:
           entity_id: select.go_echarger_270862_frc
