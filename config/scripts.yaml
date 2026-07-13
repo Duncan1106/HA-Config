@@ -1935,8 +1935,13 @@ retry_action_with_backoff:
     alias: Validate entity exists
   - alias: Skip if already in target state
     condition: template
-    value_template: '{{ (not is_state(entity_id, effective_target_state)) or (service_data
-      is defined) }}'
+    value_template: "{% set power_ok = true %} \n{% if effective_power_sensor != 'none'
+      and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
+      == 'off' %}\n    {% set power_ok = states(effective_power_sensor) | float(0)
+      < power_threshold_off_val %}\n  {% elif effective_target_state == 'on' %}\n
+      \   {% set power_ok = states(effective_power_sensor) | float(0) >= power_threshold_on_val
+      %}\n  {% endif %}\n{% endif %} \n{{ (not is_state(entity_id, effective_target_state))
+      or (not power_ok) or (service_data is defined) }}"
   - repeat:
       until:
       - condition: template
