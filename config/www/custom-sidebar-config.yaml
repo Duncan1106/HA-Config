@@ -3,8 +3,8 @@ title: "Hallo {{ user_name }}"
 subtitle: "Reif für die 550"
 sidebar_editable: false
 js_variables:
-  admin_items_open: 'ref(false)'
-  zigbee_items_open: 'ref(false)'
+  admin_items_open: False
+  zigbee_items_open: False
 order:
   - item: /calendar
     match: href
@@ -47,53 +47,55 @@ order:
   - item: /config
     order: 5
     match: href
-    hide: '[[[ user_is_admin ]]]'
+    hide: '[[[ !user_is_admin ]]]'
   - new_item: true
-    item: 'Admin Items'
-    icon: 'mdi:security'
-    order: 6
+    item: 'Z2M Items'
+    icon: 'mdi:zigbee'
+    bottom: true
+    order: 7
+    hide: '[[[ !user_is_admin ]]]'
     on_click:
       action: 'javascript'
       code: |
-        const open = ref("admin_items_open");
+        const open = ref("zigbee_items_open");
         open.value = !open.value;
   - item: /45df7312_zigbee2mqtt
     match: href
     name: Z2M
-    order: 6
+    order: 5
     bottom: true
-    hide: '[[[ return !ref("zigbee_items_open").value ]]]'
     attributes:
-      tp: zigbee2mqtt
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return !ref("zigbee_items_open").value ]]]'
   - item: /zigbee-map
     match: href
     name: Z2M Map
     order: 6
     bottom: true
-    hide: '[[[ return !ref("zigbee_items_open").value ]]]'
     attributes:
-      tp: z2m-map
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return !ref("zigbee_items_open").value ]]]'
   - item: /ccab4aaf_frigate-fa
     match: href
     order: 7
     bottom: true
-    hide: '[[[ !user_is_admin ]]]'
     attributes:
-      tp: frigate
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: /core_configurator
     bottom: true
     match: href
     order: 8
-    hide: '[[[ !user_is_admin ]]]'
     attributes:
-      tp: file-editor
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: /hacs
     match: href
     order: 9
-    bottom: true
-    hide: '[[[ !user_is_admin ]]]'
     attributes:
-      tp: hacs
+      data-sidebar-group: "admin"
+    bottom: true
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
     notification: |
       [[[
         const outdatedHacsEntities = Object.values(entities.update).filter(
@@ -101,59 +103,71 @@ order:
         );
         return outdatedHacsEntities.length || '';
       ]]]
+  - item: /dashboard-analysis
+    order: 10
+    match: href
+    bottom: true
+    attributes:
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: Integrationen
     icon: mdi:puzzle
-    order: 10
-    bottom: true
-    new_item: true
-    href: "/config/integrations"
-    hide: '[[[ !user_is_admin ]]]'
-    attributes:
-      tp: integrations
-  - item: Automationen
-    icon: mdi:robot
     order: 11
     bottom: true
     new_item: true
-    href: "/config/automation"
-    hide: '[[[ !user_is_admin ]]]'
+    href: "/config/integrations"
     attributes:
-      tp: automations
-  - item: /dashboard-analysis
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
+  - item: Automationen
+    icon: mdi:robot
     order: 12
-    match: href
     bottom: true
-    hide: '[[[ !user_is_admin ]]]'
+    new_item: true
+    href: "/config/automation"
     attributes:
-      tp: analytics
-    divider: true
-    divider_color: 'var(--secondary-text-color)'
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: 'Developer Tools'
     href: '/developer-tools'
     new_item: true
     icon: mdi:tools
     order: 13
     bottom: true
-    hide: '[[[ !user_is_admin ]]]'
     attributes:
-      tp: dev-to
-    divider: true
-    divider_color: 'var(--secondary-text-color)'
+      data-sidebar-group: "admin"
+    hide: '[[[ return !ref("admin_items_open").value ]]]'
+  - new_item: true
+    item: 'Admin Items'
+    icon: 'mdi:shield'
+    bottom: true
+    order: 14
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const open = ref("admin_items_open");
+        open.value = !open.value;
   - item: /config
     match: href
-    order: 14
+    order: 15
     bottom: true
     hide: '[[[ !user_is_admin ]]]'
-    attributes:
-      tp: config
-    divider: true
-    divider_color: 'var(--secondary-text-color)'
   - item: notifications
+    order: 16
+    bottom: true
     hide: |
       [[[
         const notifications = states('sensor.persistent_notifications');
         return !notifications || notifications === '0'
       ]]]
+
+styles: |
+  /* Indent only items that have the custom data-sidebar-group attribute */
+  :host([expanded]) ha-list-item-button[data-sidebar-group="zigbee"],
+  :host([expanded]) ha-list-item-button[data-sidebar-group="admin"] {
+    padding-left: 15px !important;
+  }
 
 # styles: |
 #   :host([expanded]) ha-md-list {
