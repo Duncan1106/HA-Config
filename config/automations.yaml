@@ -473,19 +473,6 @@
           tag: ha_stop
       action: notify.duncan
   mode: single
-- id: '1705619896975'
-  alias: Garage open
-  description: ''
-  use_blueprint:
-    path: Raukze/contact-sensor-left-open-notification.yaml
-    input:
-      trigger_entity: binary_sensor.garagedoor_zigbee_contact
-      friendly_name: Garagentor
-      notify_services_string: notify.duncan
-      notification_message: The {{ friendly_name | default('Garage') }} was left open
-        at {{ as_timestamp(initially_triggered_at) | timestamp_custom('%T', True)
-        }}.
-      notification_title: The {{ friendly_name | default('Garage') }} was left open
 - id: '1706398043305'
   alias: 'Spülmaschine fertig '
   description: ''
@@ -13906,11 +13893,68 @@
   max: 10
 - id: '1783428437518'
   alias: 'Dreame Vacuum: Move & Wait for Emptying'
+  description: "\U0001F4CB Intelligent Vacuum Maintenance Control\n=========================================\nThis
+    automation optimizes the maintenance workflow of the Dreame D9 Max Gen 2 vacuum
+    cleaner. Instead of requiring the user to bend down at the dock, the automation
+    commands the vacuum to navigate to a convenient, designated manual emptying location
+    once a cleaning cycle is complete and the battery is replenished. It utilizes
+    actionable mobile notifications alongside strict time and area guards to ensure
+    reliable, noise-conscious, and safe operation.\n\n---\n\n### Trigger Overview\n\n|
+    Type | Entity / Condition | ID | Purpose |\n|---|---|---|---|\n| **Numeric State**
+    | **vacuum.d9_max_gen_2** (battery > **99**) | — | Initiates maintenance once
+    the vacuum is fully charged. |\n| **State** | **vacuum.d9_max_gen_2** (to: **docked**)
+    | — | Initiates maintenance immediately upon docking. |\n\n---\n\n### Operational
+    Logic\n\n#### Validation Phase\n* **Purpose:** Prevents disruptive automation
+    runs and unnecessary maintenance loops.\n* **Logic Overview:** Validates that
+    the current time is between **08:00:00** and **22:00:00** and that the vacuum's
+    **cleaned_area** attribute is strictly above **5 m²**.\n* **Effect:** Blocks execution
+    during night hours and prevents the automation from running if the vacuum docked
+    without performing actual cleaning work (e.g., after a manual test or quick relocation).\n\n####
+    Relocation & Notification Phase\n* **Purpose:** Moves the vacuum to the maintenance
+    spot and alerts the user.\n* **Logic Overview:** Commands the vacuum to navigate
+    to coordinates **x: -2200, y: 175**. It waits up to **5 minutes** for the vacuum's
+    state to transition to **idle** (signaling arrival). Once reached, it sends an
+    actionable notification to **notify.duncan**.\n* **Effect:** Positions **vacuum.d9_max_gen_2**
+    at the emptying location and delivers a mobile alert prompting the user to empty
+    the dust container.\n\n#### Return & Cleanup Phase\n* **Purpose:** Safely returns
+    the vacuum to its charger once maintenance is complete.\n* **Logic Overview:**
+    Waits for up to **1 hour** for the user to select the **VACUUM_DONE_EMPTYING**
+    action from the notification. If confirmed within the time limit, the vacuum is
+    commanded to return to its base and the notification is cleared.\n* **Effect:**
+    Returns **vacuum.d9_max_gen_2** to its dock and cleans up the active mobile notification.\n\n---\n\n###
+    Technical Overview\n\n* **Automation Mode:** `single` (Prevents concurrent runs
+    if multiple triggers fire in close succession)\n* **Execution Method:** Service
+    calls (`dreame_vacuum.vacuum_goto`, `vacuum.return_to_base`), actionable notification
+    event handling, and conditional `if-then` branching.\n* **Key Inputs:** Target
+    coordinates (**x: -2200, y: 175**), custom notification action (**VACUUM_DONE_EMPTYING**),
+    and notification tag (**d9_max_gen2_empty_dust_container**).\n* **Controlled Entities:**\n
+    \ * **vacuum.d9_max_gen_2**\n  * **notify.duncan**\n* **Safety Mechanisms:**\n
+    \ * **Quiet Hours Guard:** Constrained to **08:00 - 22:00** to avoid nocturnal
+    vacuum movements.\n  * **Activity Guard:** Minimum **5 m²** cleaned area requirement
+    protects against false-positive triggers.\n  * **Relocation Timeout:** A **5-minute**
+    safety limit prevents the automation from stalling if the vacuum fails to reach
+    the coordinates.\n  * **User Presence Safety:** A **1-hour** timeout ensures the
+    automation terminates cleanly if the user is away. The vacuum is *not* commanded
+    to return automatically on timeout, avoiding unexpected motion while someone might
+    be manually handling it.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Cleaned Area Threshold:**
+    Filtering by **cleaned_area > 5** is an elegant fail-safe. It prevents the automation
+    from triggering in a loop if you manually send the vacuum back to the dock after
+    emptying, as the cleaned area attribute resets or remains below the threshold.\n*
+    **Non-Blocking Timeout:** The **1-hour** timeout on the mobile notification action
+    uses `continue_on_timeout: true`. Combined with the `if: \"{{ wait.completed }}\"`
+    check, this safely cleans up the automation execution state without trapping system
+    resources in an infinite wait block, while ensuring the vacuum does not move unexpectedly
+    if the user fails to respond."
   triggers:
   - trigger: numeric_state
     entity_id: vacuum.d9_max_gen_2
     attribute: battery
     above: 99
+  - trigger: state
+    entity_id:
+    - vacuum.d9_max_gen_2
+    to:
+    - docked
   conditions:
   - condition: time
     after: 08:00:00
