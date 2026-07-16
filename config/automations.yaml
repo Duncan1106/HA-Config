@@ -7992,7 +7992,7 @@
         }} in {{ device_name(trigger.entity_id) }} is reporting a problem. Data loss
         may occur soon. Consider backing up data and checking the drive immediately!
       data:
-        tag: hdd_alert
+        tag: hdd_alert_{{ trigger.entity_id }}
         priority: high
         ttl: 0
   mode: single
@@ -10488,11 +10488,11 @@
       - notify.stephan_iphone
     data:
       title: Temperatur-Update
-      message: "{{ area_name('sensor.t_h_garage_zigbee_temperature') | default('Garage')
-        }}:\n  - Aktuell: {{ states('sensor.t_h_garage_zigbee_temperature') | float(0)
-        | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.temperatur_min') |
-        float(0) | round(2)}} °C\n\n{{ area_name('sensor.esp32_c3_zero_epever_bme280_temperature')
-        | default('Gartenhaus') }}:\n  - Aktuell: {{ states('sensor.esp32_c3_zero_epever_bme280_temperature')
+      message: "{{ area_name('sensor.t_h_garage_zigbee_temperature') | default('Garage',
+        true) }}:\n  - Aktuell: {{ states('sensor.t_h_garage_zigbee_temperature')
+        | float(0) | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.temperatur_min')
+        | float(0) | round(2)}} °C\n\n{{ area_name('sensor.esp32_c3_zero_epever_bme280_temperature')
+        | default('Gartenhaus', true) }}:\n  - Aktuell: {{ states('sensor.esp32_c3_zero_epever_bme280_temperature')
         | float(0) | round(2) }} °C\n  - Min letzte 24h: {{ states('sensor.bme280_temperature_min')
         | float(0) | round(2) }} °C"
   mode: single
@@ -12904,7 +12904,7 @@
     **60s max delay** and **simple backoff** to ensure the inverter registers the
     command.\n    * **Notification Loop:** Real-time feedback via `notify.duncan`
     if the switch fails to toggle, allowing for manual intervention.\n\n---\n\n###
-    \U0001F4A1 Notes\n\n* **Forecast Dependency:** The **40kWh** threshold ensures
+    \U0001F4A1 Notes\n\n* **Forecast Dependency:** The **50kWh** threshold ensures
     that maintenance only occurs on high-production days, preventing the system from
     disabling battery discharge when solar energy might be insufficient.\n* **Time
     Windows:** The start logic is constrained to **08:00 - 15:00** to ensure the soak
@@ -13572,9 +13572,8 @@
         elif now().day == 1 and now().month == 1 %}\n  yearly\n{% elif now().day ==
         1 %}\n  monthly\n{% elif now().weekday() == 0 %}\n  weekly\n{% else %}\n  daily\n{%
         endif %}"
-      keep_days: '{% set type = backup_type | trim %} {% if type == ''hourly'' %}1
-        {% elif type == ''yearly'' %}{{ none }} {% elif type == ''monthly'' %}365
-        {% elif type == ''weekly'' %}30.4167 {% else %}7 {% endif %}'
+      keep_days: "{{ {\n  'hourly': 1,\n  'yearly': none,\n  'monthly': 365,\n  'weekly':
+        30.4167,\n  'daily': 7\n}.get(backup_type | trim, 7) }}"
       name: "{% set type = backup_type | trim %} {% if type == 'hourly' %}\n  Hourly_Backup_{{
         now().strftime('%A, %H:%M, %B %-d, %Y') }}\n{% else %}\n  {{ type | title
         }} Backup: {{ now().strftime('%A, %B %-d, %Y') }}\n{% endif %}"
