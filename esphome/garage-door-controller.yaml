@@ -36,9 +36,8 @@ wifi:
 
 captive_portal:
 
-logger:
-  baud_rate: 0
-  level: INFO
+packages:
+  - !include common/logger.yaml
 
 api:
   encryption: 
@@ -111,6 +110,41 @@ switch:
     internal: True
 
 cover:
+  - platform: time_based
+    id: garage_time_based
+    name: Garagentor
+    open_duration: 30s
+    manual_control: true
+    close_duration: 30s
+    has_built_in_endstop: true
+    open_action:
+      - if: 
+          condition:
+            - switch.is_off: open_confirm
+          then:
+            - switch.turn_on: open_confirm
+          else:
+            # Cancel any previous action
+            - switch.turn_off: cc
+            # Turn the OPEN switch on briefly
+            - switch.turn_on: oc
+            - delay: 0.1s
+            - switch.turn_off: oc
+            - switch.turn_off: open_confirm
+    close_action:
+            # Cancel any previous action
+            - switch.turn_off: oc
+            # Turn the OPEN switch on briefly
+            - switch.turn_on: cc
+            - delay: 0.1s
+            - switch.turn_off: cc
+    stop_action:
+      then:
+        - switch.turn_on: oc
+        - delay: 0.1s
+        - switch.turn_off: oc
+    assumed_state: true
+    device_class: garage
   - platform: template
     name: "Garage Door"
     lambda: |-

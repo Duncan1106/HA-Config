@@ -5,6 +5,7 @@ sidebar_editable: false
 js_variables:
   admin_items_open: False
   zigbee_items_open: False
+  system_items_open: False
 order:
   - item: /calendar
     match: href
@@ -31,6 +32,8 @@ order:
     icon: mdi:home-lightning-bolt-outline
     match: href
     order: 2
+    info: |
+        Haus: {{states('sensor.daily_home_energy', with_unit=True)}}{{ " | Solar: " ~ states('sensor.solar_production_today', with_unit=True) }}
   - item: /test-sankey
     match: href
     icon: mdi:chart-sankey
@@ -39,26 +42,52 @@ order:
         Haus: {{states('sensor.home_power', with_unit=True)}}{{ " | Solar: " ~ states('sensor.solar_power_total', with_unit=True) if states("sensor.solar_power_total")|float(0) > 0 else " | Netz: " ~ states('sensor.grid_power', with_unit=True) }}
   - item: /media-browser
     match: href
+    bottom: true
     order: 4
+    hide: '[[[ return !ref("system_items_open").value ]]]'
     info: |
         Size: {{ states('sensor.media_folder_size', with_unit=True) }}
-    divider: true
-    divider_color: 'var(--secondary-text-color)'
-  - new_item: true
-    item: 'Z2M Items'
-    icon: 'mdi:zigbee'
+    attributes:
+      data-sidebar-group: "system"
+  - item: /dashboard-analysis
+    order: 5
+    match: href
     bottom: true
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return !ref("system_items_open").value ]]]'
+  - item: Integrationen
+    icon: mdi:puzzle
+    order: 6
+    bottom: true
+    new_item: true
+    href: "/config/integrations"
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return !ref("system_items_open").value ]]]'
+  - item: Automationen
+    icon: mdi:robot
     order: 7
-    hide: '[[[ !user_is_admin ]]]'
+    bottom: true
+    new_item: true
+    href: "/config/automation"
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return !ref("system_items_open").value ]]]'
+  - new_item: true
+    item: 'System'
+    icon: 'mdi:monitor-dashboard'
+    bottom: true
+    order: 8
     on_click:
       action: 'javascript'
       code: |
-        const open = ref("zigbee_items_open");
+        const open = ref("system_items_open");
         open.value = !open.value;
   - item: /45df7312_zigbee2mqtt
     match: href
     name: Z2M
-    order: 5
+    order: 9
     bottom: true
     attributes:
       data-sidebar-group: "zigbee"
@@ -66,14 +95,25 @@ order:
   - item: /zigbee-map
     match: href
     name: Z2M Map
-    order: 6
+    order: 10
     bottom: true
     attributes:
       data-sidebar-group: "zigbee"
     hide: '[[[ return !ref("zigbee_items_open").value ]]]'
+  - new_item: true
+    item: 'Z2M Items'
+    icon: 'mdi:zigbee'
+    bottom: true
+    order: 11
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const open = ref("zigbee_items_open");
+        open.value = !open.value;
   - item: /ccab4aaf_frigate-fa
     match: href
-    order: 7
+    order: 12
     bottom: true
     attributes:
       data-sidebar-group: "admin"
@@ -81,13 +121,13 @@ order:
   - item: /core_configurator
     bottom: true
     match: href
-    order: 8
+    order: 13
     attributes:
       data-sidebar-group: "admin"
     hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: /hacs
     match: href
-    order: 9
+    order: 14
     attributes:
       data-sidebar-group: "admin"
     bottom: true
@@ -99,36 +139,11 @@ order:
         );
         return outdatedHacsEntities.length || '';
       ]]]
-  - item: /dashboard-analysis
-    order: 10
-    match: href
-    bottom: true
-    attributes:
-      data-sidebar-group: "admin"
-    hide: '[[[ return !ref("admin_items_open").value ]]]'
-  - item: Integrationen
-    icon: mdi:puzzle
-    order: 11
-    bottom: true
-    new_item: true
-    href: "/config/integrations"
-    attributes:
-      data-sidebar-group: "admin"
-    hide: '[[[ return !ref("admin_items_open").value ]]]'
-  - item: Automationen
-    icon: mdi:robot
-    order: 12
-    bottom: true
-    new_item: true
-    href: "/config/automation"
-    attributes:
-      data-sidebar-group: "admin"
-    hide: '[[[ return !ref("admin_items_open").value ]]]'
   - item: 'Developer Tools'
     href: '/developer-tools'
     new_item: true
     icon: mdi:tools
-    order: 13
+    order: 15
     bottom: true
     attributes:
       data-sidebar-group: "admin"
@@ -137,7 +152,7 @@ order:
     item: 'Admin Items'
     icon: 'mdi:shield'
     bottom: true
-    order: 14
+    order: 16
     hide: '[[[ !user_is_admin ]]]'
     on_click:
       action: 'javascript'
@@ -146,11 +161,11 @@ order:
         open.value = !open.value;
   - item: /config
     match: href
-    order: 15
+    order: 17
     bottom: true
     hide: '[[[ !user_is_admin ]]]'
   - item: notifications
-    order: 16
+    order: 18
     bottom: true
     hide: |
       [[[
@@ -161,7 +176,8 @@ order:
 styles: |
   /* Indent only items that have the custom data-sidebar-group attribute */
   :host([expanded]) ha-list-item-button[data-sidebar-group="zigbee"],
-  :host([expanded]) ha-list-item-button[data-sidebar-group="admin"] {
+  :host([expanded]) ha-list-item-button[data-sidebar-group="admin"],
+  :host([expanded]) ha-list-item-button[data-sidebar-group="system"]{
     padding-left: 15px !important;
   }
 
