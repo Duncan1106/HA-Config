@@ -77,6 +77,8 @@ order:
   - new_item: true
     item: 'System'
     icon: 'mdi:monitor-dashboard'
+    info: |
+        CPU: {{states('sensor.system_monitor_prozessornutzung', with_unit=True)}}{{ " | Temp: " ~ states('sensor.system_monitor_prozessortemperatur', with_unit=True) }}
     bottom: true
     order: 8
     on_click:
@@ -103,6 +105,11 @@ order:
   - new_item: true
     item: 'Z2M Items'
     icon: 'mdi:zigbee'
+    info: |-
+          {%- set active_entities = states.sensor | selectattr('entity_id', 'search', '_linkquality$') | rejectattr('state', 'in', ['unavailable', 'unknown']) | list -%}
+          {%- set total = active_entities | count -%}
+          {%- set low = active_entities | map(attribute='state') | map('int', -1) | select('ge', 0) | select('lt', 50) | list | count -%}
+          Devices: {{ total }} | Low LQI: {{ low }}
     bottom: true
     order: 11
     hide: '[[[ !user_is_admin ]]]'
@@ -115,6 +122,8 @@ order:
     match: href
     order: 12
     bottom: true
+    info: |
+      Inference: {{ states('sensor.frigate_ov_inference_speed', with_unit=True)}}
     attributes:
       data-sidebar-group: "admin"
     hide: '[[[ return !ref("admin_items_open").value ]]]'

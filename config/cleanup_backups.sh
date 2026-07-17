@@ -80,19 +80,19 @@ fi
 # -------------------------
 case "$TYPE" in
   hourly)
-    PATTERN="HourlyBackup*.tar"
+    PATTERN="Hourly*Backup*.tar"
     MTIME="+2"
     ;;
   daily)
-    PATTERN="DailyBackup*.tar"
+    PATTERN="Daily*Backup*.tar"
     MTIME="+7"
     ;;
   weekly)
-    PATTERN="WeeklyBackup*.tar"
+    PATTERN="Weekly*Backup*.tar"
     MTIME="+45"
     ;;
   monthly)
-    PATTERN="MonthlyBackup*.tar"
+    PATTERN="Monthly*Backup*.tar"
     MTIME="+90"
     ;;
   *)
