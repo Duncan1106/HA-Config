@@ -5149,30 +5149,44 @@
   max_exceeded: silent
 - id: '1741102167233'
   alias: Publish Energy Data to MQTT
-  description: "## \U0001F4E1 Publish Energy Data to MQTT  \n\n### \U0001F4CB **Real-Time
-    Energy Telemetry**  \nPublishes grid, battery, SOC, and net solar power to MQTT
-    topics for external systems.  \nOnly runs when certain devices (chargers or power
-    strips) are active to prevent unnecessary updates.  \n\n---\n\n### ⏰ **Triggers**
-    \ \n\n| Entity | Event |\n|--------|-------|\n| `sensor.grid_power` | Any state
-    change |\n| `sensor.solar_power_total` | Any state change |\n| `sensor.battery_discharge`
-    | Any state change |\n| `sensor.felicity_ess_soc_avg` | Any state change |\n\n\n---\n\n###
-    ✅ **Conditions**  \nAutomation runs only if at least one of these is **on**:  \n\n-
-    `binary_sensor.esp32_c3_mini_goe11_controll_status_11kw`  \n- `binary_sensor.esp32_c3_mini_goe22_controll_status_22kw`
-    \ \n- `switch.schreibtisch_links_power_strip_l3`  \n\n**and**\n> ⚠️ Triggered
-    at most **once every 3 seconds** to avoid flooding MQTT.\n---\n\n### \U0001F3AF
-    **MQTT Publish Mapping**  \n\n| Topic | Sensor / Payload |\n|-------|-----------------|\n|
-    `grid/power` | `sensor.grid_power` |\n| `grid/solar` | `sensor.solar_power_total`
-    |\n| `grid/battery` | `sensor.battery_discharge` |\n| `grid/soc` | `sensor.felicity_ess_soc_avg`
-    |\n\n> **Note:** `grid/solar`  reflects **net solar production**. If you want
-    net solar (after battery charging), subtract `sensor.battery_charge` inside the
-    payload.  \n\n---\n\n### \U0001F527 **Technical Specs**  \n- **Sensors Used:**
-    `sensor.grid_power`, `sensor.solar_power_total`, `sensor.battery_discharge`, `sensor.felicity_ess_soc_avg`
-    \ \n- **Mode:** `parallel` (max 10 concurrent)  \n- **Efficiency:** Only runs
-    when chargers or desk strip are powered  \n- **Throttle:** Runs at most every
-    5 seconds to prevent MQTT flooding"
+  description: "**\U0001F4CB Intelligent MQTT Energy Metrics Control**\nThis automation
+    periodically evaluates and broadcasts real-time power infrastructure metrics to
+    dedicated MQTT topics. It uses an on-demand strategy to transmit updates only
+    when active charging infrastructure or specific load monitors are operational,
+    optimizing network traffic. Reliability is maintained through aggressive template
+    defensive programming, utilizing fallback defaults to ensure consistent payload
+    deliveries even during transient sensor unavailability.\n\n---\n\n### Trigger
+    Overview\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :---
+    | :--- |\n| **Time Pattern** | `seconds: /10` | *N/A* | Evaluates the system state
+    every **10 seconds** to check if telemetry criteria are met. |\n\n---\n\n### Operational
+    Logic\n\n#### Conditional Telemetry Broadcast\n- **Purpose**: Updates the MQTT
+    broker with core energy telemetry during operational periods.\n- **Logic Overview**:
+    Requires at least one monitoring entity (**binary_sensor.esp32_c3_mini_goe11_controll_status_11kw**,
+    **binary_sensor.esp32_c3_mini_goe22_controll_status_22kw**, or **switch.schreibtisch_links_power_strip_l3**)
+    to be **on**. Execution is bounded by a rate-limiting throttle verifying that
+    the elapsed time since the last run is greater than or equal to **5 seconds**.\n-
+    **Effect**: Updates payloads on topics **grid/power**, **grid/solar**, **grid/battery**,
+    and **grid/soc**.\n\n---\n\n### Technical Overview\n\n- **Automation Mode**: **parallel**
+    (Maximum concurrent runs: **10**)\n- **Execution Method**: Sequential MQTT publish
+    actions (`mqtt.publish`)\n- **Key Inputs**:\n  - **sensor.grid_power**\n  - **sensor.solar_power_total**\n
+    \ - **sensor.battery_charge**\n  - **sensor.battery_discharge**\n  - **sensor.felicity_ess_soc_avg**\n
+    \ - **sensor.inverter_battery**\n- **Controlled Entities**:\n  - MQTT Topic: `grid/power`\n
+    \ - MQTT Topic: `grid/solar`\n  - MQTT Topic: `grid/battery`\n  - MQTT Topic:
+    `grid/soc`\n- **Safety Mechanisms**:\n  - **Rate-Limiting Throttle**: A custom
+    template condition tracks execution history using `this.entity_id`, acting as
+    an explicit safeguard against race conditions or rapid double-triggering.\n  -
+    **Type-Casting Guard**: Math filters use a fallback declaration (`| float(0)`)
+    to protect against automation termination if a state becomes uninitialized or
+    unknown.\n\n---\n\n### \U0001F4A1 Notes\n\n- **Net Solar Isolation**: The payload
+    script for the `grid/solar` topic dynamically computes net generation by subtracting
+    battery charging overhead (**sensor.battery_charge**) from raw total solar output
+    (**sensor.solar_power_total**).\n- **State-of-Charge Redundancy**: The `grid/soc`
+    transmission path implements a fallback condition. If the primary average computation
+    (**sensor.felicity_ess_soc_avg**) evaluates to less than or equal to **0**, it
+    automatically sources its payload from the hardware-direct register (**sensor.inverter_battery**).\n"
   triggers:
   - trigger: time_pattern
-    seconds: /5
+    seconds: /10
   conditions:
   - condition: or
     conditions:
@@ -5187,7 +5201,7 @@
       state: 'on'
   - condition: template
     value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
-      default( as_datetime(''0''), true)) >= timedelta(seconds=3) }}'
+      default( as_datetime(''0''), true)) >= timedelta(seconds=5) }}'
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -5218,42 +5232,42 @@
   max: 10
 - id: '1742316986881'
   alias: Wall Panel Display Control
-  description: "# \U0001F5A5️ **Wall Panel Display Control**\n\n---\n\n### \U0001F4CB
-    Intelligent Display Control\nThis automation manages the lifecycle, performance,
-    and environmental adaptation of the **Lenovo Tab P11** wall panel. \n\n* **High-level
-    intent:** To automate display power states based on time and solar position, maintain
-    system performance via RAM management, and dynamically adjust screen brightness
-    based on ambient light levels.\n* **Operational strategy:** Employs a time-and-solar
-    schedule for power, a reactive approach to environmental changes (illuminance),
-    and a performance-first maintenance cycle.\n* **Reliability mechanisms:** Utilizes
-    a robust `retry_action_with_backoff` script for critical state changes and `parallel`
-    execution mode to ensure overlapping tasks (like brightness updates and maintenance)
-    do not interfere with one another.\n\n---\n\n### \U0001F4CB Trigger Overview Table\n\n|
-    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time**
-    | **23:00:00** | `Display Off` | Standard evening shutdown of the panel display.
-    |\n| **Sun** | **Sunrise** (0 offset) | `Display On` | Standard morning activation
-    of the panel display. |\n| **State** | **switch.lenovo_tab_p11_bildschirmschoner**
-    | `Display changed` | Detects when the screensaver activates to enforce night-time
-    rules. |\n| **Numeric State** | **sensor.lenovo_tab_p11_ram_usage** > 90 | `High
-    RAM usage` | Reactive trigger to prevent panel sluggishness or crashes. |\n| **Time**
-    | **02:00:00** | `High RAM usage` | Scheduled daily maintenance to refresh the
-    browser environment. |\n| **State** | **sensor.average_illuminance** | `Brightness`
-    | Monitors ambient light levels to adjust screen visibility. |\n\n---\n\n### \U0001F4CB
-    Operational Logic Sections\n\n#### #### Day/Night Scheduling\n* **Purpose:** Ensures
-    the screen is active during daylight hours and off during the night.\n* **Logic
-    Overview:** Operates when **input_select.smart_home_status** is set to **Daily**.
-    It triggers at **23:00** or **Sunrise**. Additionally, if the screensaver turns
-    **on** between **23:00** and **Sunrise** while the screen is still active, it
-    triggers a forced shutdown.\n* **Effect:** Toggles **switch.lenovo_tab_p11_bildschirm**
-    **on** or **off**.\n\n#### #### Performance Maintenance (High RAM)\n* **Purpose:**
-    Clears system resources to maintain a fluid user interface.\n* **Logic Overview:**
-    Triggered either by RAM usage exceeding **90%** or at the **02:00** maintenance
-    window.\n* **Effect:** Presses **button.lenovo_tab_p11_browser_neu_starten** and
-    executes a retry-loop to cycle the **switch.lenovo_tab_p11_bildschirmschoner**
-    to ensure a clean UI reload.\n\n#### #### Ambient Brightness Adjustment\n* **Purpose:**
-    Dynamically matches display intensity to room lighting.\n* **Logic Overview:**
-    Triggers on illuminance changes, restricted by a **2-minute** throttle (via template)
-    to prevent flickering. \n* **Effect:** Adjusts **number.lenovo_tab_p11_bildschirmhelligkeit**
+  description: "### \U0001F4CB Intelligent Display Control\nThis automation manages
+    the lifecycle, performance, and environmental adaptation of the **Lenovo Tab P11**
+    wall panel. \n\n* **High-level intent:** To automate display power states based
+    on time and solar position, maintain system performance via RAM management, and
+    dynamically adjust screen brightness based on ambient light levels.\n* **Operational
+    strategy:** Employs a time-and-solar schedule for power, a reactive approach to
+    environmental changes (illuminance), and a performance-first maintenance cycle.\n*
+    **Reliability mechanisms:** Utilizes a robust `retry_action_with_backoff` script
+    for critical state changes and `parallel` execution mode to ensure overlapping
+    tasks (like brightness updates and maintenance) do not interfere with one another.\n\n---\n\n###
+    \U0001F4CB Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose
+    |\n| :--- | :--- | :--- | :--- |\n| **Time** | **23:00:00** | `Display Off` |
+    Standard evening shutdown of the panel display. |\n| **Sun** | **Sunrise** (0
+    offset) | `Display On` | Standard morning activation of the panel display. |\n|
+    **State** | **switch.lenovo_tab_p11_bildschirmschoner** | `Display changed` |
+    Detects when the screensaver activates to enforce night-time rules. |\n| **Numeric
+    State** | **sensor.lenovo_tab_p11_ram_usage** > 90 | `High RAM usage` | Reactive
+    trigger to prevent panel sluggishness or crashes. |\n| **Time** | **02:00:00**
+    | `High RAM usage` | Scheduled daily maintenance to refresh the browser environment.
+    |\n| **State** | **sensor.average_illuminance** | `Brightness` | Monitors ambient
+    light levels to adjust screen visibility. |\n\n---\n\n### \U0001F4CB Operational
+    Logic Sections\n\n#### Day/Night Scheduling\n* **Purpose:** Ensures the screen
+    is active during daylight hours and off during the night.\n* **Logic Overview:**
+    Operates when **input_select.smart_home_status** is set to **Daily**. It triggers
+    at **23:00** or **Sunrise**. Additionally, if the screensaver turns **on** between
+    **23:00** and **Sunrise** while the screen is still active, it triggers a forced
+    shutdown.\n* **Effect:** Toggles **switch.lenovo_tab_p11_bildschirm** **on** or
+    **off**.\n\n#### Performance Maintenance (High RAM)\n* **Purpose:** Clears system
+    resources to maintain a fluid user interface.\n* **Logic Overview:** Triggered
+    either by RAM usage exceeding **90%** or at the **02:00** maintenance window.\n*
+    **Effect:** Presses **button.lenovo_tab_p11_browser_neu_starten** and executes
+    a retry-loop to cycle the **switch.lenovo_tab_p11_bildschirmschoner** to ensure
+    a clean UI reload.\n\n#### Ambient Brightness Adjustment\n* **Purpose:** Dynamically
+    matches display intensity to room lighting.\n* **Logic Overview:** Triggers on
+    illuminance changes, restricted by a **2-minute** throttle (via template) to prevent
+    flickering. \n* **Effect:** Adjusts **number.lenovo_tab_p11_bildschirmhelligkeit**
     and **number.lenovo_tab_p11_bildschirmschoner_helligkeit** based on solar elevation
     and lux values.\n\n---\n\n### \U0001F4CB Technical Overview\n\n* **Automation
     Mode:** `parallel` (Max: 10)\n* **Execution method:** Calls `script.retry_action_with_backoff`
@@ -8148,15 +8162,15 @@
     transitions.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
     | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time Pattern | Every **5 minute**
     | N/A | Periodic check of pump/fan durations and light states. |\n\n---\n\n###
-    Operational Logic Sections\n\n#### #### Daytime Mode\n* **Purpose:** Active growth
+    Operational Logic Sections\n\n#### Daytime Mode\n* **Purpose:** Active growth
     and display phase.\n* **Logic Overview:** Evaluated when the sun is between **sunrise**
     and **sunset**.\n* **Effect:** * **Main Power Strips:** Ensured **on** to provide
     power to subsystems.\n    * **Lighting:** Individual zone lights (Left, Right,
     Kallax) are switched **on**.\n    * **Pump/Fan Cycle:** Pumps run for **5 minutes**,
     followed by an **off** period of **15 minutes**. When a pump turns off, a fan
-    cooldown script is initiated for **2.5 minutes**.\n\n#### #### Nighttime Mode\n*
-    **Purpose:** Rest phase and energy conservation.\n* **Logic Overview:** Evaluated
-    when the sun is between **sunset** and **sunrise**.\n* **Effect:**\n    * **Subsystems:**
+    cooldown script is initiated for **2.5 minutes**.\n\n#### Nighttime Mode\n* **Purpose:**
+    Rest phase and energy conservation.\n* **Logic Overview:** Evaluated when the
+    sun is between **sunset** and **sunrise**.\n* **Effect:**\n    * **Subsystems:**
     All **Pumps**, **Fans**, and **Lights** across all zones are switched **off**.\n
     \   * **Main Power:** The primary power strips (**Main Left**, **Main Right**)
     are switched **off** to minimize standby power consumption.\n\n---\n\n### Technical
@@ -13077,7 +13091,7 @@
     value.'
   triggers:
   - trigger: time_pattern
-    seconds: /10
+    seconds: /30
     id: request_data
   - trigger: homeassistant
     event: start
