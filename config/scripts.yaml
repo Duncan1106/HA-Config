@@ -1932,38 +1932,31 @@ retry_action_with_backoff:
         length == 1 %}\n        {{ ns.sensors[0] }}\n      {% else %}\n        none\n
         \     {% endif %}\n    {% else %}\n      none\n    {% endif %}\n  {% endif
         %}\n{% else %}\n  none\n{% endif %}\n"
+      power_enabled: '{{ enable_power_controller | default(false) and effective_power_sensor
+        != ''none'' and effective_target_state in [''on'', ''off''] }}'
+      has_service_data: '{{ service_data is defined and service_data not in [none,
+        '''', {}] }}'
   - condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
     alias: Validate entity exists
+  - variables:
+      target_match: '{{ is_state(entity_id, effective_target_state) }}'
+      current_power: '{{ states(effective_power_sensor) | float(0) if power_enabled
+        else 0 }}'
+      power_invalid: "{{ power_enabled and target_match and (\n  (effective_target_state
+        == 'off' and current_power >= power_threshold_off_val) or\n  (effective_target_state
+        == 'on' and current_power < power_threshold_on_val)\n) }}"
+      power_ok: '{{ not power_enabled or not target_match or not power_invalid }}'
+    alias: Calculate Initial Step Variables
   - alias: Skip if already in target state (power monitoring disabled)
     condition: template
-    value_template: '{% set power_enabled = enable_power_controller | default(false)
-      and effective_power_sensor != ''none'' and effective_target_state in [''on'',
-      ''off''] %} {% set has_service_data = service_data is defined and service_data
-      not in [none, '''', {}] %}
-
-      {{ (not is_state(entity_id, effective_target_state)) or power_enabled or has_service_data
-      }}'
+    value_template: '{{ not target_match or power_enabled or has_service_data }}'
   - alias: Skip if power signature is already valid
     condition: template
-    value_template: "{% set power_enabled = enable_power_controller | default(false)
-      and effective_power_sensor != 'none' and effective_target_state in ['on', 'off']
-      %} {% set has_service_data = service_data is defined and service_data not in
-      [none, '', {}] %} {% set current_power = states(effective_power_sensor) | float(0)
-      %}\n{% set power_invalid = power_enabled and is_state(entity_id, effective_target_state)
-      and (\n  (effective_target_state == 'off' and current_power >= power_threshold_off_val)
-      or\n  (effective_target_state == 'on' and current_power < power_threshold_on_val)\n)
-      %}\n{{ (not is_state(entity_id, effective_target_state)) or power_invalid or
-      has_service_data }}\n          "
+    value_template: '{{ not target_match or power_invalid or has_service_data }}'
   - alias: Skip if already in target state
     condition: template
-    value_template: "  {% set current_power = states(effective_power_sensor) | float(0)
-      if effective_power_sensor != 'none' else 0 %}\n  {% set target_match = is_state(entity_id,
-      effective_target_state) %}\n  \n  {% set power_ok = (\n    effective_power_sensor
-      == 'none' or not target_match or\n    (effective_target_state == 'off' and current_power
-      < power_threshold_off_val) or\n    (effective_target_state == 'on' and current_power
-      >= power_threshold_on_val)\n  ) %}\n\n  {{ (not target_match) or (not power_ok)
-      or (service_data is defined) }}\n"
+    value_template: '{{ not target_match or not power_ok or has_service_data }}'
   - repeat:
       until:
       - condition: template
@@ -2457,3 +2450,412 @@ toggle_goe11_key:
         false) %} {{ c | combine({key_name: new_val}) | to_json }}
 
         '
+retry_action_with_backoff_power_monitoring:
+  alias: Retry Action with Backoff Power Monitoring
+  description: 'Retries a service call until the entity reaches the desired state
+    or max retries are reached, using simple, linear, or exponential backoff. Supports
+    custom action domain and custom action type.
+
+    '
+  mode: parallel
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to monitor and act on.
+      required: true
+      selector:
+        entity: {}
+    target_state:
+      name: Target State
+      description: The desired state for the entity (e.g., on, off, open, closed,
+        or custom).
+      required: true
+      selector:
+        select:
+          options:
+          - label: 'On'
+            value: 'on'
+          - label: 'Off'
+            value: 'off'
+          - label: Open
+            value: open
+          - label: Closed
+            value: closed
+          - label: Custom
+            value: custom
+    custom_target_state:
+      name: Custom Target State
+      description: Specify a custom state if Target State is 'Custom'.
+      required: false
+      selector:
+        text: {}
+    action_domain:
+      name: Action Domain
+      description: Domain for the service call (e.g., light, switch). Defaults to
+        'homeassistant'.
+      required: false
+      default: homeassistant
+      selector:
+        select:
+          options:
+          - label: Home Assistant (default)
+            value: homeassistant
+          - label: Switch
+            value: switch
+          - label: Light
+            value: light
+          - label: Custom
+            value: custom
+    custom_action_domain:
+      name: Custom Action Domain
+      description: Specify a custom domain if 'Custom' is selected above (e.g., cover,
+        climate)
+      required: false
+      selector:
+        text: {}
+    action_type:
+      name: Action Type
+      description: Action to perform (e.g., turn_on, turn_off, toggle, open, close,
+        or custom)
+      default: turn_on
+      selector:
+        select:
+          options:
+          - label: Turn On
+            value: turn_on
+          - label: Turn Off
+            value: turn_off
+          - label: Toggle
+            value: toggle
+          - label: Custom
+            value: custom
+    custom_action_type:
+      name: Custom Action Type
+      description: Specify a custom action type if 'Custom' is selected above (e.g.,
+        lock, set_temperature)
+      required: false
+      selector:
+        text: {}
+    service_data:
+      name: Service Data
+      description: 'Optional additional data for the service call (e.g., {"option":
+        "Charge"} for select.select_option). Must be valid YAML/dict format.'
+      required: false
+      selector:
+        text: {}
+    custom_action:
+      name: Custom Action
+      description: Optional override default action with a custom one.
+      required: false
+      selector:
+        action: {}
+    max_retries:
+      name: Max Retries
+      description: Maximum number of attempts.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          mode: box
+          step: 1
+    base_delay:
+      name: Base Delay
+      description: Base delay in seconds for backoff calculation.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+          step: 1
+          unit_of_measurement: seconds
+    max_delay:
+      name: Max Delay
+      description: Maximum delay in seconds for any backoff type.
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 600
+          mode: box
+          step: 1
+          unit_of_measurement: seconds
+    backoff_type:
+      name: Backoff Type
+      description: Strategy for retry delays (simple, linear, exponential).
+      default: simple
+      selector:
+        select:
+          options:
+          - label: Simple
+            value: simple
+          - label: Linear
+            value: linear
+          - label: Exponential
+            value: exponential
+    notify_on_failure:
+      name: Notify on Failure
+      description: Send a notification if the target state was not reached after max_retries.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    notify_service:
+      name: Notify Service
+      description: Service to use for failure notifications (e.g., notify.duncan).
+      required: false
+      default: notify.duncan
+      selector:
+        text: {}
+    enable_power_controller:
+      name: Enable Power Controller
+      description: Monitor power consumption to confirm the device actually turned
+        on or off.
+      default: false
+      selector:
+        boolean: {}
+    power_sensor:
+      name: Power Sensor (Optional)
+      description: Explicit power sensor entity. If left blank, it will attempt auto-detection.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    power_threshold_off:
+      name: Power Threshold (Off Validation)
+      description: Power level (Watts) below which the device is considered fully
+        off.
+      default: 2
+      selector:
+        number:
+          min: 0.1
+          max: 100
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_threshold_on:
+      name: Power Threshold (On Validation)
+      description: Minimum power level (Watts) expected when the device is turned
+        on.
+      default: 5
+      selector:
+        number:
+          min: 0.1
+          max: 5000
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_report_delay:
+      name: Power Report Delay
+      description: Time to wait (seconds) for the sensor to update its reading after
+        a state change.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+    power_wait_timeout:
+      name: Power Wait Timeout
+      description: Additional time to wait (seconds) for power to clear the threshold
+        after the report delay.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+  sequence:
+  - alias: Define Base Variables
+    variables:
+      effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+        | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}"
+      effective_action_domain: "{% set d = action_domain | default('homeassistant')
+        %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{%
+        else %}\n  {{ d }}\n{% endif %}"
+      effective_action_type: "{% set t = action_type | default('turn_on') %} {% if
+        t == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{
+        t }}\n{% endif %}"
+      effective_service_data: "{% set data_str = service_data | default('') | string
+        %} {% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if
+        data_str.startswith('{') and data_str.endswith('}') %}\n    {{ data_str }}\n
+        \ {% else %}\n    {{ {} }}\n  {% endif %}\n{% else %}\n  {{ {} }}\n{% endif
+        %}"
+      power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
+      power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
+      power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
+      power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
+      effective_power_sensor: "{% if enable_power_controller | default(false) %}\n
+        \ {% if power_sensor is defined and power_sensor != none and power_sensor
+        | string | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set
+        dev_id = device_id(entity_id) %}\n    {% if dev_id %}\n      {% set entities
+        = device_entities(dev_id) %}\n      {% set ns = namespace(sensors=[]) %}\n
+        \     {% for e in entities %}\n        {% if e.startswith('sensor.') and state_attr(e,
+        'device_class') == 'power' %}\n          {% set ns.sensors = ns.sensors +
+        [e] %}\n        {% endif %}\n      {% endfor %}\n      {{ ns.sensors[0] if
+        ns.sensors | length == 1 else 'none' }}\n    {% else %}\n      none\n    {%
+        endif %}\n  {% endif %}\n{% else %}\n  none\n{% endif %}"
+      power_enabled: '{{ enable_power_controller | default(false) and effective_power_sensor
+        != ''none'' and effective_target_state in [''on'', ''off''] }}'
+      has_service_data: '{{ service_data is defined and service_data not in [none,
+        '''', {}] }}'
+  - alias: Validate entity exists
+    condition: template
+    value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
+  - alias: Calculate Initial Step Variables
+    variables:
+      target_match: '{{ is_state(entity_id, effective_target_state) }}'
+      current_power: '{{ states(effective_power_sensor) | float(0) if power_enabled
+        else 0 }}'
+      power_invalid: "{{ power_enabled and target_match and (\n  (effective_target_state
+        == 'off' and current_power >= power_threshold_off_val) or\n  (effective_target_state
+        == 'on' and current_power < power_threshold_on_val)\n) }}"
+      power_ok: '{{ not power_enabled or not target_match or not power_invalid }}'
+  - alias: Skip if already in target state (power monitoring disabled)
+    condition: template
+    value_template: '{{ not target_match or power_enabled or has_service_data }}'
+  - alias: Skip if power signature is already valid
+    condition: template
+    value_template: '{{ not target_match or power_invalid or has_service_data }}'
+  - alias: Skip if already in target state
+    condition: template
+    value_template: '{{ not target_match or not power_ok or has_service_data }}'
+  - repeat:
+      until:
+      - condition: template
+        value_template: "{% set p_ok = true %} {% if power_enabled and is_state(entity_id,
+          effective_target_state) %}\n  {% set cur = states(effective_power_sensor)
+          | float(0) %}\n  {% set p_ok = (effective_target_state == 'off' and cur
+          < power_threshold_off_val) or\n                (effective_target_state ==
+          'on' and cur >= power_threshold_on_val) %}\n{% endif %}  {{ (is_state(entity_id,
+          effective_target_state) and p_ok) or\n   has_service_data or \n   repeat.index
+          >= (max_retries | int(10)) or \n   states(entity_id) in ['unavailable','unknown']
+          }}"
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ custom_action is defined and custom_action != none
+              }}'
+          sequence:
+          - repeat:
+              for_each: '{{ custom_action }}'
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined and repeat.item.data
+                      is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.data is defined }}'
+                  sequence:
+                  - data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                default:
+                - action: '{{ repeat.item.action }}'
+        default:
+        - action: '{{ effective_action_domain }}.{{ effective_action_type }}'
+          target:
+            entity_id: '{{ entity_id }}'
+          data: '{{ effective_service_data }}'
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+          sequence:
+          - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
+            timeout: "{% set bd = base_delay | default(5, true) | float %}  {% set
+              md = max_delay | default(60, true) | float %} {% set idx = repeat.index
+              %} {% if backoff_type == 'linear' %}\n  {{ [idx * bd, md] | min }}\n{%
+              elif backoff_type == 'exponential' %}\n  {{ [2**(idx-1) * bd, md] |
+              min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ power_enabled and is_state(entity_id, effective_target_state)
+              }}'
+          sequence:
+          - alias: Wait for power to hit the target threshold direction
+            wait_template: "{% set cur = states(effective_power_sensor) | float(0)
+              %} {{ (effective_target_state == 'off' and cur < power_threshold_off_val)
+              or\n   (effective_target_state == 'on' and cur >= power_threshold_on_val)
+              }}"
+            timeout: '{{ power_report_delay_val + power_timeout_val }}'
+            continue_on_timeout: true
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{% set cur = states(effective_power_sensor) | float(0)
+                  %} {{ (effective_target_state == 'off' and cur >= power_threshold_off_val)
+                  or\n   (effective_target_state == 'on' and cur < power_threshold_on_val)
+                  }}"
+              sequence:
+              - alias: Power signature invalid - Run inverted cycle step to force
+                  retry
+                action: '{{ ''homeassistant.turn_on'' if effective_target_state ==
+                  ''off'' else ''homeassistant.turn_off'' }}'
+                target:
+                  entity_id: '{{ entity_id }}'
+              - alias: Short delay before next loop iteration
+                delay: 2
+  - alias: Calculate Notification Variables
+    variables:
+      final_state: '{{ states(entity_id) }}'
+      power_failed: "{% set cur = states(effective_power_sensor) | float(0) %} {{
+        power_enabled and final_state == effective_target_state and (\n     (effective_target_state
+        == 'off' and cur >= power_threshold_off_val) or\n     (effective_target_state
+        == 'on' and cur < power_threshold_on_val)\n   ) }}"
+      now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+        '' '') | replace(''_'', '' '') }}'
+      params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
+        target={{ effective_target_state }}, retries={{ max_retries | default(10)
+        }}, base={{ base_delay | default(5) }}s, max={{ max_delay | default(60) }}s,
+        backoff={{ backoff_type | default('simple') }}, {{ "custom_action=" + custom_action|string
+        if custom_action is defined and custom_action != none else "" }}
+      tag_value: retry_action_with_backoff__{{ entity_id | replace('.', '_') }}
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ final_state in [''unavailable'',''unknown''] }}'
+      - condition: template
+        value_template: '{{ notify_on_failure | default(true) }}'
+      sequence:
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Entity: {{ friendly }} - {{ final_state }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ final_state }})
+            | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ notify_on_failure | default(true) }}'
+      - condition: template
+        value_template: '{{ final_state != effective_target_state or power_failed
+          }}'
+      sequence:
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Retry failed: {{ friendly }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ final_state }})
+            | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
