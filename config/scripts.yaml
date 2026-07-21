@@ -1902,46 +1902,68 @@ retry_action_with_backoff:
           step: 1
           mode: box
           unit_of_measurement: seconds
-  variables:
-    effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
-      | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
-    effective_action_domain: "{% set d = action_domain | default('homeassistant')
-      %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{% else
-      %}\n  {{ d }}\n{% endif %}\n"
-    effective_action_type: "{% set t = action_type | default('turn_on') %} {% if t
-      == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{ t
-      }}\n{% endif %}\n"
-    effective_service_data: "{% set data_str = service_data | default('') | string
-      %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if data_str.startswith('{')
-      and data_str.endswith('}') %}\n    {{ data_str }}\n  {% else %}\n    {{ {} }}\n
-      \ {% endif %}\n{% else %}\n  {{ {} }}\n{% endif %}\n"
-    power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
-    power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
-    power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
-    power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
-    effective_power_sensor: "{% if enable_power_controller | default(false) %}\n  {%
-      if power_sensor is defined and power_sensor != none and power_sensor | string
-      | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set dev_id = device_id(entity_id)
-      %}\n    {% if dev_id %}\n      {% set entities = device_entities(dev_id) %}\n
-      \     {% set ns = namespace(sensors=[]) %}\n      {% for e in entities %}\n
-      \       {% if e.startswith('sensor.') and state_attr(e, 'device_class') == 'power'
-      %}\n          {% set ns.sensors = ns.sensors + [e] %}\n        {% endif %}\n
-      \     {% endfor %}\n      {% if ns.sensors | length == 1 %}\n        {{ ns.sensors[0]
-      }}\n      {% else %}\n        none\n      {% endif %}\n    {% else %}\n      none\n
-      \   {% endif %}\n  {% endif %}\n{% else %}\n  none\n{% endif %}\n"
   sequence:
+  - variables:
+      effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+        | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
+      effective_action_domain: "{% set d = action_domain | default('homeassistant')
+        %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{%
+        else %}\n  {{ d }}\n{% endif %}\n"
+      effective_action_type: "{% set t = action_type | default('turn_on') %} {% if
+        t == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{
+        t }}\n{% endif %}\n"
+      effective_service_data: "{% set data_str = service_data | default('') | string
+        %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if
+        data_str.startswith('{') and data_str.endswith('}') %}\n    {{ data_str }}\n
+        \ {% else %}\n    {{ {} }}\n  {% endif %}\n{% else %}\n  {{ {} }}\n{% endif
+        %}\n"
+      power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
+      power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
+      power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
+      power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
+      effective_power_sensor: "{% if enable_power_controller | default(false) %}\n
+        \ {% if power_sensor is defined and power_sensor != none and power_sensor
+        | string | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set
+        dev_id = device_id(entity_id) %}\n    {% if dev_id %}\n      {% set entities
+        = device_entities(dev_id) %}\n      {% set ns = namespace(sensors=[]) %}\n
+        \     {% for e in entities %}\n        {% if e.startswith('sensor.') and state_attr(e,
+        'device_class') == 'power' %}\n          {% set ns.sensors = ns.sensors +
+        [e] %}\n        {% endif %}\n      {% endfor %}\n      {% if ns.sensors |
+        length == 1 %}\n        {{ ns.sensors[0] }}\n      {% else %}\n        none\n
+        \     {% endif %}\n    {% else %}\n      none\n    {% endif %}\n  {% endif
+        %}\n{% else %}\n  none\n{% endif %}\n"
   - condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
     alias: Validate entity exists
+  - alias: Skip if already in target state (power monitoring disabled)
+    condition: template
+    value_template: '{% set power_enabled = enable_power_controller | default(false)
+      and effective_power_sensor != ''none'' and effective_target_state in [''on'',
+      ''off''] %} {% set has_service_data = service_data is defined and service_data
+      not in [none, '''', {}] %}
+
+      {{ (not is_state(entity_id, effective_target_state)) or power_enabled or has_service_data
+      }}'
+  - alias: Skip if power signature is already valid
+    condition: template
+    value_template: "{% set power_enabled = enable_power_controller | default(false)
+      and effective_power_sensor != 'none' and effective_target_state in ['on', 'off']
+      %} {% set has_service_data = service_data is defined and service_data not in
+      [none, '', {}] %} {% set current_power = states(effective_power_sensor) | float(0)
+      %}\n{% set power_invalid = power_enabled and is_state(entity_id, effective_target_state)
+      and (\n  (effective_target_state == 'off' and current_power >= power_threshold_off_val)
+      or\n  (effective_target_state == 'on' and current_power < power_threshold_on_val)\n)
+      %}\n{{ (not is_state(entity_id, effective_target_state)) or power_invalid or
+      has_service_data }}\n          "
   - alias: Skip if already in target state
     condition: template
-    value_template: "{% set power_ok = true %} \n{% if effective_power_sensor != 'none'
-      and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
-      == 'off' %}\n    {% set power_ok = states(effective_power_sensor) | float(0)
-      < power_threshold_off_val %}\n  {% elif effective_target_state == 'on' %}\n
-      \   {% set power_ok = states(effective_power_sensor) | float(0) >= power_threshold_on_val
-      %}\n  {% endif %}\n{% endif %} \n{{ (not is_state(entity_id, effective_target_state))
-      or (not power_ok) or (service_data is defined) }}"
+    value_template: "  {% set current_power = states(effective_power_sensor) | float(0)
+      if effective_power_sensor != 'none' else 0 %}\n  {% set target_match = is_state(entity_id,
+      effective_target_state) %}\n  \n  {% set power_ok = (\n    effective_power_sensor
+      == 'none' or not target_match or\n    (effective_target_state == 'off' and current_power
+      < power_threshold_off_val) or\n    (effective_target_state == 'on' and current_power
+      >= power_threshold_on_val)\n  ) %}\n\n  {{ (not target_match) or (not power_ok)
+      or (service_data is defined) }}\n"
   - repeat:
       until:
       - condition: template
