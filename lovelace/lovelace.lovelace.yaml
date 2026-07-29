@@ -7241,6 +7241,10 @@ config:
         title-card:
           color: blue
           entity: sensor.tibber_node_battery_voltage
+          features:
+          - detail: true
+            hours_to_show: 24
+            type: trend-graph
           features_position: bottom
           grid_options:
             columns: full
@@ -7254,42 +7258,70 @@ config:
           vertical: true
         title-card-button-overlay: true
         type: custom:expander-card
-      - badges:
-        - color: state
-          entity: switch.adguard_home_schutz
-          show_icon: true
-          show_state: true
-          type: entity
-        heading: Adguard
-        heading_style: title
-        icon: mdi:security-network
-        type: heading
       - cards:
-        - content: "{% set schutz = 'Aktiv' if is_state('switch.adguard_home_schutz',\
-            \ 'on') else 'Inaktiv' %}\n{% set filterung = 'Aktiv' if is_state('switch.adguard_home_filterung',\
-            \ 'on') else 'Inaktiv' %}\n{% set safe_browsing = 'Aktiv' if is_state('switch.adguard_home_safe_browsing',\
-            \ 'on') else 'Inaktiv' %}\n{% set protokoll = 'Aktiv' if is_state('switch.adguard_home_abfrageprotokoll',\
-            \ 'on') else 'Inaktiv' %}\n\n### \U0001F6E1\uFE0F Status & Features\n\n\
-            | Feature | State |\n| :--- | :--- |\n| **Hauptschutz** | `{{ schutz }}`\
-            \ |\n| **Filterung** | `{{ filterung }}` |\n| **Safe Browsing** | `{{\
-            \ safe_browsing }}` |\n| **Abfrageprotokoll** | `{{ protokoll }}` |\n"
-          type: markdown
-        - content: "### \U0001F4CA Statistics\n\n| Metric | Value |\n| :--- | :---\
-            \ |\n| **Blockrate** | `{{ states('sensor.adguard_home_anteil_blockierter_dns_abfragen')\
-            \ }}%` |\n| **Blockierte Abfragen** | `{{ states('sensor.adguard_home_blockierte_dns_abfragen')\
-            \ }}` |\n| **DNS (Gesamt)** | `{{ states('sensor.adguard_home_dns_abfragen')\
-            \ }}` |\n| **DNS (Heute)** | `{{ states('sensor.daily_dns_abfragen') }}`\
-            \ |\n| **Filterregeln** | `{{ states('sensor.adguard_home_anzahl_regeln')\
-            \ }}` |\n| **\xD8 Zeit** | `{{ states('sensor.adguard_home_durchschnittliche_verarbeitungsgeschwindigkeit')\
-            \ }} ms` |\n"
-          type: markdown
-        type: horizontal-stack
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
-          - 2950af301cff4dbfa321eb69a51307b0
-          - 690f4c6bedc44a9daad30c216f237d1d
+        - badges:
+          - color: state
+            entity: switch.adguard_home_schutz
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/f25566ea435365c5d4c37837584d186c
+            type: entity
+          heading: Adguard
+          heading_style: title
+          icon: mdi:security-network
+          tap_action:
+            action: navigate
+            navigation_path: /app/a0d7b954_adguard
+          type: heading
+        - cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.adguard_home_cpu_prozent
+            frameless: false
+            layout: horizontal
+            marginless: false
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.adguard_home_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          type: horizontal-stack
+        - cards:
+          - content: "{% set schutz = '\u2705' if is_state('switch.adguard_home_schutz',\
+              \ 'on') else '\u274C' %}\n{% set filterung = '\u2705' if is_state('switch.adguard_home_filterung',\
+              \ 'on') else '\u274C' %}\n{% set safe_browsing = '\u2705' if is_state('switch.adguard_home_safe_browsing',\
+              \ 'on') else '\u274C' %}\n{% set protokoll = '\u2705' if is_state('switch.adguard_home_abfrageprotokoll',\
+              \ 'on') else '\u274C' %}\n\n### \U0001F6E1\uFE0F Status & Features\n\
+              \n| Feature | State |\n| :--- | :--- |\n| **Hauptschutz** | {{ schutz\
+              \ }} |\n| **Filterung** | {{ filterung }} |\n| **Safe Browsing** | {{\
+              \ safe_browsing }} |\n| **Abfrageprotokoll** | {{ protokoll }} |\n"
+            type: markdown
+          - content: "### \U0001F4CA Statistics\n\n| Metric | Value |\n| :--- | :---\
+              \ |\n| **Blockrate** | `{{ states('sensor.adguard_home_anteil_blockierter_dns_abfragen')\
+              \ }}%` |\n| **Blockierte Abfragen** | `{{ states('sensor.adguard_home_blockierte_dns_abfragen')\
+              \ }}` |\n| **DNS (Gesamt)** | `{{ states('sensor.adguard_home_dns_abfragen')\
+              \ }}` |\n| **DNS (Heute)** | `{{ states('sensor.daily_dns_abfragen')\
+              \ }}` |\n| **Filterregeln** | `{{ states('sensor.adguard_home_anzahl_regeln')\
+              \ }}` |\n| **\xD8 Zeit** | `{{ states('sensor.adguard_home_durchschnittliche_verarbeitungsgeschwindigkeit')\
+              \ }} ms` |\n"
+            type: markdown
+          type: horizontal-stack
+        type: vertical-stack
       type: grid
     subview: true
     title: Internet
