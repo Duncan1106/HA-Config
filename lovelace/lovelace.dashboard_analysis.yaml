@@ -350,6 +350,7 @@ config:
                   \  {% endfor %}\n{% endif %}\n"
                 title: "\U0001F9DF Zombie Entities"
                 type: markdown
+              overlay-margin: 20px
               title: Expander Card
               title-card:
                 entity: sensor.system_ha_global_health_score
@@ -362,7 +363,7 @@ config:
                 type: gauge
                 unit: ' '
               title-card-button-overlay: true
-              title-card-clickable: true
+              title-card-clickable: false
               type: custom:expander-card
             type: vertical-stack
           type: vertical-stack
@@ -603,40 +604,6 @@ config:
           state: 'on'
         type: conditional
       type: vertical-stack
-    - color: blue
-      entity: sensor.tibber_node_battery_voltage
-      features_position: bottom
-      icon: mdi:pulse
-      multiline_secondary: false
-      primary: 'Tibber Pulse Uptime: {{ state_attr(entity,''uptime_human'') }}'
-      secondary: '{{ states(entity, with_unit=True) }}'
-      tap_action:
-        action: more-info
-      type: custom:mushroom-template-card
-      vertical: true
-    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
-        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
-        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
-        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
-        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
-        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
-        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
-        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
-        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
-        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
-        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
-        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
-        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
-        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
-        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
-        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
-        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
-        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
-        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
-        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
-        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
-        \ -%}\n{%- endfor -%}\n</details>"
-      type: markdown
     - display_order: none
       entity: todo.anylist_to_do_duncan
       hide_completed: true
@@ -1512,4 +1479,36 @@ config:
         type: markdown
       type: grid
     title: Documentation Help
+    type: sections
+  - cards:
+    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
+        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
+        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
+        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
+        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
+        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
+        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
+        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
+        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
+        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
+        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
+        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
+        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
+        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
+        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
+        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
+        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
+        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
+        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
+        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
+        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
+        \ -%}\n{%- endfor -%}\n</details>"
+      type: markdown
+    max_columns: 4
+    path: test
+    sections:
+    - cards: []
+      type: grid
+    subview: true
+    title: Test
     type: sections

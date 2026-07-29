@@ -5745,16 +5745,16 @@
   description: "## \U0001F33F Allergie und Aufgaben Benachrichtigung  \n\n### \U0001F4CB
     **Daily Allergy & Task Reminder with AI Fallback System**  \n\nThis automation
     generates a **daily morning notification** combining:  \n1. **Pollen information**
-    (Grass, Roggen, Hausstaubmilben, etc.)  \n2. **A random to-do task** from `todo.to_do_duncan`
+    (Grass, Roggen, Hausstaubmilben, etc.)  \n2. **A random to-do task** from `todo.anylist_to_do_duncan`
     \ \n3. **A short AI-generated German message** with practical advice and medication
     hints  \n\nThe automation now includes an **enhanced dual-agent retry system**
     to maximize reliability of the AI output.  \n\n---\n\n### ⏰ **Triggers**  \n\n|
     Time | Event |\n|------|-------|\n| `08:05:00` | Daily scheduled reminder |\n\n---\n\n###
     ✅ **Conditions**  \n- None; runs automatically every morning.  \n\n---\n\n###
     \U0001F3AF **Workflow / Logic**  \n\n1. **Fetch To-Do Task**  \n   - Retrieves
-    all tasks with status `needs_action` from `todo.to_do_duncan`.  \n   - Randomly
-    selects one task to include in the notification.  \n\n2. **Prepare Prompts**  \n
-    \  - **Pollen Prompt:** Uses today’s values from all relevant pollen sensors,
+    all tasks with status `needs_action` from `todo.anylist_to_do_duncan`.  \n   -
+    Randomly selects one task to include in the notification.  \n\n2. **Prepare Prompts**
+    \ \n   - **Pollen Prompt:** Uses today’s values from all relevant pollen sensors,
     focusing only on dosage recommendation in the format  \n     `base amount: additional
     amount`.  \n     - Keeps dosage conservative.  \n     - No explanations, causes,
     or air-quality text.  \n   - **To-Do Prompt:** Embeds the random task *unaltered*
@@ -5794,7 +5794,7 @@
     data:
       status: needs_action
     target:
-      entity_id: todo.to_do_duncan
+      entity_id: todo.anylist_to_do_duncan
     response_variable: to_do_duncan
   - variables:
       prompt: 'Please generate text for a notification that will be sent to the users
@@ -5833,14 +5833,14 @@
         please. i dont want to build resistance against this anti allergy medication!!!
         keep in mind the schema: ''base amount: additional amount'' nothing else about
         pollen.'
-      todo_prompt: "{% set items = to_do_duncan['todo.to_do_duncan']['items'] | default([],
-        true) %} {% if items | length > 0 %}\n  Also here’s a random task from my
-        todo list:\n  \"\" {% set task = items | random %} \"\"\n  {{ task.summary
-        }}\n  feel free to make suggestions on how to do this today. Also keep the
-        task\n  itself as is and only add helpful instructions or information. Also
-        keep\n  it in the language it is and don’t translate it. The rest will be
-        translated\n  later as requested. Very important: add the task exactly as-is
-        and nothing\n  more to the generated message. Only add helpful instructions
+      todo_prompt: "{% set items = to_do_duncan['todo.anylist_to_do_duncan']['items']
+        | default([], true) %} {% if items | length > 0 %}\n  Also here’s a random
+        task from my todo list:\n  \"\" {% set task = items | random %} \"\"\n  {{
+        task.summary }}\n  feel free to make suggestions on how to do this today.
+        Also keep the task\n  itself as is and only add helpful instructions or information.
+        Also keep\n  it in the language it is and don’t translate it. The rest will
+        be translated\n  later as requested. Very important: add the task exactly
+        as-is and nothing\n  more to the generated message. Only add helpful instructions
         or information,\n  never replace, translate, or manipulate the task in any
         way. make good suggestions on how to do the task.\n{% endif %}"
   - repeat:
@@ -5895,7 +5895,6 @@
 
 
               {{ prompt }}'
-            agent_id: conversation.google_ai_conversation_2_5_flash
           response_variable: agent_gemini
           action: conversation.process
         - alias: Wait only if failed
