@@ -1507,7 +1507,25 @@ config:
     max_columns: 4
     path: test
     sections:
-    - cards: []
+    - cards:
+      - content: "{%- set x = ['unavailable', 'unknown'] -%}\n{%- set ignore_int =\
+          \ ['Planta'] -%}\n\n{# Single-pass filtering & counting #}\n{%- set ns =\
+          \ namespace(entities=[], devices=[]) -%}\n{%- for i in states if i.state\
+          \ not in x -%}\n  {%- set c_id = config_entry_id(i.entity_id) -%}\n  {%-\
+          \ set c_title = config_entry_attr(c_id, 'title') if c_id else none -%}\n\
+          \  {%- if c_title not in ignore_int -%}\n    {%- set ns.entities = ns.entities\
+          \ + [i] -%}\n    {%- set d_id = device_id(i.entity_id) -%}\n    {%- if d_id\
+          \ -%}\n      {%- set ns.devices = ns.devices + [d_id] -%}\n    {%- endif\
+          \ -%}\n  {%- endif -%}\n{%- endfor -%}\n\n{%- set total_entities = ns.entities\
+          \ | count -%}\n{%- set total_devices = ns.devices | unique | list | count\
+          \ -%}\n{%- set domains = ns.entities | groupby('domain') -%}\n\n<details>\n\
+          <summary>\n  <b>Domains: {{ domains | count }} ({{ total_devices }} Devices\
+          \ / {{ total_entities }} Entities)</b>\n</summary>\n\n{%- for d in domains\
+          \ -%}\n  {%- set domain_name = d[0] -%}\n  {%- set items = d[1] -%}\n  <details>\n\
+          \    <summary>{{ domain_name | title }}: <b>{{ items | count }}</b></summary>\n\
+          \    {%- for i in items -%}\n      {{ i.name }}: <b>{{ i.state }}</b><br>\n\
+          \    {%- endfor -%}\n  </details>\n{%- endfor -%}\n</details>"
+        type: markdown
       type: grid
     subview: true
     title: Test
