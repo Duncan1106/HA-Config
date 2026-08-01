@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-07-20 20:28 | System: 18.53 kWp
+> Generated: 2026-08-01 07:30 | System: 18.53 kWp
 
 ---
 
@@ -17,11 +17,11 @@
 
 ## Performance
 
-**Record Peak:** 15.14 kW (2026-07-19)
+**Record Peak:** 15.35 kW (2026-07-23)
 
-**Total Production:** 424.8 kWh
+**Total Production:** 1517.2 kWh
 
-**Average Accuracy:** 43.7%
+**Average Accuracy:** 69.9%
 
 ### Seasonal Production
 
@@ -29,14 +29,14 @@
 |--------|----------|-----------|-------|
 | Winter | - | - | - |
 | Spring | - | - | - |
-| Summer | 90.03 kWh | 70.80 kWh | 424.8 kWh |
+| Summer | 103.12 kWh | 84.29 kWh | 1517.2 kWh |
 | Autumn | - | - | - |
 
 ---
 
 ## Message from the Captain's Log
 
-> *"I'm giving her all she's got, Captain! The panels are at maximum output! - Scotty"*
+> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
 
 Live long and prosper!
 
