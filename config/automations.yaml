@@ -2182,19 +2182,20 @@
         entity_id:
         - switch.pool_pumpe
         - switch.pool_ventil_solar
-    - action: script.turn_on
-      metadata: {}
-      target:
-        entity_id: script.pool_secure_pulsetime_update
-      data:
-        variables:
-          payload: '0'
-          lock_duration: 00:00:01
-    - metadata: {}
-      data: {}
-      target:
-        entity_id: counter.pool_extend_counter
-      action: counter.reset
+    - if:
+      - condition: numeric_state
+        entity_id: input_number.pulsetimeactualvalue
+        above: 0
+      then:
+      - action: script.turn_on
+        metadata: {}
+        target:
+          entity_id: script.pool_secure_pulsetime_update
+        data:
+          variables:
+            payload: '0'
+            lock_duration: 00:00:01
+      alias: Adjust pulsetime to 0 if not already 0
     - delay:
         hours: 0
         minutes: 0
@@ -2206,6 +2207,11 @@
         entity_id: input_boolean.stop_pool
         state: 'on'
       then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.pool_extend_counter
+        action: counter.reset
       - alias: Notify of Temperature Change
         action: notify.duncan
         data:
@@ -2222,11 +2228,11 @@
             Ende: {{ stop }}°C
 
             '
-    - action: input_boolean.turn_off
-      metadata: {}
-      data: {}
-      target:
-        entity_id: input_boolean.stop_pool
+      - action: input_boolean.turn_off
+        metadata: {}
+        data: {}
+        target:
+          entity_id: input_boolean.stop_pool
   mode: queued
   max: 50
 - id: '1716921868511'
