@@ -1645,12 +1645,15 @@ run_fan_for_duration:
       selector:
         entity:
           domain: switch
+      name: Fan Entity
     duration:
-      description: How long the fan should run
-      example: 00:02:30
-      required: true
       selector:
-        duration:
+        duration: {}
+      default:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      name: Duration
   sequence:
   - target:
       entity_id: '{{ fan_entity }}'
@@ -1714,6 +1717,7 @@ retry_action_with_backoff:
             value: closed
           - label: Custom
             value: custom
+      default: 'off'
     custom_target_state:
       name: Custom Target State
       description: Specify a custom state if Target State is 'Custom'.
@@ -1798,9 +1802,8 @@ retry_action_with_backoff:
         number:
           min: 1
           max: 60
-          mode: box
           step: 1
-          unit_of_measurement: seconds
+          mode: box
     max_delay:
       name: Max Delay
       description: Maximum delay in seconds for any backoff type.
@@ -1811,7 +1814,6 @@ retry_action_with_backoff:
           max: 600
           mode: box
           step: 1
-          unit_of_measurement: seconds
     backoff_type:
       name: Backoff Type
       description: Strategy for retry delays (simple, linear, exponential).
@@ -1836,9 +1838,10 @@ retry_action_with_backoff:
       name: Notify Service
       description: Service to use for failure notifications (e.g., notify.duncan).
       required: false
-      default: notify.duncan
       selector:
-        text: {}
+        entity:
+          filter:
+            domain: notify
     enable_power_controller:
       name: Enable Power Controller
       description: Monitor power consumption to confirm the device actually turned
@@ -1865,7 +1868,6 @@ retry_action_with_backoff:
           max: 100
           step: 0.1
           mode: box
-          unit_of_measurement: W
     power_threshold_on:
       name: Power Threshold (On Validation)
       description: Minimum power level (Watts) expected when the device is turned
@@ -1877,7 +1879,6 @@ retry_action_with_backoff:
           max: 5000
           step: 0.1
           mode: box
-          unit_of_measurement: W
     power_report_delay:
       name: Power Report Delay
       description: Time to wait (seconds) for the sensor to update its reading after
@@ -2226,18 +2227,34 @@ notify_people_at_home_with_fallbacks:
       description: The main body of the notification
       example: The garage is open
       required: true
+      selector:
+        text:
+      name: Message
     title:
       description: '''Fallback: ''Home Assistant'''
       example: Security
+      selector:
+        text:
+      name: Title
     tag:
       description: 'Fallback: ''general_notification'''
       example: garage_status
+      selector:
+        text:
+      name: Notification Tag
     color:
-      description: Optional notification color (e.g. red)
+      selector:
+        text: {}
     notification_icon:
       description: Optional notification icon (e.g. mdi:alert)
+      selector:
+        text:
+      name: Notification Icon
     channel:
       description: Notification Channel
+      selector:
+        text:
+      name: Channel
   sequence:
   - variables:
       final_title: "{{ title if title is defined and title | trim | length > 0\n   else
