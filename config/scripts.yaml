@@ -1656,15 +1656,35 @@ run_fan_for_duration:
         seconds: 30
       name: Duration
   sequence:
-  - target:
-      entity_id: '{{ fan_entity }}'
-    action: switch.turn_on
-    data: {}
+  - repeat:
+      until:
+      - condition: template
+        value_template: '{{ is_state(fan_entity, "on")}}'
+      sequence:
+      - target:
+          entity_id: '{{ fan_entity }}'
+        action: switch.turn_on
+        data: {}
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
   - delay: '{{ duration | default(''00:02:30'', true) }}'
-  - target:
-      entity_id: '{{ fan_entity }}'
-    action: switch.turn_off
-    data: {}
+  - repeat:
+      until:
+      - condition: template
+        value_template: '{{ is_state(fan_entity, "off")}}'
+      sequence:
+      - target:
+          entity_id: '{{ fan_entity }}'
+        action: switch.turn_off
+        data: {}
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
   description: ''
 restart_charging_process:
   sequence:

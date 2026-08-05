@@ -4259,6 +4259,77 @@ config:
         style: '.pictureinpicture {display: none} .screenshot {display: none}'
         type: custom:webrtc-camera
         ui: true
+      - cards:
+        - badges:
+          - color: state
+            entity: update.frigate_update
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /config/updates
+            type: entity
+          - entity: sensor.frigate_folder_size
+            icon: mdi:folder-multiple-image
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /media-browser
+            type: entity
+          heading: Frigate
+          heading_style: title
+          icon: mdi:cctv
+          tap_action:
+            action: navigate
+            navigation_path: /app/ccab4aaf_frigate-fa
+          type: heading
+        - cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_cpu_prozent
+            frameless: false
+            layout: horizontal
+            marginless: false
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          type: horizontal-stack
+        - cards:
+          - content: "{% set uptime_sec = states('sensor.frigate_uptime') | float(0)\
+              \ %} {% set days = (uptime_sec // 86400) | int %} {% set hours = ((uptime_sec\
+              \ % 86400) // 3600) | int %} {% set minutes = ((uptime_sec % 3600) //\
+              \ 60) | int %}\n### \U0001F6E1\uFE0F Status & Info\n\n| Property | State\
+              \ |\n| :--- | :--- |\n| **Update** | `{{ states('update.frigate_server')\
+              \ }}` |\n| **Uptime** | `{% if days > 0 %}{{ days }}d {% endif %}{{\
+              \ hours }}h {{ minutes }}m` |\n| **Inference Time** | `{{ states('sensor.frigate_ov_inference_speed')\
+              \ }} ms` |\n| **GPU Load** | `{{ states('sensor.frigate_intel_qsv_gpu_load')\
+              \ }}%` |\n"
+            type: markdown
+          - content: "### \U0001F4CA Performance\n| Metric | Value |\n| :--- | :---\
+              \ |\n| **Camera FPS** | `{{ states('sensor.frigate_camera_fps') }} FPS`\
+              \ | \n| **Detection FPS** | `{{ states('sensor.frigate_detection_fps')\
+              \ }} FPS` |\n| **Process FPS** | `{{ states('sensor.frigate_process_fps')\
+              \ }} FPS` |\n| **Skipped FPS** | `{{ states('sensor.frigate_skipped_fps')\
+              \ }} FPS` |\n"
+            type: markdown
+          type: horizontal-stack
+        type: vertical-stack
       type: grid
     subview: false
     title: Cameras
@@ -5613,11 +5684,14 @@ config:
           card_param: cards
           filter:
             exclude:
-            - label: light_schrag
+            - label:
+                active_choice: label
+                label: light_schrag
               options: {}
             include:
-            - domain: light
-              entity_id: light.gx53_*
+            - entity_id:
+                active_choice: custom
+                custom: light.gx53_*
               options:
                 entity: this.entity_id
                 features:
@@ -5639,11 +5713,14 @@ config:
           card_param: cards
           filter:
             exclude:
-            - label: light_gerade
+            - label:
+                active_choice: label
+                label: light_gerade
               options: {}
             include:
-            - domain: light
-              entity_id: light.gx53_*
+            - entity_id:
+                active_choice: custom
+                custom: light.gx53_*
               options:
                 entity: this.entity_id
                 features:
@@ -6076,16 +6153,6 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
-        - collapsible_controls: true
-          entity: light.regal_big_led_light
-          fill_container: true
-          show_brightness_control: true
-          show_color_control: false
-          show_color_temp_control: true
-          tap_action:
-            action: toggle
-          type: custom:mushroom-light-card
-          use_light_color: true
         - collapsible_controls: true
           entity: light.rp2040_paludarium_paludarium_light_rgb
           show_brightness_control: true
