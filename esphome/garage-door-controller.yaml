@@ -7,6 +7,16 @@ esphome:
   friendly_name: ${friendly_name}
   name_add_mac_suffix: false
 
+globals:
+  - id: cover_time_pos
+    type: float
+    restore_value: true
+    initial_value: '0.0'
+  - id: motor_direction
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
 esp8266:
   board: esp01_1m
 
@@ -84,9 +94,49 @@ binary_sensor:
     trigger_on_initial_state: true
     filters: 
       - invert:
-    
+
   - platform: status
     name: Status
+
+  - platform: template
+    id: motor_is_running
+    internal: true
+    lambda: |-
+      if (id(garage_motor_power).has_state()) {
+        return id(garage_motor_power).state > 35.0; 
+      }
+      return false;
+    filters:
+      - delayed_off: 1.5s
+    on_release:
+      then:
+        - globals.set:
+            id: motor_direction
+            value: '0'
+        - cover.template.publish:
+            id: my_garage_door
+            current_operation: IDLE
+        - if:
+            condition:
+              - binary_sensor.is_on: garagedoor_sensor_inverse
+            then:
+              - globals.set:
+                  id: cover_time_pos
+                  value: '0.0'
+              - cover.template.publish:
+                  id: my_garage_door
+                  position: 0.0
+            else:
+              - if:
+                  condition:
+                    - lambda: 'return id(cover_time_pos) >= 0.85;'
+                  then:
+                    - globals.set:
+                        id: cover_time_pos
+                        value: '1.0'
+                    - cover.template.publish:
+                        id: my_garage_door
+                        position: 1.0
 
 switch:
   - platform: template
@@ -177,6 +227,40 @@ cover:
     assumed_state: true
     device_class: garage
 
+  - platform: template
+    name: "Garage Door Power"
+    id: my_garage_door
+    device_class: garage
+    assumed_state: true
+    open_action:
+      - if:
+          condition:
+            - switch.is_off: open_confirm
+          then:
+            - switch.turn_on: open_confirm
+          else:
+            - switch.turn_off: open_confirm
+            - script.execute:
+                id: control_motor
+                direction: 1
+                target_time: 1.0
+    close_action:
+      - script.execute:
+          id: control_motor
+          direction: -1
+          target_time: 0.0
+    stop_action:
+      - script.execute: stop_motor
+    position_action:
+      - lambda: |-
+          float target_time = acos(1.0f - 2.0f * pos) / 3.14159f;
+          if (target_time > id(cover_time_pos)) {
+            // Skript direkt mit (direction, target_time) aufrufen
+            id(control_motor)->execute(1, target_time);
+          } else if (target_time < id(cover_time_pos)) {
+            id(control_motor)->execute(-1, target_time);
+          }
+
 text_sensor:
   - platform: wifi_info
     ip_address: 
@@ -204,3 +288,115 @@ sensor:
       - or:
         - delta: 5%
         - throttle: 120s
+
+
+  - platform: homeassistant
+    id: garage_motor_power
+    entity_id: sensor.garagentor_energy_power
+    internal: true
+    on_value:
+      then:
+        - if:
+            condition:
+              - lambda: 'return x > 115.0 && id(motor_direction) != 1;'
+            then:
+              - globals.set:
+                  id: motor_direction
+                  value: '1'
+              - cover.template.publish:
+                  id: my_garage_door
+                  current_operation: OPENING
+        - if:
+            condition:
+              - lambda: 'return x > 35.0 && id(motor_direction) == 0;'
+              - binary_sensor.is_on: garagedoor_sensor_inverse
+            then:
+              - globals.set:
+                  id: motor_direction
+                  value: '1'
+              - cover.template.publish:
+                  id: my_garage_door
+                  current_operation: OPENING
+        - if:
+            condition:
+              - lambda: 'return x > 35.0 && x < 105.0 && id(motor_direction) == 0;'
+              - binary_sensor.is_off: garagedoor_sensor_inverse
+            then:
+              - globals.set:
+                  id: motor_direction
+                  value: '-1'
+              - cover.template.publish:
+                  id: my_garage_door
+                  current_operation: CLOSING
+
+script:
+  - id: control_motor
+    mode: restart
+    parameters:
+      direction: int
+      target_time: float
+    then:
+      - globals.set:
+          id: motor_direction
+          value: !lambda 'return direction;'
+      - if:
+          condition:
+            - lambda: 'return direction == 1;'
+          then:
+            - switch.turn_off: cc
+            - switch.turn_on: oc
+            - delay: 0.1s
+            - switch.turn_off: oc
+            - cover.template.publish:
+                id: my_garage_door
+                current_operation: OPENING
+          else:
+            - switch.turn_off: oc
+            - switch.turn_on: cc
+            - delay: 0.1s
+            - switch.turn_off: cc
+            - cover.template.publish:
+                id: my_garage_door
+                current_operation: CLOSING
+      
+      # Zeitbasierte Positionsschleife
+      - while:
+          condition:
+            - lambda: 'return id(motor_direction) == direction;'
+          then:
+            - delay: 0.1s
+            - lambda: |-
+                float step = (direction == 1) ? (0.1 / 22.0) : (0.1 / 16.0);
+                id(cover_time_pos) += (direction * step);
+                
+                if (direction == 1 && id(cover_time_pos) >= target_time) {
+                  id(cover_time_pos) = target_time; 
+                  id(motor_direction) = 0; // Beendet die Schleife
+                } else if (direction == -1 && id(cover_time_pos) <= target_time) {
+                  id(cover_time_pos) = target_time; 
+                  id(motor_direction) = 0; // Beendet die Schleife
+                }
+                
+            # WICHTIG: Passives Status-Update OHNE eine neue Aktion (Feedback-Loop) auszulösen!
+            - cover.template.publish:
+                id: my_garage_door
+                position: !lambda 'return 0.5f - 0.5f * cos(3.14159f * id(cover_time_pos));'
+                
+      # Relais-Stopp-Befehl NUR bei Zwischenpositionen (z.B. 15%), nicht bei Endlagen (0% / 100%)
+      - if:
+          condition:
+            - lambda: 'return target_time > 0.0 && target_time < 1.0;'
+          then:
+            - script.execute: stop_motor
+
+  - id: stop_motor
+    then:
+      - globals.set:
+          id: motor_direction
+          value: '0'
+      - switch.turn_on: oc
+      - delay: 0.1s
+      - switch.turn_off: oc
+      - cover.template.publish:
+          id: my_garage_door
+          current_operation: IDLE
