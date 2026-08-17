@@ -14034,3 +14034,42 @@
     metadata: {}
     data: {}
   mode: single
+- id: '1786950699374'
+  alias: 'System: Forward Persistent Notifications'
+  description: Captures newly created persistent notifications and forwards them to
+    notify.duncan.
+  triggers:
+  - update_type:
+    - added
+    trigger: persistent_notification
+    id: Add
+  - update_type:
+    - removed
+    trigger: persistent_notification
+    id: Remove
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Add
+      sequence:
+      - data:
+          title: '{{ trigger.notification.title | default(''System Notification'',
+            true) }}'
+          message: '{{ trigger.notification.message }}'
+          data:
+            tag: '{{ trigger.notification.notification_id }}'
+        action: notify.duncan
+    - conditions:
+      - condition: trigger
+        id:
+        - Remove
+      sequence:
+      - data:
+          message: clear_notification
+          data:
+            tag: '{{ trigger.notification.notification_id }}'
+        action: notify.duncan
+  mode: queued
+  max: 10
