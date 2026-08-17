@@ -9053,15 +9053,20 @@
     - unknown
     - unavailable
     trigger: state
-  - entity_id: input_boolean.salz_nachgefullt
-    from: 'on'
-    to: 'off'
+  - entity_id:
+    - input_boolean.salz_nachgefullt
+    to:
+    - 'off'
     id: confirm_reset
     trigger: state
   conditions:
-  - condition: template
-    value_template: '{{ trigger.id == ''confirm_reset'' or crossed_10 or refill_needed
-      }}'
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - confirm_reset
+    - condition: template
+      value_template: '{{ crossed_10 or refill_needed }}'
   actions:
   - if:
     - condition: trigger
@@ -9112,10 +9117,11 @@
     new: '{{ trigger.to_state.state | float(none) if is_usage else none }}'
     crossed_10: '{{ is_usage and old is not none and new is not none and (new // 10)
       > (old // 10) and is_state(''input_boolean.salz_nachgefullt'', ''off'') }}'
-    refill_needed: "{% set interval = \n  timedelta(hours=6) if new > 70 \n  else
-      timedelta(hours=12) if new > 60 \n  else timedelta(days=1) \n%} {{ is_usage
-      and new is not none and new > 52 and (now() - (this.attributes.last_triggered
-      | default(as_datetime(0), true)) > interval) }}"
+    refill_needed: "{% if is_usage and new is not none %}\n  {% set interval = \n
+      \   timedelta(hours=6) if new > 70 \n    else timedelta(hours=12) if new > 60
+      \n    else timedelta(days=1) \n  %}\n  {{ new > 52 and (now() - (this.attributes.last_triggered
+      | default(as_datetime(0), true)) > interval) }}\n{% else %}\n  false\n{% endif
+      %}"
   mode: single
 - id: '1759414302396'
   alias: Daily Agenda
