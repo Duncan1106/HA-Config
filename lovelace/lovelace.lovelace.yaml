@@ -3259,77 +3259,8 @@ config:
         type: vertical-stack
       type: grid
     - cards:
-      - button-background: transparent
-        cards:
-        - card:
-            cards:
-            - cards:
-              - entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                hide_state: true
-                icon: mdi:ev-station
-                icon_tap_action:
-                  action: more-info
-                name: 11kW Surplus
-                tap_action:
-                  action: toggle
-                type: tile
-              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                hide_state: true
-                icon: mdi:ev-station
-                icon_tap_action:
-                  action: more-info
-                name: 22kW Surplus
-                tap_action:
-                  action: toggle
-                type: tile
-                vertical: false
-              type: horizontal-stack
-            - cards:
-              - entity: switch.esp32_c3_mini_goe11_controll_dont_stop_charging_11kw
-                icon: mdi:ev-plug-type2
-                icon_tap_action:
-                  action: more-info
-                name: Dont Stop Charging
-                type: tile
-              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_dont_stop_charging_22kw
-                icon: mdi:ev-plug-type2
-                icon_tap_action:
-                  action: more-info
-                name: Dont Stop Charging
-                type: tile
-              type: horizontal-stack
-            - cards:
-              - entity: sensor.esp32_c3_mini_goe11_controll_log_11kw
-                icon_tap_action:
-                  action: more-info
-                name: ' '
-                type: tile
-              - entity: sensor.duncan_zimmer_esp32_c3_mini_goe22_controll_log_22kw
-                icon_tap_action:
-                  action: more-info
-                name: ' '
-                type: tile
-              type: horizontal-stack
-            type: vertical-stack
-          conditions:
-          - condition: or
-            conditions:
-            - condition: state
-              entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-              state_not: unavailable
-            - condition: state
-              entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-              state_not: unavailable
-          type: conditional
-        child-padding: 0em
-        clear: true
-        clear-children: false
-        expanded: true
-        gap: 0em
-        overlay-margin: 0em
-        padding: 0em
-        title-card:
-          badges:
+      - cards:
+        - badges:
           - color: state
             entity: switch.schreibtisch_links_power_strip_l3
             name: Controller
@@ -3342,22 +3273,11 @@ config:
             visibility:
             - condition: not
               conditions:
-              - condition: and
-                conditions:
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                  state_not: unavailable
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                  state_not: unavailable
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                  state_not: unknown
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                  state_not: unknown
+              - condition: state
+                entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+                state_not: unavailable
           - color: state
-            entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
+            entity: automation.goe11_all_in_one_configless_controller
             name: 11kW
             show_icon: true
             show_state: true
@@ -3370,7 +3290,7 @@ config:
               entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
               state_not: unavailable
           - color: state
-            entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+            entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
             name: 22kW
             show_icon: true
             show_state: true
@@ -3380,7 +3300,7 @@ config:
             type: entity
             visibility:
             - condition: state
-              entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+              entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
               state_not: unavailable
           - color: state
             entity: sensor.solar_power_total
@@ -3401,8 +3321,124 @@ config:
           heading_style: title
           icon: mdi:solar-power
           type: heading
-        title-card-button-overlay: false
-        type: custom:expander-card
+        - cards:
+          - cards:
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe11_cache
+              icon: mdi:solar-power
+              icon_height: 21px
+              name: PV Surplus 11kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: pv_active
+                perform_action: script.toggle_goe11_key
+                target: {}
+              type: button
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe11_cache
+              icon: mdi:battery-charging-high
+              icon_height: 21px
+              name: Force Charge 11kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: never_stop
+                perform_action: script.toggle_goe11_key
+                target: {}
+              type: button
+            - content: "{% set state = states(\"input_text.goe11_cache\") %}\n{% if\
+                \ state not in ['unknown', 'unavailable'] and '{' in state %}\n  {%\
+                \ set data = state | from_json %}\n  {{ data.status_text if data is\
+                \ mapping else data }}\n{% else %}\n  Unbekannt\n{% endif %}\n"
+              type: markdown
+            type: vertical-stack
+          - cards:
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).pv_active\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe22_cache
+              icon: mdi:solar-power
+              icon_height: 21px
+              name: PV Surplus 22kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: pv_active
+                perform_action: script.toggle_goe22_key
+                target: {}
+              type: button
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).never_stop\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe22_cache
+              icon: mdi:battery-charging-high
+              icon_height: 21px
+              name: Force Charge 22kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: never_stop
+                perform_action: script.toggle_goe22_key
+                target: {}
+              type: button
+            - content: "{% set state = states(\"input_text.goe22_cache\") %}\n{% if\
+                \ state not in ['unknown', 'unavailable'] and '{' in state %}\n  {%\
+                \ set data = state | from_json %}\n  {{ data.status_text if data is\
+                \ mapping else data }}\n{% else %}\n  Unbekannt\n{% endif %}\n"
+              type: markdown
+            type: vertical-stack
+            visibility:
+            - condition: state
+              entity: input_text.goe22_cache
+              state: unavailable
+          - card:
+              cards:
+              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+                hide_state: true
+                icon: mdi:ev-station
+                icon_tap_action:
+                  action: more-info
+                name: 22kW Surplus
+                tap_action:
+                  action: toggle
+                type: tile
+                vertical: false
+              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_dont_stop_charging_22kw
+                icon: mdi:ev-plug-type2
+                icon_tap_action:
+                  action: more-info
+                name: Dont Stop Charging
+                type: tile
+              - entity: sensor.duncan_zimmer_esp32_c3_mini_goe22_controll_log_22kw
+                icon_tap_action:
+                  action: more-info
+                name: ' '
+                type: tile
+              type: vertical-stack
+            conditions:
+            - condition: state
+              entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+              state_not: unavailable
+            type: conditional
+          type: horizontal-stack
+        type: vertical-stack
       - entity: button.go_echarger_270862_rst
         features_position: bottom
         name: 11kw Restart
@@ -3423,90 +3459,6 @@ config:
             entity_id: button.go_echarger_252682_rst
         type: tile
         vertical: false
-      - cards:
-        - cards:
-          - card_mod:
-              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
-                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-                \  {% endif %}\n}\n"
-            entity: input_text.goe11_cache
-            icon: mdi:solar-power
-            icon_height: 21px
-            name: PV Surplus 11kW
-            show_icon: true
-            show_name: true
-            tap_action:
-              action: perform-action
-              data:
-                key_name: pv_active
-              perform_action: script.toggle_goe11_key
-              target: {}
-            type: button
-          - card_mod:
-              style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
-                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-                \  {% endif %}\n}\n"
-            entity: input_text.goe11_cache
-            icon: mdi:battery-charging-high
-            icon_height: 21px
-            name: Force Charge 11kW
-            show_icon: true
-            show_name: true
-            tap_action:
-              action: perform-action
-              data:
-                key_name: never_stop
-              perform_action: script.toggle_goe11_key
-              target: {}
-            type: button
-          - content: '{{ (states("input_text.goe11_cache")| from_json ).status_text
-              }}'
-            type: markdown
-          type: vertical-stack
-        - cards:
-          - card_mod:
-              style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).pv_active\
-                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-                \  {% endif %}\n}\n"
-            entity: input_text.goe22_cache
-            icon: mdi:solar-power
-            icon_height: 21px
-            name: PV Surplus 22kW
-            show_icon: true
-            show_name: true
-            tap_action:
-              action: perform-action
-              data:
-                key_name: pv_active
-              perform_action: script.toggle_goe22_key
-              target: {}
-            type: button
-          - card_mod:
-              style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).never_stop\
-                \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
-                \  {% endif %}\n}\n"
-            entity: input_text.goe22_cache
-            icon: mdi:battery-charging-high
-            icon_height: 21px
-            name: Force Charge 22kW
-            show_icon: true
-            show_name: true
-            tap_action:
-              action: perform-action
-              data:
-                key_name: never_stop
-              perform_action: script.toggle_goe22_key
-              target: {}
-            type: button
-          - content: '{{ (states("input_text.goe22_cache")| from_json ).status_text
-              }}'
-            type: markdown
-          type: vertical-stack
-          visibility:
-          - condition: state
-            entity: input_text.goe22_cache
-            state: unavailable
-        type: horizontal-stack
       type: grid
     subview: false
     title: Goe
