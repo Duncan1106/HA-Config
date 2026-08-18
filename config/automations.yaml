@@ -14077,3 +14077,73 @@
         action: notify.duncan
   mode: queued
   max: 10
+- id: '1787054961635'
+  alias: 'Power: Weekly Laptop Maintenance (Solcast & Fallback)'
+  description: Time-triggered maintenance charge. Uses Solcast (>30 kWh) or 10-day
+    fallback. Skips if switch is on OR desk is occupied.
+  triggers:
+  - at:
+    - '10:00:00'
+    - '14:00:00'
+    trigger: time
+  conditions:
+  - alias: Skip if switch is already on
+    condition: state
+    entity_id: switch.schreibtisch_rechts_power_strip_l3
+    state: 'off'
+  - alias: Skip if desk is occupied
+    condition: state
+    entity_id: binary_sensor.schreibtisch
+    state: 'off'
+  - alias: Solar condition (6+ days & >30kWh) OR 10-day fallback
+    condition: or
+    conditions:
+    - condition: and
+      conditions:
+      - condition: template
+        value_template: '{{ (now() - (this.attributes.last_triggered | default(as_datetime(0),
+          true))) > timedelta(days=6) }}
+
+          '
+      - condition: numeric_state
+        entity_id: sensor.solcast_pv_forecast_prognose_heute
+        above: 30
+    - condition: template
+      value_template: '{{ (now() - (this.attributes.last_triggered | default(as_datetime(0),
+        true))) > timedelta(days=10) }}
+
+        '
+  actions:
+  - alias: Capture baseline power before turning on switch
+    variables:
+      baseline_power: '{{ states(''sensor.schreibtisch_rechts_power'') | float(0)
+        }}'
+  - alias: Turn on desk power strip L3
+    action: switch.turn_on
+    target:
+      entity_id: switch.schreibtisch_rechts_power_strip_l3
+  - alias: Wait for USB-C PD handshake
+    delay: 00:01:00
+  - alias: Verify power increase delta
+    choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ (states(''sensor.schreibtisch_rechts_power'') | float(0)
+          - baseline_power) < 15 }}
+
+          '
+      sequence:
+      - alias: Turn off switch on abort
+        action: switch.turn_off
+        target:
+          entity_id: switch.schreibtisch_rechts_power_strip_l3
+      - stop: 'Aborted: Power did not rise significantly. Laptop disconnected or fully
+          charged.'
+  - alias: Wait for charge duration
+    delay:
+      minutes: 39
+  - alias: Terminate charging
+    action: switch.turn_off
+    target:
+      entity_id: switch.schreibtisch_rechts_power_strip_l3
+  mode: single

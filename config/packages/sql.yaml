@@ -1,140 +1,36 @@
 sql:
-  # MariaDB Status
-  - name: "MariaDB Status"
+  - name: "MariaDB Info"
+    unique_id: mariadb_info
     query: >-
-      SELECT 'running' as status 
-      FROM information_schema.GLOBAL_STATUS 
-      WHERE VARIABLE_NAME = 'Uptime' 
-      AND CAST(VARIABLE_VALUE AS UNSIGNED) > 0;
+      SELECT 
+        'running' as status,
+        @@version as version,
+        ROUND(
+          (SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Queries') /
+          NULLIF((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Uptime'), 0)
+        , 2) as queries_per_sec,
+        (SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant') as db_size_mb,
+        (SELECT COUNT(*) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant') as table_count,
+        (SELECT COALESCE(TABLE_ROWS, 0) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant' AND table_name = 'states') as states_records,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Uptime') AS UNSIGNED) as uptime_seconds,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Threads_connected') AS UNSIGNED) as connections,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Questions') AS UNSIGNED) as total_queries,
+        ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1) as buffer_pool_gb,
+        @@max_connections as max_connections,
+        ROUND(@@innodb_log_file_size/1024/1024, 0) as log_file_mb,
+        ROUND(@@tmp_table_size/1024/1024, 0) as tmp_table_mb,
+        @@innodb_io_capacity as io_capacity,
+        @@innodb_read_io_threads as read_io_threads,
+        @@innodb_write_io_threads as write_io_threads,
+        @@table_open_cache as table_cache,
+        ROUND(@@sort_buffer_size/1024/1024, 0) as sort_buffer_mb,
+        ROUND(@@read_buffer_size/1024/1024, 0) as read_buffer_mb,
+        ROUND(@@join_buffer_size/1024/1024, 0) as join_buffer_mb;
     column: "status"
     value_template: "{{ value if value else 'stopped' }}"
-
-  # MariaDB Version
-  - name: "MariaDB Version"
-    query: >-
-      SELECT @@version as version;
-    column: "version"
-
-  # MariaDB Performance
-  - name: "MariaDB Performance"
-    query: >-
-      SELECT CONCAT(
-        ROUND(
-          (SELECT VARIABLE_VALUE 
-           FROM information_schema.GLOBAL_STATUS 
-           WHERE VARIABLE_NAME = 'Queries') / 
-          (SELECT VARIABLE_VALUE 
-           FROM information_schema.GLOBAL_STATUS 
-           WHERE VARIABLE_NAME = 'Uptime')
-        ), ' q/s') as performance;
-    column: "performance"
-    
-  # Database size
-  - name: "Database Size"
-    query: >-
-      SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) as size 
-      FROM information_schema.tables 
-      WHERE table_schema = 'homeassistant';
-    column: "size"
-    unit_of_measurement: "MB"
-    value_template: "{{ value | float }}"
-
-  # Table count
-  - name: "Database Tables Count"
-    query: >-
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = 'homeassistant';
-    column: "count"
-    unit_of_measurement: "tables"
-
-  # Total States records
-  - name: "Database Total States Records"
-    query: >-
-      SELECT TABLE_ROWS as count
-      FROM information_schema.tables
-      WHERE table_schema = 'homeassistant' AND table_name = 'states';
-    column: "count"
-    unit_of_measurement: "records"
-
-  # MariaDB uptime
-  - name: "MariaDB Uptime"
-    query: >-
-      SELECT VARIABLE_VALUE as value
-      FROM information_schema.GLOBAL_STATUS 
-      WHERE VARIABLE_NAME = 'Uptime';
-    column: "value"
-    unit_of_measurement: "seconds"
-
-  # Active connections
-  - name: "MariaDB Connections"
-    query: >-
-      SELECT VARIABLE_VALUE as value
-      FROM information_schema.GLOBAL_STATUS 
-      WHERE VARIABLE_NAME = 'Threads_connected';
-    column: "value"
-    unit_of_measurement: "connections"
-
-  # Total queries
-  - name: "MariaDB Questions"
-    query: >-
-      SELECT VARIABLE_VALUE as value
-      FROM information_schema.GLOBAL_STATUS 
-      WHERE VARIABLE_NAME = 'Questions';
-    column: "value"
-    unit_of_measurement: "queries"
-
-  # MariaDB Buffer Pool Size
-  - name: "MariaDB Buffer Pool Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1), ' GB') as value;
-    column: "value"
-
-  # MariaDB Max Connections
-  - name: "MariaDB Max Connections"
-    query: >-
-      SELECT @@max_connections as value;
-    column: "value"
-
-  # MariaDB InnoDB Log File Size
-  - name: "MariaDB Log File Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@innodb_log_file_size/1024/1024, 0), ' MB') as value;
-    column: "value"
-
-  # MariaDB Tmp Table Size
-  - name: "MariaDB Tmp Table Size"
-    query: >-
-      SELECT CONCAT(ROUND(@@tmp_table_size/1024/1024, 0), ' MB') as value;
-    column: "value"
-
-  # MariaDB IO Capacity
-  - name: "MariaDB IO Capacity"
-    query: >-
-      SELECT @@innodb_io_capacity as value;
-    column: "value"
-
-  # MariaDB IO Threads
-  - name: "MariaDB IO Threads"
-    query: >-
-      SELECT CONCAT(
-        'Read: ', @@innodb_read_io_threads,
-        ', Write: ', @@innodb_write_io_threads
-      ) as value;
-    column: "value"
-
-  # MariaDB Table Cache
-  - name: "MariaDB Table Cache"
-    query: >-
-      SELECT @@table_open_cache as value;
-    column: "value"
-
-  # MariaDB Buffer Sizes
-  - name: "MariaDB Buffer Sizes"
-    query: >-
-      SELECT CONCAT(
-        'Sort: ', ROUND(@@sort_buffer_size/1024/1024, 0), 'M, ',
-        'Read: ', ROUND(@@read_buffer_size/1024/1024, 0), 'M, ',
-        'Join: ', ROUND(@@join_buffer_size/1024/1024, 0), 'M'
-      ) as value;
-    column: "value"
