@@ -12490,19 +12490,13 @@
   - variables:
       target_label: retention_{{ trigger.id }}
       keep_days: '{{ trigger.id | replace(''d'', '''') | int }}'
-      entities_to_purge: '{% set target = target_label %} {% set all_retention = labels()
-        | select(''match'', ''^retention_'') | list %}
-
-        {# Get entities from labels and devices #} {% set target_ents = (label_entities(target)
-        + (label_devices(target) | map(''device_entities'') | sum(start=[]))) | unique
-        | list %}
-
-        {# Check for conflicts (entities that have other retention labels) #} {% set
-        other_labels = all_retention | reject(''eq'', target) | list %} {% set conflict_ents
-        = other_labels | map(''label_entities'') | sum(start=[]) | unique | list %}
-
-        {# Final list: in target, not in conflict list #} {{ target_ents | reject(''in'',
-        conflict_ents) | list }}'
+      entities_to_purge: '{% set target = target_label %}  {% set all_retention =
+        labels() | select(''match'', ''^retention_'') | list %} {% set all_direct_ents
+        = all_retention | map(''label_entities'') | sum(start=[]) | unique | list
+        %} {% set direct_target_ents = label_entities(target) %} {% set device_target_ents
+        = label_devices(target) | map(''device_entities'') | sum(start=[]) | unique
+        %} {% set valid_device_ents = device_target_ents | reject(''in'', all_direct_ents)
+        | list %} {{ (direct_target_ents + valid_device_ents) | unique | list }}'
   - choose:
     - conditions:
       - condition: template
