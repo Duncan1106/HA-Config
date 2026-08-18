@@ -904,10 +904,6 @@ save_counts_and_notify_purge_status:
   description: Stores current DB row count, calculates purge threshold, waits for
     drop, and notifies if purge did not succeed within the expected time.
   fields:
-    threshold_offset:
-      description: Number of rows expected to be removed (e.g. 100000)
-      example: 100000
-      default: 100000
     timeout_minutes:
       description: How many minutes to wait for the purge to reduce DB rows
       example: 60
@@ -916,6 +912,10 @@ save_counts_and_notify_purge_status:
       description: Identifier for this purge block (e.g. "2 Days")
       example: 2 Days
       default: Unknown
+    count:
+      selector:
+        text: {}
+      name: Count
   sequence:
   - if:
     - condition: template
@@ -924,7 +924,11 @@ save_counts_and_notify_purge_status:
     - alias: Save current row count and calculate threshold
       variables:
         current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
-        threshold: '{{ current_count - threshold_offset }}'
+        entity_count: '{{ count | int(0) }}'
+        multiplier: '{% set multipliers = {''1d'': 100, ''2d'': 300, ''3d'': 1500,
+          ''7d'': 200} %} {{ multipliers.get(block_id | string, 200) }}'
+        calculated_offset: '{{ [entity_count * multiplier, 1000] | max }}'
+        threshold: '{{ current_count - calculated_offset }}'
     else:
     - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
   - alias: Save start row count for debugging
@@ -958,13 +962,12 @@ save_counts_and_notify_purge_status:
           title: ⚠️ DB Purge Failed — {{ block_id }}
           message: '{% set removed_rows = current_count - states(''sensor.maria_db_rows'')
             | int(0) %} The DB purge for block ''{{ block_id }}'' likely failed.\n
-
-            • Start: {{ current_count }}\n • Threshold: {{ threshold }}\n • Final:
-            {{ states(''sensor.maria_db_rows'') | int(0) }}\n • {{''Added: +'' if
-            removed_rows <= 0 else ''Removed: ''}}{{ removed_rows | abs }} rows\n
-            • Timed out after {{ timeout_minutes }} minutes.\n\n
-
-            Consider checking your recorder and DB status manually.
+            • Entities targeted: {{ entity_count }}\n • Start: {{ current_count }}\n
+            • Target drop: {{ calculated_offset }} rows\n • Threshold: {{ threshold
+            }}\n • Final: {{ states(''sensor.maria_db_rows'') | int(0) }}\n • {{''Added:
+            +'' if removed_rows <= 0 else ''Removed: ''}}{{ removed_rows | abs }}
+            rows\n • Timed out after {{ timeout_minutes }} minutes.\n\n Consider checking
+            your recorder and DB status manually.
 
             '
           data:
@@ -994,10 +997,10 @@ save_counts_and_notify_purge_status:
           data:
             title: ✅ DB Purge Succeeded — {{ block_id }}
             message: 'The DB purge for block ''{{ block_id }}'' completed successfully.\n
-
-              • Start: {{ current_count }}\n • Final: {{states(''sensor.maria_db_rows'')
-              | int(0) }}\n • Removed: {{current_count - states(''sensor.maria_db_rows'')
-              | int(0) }} rows\n • Finished in under {{ timeout_minutes }} minutes.
+              • Entities targeted: {{ entity_count }}\n • Start: {{ current_count
+              }}\n • Final: {{ states(''sensor.maria_db_rows'') | int(0) }}\n • Removed:
+              {{ current_count - states(''sensor.maria_db_rows'') | int(0) }} rows\n
+              • Finished in under {{ timeout_minutes }} minutes.
 
               '
             data:
