@@ -130,7 +130,9 @@ log "Initial number of files to delete: $NUM_TO_DELETE"
 # Apply minimum file guard: Keep the N newest backups
 if (( TOTAL_FILES - NUM_TO_DELETE < MIN_FILES )); then
     NUM_TO_DELETE=$(( TOTAL_FILES - MIN_FILES ))
-    (( NUM_TO_DELETE < 0 )) && NUM_TO_DELETE=0
+    if (( NUM_TO_DELETE < 0 )); then
+        NUM_TO_DELETE=0
+    fi
     FILES_TO_DELETE=( "${FILES_TO_DELETE[@]:0:$NUM_TO_DELETE}" )
 fi
 NUM_TO_DELETE=${#FILES_TO_DELETE[@]}
@@ -186,7 +188,7 @@ else
         # Befehl ausführen und Fehler abfangen, um Skript-Abbruch durch 'set -e' zu verhindern
         if ERR_MSG=$(rm -f "$f" 2>&1); then
             log "Deleted file: $f"
-            ((DELETED_COUNT++))
+            ((++DELETED_COUNT))
         else
             log "Warning: rm reported an issue for $f: $ERR_MSG"
             # 2 Sekunden warten, um dem NAS Zeit für die Synchronisation zu geben
@@ -198,7 +200,7 @@ else
                 exit 4
             else
                 log "File $f was deleted successfully despite the timeout error. Proceeding."
-                ((DELETED_COUNT++))
+                ((++DELETED_COUNT))
             fi
         fi
     done
