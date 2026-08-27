@@ -2270,3 +2270,158 @@ retry_action_with_backoff_power_monitoring:
             | {{ params_line }}'
           data:
             tag: '{{ tag_value }}'
+save_counts_and_notify_purge_status_and_self_correction:
+  alias: Save Counts and Notify Purge Status and Self Correction
+  description: Stores current DB row count, calculates purge threshold using a self-correcting  multiplier,
+    waits for drop, and notifies on status or multiplier changes.
+  fields:
+    timeout_minutes:
+      description: How many minutes to wait for the purge to reduce DB rows
+      example: 60
+      default: 60
+    block_id:
+      description: Identifier for this purge block (e.g. "2d")
+      example: 2d
+      default: Unknown
+    count:
+      selector:
+        text: {}
+      name: Count
+  sequence:
+  - if:
+    - condition: template
+      value_template: '{{ is_number(states(''sensor.maria_db_rows'')) }}'
+    then:
+    - alias: Save current row count and parse JSON for threshold
+      variables:
+        current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
+        entity_count: '{{ count | int(0) }}'
+        stats_json: '{{ states(''input_text.db_purge_bucket_stats'') }}'
+        default_stats: '{"1d":{"e":0,"m":50,"k":[]},"2d":{"e":0,"m":150,"k":[]},"3d":{"e":0,"m":250,"k":[]},"7d":{"e":0,"m":100,"k":[]}}'
+        stats: '{{ (stats_json if stats_json | length > 5 and stats_json.startswith(''{'')
+          else default_stats) | from_json }}'
+        block_data: '{{ stats.get(block_id, {"m": 200, "k": []}) }}'
+        multiplier: '{{ block_data.m | default(200) | int }}'
+        calculated_offset: '{{ [entity_count * multiplier, 1000] | max }}'
+        threshold: '{{ current_count - calculated_offset }}'
+    else:
+    - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
+  - alias: Save start row count for debugging
+    action: input_number.set_value
+    target:
+      entity_id: input_number.db_row_count_start
+    data:
+      value: '{{ current_count }}'
+  - alias: Wait for purge to complete
+    wait_for_trigger:
+    - value_template: '{% set rows = states(''sensor.maria_db_rows'') %}
+
+        {{ is_number(rows) and (rows | int(0)) < (threshold | int(0)) }}'
+      trigger: template
+    timeout:
+      minutes: '{{ timeout_minutes | int(60) }}'
+    continue_on_timeout: true
+  - alias: Notify if purge did complete or not
+    choose:
+    - alias: Notify on purge failure
+      conditions:
+      - condition: template
+        value_template: '{{ not wait.completed and ((states(''sensor.maria_db_rows'')
+          | int(0)) >= threshold) }}
+
+          '
+      sequence:
+      - alias: Send failure notification
+        action: notify.duncan
+        data:
+          title: ⚠️ DB Purge Failed — {{ block_id }}
+          message: '{% set removed_rows = current_count - states(''sensor.maria_db_rows'')
+            | int(0) %}  The DB purge for block ''{{ block_id }}'' likely failed.\n
+            • Entities targeted: {{ entity_count }}\n • Start: {{ current_count }}\n
+            • Target drop: {{ calculated_offset }} rows (Mult: {{ multiplier }})\n
+            • Threshold: {{ threshold }}\n • Final: {{ states(''sensor.maria_db_rows'')
+            | int(0) }}\n • {{''Added: +'' if removed_rows <= 0 else ''Removed: ''}}{{
+            removed_rows | abs }} rows\n • Timed out after {{ timeout_minutes }} minutes.\n\n
+            Consider checking your recorder and DB status manually.
+
+            '
+          data:
+            tag: db_purge_failure_{{ block_id }}
+      - action: counter.increment
+        target:
+          entity_id: counter.db_purge_failure
+    - alias: Notify on purge success & Run Self-Correction
+      conditions:
+      - condition: template
+        value_template: '{{ wait.completed }}'
+      sequence:
+      - alias: Calculate Self-Correcting Loop Variables
+        variables:
+          final_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
+          removed_rows: '{{ [current_count - final_count, 0] | max }}'
+          removed_k: '{{ (removed_rows / 1000) | round(2) }}'
+          stats_json_latest: '{{ states(''input_text.db_purge_bucket_stats'') }}'
+          stats_latest: '{{ (stats_json_latest if stats_json_latest | length > 5 and
+            stats_json_latest.startswith(''{'') else default_stats) | from_json }}'
+          current_block: '{{ stats_latest.get(block_id, {"m": multiplier, "k": []})
+            }}'
+          old_multiplier: '{{ current_block.m | default(multiplier) | int }}'
+          history_k: '{{ current_block.k | default([]) }}'
+          new_history_k: '{% set hist = history_k + [removed_k] %} {{ hist[-5:] }}
+
+            '
+          avg_removed_k: '{{ (new_history_k | sum) / (new_history_k | length) if new_history_k
+            | length > 0 else 0 }}'
+          new_multiplier: '{{ ((avg_removed_k * 1000) / entity_count) | int if entity_count
+            > 0 and avg_removed_k > 0 else old_multiplier }}'
+          new_block_data:
+            e: '{{ entity_count }}'
+            m: '{{ new_multiplier }}'
+            k: '{{ new_history_k }}'
+          new_stats: '{{ dict(stats_latest, **{block_id: new_block_data}) }}'
+      - alias: Save Updated JSON to Input Text
+        action: input_text.set_value
+        target:
+          entity_id: input_text.db_purge_bucket_stats
+        data:
+          value: '{{ new_stats | to_json(separators=(",", ":")) }}'
+      - alias: Check if Multiplier Changed
+        if:
+        - condition: template
+          value_template: '{{ new_multiplier != old_multiplier }}'
+        then:
+        - alias: Notify of Multiplier Change
+          action: notify.duncan
+          data:
+            title: "\U0001F504 DB Purge Multiplier Updated — {{ block_id }}"
+            message: 'The self-correcting loop adapted the multiplier for ''{{ block_id
+              }}''.\n • Old Multiplier: {{ old_multiplier }}\n • New Multiplier: {{
+              new_multiplier }}\n • Recent Removes (k): {{ new_history_k | join('',
+              '') }}\n • Current Entities: {{ entity_count }}
+
+              '
+            data:
+              tag: db_purge_multiplier_{{ block_id }}
+      - action: counter.increment
+        target:
+          entity_id: counter.db_purge_success
+      - if:
+        - condition: state
+          entity_id: input_boolean.automation_enable_purge_success_notification
+          state: 'on'
+        then:
+        - alias: Send success notification
+          action: notify.duncan
+          data:
+            title: ✅ DB Purge Succeeded — {{ block_id }}
+            message: 'The DB purge for block ''{{ block_id }}'' completed successfully.\n
+              • Entities targeted: {{ entity_count }}\n • Start: {{ current_count
+              }}\n • Final: {{ final_count }}\n • Removed: {{ removed_rows }} rows
+              (Mult: {{ new_multiplier }})\n • Finished in under {{ timeout_minutes
+              }} minutes.
+
+              '
+            data:
+              tag: db_purge_sucess_{{ block_id }}
+  mode: parallel
+  max: 10
