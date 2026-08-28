@@ -2287,6 +2287,8 @@ save_counts_and_notify_purge_status_and_self_correction:
       selector:
         text: {}
       name: Count
+  variables:
+    default_stats: '{"1d":{"e":0,"m":50,"k":[]},"2d":{"e":0,"m":150,"k":[]},"3d":{"e":0,"m":250,"k":[]},"7d":{"e":0,"m":100,"k":[]}}'
   sequence:
   - if:
     - condition: template
@@ -2296,10 +2298,9 @@ save_counts_and_notify_purge_status_and_self_correction:
       variables:
         current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
         entity_count: '{{ count | int(0) }}'
-        stats_json: '{{ states(''input_text.db_purge_bucket_stats'') }}'
-        default_stats: '{"1d":{"e":0,"m":50,"k":[]},"2d":{"e":0,"m":150,"k":[]},"3d":{"e":0,"m":250,"k":[]},"7d":{"e":0,"m":100,"k":[]}}'
-        stats: '{{ (stats_json if stats_json | length > 5 and stats_json.startswith(''{'')
-          else default_stats) | from_json }}'
+        stats: '{% set raw = states(''input_text.db_purge_bucket_stats'') %} {{ (raw
+          if raw | length > 5 and raw.startswith(''{'') else default_stats) | from_json
+          }}'
         block_data: '{{ stats.get(block_id, {"m": 200, "k": []}) }}'
         multiplier: '{{ block_data.m | default(200) | int }}'
         calculated_offset: '{{ [entity_count * multiplier, 1000] | max }}'
@@ -2360,9 +2361,9 @@ save_counts_and_notify_purge_status_and_self_correction:
           final_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
           removed_rows: '{{ [current_count - final_count, 0] | max }}'
           removed_k: '{{ (removed_rows / 1000) | round(2) }}'
-          stats_json_latest: '{{ states(''input_text.db_purge_bucket_stats'') }}'
-          stats_latest: '{{ (stats_json_latest if stats_json_latest | length > 5 and
-            stats_json_latest.startswith(''{'') else default_stats) | from_json }}'
+          stats_latest: '{% set raw = states(''input_text.db_purge_bucket_stats'')
+            %} {{ (raw if raw | length > 5 and raw.startswith(''{'') else default_stats)
+            | from_json }}'
           current_block: '{{ stats_latest.get(block_id, {"m": multiplier, "k": []})
             }}'
           old_multiplier: '{{ current_block.m | default(multiplier) | int }}'
