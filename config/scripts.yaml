@@ -2303,7 +2303,8 @@ save_counts_and_notify_purge_status_and_self_correction:
           }}'
         block_data: '{{ stats.get(block_id, {"m": 200, "k": []}) }}'
         multiplier: '{{ block_data.m | default(200) | int }}'
-        calculated_offset: '{{ [entity_count * multiplier, 1000] | max }}'
+        calculated_offset: '{{ (([entity_count * multiplier, 1000] | max) * 0.85)
+          | int(0) }}'
         threshold: '{{ current_count - calculated_offset }}'
     else:
     - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
@@ -2351,6 +2352,27 @@ save_counts_and_notify_purge_status_and_self_correction:
       - action: counter.increment
         target:
           entity_id: counter.db_purge_failure
+      - alias: Decay Multiplier on Failure to Prevent Starvation
+        variables:
+          stats_fail: '{% set raw = states(''input_text.db_purge_bucket_stats'') %}
+            {{ (raw if raw | length > 5 and raw.startswith(''{'') else default_stats)
+            | from_json }}'
+          current_block_fail: '{{ stats_fail.get(block_id, {"m": multiplier, "k":
+            []}) }}'
+          old_m: '{{ current_block_fail.m | default(multiplier) | int }}'
+          decayed_m: '{{ [(old_m * 0.95) | int, 50] | max }}'
+          new_block_data_fail:
+            e: '{{ entity_count }}'
+            m: '{{ decayed_m }}'
+            k: '{{ current_block_fail.k | default([]) }}'
+          new_stats_fail: '{{ dict(stats_fail, **{block_id: new_block_data_fail})
+            }}'
+      - alias: Save Decayed JSON to Input Text
+        action: input_text.set_value
+        target:
+          entity_id: input_text.db_purge_bucket_stats
+        data:
+          value: '{{ new_stats_fail | to_json() }}'
     - alias: Notify on purge success & Run Self-Correction
       conditions:
       - condition: template
@@ -2373,8 +2395,8 @@ save_counts_and_notify_purge_status_and_self_correction:
             '
           avg_removed_k: '{{ (new_history_k | sum) / (new_history_k | length) if new_history_k
             | length > 0 else 0 }}'
-          new_multiplier: '{{ ((avg_removed_k * 1000) / entity_count) | int if entity_count
-            > 0 and avg_removed_k > 0 else old_multiplier }}'
+          new_multiplier: '{{ [((avg_removed_k * 1000) / entity_count) | int, 1000]
+            | min if entity_count > 0 and avg_removed_k > 0 else old_multiplier }}'
           new_block_data:
             e: '{{ entity_count }}'
             m: '{{ new_multiplier }}'
@@ -2389,7 +2411,8 @@ save_counts_and_notify_purge_status_and_self_correction:
       - alias: Check if Multiplier Changed
         if:
         - condition: template
-          value_template: '{{ new_multiplier != old_multiplier }}'
+          value_template: '{% set diff = (new_multiplier - old_multiplier) | abs %}
+            {{ diff > (old_multiplier * 0.10) and diff > 15 }}'
         then:
         - alias: Notify of Multiplier Change
           action: notify.duncan
