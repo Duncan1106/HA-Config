@@ -2449,3 +2449,39 @@ save_counts_and_notify_purge_status_and_self_correction:
               tag: db_purge_sucess_{{ block_id }}
   mode: parallel
   max: 10
+ha_start_settle_delay:
+  alias: HA Start Settle Delay
+  description: Waits for a specified duration if the automation trigger matches the
+    target ID.
+  mode: parallel
+  fields:
+    actual_trigger_id:
+      name: Actual Trigger ID
+      description: The trigger ID from the calling automation (pass {{ trigger.id
+        }}).
+      required: true
+      example: ha_start
+      default: '{{ trigger.id }}'
+      selector:
+        text: {}
+    target_trigger_id:
+      name: Target Trigger ID
+      description: The trigger ID that requires waiting.
+      default: ha_start
+      selector:
+        text: {}
+    delay_duration:
+      selector:
+        duration: {}
+      default:
+        hours: 0
+        minutes: 0
+        seconds: 30
+  sequence:
+  - if:
+    - condition: template
+      value_template: '{{ actual_trigger_id == target_trigger_id }}'
+    then:
+    - delay: '{{ delay_duration }}'
+    - delay:
+        milliseconds: '{{ range(500, 2501) | random }}'

@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-08-01 07:30 | System: 18.53 kWp
+> Generated: 2026-09-01 00:00 | System: 18.53 kWp
 
 ---
 
@@ -8,20 +8,20 @@
 | Group | Capacity | Tilt | Azimuth | Orientation |
 |-------|----------|------|---------|-------------|
 | Gruppe 1 | 10.200 kWp | 32.0 deg | 35.0 deg | North-East |
-| Gruppe 2 | 7.500 kWp | 32.0 deg | 225.0 deg | South-West |
-| Gruppe 3 | 0.830 kWp | 32.0 deg | 225.0 deg | South-West |
+| Gruppe 2 | 7.500 kWp | 32.0 deg | 220.0 deg | South-West |
+| Gruppe 3 | 0.830 kWp | 32.0 deg | 220.0 deg | South-West |
 
-**Topology valid from:** 2026-07-18T00:09:15.254842+02:00
+**Topology valid from:** 2026-08-04T22:24:38.645628+02:00
 
 ---
 
 ## Performance
 
-**Record Peak:** 15.35 kW (2026-07-23)
+**Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 1517.2 kWh
+**Total Production:** 3758.7 kWh
 
-**Average Accuracy:** 69.9%
+**Average Accuracy:** 72.3%
 
 ### Seasonal Production
 
@@ -29,14 +29,14 @@
 |--------|----------|-----------|-------|
 | Winter | - | - | - |
 | Spring | - | - | - |
-| Summer | 103.12 kWh | 84.29 kWh | 1517.2 kWh |
+| Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
 | Autumn | - | - | - |
 
 ---
 
 ## Message from the Captain's Log
 
-> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
+> *"The needs of the many outweigh the needs of the few... use solar power. - Spock"*
 
 Live long and prosper!
 

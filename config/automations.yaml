@@ -413,17 +413,21 @@
     trigger: homeassistant
   conditions: []
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: Start
   - alias: Start
     if:
     - condition: trigger
       id:
       - Start
     then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
     - metadata: {}
       data:
         title: Homeassistent is Up
@@ -495,12 +499,12 @@
         target:
           entity_id: button.spulmaschine_force_end_cycle
         data: {}
+        enabled: false
       start_appliance_power: 15
       end_message: 'Spülmaschine ausräumen '
       start_message: ' '
       include_end_notify: enable_end_notify_options
-      include_custom_actions:
-      - enable_end_custom_actions
+      include_custom_actions: []
       start_custom_actions: []
       end_appliance_power: 2
       end_time_delay: 1
@@ -577,17 +581,15 @@
     id: HA Start
   conditions: []
   actions:
-  - if:
-    - condition: trigger
-      id:
-      - HA Start
-    then:
-    - delay:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
         hours: 0
         minutes: 0
         seconds: 30
-        milliseconds: 0
-    alias: HA Startup Delay
+      target_trigger_id: HA Start
+      actual_trigger_id: '{{ trigger.id }}'
   - alias: On Schedule
     if:
     - condition: trigger
@@ -4223,9 +4225,19 @@
   triggers:
   - event: start
     trigger: homeassistant
+    id: ha_start
   - trigger: time_pattern
     hours: /8
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: ha_start
   - data:
       datetime: '{{ now() }}'
     target:
@@ -5081,6 +5093,7 @@
   triggers:
   - trigger: homeassistant
     event: start
+    id: ha_start
   - trigger: time_pattern
     hours: /8
   - trigger: state
@@ -5096,6 +5109,15 @@
       entity_id: number.herd_ct_klemme_zigbee_update_frequency
       below: 20
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: ha_start
   - delay:
       hours: 0
       minutes: 0
@@ -5935,17 +5957,15 @@
     from:
     - unavailable
   actions:
-  - if:
-    - condition: trigger
-      id:
-      - start
-    then:
-    - delay:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
         hours: 0
-        minutes: 1
-        seconds: 0
-        milliseconds: 0
-    alias: 'Delay when triggered by startup '
+        minutes: 0
+        seconds: 45
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: start
   - action: mqtt.publish
     metadata: {}
     data:
@@ -7792,6 +7812,7 @@
   triggers:
   - trigger: homeassistant
     event: start
+    id: ha_start
   - trigger: state
     entity_id: person.duncan
     to:
@@ -7827,6 +7848,15 @@
     state:
     - 'off'
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 15
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: ha_start
   - alias: "\U0001F501 Repeated Location Requests"
     repeat:
       until:
@@ -8590,46 +8620,6 @@
       entity_id: switch.home_assistant_git_exporter
     data: {}
   mode: restart
-- id: '1757084399628'
-  alias: Turn Off Bett Plug Right Over 30W
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.bett_plug_right_power
-    above: 30
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 15
-  conditions: []
-  actions:
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.bett_plug_right
-  mode: single
-- id: '1757084461870'
-  alias: Turn Off Bett Plug Left Over 75W
-  description: ''
-  triggers:
-  - trigger: numeric_state
-    entity_id:
-    - sensor.bett_plug_left_power
-    above: 75
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 15
-  conditions: []
-  actions:
-  - action: switch.turn_off
-    metadata: {}
-    data: {}
-    target:
-      entity_id: switch.bett_plug_left
-  mode: single
 - id: '1757273749465'
   alias: Garage Oven Vacuum Power Control
   description: "# ⚡ **Garage Oven Vacuum Power Control**\n\n### \U0001F4CB Intelligent
@@ -8986,6 +8976,7 @@
     - 'off'
   - event: start
     trigger: homeassistant
+    id: ha_start
   - minutes: /30
     trigger: time_pattern
   conditions:
@@ -9001,6 +8992,15 @@
     value_template: "{% set hour = now().hour %} \n{% set outdoor = states('sensor.gw1100a_outdoor_temperature')
       | float(0) %}\n{{ (6 <= hour < 22) or (outdoor > 10) }}\n"
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: ha_start
   - choose:
     - conditions:
       - condition: state
@@ -9389,14 +9389,15 @@
     target:
       entity_id: button.washing_machine_force_end_cycle
     data: {}
+    enabled: false
   mode: single
 - id: '1760874193253'
   alias: Auto Trockner Fertig
-  description: "## \U0001F506 Trockner Fertig Automatik  \n\n### ⚙️ **Purpose**  \nThis
-    automation automatically activates the `input_boolean.trockner_fertig` when the
-    dryer has **finished its cycle**.  \nIt uses the runtime sensor to detect when
-    the dryer stops drawing power within a **20-minute observation window**.  \n\n---\n\n###
-    \U0001F9E9 **How It Works**  \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.trockner_lauft_seit`
+  description: "### ⚙️ **Purpose**  \nThis automation automatically activates the
+    `input_boolean.trockner_fertig` when the dryer has **finished its cycle**.  \nIt
+    uses the runtime sensor to detect when the dryer stops drawing power within a
+    **20-minute observation window**.  \n\n---\n\n### \U0001F9E9 **How It Works**
+    \ \n\n1. **Runtime Tracking**  \n   - The sensor `sensor.trockner_lauft_seit`
     measures how many minutes within the **last 20 minutes** the dryer has been consuming
     power.  \n   - While the dryer is active, the value remains close to 20 minutes.
     \ \n   - After the cycle ends, the power usage stops, and this value gradually
@@ -9440,6 +9441,7 @@
     target:
       entity_id: button.trockner_force_end_cycle
     data: {}
+    enabled: false
   mode: single
 - id: '1761086236371'
   alias: Tibber Pulse Bridge Auto Restart
@@ -10297,27 +10299,26 @@
   mode: single
 - id: '1763821325453'
   alias: Terrarium Humidifier Auto-Off
-  description: "\U0001F98E **Terrarium Humidifier Auto-Off**\n\n---\n\n### \U0001F4CB
-    Intelligent Humidification Safety Control\n\n**High-level intent**\nThis automation
-    serves as a safety watchdog for the terrarium environment, ensuring that the humidification
-    system does not run indefinitely. It monitors the active state of the hardware
-    and enforces a strict operational window.\n\n**Operational strategy**\nThe system
-    employs a polling-based safety check rather than a simple state-change trigger.
-    By evaluating conditions every two minutes, it ensures that even if a single event-based
-    trigger were missed, the \"off\" command would be issued shortly thereafter once
-    the duration threshold is met.\n\n**Reliability mechanisms**\nTo overcome potential
-    Zigbee mesh interference or \"popcorn effect\" command drops, this automation
-    utilizes a robust **retry script with backoff**. If the initial command fails,
-    the system will attempt to turn off the switch up to 10 times with increasing
-    delays.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition |
-    ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time Pattern** | Every **2
-    minutes** | N/A | Periodic heartbeat check to verify device state and runtime
-    duration. |\n\n---\n\n### Operational Logic Sections\n\n#### Normal Shutdown Mode\n**Purpose**\nEnforce
-    a maximum duty cycle for the humidification hardware to prevent over-saturation
-    of the terrarium and protect the motor from burnout.\n\n**Logic Overview**\nThe
-    automation executes only if **input_boolean.terrarium_on** is **on** (Global System
-    Enable) AND **switch.terrarium_zigbee_l1** has been continuously **on** for at
-    least **10 minutes**.\n\n**Effect**\nTriggers the **script.retry_action_with_backoff**
+  description: "### \U0001F4CB Intelligent Humidification Safety Control\n\n**High-level
+    intent**\nThis automation serves as a safety watchdog for the terrarium environment,
+    ensuring that the humidification system does not run indefinitely. It monitors
+    the active state of the hardware and enforces a strict operational window.\n\n**Operational
+    strategy**\nThe system employs a polling-based safety check rather than a simple
+    state-change trigger. By evaluating conditions every two minutes, it ensures that
+    even if a single event-based trigger were missed, the \"off\" command would be
+    issued shortly thereafter once the duration threshold is met.\n\n**Reliability
+    mechanisms**\nTo overcome potential Zigbee mesh interference or \"popcorn effect\"
+    command drops, this automation utilizes a robust **retry script with backoff**.
+    If the initial command fails, the system will attempt to turn off the switch up
+    to 10 times with increasing delays.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time
+    Pattern** | Every **2 minutes** | N/A | Periodic heartbeat check to verify device
+    state and runtime duration. |\n\n---\n\n### Operational Logic Sections\n\n####
+    Normal Shutdown Mode\n**Purpose**\nEnforce a maximum duty cycle for the humidification
+    hardware to prevent over-saturation of the terrarium and protect the motor from
+    burnout.\n\n**Logic Overview**\nThe automation executes only if **input_boolean.terrarium_on**
+    is **on** (Global System Enable) AND **switch.terrarium_zigbee_l1** has been continuously
+    **on** for at least **10 minutes**.\n\n**Effect**\nTriggers the **script.retry_action_with_backoff**
     to transition **switch.terrarium_zigbee_l1** to the **off** state.\n\n---\n\n###
     Technical Overview\n\n* **Automation Mode**: `restart` (Ensures the most recent
     trigger takes precedence during execution)\n* **Execution method**: External retry
@@ -10515,6 +10516,15 @@
     id: start
   conditions: []
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      target_trigger_id: start
+      actual_trigger_id: '{{ trigger.id }}'
   - choose:
     - conditions:
       - condition: trigger
@@ -10830,17 +10840,15 @@
     id: HA_Start
   conditions: []
   actions:
-  - if:
-    - condition: trigger
-      id:
-      - HA_Start
-    then:
-    - delay:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
         hours: 0
         minutes: 0
         seconds: 30
-        milliseconds: 0
-    alias: Wait 30s to wrap up HA Startup
+      target_trigger_id: HA_Start
+      actual_trigger_id: '{{ trigger.id }}'
   - variables:
       entities:
       - switch.fenster_licht_hinten_zigbee
@@ -11544,17 +11552,15 @@
     id: sync
     trigger: homeassistant
   actions:
-  - alias: Wait 30s to wrap up HA Startup
-    if:
-    - condition: trigger
-      id:
-      - sync
-    then:
-    - delay:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
         hours: 0
         minutes: 0
         seconds: 30
-        milliseconds: 0
+      target_trigger_id: sync
+      actual_trigger_id: '{{ trigger.id }}'
   - choose:
     - alias: 'Condition: It is sunset or night-time'
       conditions:
@@ -13022,6 +13028,15 @@
       - condition: template
         value_template: '{{ ''PulseTime1'' in trigger.payload }}'
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: startup
   - choose:
     - conditions:
       - condition: trigger
@@ -13029,12 +13044,6 @@
         - request_data
         - startup
       sequence:
-      - if:
-        - condition: trigger
-          id: startup
-        then:
-        - delay: 00:00:30
-        alias: Startup Delay
       - action: mqtt.publish
         data:
           topic: cmnd/tasmota_837238/pulsetime1
@@ -13221,6 +13230,15 @@
     id: startup
     trigger: homeassistant
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 15
+      actual_trigger_id: '{{ trigger.id }}'
+      target_trigger_id: startup
   - variables:
       side_map:
         sensor.sun_wall_intensity_front: Vorne
@@ -13857,6 +13875,15 @@
       hours: 0
       minutes: 1
       seconds: 0
+  - trigger: state
+    entity_id:
+    - vacuum.d9_max_gen_2
+    to:
+    - docked
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
   conditions:
   - condition: time
     after: 08:00:00
@@ -13982,7 +14009,7 @@
   - action: bookstack_sync.run_now
     metadata: {}
     data:
-      force: true
+      force: false
   mode: single
 - id: '1785747192960'
   alias: Frigate Notifications (0.14.0.2w) Terrasse
@@ -14140,3 +14167,72 @@
     target:
       entity_id: switch.schreibtisch_rechts_power_strip_l3
   mode: single
+- id: '1788210800826'
+  alias: Turn Off Bett Plugs on High Power
+  description: "## \U0001F4CB Intelligent Bed Plugs Safety Control\n\nMonitors power
+    sensors for bed plugs and automatically cuts power when individual consumption
+    thresholds are exceeded for a sustained duration. \n\n- **High-level intent**:
+    Prevent unsafe or unwanted sustained high power draw on bed electrical plugs.\n-
+    **Operational strategy**: Safety-first power monitoring using distinct wattage
+    thresholds per plug.\n- **Reliability mechanisms**: 15-second time buffers to
+    filter out transient power spikes, paired with dynamic trigger ID mapping to target
+    the exact offending device.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity
+    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Numeric State**
+    | **sensor.bett_plug_right_power** above **30W** for **15 seconds** | **switch.bett_plug_right**
+    | Detect sustained high power draw on the right bed plug |\n| **Numeric State**
+    | **sensor.bett_plug_left_power** above **75W** for **15 seconds** | **switch.bett_plug_left**
+    | Detect sustained high power draw on the left bed plug |\n\n---\n\n### Operational
+    Logic Sections\n\n#### High Power Cutoff Mode\n\n- **Purpose**: Immediately isolate
+    the active high-power plug and inform the user.\n- **Logic Overview**: Evaluates
+    when either bed plug power sensor exceeds its set limit (**30W** for right, **75W**
+    for left) continuously for **15 seconds**. No additional conditions are required.\n-
+    **Effect**: Switches off the target plug (**switch.bett_plug_right** or **switch.bett_plug_left**)
+    via `{{ trigger.id }}` and dispatches a detailed notification to **notify.duncan**.\n\n---\n\n###
+    Technical Overview\n\n- **Automation Mode**: **parallel**\n- **Execution method**:
+    Direct action execution (`switch.turn_off`, `notify.duncan`) with dynamic Jinja2
+    script variable generation.\n- **Key Inputs**: **sensor.bett_plug_right_power**,
+    **sensor.bett_plug_left_power**\n- **Controlled Entities**: **switch.bett_plug_right**,
+    **switch.bett_plug_left**\n- **Safety Mechanisms**: \n  - 15-second duration requirement
+    prevents accidental false-positive triggers from brief power spikes.\n  - Direct
+    parameter pass-through (`trigger.id`) prevents logic mismatches between sensor
+    triggers and switch targets.\n\n---\n\n### \U0001F4A1 Notes\n\n- **Dynamic ID
+    Mapping**: The trigger IDs match the exact switch entity IDs (`switch.bett_plug_right`
+    and `switch.bett_plug_left`), allowing direct entity targeting in `switch.turn_off`
+    without conditional branching.\n- **Flexible Notification Messaging**: Built-in
+    script variables dynamically format the friendly name, threshold condition, duration,
+    and current wattage reading for concise alerting.\n- **Parallel Mode**: Configured
+    in **parallel** mode so both left and right plug safety cutoffs can execute concurrently
+    if necessary.\n"
+  triggers:
+  - trigger: numeric_state
+    entity_id: sensor.bett_plug_right_power
+    above: 30
+    for:
+      seconds: 15
+    id: switch.bett_plug_right
+  - trigger: numeric_state
+    entity_id: sensor.bett_plug_left_power
+    above: 75
+    for:
+      seconds: 15
+    id: switch.bett_plug_left
+  conditions: []
+  actions:
+  - action: switch.turn_off
+    target:
+      entity_id: '{{ trigger.id }}'
+  - variables:
+      duration_text: "{% if trigger.for is defined and trigger.for %}\n  for {{ trigger.for.total_seconds()
+        | round(0) | int }} seconds\n{% else %}\n  immediately\n{% endif %}"
+      condition_text: "{% if trigger.above is defined and trigger.above is not none
+        %}\n  exceeded {{ trigger.above }}W\n{% elif trigger.below is defined and
+        trigger.below is not none %}\n  dropped below {{ trigger.below }}W\n{% else
+        %}\n  crossed threshold\n{% endif %}"
+      device_name: '{{ state_attr(trigger.id, ''friendly_name'') or trigger.id }}'
+      current_reading: '{{ trigger.to_state.state if trigger.to_state is defined else
+        states(trigger.entity_id) }}'
+  - action: notify.duncan
+    data:
+      message: 'Turned off {{ device_name }} because power {{ condition_text }} {{
+        duration_text }} (current reading: {{ current_reading }}W).'
+  mode: parallel
