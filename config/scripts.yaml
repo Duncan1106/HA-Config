@@ -2393,10 +2393,11 @@ save_counts_and_notify_purge_status_and_self_correction:
           new_history_k: '{% set hist = history_k + [removed_k] %} {{ hist[-5:] }}
 
             '
-          avg_removed_k: '{{ (new_history_k | sum) / (new_history_k | length) if new_history_k
-            | length > 0 else 0 }}'
-          new_multiplier: '{{ [((avg_removed_k * 1000) / entity_count) | int, 1000]
-            | min if entity_count > 0 and avg_removed_k > 0 else old_multiplier }}'
+          median_removed_k: '{{ new_history_k | median if new_history_k | length >
+            0 else 0 }}'
+          new_multiplier: '{{ [((median_removed_k * 1000) / entity_count) | int, 1000]
+            | min if entity_count > 0 and median_removed_k > 0 else old_multiplier
+            }}'
           new_block_data:
             e: '{{ entity_count }}'
             m: '{{ new_multiplier }}'

@@ -14071,13 +14071,31 @@
     - removed
     trigger: persistent_notification
     id: Remove
+  - trigger: homeassistant
+    event: start
+    id: start
   actions:
+  - action: script.ha_start_settle_delay
+    metadata: {}
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 15
+      target_trigger_id: start
+      actual_trigger_id: '{{ trigger.id }}'
   - choose:
     - conditions:
       - condition: trigger
         id:
         - Add
       sequence:
+      - action: counter.increment
+        metadata: {}
+        target:
+          entity_id: counter.persistent_notification_count
+        data: {}
+        continue_on_error: true
       - data:
           title: '{{ trigger.notification.title | default(''System Notification'',
             true) }}'
@@ -14090,11 +14108,27 @@
         id:
         - Remove
       sequence:
+      - action: counter.decrement
+        metadata: {}
+        target:
+          entity_id: counter.persistent_notification_count
+        data: {}
+        continue_on_error: true
       - data:
           message: clear_notification
           data:
             tag: '{{ trigger.notification.notification_id }}'
         action: notify.duncan
+    - conditions:
+      - condition: trigger
+        id:
+        - start
+      sequence:
+      - action: counter.set_value
+        target:
+          entity_id: counter.persistent_notification_count
+        data:
+          value: '{{ states.persistent_notification | count }}'
   mode: queued
   max: 10
 - id: '1787054961635'
