@@ -1,633 +1,3 @@
-'1704873353963':
-  alias: Ashley’s Light Fader
-  description: 'Fades a lamp over time. If you have any questions or comments about
-    this script, feel free to tweet Ashley Bischoff at @FriendlyAshley. Released under
-    the Apache 2.0 license. (v1.1)
-
-    '
-  fields:
-    light:
-      name: "\U0001F4A1 Light"
-      description: entity_id of the lamp.
-      selector:
-        entity:
-          domain: light
-      required: true
-    lampBrightnessScale:
-      name: The lamp’s internal brightness scale
-      description: 'Most lamps seem to internally use a 0 to 255 brightness scale,
-        but some lamps internally use a 0% to 100% brightness scale. Either of these
-        settings will still fade the lamp, but if you happen to match this setting
-        to the lamp’s internal brightness scale, the resulting fade may be smoother.
-        (If you’re not sure, you can just leave this as is.)
-
-        '
-      advanced: true
-      required: true
-      selector:
-        select:
-          options:
-          - label: 0% to 100%
-            value: zeroToOneHundred
-          - label: 0 to 255
-            value: zeroToTwoFiftyFive
-      default: zeroToTwoFiftyFive
-    transitionTime:
-      name: ⏱ Fade time
-      description: Fade duration.
-      selector:
-        duration:
-      required: true
-    easingTypeInput:
-      name: Easing type
-      description: The easing function that you’d like the fade to use. As a starting
-        point—you can’t go wrong with any of the “Ease-In-Out X” easings as those
-        will always look pretty good whenever you’re fading between two nonzero brightness
-        values. As well, the “Ease-Out X” easings often tend to look good if you might
-        be fading up very quickly from zero to another brightness, and the “Ease-In
-        X” easings are mostly only included for completeness as those tend to only
-        look good if you might be fading down to zero very quickly. (See also https://easings.net
-        for visual demos of each of these easing types.)
-      selector:
-        select:
-          mode: list
-          options:
-          - label: Try to automatically select the easing type
-            value: auto
-          - label: Ease-In-Out Sine [a good all-rounder]
-            value: easeInOutSine
-          - label: Ease-In-Out Quad
-            value: easeInOutQuad
-          - label: Ease-In-Out Cubic
-            value: easeInOutCubic
-          - label: Ease-In-Out Quart
-            value: easeInOutQuart
-          - label: Ease-Out Sine
-            value: easeOutSine
-          - label: Ease-Out Quad
-            value: easeOutCubic
-          - label: Ease-Out Cubic
-            value: easeOutCubic
-          - label: Ease-Out Quart
-            value: easeOutQuart
-          - label: Ease-In Sine
-            value: easeInSine
-          - label: Ease-In Quad
-            value: easeInCubic
-          - label: Ease-In Cubic
-            value: easeInCubic
-          - label: Ease-In Quart
-            value: easeInQuart
-          - label: Linear [somewhat unnatural to the human eye; not recommended]
-            value: linear
-      default: auto
-      required: true
-    endBrightnessPercent:
-      name: End brightness level
-      description: Percentage from 0 to 100 representing the final brightness level.
-      selector:
-        number:
-          min: 0
-          max: 100
-          step: 1
-          mode: slider
-          unit_of_measurement: '%'
-      default: 50
-      example: '50'
-      required: true
-    autoCancelThreshold:
-      name: "\U0001F6AB (optional) Brightness-change threshold that auto-cancels the
-        fade"
-      description: You can optionally have the script automatically cancel its fade
-        if the lamp’s brightness were to be manually changed by a certain amount.
-        For example, let’s suppose that you were to set this value to 5% and then
-        you were to run this script. If there comes a point within the fade where
-        this script is expecting the lamp to be at, say, 22% brightness—but you’ve
-        just manually set that lamp to 30% brightness—this script will automatically
-        cancel its fade since that 8% difference is >= 5%. Note—if you use this, Ashley
-        doesn’t recommend setting this to anything less than about 3; that’s just
-        because it can be normal for there to be an occasional difference of 1 or
-        2 since not all lamps instantly reflect newly assigned brightness values due
-        to processing lag and other factors. In Ashley’s home, she personally uses
-        a value of about 5 for this.
-      selector:
-        number:
-          min: 2
-          max: 100
-          step: 1
-          mode: slider
-          unit_of_measurement: '%'
-      default: 10
-      example: '10'
-      required: false
-    endBrightnessEntity:
-      name: (optional) Use an entity instead for the end-brightness value?
-      description: You can optionally have the script ignore the end-brightness value
-        above and instead use the numeric value of another entity that you select
-        here, such as an input-number helper, an input-select helper, an input-text
-        helper, or a numeric sensor.
-      selector:
-        entity:
-          domain:
-          - input_number
-          - input_select
-          - input_text
-          - sensor
-      required: false
-      advanced: true
-    endBrightnessEntityScale:
-      name: The end-brightness entity’s brightness scale (if used)
-      description: If you enable the “Use an entity for the end-brightness value instead”
-        option, select here whether your chosen entity represents brightness with
-        a 0% to 100% scale or a 0 to 255 scale. (Note—in either case, this script
-        will expect that entity to solely have an integer value without any nonnumeric
-        characters such as “%”.)
-      advanced: true
-      selector:
-        select:
-          options:
-          - label: 0% to 100%
-            value: zeroToOneHundred
-          - label: 0 to 255
-            value: zeroToTwoFiftyFive
-      default: zeroToOneHundred
-      required: true
-    stopEntity:
-      name: "\U0001F6D1 (optional) Stop if a certain entity is turned on during the
-        fade?"
-      description: 'You can optionally have the script keep an eye on an input boolean
-        or a binary sensor. And if that entity is then turned on during the fade,
-        the script will automatically stop. So for example, if you create a “Stop
-        Everything” input boolean, and if you set that entity here, you can stop your
-        fade at any time by turning on that “Stop Everything” entity. '
-      selector:
-        entity:
-          domain:
-          - input_boolean
-          - binary_sensor
-      required: false
-      advanced: true
-    shouldResetTheStopEntityToOffAtStart:
-      name: (optional) Reset that stop entity to “off” just before starting the fade?
-      description: If you make use of the stop entity (above), you can also optionally
-        have the script automatically reset that entity to “off” at the start of the
-        fade. (By default, the script won’t change the value of the stop entity.)
-      selector:
-        boolean:
-      advanced: true
-      required: true
-      default: false
-    minimumStepDelayInMilliseconds:
-      name: Minimum delay per step
-      description: The minimum delay between sending each brightness command. Some
-        lamps only accept commands every X milliseconds—so while you can probably
-        leave this as is, if by chance your lamp were to behave strangely, you might
-        try bumping up this number by another ten or twenty milliseconds.
-      advanced: true
-      required: true
-      selector:
-        number:
-          min: 50
-          max: 1000
-          step: 10
-          mode: slider
-          unit_of_measurement: ms
-      default: 100
-      example: '100'
-    isDebugMode:
-      name: "\U0001F41B Enable debugging mode?"
-      description: If this is enabled, the script will output status messages to your
-        Home Assistant log along the way. Unless something were to be acting weirdly,
-        you can leave this off.
-      selector:
-        boolean:
-      advanced: true
-      required: true
-      default: false
-  mode: parallel
-  sequence:
-  - variables:
-      lightFriendlyName: '{{ state_attr(light, ''friendly_name'') }}'
-      startTimestamp: '{{ as_timestamp(now()) }}'
-      transitionTimeInSeconds: '{{ ((transitionTime.hours | int) * 60 * 60) + ((transitionTime.minutes
-        | int) * 60) + (transitionTime.seconds | int) }}
-
-        '
-      endTimestamp: '{{ startTimestamp + transitionTimeInSeconds }}'
-      transitionTimeInMilliseconds: '{{ transitionTimeInSeconds * 1000 }}'
-      ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead: "{% if
-        (endBrightnessEntity is defined) and (has_value(endBrightnessEntity)) %}\n
-        \ {{ true }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
-      stopEntityIsEnabled: "{% if (stopEntity is defined) and (has_value(stopEntity))
-        %}\n  {{ true }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
-      stopEntityIsEditable: "{% if stopEntityIsEnabled %}\n  {% set stopEntityEditableAttribute
-        = state_attr(stopEntity, 'editable') %}\n  {% if stopEntityEditableAttribute
-        %}\n    {{ true}}\n  {% else %}\n    {{ false }}\n  {% endif %}\n{% else %}\n
-        \ {{ false }}\n{% endif %}\n"
-      stopEntityFriendlyName: "{% if stopEntityIsEnabled %}\n  {{ state_attr(stopEntity,
-        'friendly_name') }}\n{% else %}\n  {{ \"\" }}\n{% endif %}\n"
-      startBrightness: "{% set rawLightLevel = state_attr(light, 'brightness') %}\n{##
-        If a light is off, its brightness will return \"None\"? So first check if
-        there's a valid brightness before setting the value ##} {% if rawLightLevel
-        %}\n\t{% set currentLightLevel = rawLightLevel | int %}\n{% else %}\n\t{%
-        set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale == \"zeroToOneHundred\"
-        %}\n  {% set currentLightLevel = (currentLightLevel / 2.55) | round(0) %}\n{%
-        endif %} {{ currentLightLevel }}\n"
-      endBrightness: "{% if ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead
-        %}\n\n  {% set entityBrightnessValue = states(endBrightnessEntity) | round
-        (0) %}\n  {% if (endBrightnessEntityScale == lampBrightnessScale) %}\n    {%
-        set endBrightness = entityBrightnessValue %}\n  {% elif (lampBrightnessScale
-        == \"zeroToTwoFiftyFive\") and (endBrightnessEntityScale == \"zeroToOneHundred\")
-        %}\n    {% set endBrightness = (entityBrightnessValue * 2.55) | round(0) %}\n
-        \ {% elif (lampBrightnessScale == \"zeroToOneHundred\") and (endBrightnessEntityScale
-        == \"zeroToTwoFiftyFive\") %}\n    {% set endBrightness = (entityBrightnessValue
-        / 2.55) | round(0) %}\n  {% endif %}\n{% else %}\n  {## branch for ignoreTheEndBrightnessValueAndUseAnEntityForTheEndBrightnessInstead
-        being off ##}\n  {% if lampBrightnessScale == \"zeroToOneHundred\" %}\n  \t{%
-        set endBrightness = endBrightnessPercent %}\n  {% else %}\n    {% set endBrightness
-        = (endBrightnessPercent * 2.55) | round(0) %}\n  {% endif %}\n{% endif %}
-        {{ endBrightness }}\n"
-      brightnessSpan: '{{ endBrightness - startBrightness }}'
-      absoluteBrightnessSpan: '{{ brightnessSpan | abs }}'
-      autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged: "{% if (autoCancelThreshold
-        is defined) and (is_number(autoCancelThreshold)) %}\n  {{ true }}\n{% else
-        %}\n  {{ false }}\n{% endif %}\n"
-      normalizedAutoCancelThreshold: "{% if not autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
-        %}\n  {## exit early if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
-        isn’t even enabled ##}\n  {{ 255 }}\n{% elif (lampBrightnessScale == \"zeroToTwoFiftyFive\")
-        %}\n  {{ (autoCancelThreshold * 2.55) | round (0) }}\n{% else %}\n  {{ autoCancelThreshold
-        }}\n{% endif %}\n"
-      expectedBrightness: '{{ startBrightness }}'
-  - if:
-    - condition: template
-      value_template: "{{ stopEntityIsEnabled and stopEntityIsEditable and shouldResetTheStopEntityToOffAtStart
-        }}        \n"
-    then:
-    - service: input_boolean.turn_off
-      data: {}
-      target:
-        entity_id: '{{ stopEntity }}'
-  - if:
-    - condition: template
-      value_template: "{{ (absoluteBrightnessSpan | int) == 0 }}        \n"
-    then:
-    - variables:
-        stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " + (lightFriendlyName
-          | string) + "’s starting brightness is the same as its ending brightness."
-          %} {{ stopMessage }}
-
-          '
-    - if:
-      - condition: template
-        value_template: '{{ isDebugMode }}
-
-          '
-      then:
-      - service: system_log.write
-        data_template:
-          message: '{{ stopMessage }}
-
-            '
-          level: warning
-    - stop: '{{ stopMessage }}
-
-        '
-  - if:
-    - condition: template
-      value_template: "{## init ##} {% set stopEntityStatus = false %} {% if stopEntityIsEnabled
-        %}\n  {% if bool(states(stopEntity), false) %}\n    {% set stopEntityStatus
-        = true %}\n  {% endif %}\n{% endif %} {{ stopEntityStatus }}\n"
-    then:
-    - variables:
-        stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " + (stopEntityFriendlyName
-          | string) + " is on." %} {{ stopMessage }}
-
-          '
-    - if:
-      - condition: template
-        value_template: '{{ isDebugMode }}
-
-          '
-      then:
-      - service: system_log.write
-        data_template:
-          message: '{{ stopMessage }}
-
-            '
-          level: warning
-    - stop: '{{ stopMessage }}
-
-        '
-  - variables:
-      timestampBeforeServiceCall: '{{ as_timestamp(now()) }}'
-  - if:
-    - condition: template
-      value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
-
-        '
-    then:
-    - service: light.turn_on
-      target:
-        entity_id: '{{ light }}'
-      data:
-        brightness: '{{ expectedBrightness }}'
-    else:
-    - service: light.turn_on
-      target:
-        entity_id: '{{ light }}'
-      data:
-        brightness_pct: '{{ expectedBrightness }}'
-  - variables:
-      processingDelayInMilliseconds: '{{ (as_timestamp(now()) -  timestampBeforeServiceCall)
-        * 1000 }}'
-      easingType: "{% if \"auto\" in easingTypeInput %}\n  {% if (startBrightness
-        == 0) and (transitionTimeInSeconds <= 20) %}\n    {{ \"easeOutCubic\" }}\n
-        \ {% elif (startBrightness == 0) and (transitionTimeInSeconds <= 55) %}\n
-        \   {{ \"easeOutQuad\" }}\n  {% elif (endBrightness == 0) and (transitionTimeInSeconds
-        <= 20) %}\n    {{ \"easeInCubic\" }}\n  {% elif (endBrightness == 0) and (transitionTimeInSeconds
-        <= 55) %}\n    {{ \"easeInQuad\" }}\n  {% else %}\n    {{ \"easeInOutSine\"
-        }}\n  {% endif %}\n{% else %}\n  {{ easingTypeInput }}\n{% endif %}\n"
-      remainingTimeInMilliseconds: '{% set nowTimestamp = as_timestamp(now()) %} {{
-        (endTimestamp - nowTimestamp) * 1000 }}
-
-        '
-      delayInMilliseconds: "{% set totalExpectedRemainingProcessingDelay = processingDelayInMilliseconds
-        * absoluteBrightnessSpan %} {% set idealDelay = ((remainingTimeInMilliseconds
-        - totalExpectedRemainingProcessingDelay) / absoluteBrightnessSpan) | round(0)
-        %}\n{% if \"auto\" in easingType %}\n  {% if (startBrightness == 0) and (transitionTimeInSeconds
-        < 20) %}\n    {% set easingType = \"easeOutCubic\" %}\n  {% elif (endBrightness
-        == 0) and (transitionTimeInSeconds < 20) %}\n    {% set easingType = \"easeInCubic\"
-        %}\n  {% else %}\n    {% set easingType = \"easeInOutQuad\" %}\n  {% endif
-        %}\n{% endif %}\n{% if \"Circ\" in easingType %}\n  {## Four as many frames
-        for Circ-type easing ##}\n  {% set idealDelay = (idealDelay / 4) | round(0)
-        %}\n{% elif (\"Cubic\" in easingType) or (\"Quart\" in easingType) %}\n  {##
-        Three as many frames for Cubic-type or Quart-type easing ##}\n  {% set idealDelay
-        = (idealDelay / 3) | round(0) %}\n{% elif \"ease\" in easingType %}\n  {##
-        Twice as many frames for other easing types ##}\n  {% set idealDelay = (idealDelay
-        / 2) | round(0) %}\n{% endif %}\n{## Make sure that the delay isn’t below
-        the minimum delay ##} {% if idealDelay < minimumStepDelayInMilliseconds %}\n
-        \ {{ minimumStepDelayInMilliseconds }}\n{% else %}\n  {{ idealDelay }}\n{%
-        endif %}\n"
-  - if:
-    - condition: template
-      value_template: '{{ isDebugMode }}
-
-        '
-    then:
-    - service: system_log.write
-      data_template:
-        message: '{{ easingType }} easing type with {{ delayInMilliseconds | int }}
-          ms delay. remainingTimeInMilliseconds = {{ remainingTimeInMilliseconds |
-          round(0) }}, and absoluteBrightnessSpan = {{ absoluteBrightnessSpan }}
-
-          '
-        level: warning
-    - service: system_log.write
-      data_template:
-        message: 'startBrightness = {{ startBrightness }}, endBrightness = {{ endBrightness
-          }}, and  processingDelayInMilliseconds = {{ processingDelayInMilliseconds
-          | int }}
-
-          '
-        level: warning
-  - repeat:
-      sequence:
-      - variables:
-          timestampBeforeServiceCall: '{{ as_timestamp(now()) }}'
-          percentageOfTimeCompleted: "{% set nowTimestamp = as_timestamp(now()) %}
-            {% set percentageOfTimeCompleted = ((nowTimestamp - startTimestamp) /
-            transitionTimeInSeconds) %} {% if (percentageOfTimeCompleted < 0) %}\n
-            \ {% set percentageOfTimeCompleted = 0 %}\n{% elif (percentageOfTimeCompleted
-            > 1) %}\n  {% set percentageOfTimeCompleted = 1 %}\n{% endif %} {{ percentageOfTimeCompleted
-            }}\n"
-          easingAdjustedPercentageCompleted: "{% set percentageOfTimeCompleted = percentageOfTimeCompleted
-            | float(0) %} {% if easingType == \"easeInSine\" %}\n  {## https://easings.net/#easeInSine
-            ##}\n  {{  1 - cos((percentageOfTimeCompleted * pi) / 2) }}\n\n{% elif
-            easingType == \"easeInQuad\" %}\n  {## https://easings.net/#easeInQuad
-            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted }} \n\n{%
-            elif easingType == \"easeInCubic\" %}\n  {## https://easings.net/#easeInCubic
-            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted * percentageOfTimeCompleted
-            }}\n\n{% elif easingType == \"easeInQuart\" %}\n  {## https://easings.net/#easeInQuart
-            ##}\n  {{ percentageOfTimeCompleted * percentageOfTimeCompleted * percentageOfTimeCompleted
-            * percentageOfTimeCompleted }}\n  \n{% elif easingType == \"easeOutSine\"
-            %}\n  {## https://easings.net/#easeOutSine ##}\n  {{ sin((percentageOfTimeCompleted
-            * pi) / 2) }}\n\n{% elif easingType == \"easeOutQuad\" %}\n  {## https://easings.net/#easeOutQuad
-            ##}\n  {{ 1 - (1 - percentageOfTimeCompleted)* (1 - percentageOfTimeCompleted)
-            }} \n\n{% elif easingType == \"easeOutCubic\" %}\n  {## https://easings.net/#easeOutCubic
-            ##}\n  {{ 1 - ((1 - percentageOfTimeCompleted) ** 3) }}\n\n{% elif easingType
-            == \"easeOutQuart\" %}\n  {## https://easings.net/#easeOutQuart ##}\n
-            \ {{ 1 - ((1 - percentageOfTimeCompleted) ** 4) }}\n\n{% elif easingType
-            == \"easeInOutSine\" %}\n  {## https://easings.net/#easeInOutSine ##}\n
-            \ {{ -1 * ((cos(pi * percentageOfTimeCompleted) - 1) / 2) }}\n  \n{% elif
-            easingType == \"easeInOutQuad\" %}\n  {## https://easings.net/#easeInOutQuad
-            ##}\n  {% if (percentageOfTimeCompleted < 0.5) %}\n    {{ 2 * percentageOfTimeCompleted
-            * percentageOfTimeCompleted }} \n  {% else %}\n    {{ 1- (((-2 * percentageOfTimeCompleted
-            + 2) ** 2) / 2) }} \n  {% endif %}\n  \n{% elif easingType == \"easeInOutCubic\"
-            %}\n  {## https://easings.net/#easeInOutCubic ##}\n  {% if (percentageOfTimeCompleted
-            < 0.5) %}\n    {{ 4 * percentageOfTimeCompleted * percentageOfTimeCompleted
-            * percentageOfTimeCompleted }} \n  {% else %}\n    {{ 1- (((-2 * percentageOfTimeCompleted
-            + 2) ** 3) / 2) }} \n  {% endif %}\n    \n{% elif easingType == \"easeInOutQuart\"
-            %}\n  {## https://easings.net/#easeInOutQuart ##}\n  {% if (percentageOfTimeCompleted
-            < 0.5) %}\n    {{ 8 * percentageOfTimeCompleted * percentageOfTimeCompleted
-            * percentageOfTimeCompleted * percentageOfTimeCompleted }} \n  {% else
-            %}\n    {{ 1 - (((-2 * percentageOfTimeCompleted + 2) ** 4) / 2) }} \n
-            \ {% endif %}\n{% else %}\n  {## linear ##}\n  {{ percentageOfTimeCompleted
-            }}\n{% endif %}\n"
-          expectedBrightness: "{% set startBrightness = startBrightness | int %} {%
-            set brightnessSpan = brightnessSpan | int %} {% set easingAdjustedPercentageCompleted
-            = easingAdjustedPercentageCompleted | float(0) %}\n{% set calculatedBrightness
-            = (startBrightness + (brightnessSpan * easingAdjustedPercentageCompleted))
-            | round(0) %}\n{% if (calculatedBrightness < 0) %}\n  {% set calculatedBrightness
-            = 0 %}\n{% elif (calculatedBrightness > 255) %}\n  {% set calculatedBrightness
-            = 255 %}\n{% endif %}\n{% if (endBrightness >= startBrightness) and (calculatedBrightness
-            > endBrightness) %}\n  {% set calculatedBrightness = endBrightness %}\n{%
-            elif (endBrightness < startBrightness) and (calculatedBrightness < endBrightness)
-            %}\n  {% set calculatedBrightness = endBrightness %}\n{% endif %}\n{{
-            calculatedBrightness }}\n"
-          linearExpectedBrightness: "{% set startBrightness = startBrightness | int
-            %} {% set brightnessSpan = brightnessSpan | int %} {% set percentageOfTimeCompleted
-            = percentageOfTimeCompleted | float(0) %}\n{% set calculatedBrightness
-            = (startBrightness + (brightnessSpan * percentageOfTimeCompleted)) | round(0)
-            %} \n{% if (calculatedBrightness < 0) %}\n  {% set calculatedBrightness
-            = 0 %}\n{% elif (calculatedBrightness > 255) %}\n  {% set calculatedBrightness
-            = 255 %}\n{% endif %}\n{% if (endBrightness >= startBrightness) and (calculatedBrightness
-            > endBrightness) %}\n  {% set calculatedBrightness = endBrightness %}\n{%
-            elif (endBrightness < startBrightness) and (calculatedBrightness < endBrightness)
-            %}\n  {% set calculatedBrightness = endBrightness %}\n{% endif %}\n{{
-            calculatedBrightness }}\n"
-          currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness')
-            %}\n{## If a light is off, its brightness will return 'None'. So first
-            check if there's a valid brightness before getting the value ##}\n{% if
-            rawLightLevel %}\n  {% set currentLightLevel = rawLightLevel | int %}\n{%
-            else %}\n  {% set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale
-            == \"zeroToOneHundred\" %}\n  {% set currentLightLevel = (currentLightLevel
-            / 2.55) | round(0) %}\n{% endif %} {{ currentLightLevel }}\n"
-      - if:
-        - condition: template
-          value_template: '{{ (currentBrightness | int) != (endBrightness | int) }}
-
-            '
-        then:
-        - if:
-          - condition: template
-            value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
-
-              '
-          then:
-          - service: light.turn_on
-            target:
-              entity_id: '{{ light }}'
-            data:
-              brightness: '{{ expectedBrightness }}'
-          else:
-          - service: light.turn_on
-            target:
-              entity_id: '{{ light }}'
-            data:
-              brightness_pct: '{{ expectedBrightness }}'
-        - if:
-          - condition: template
-            value_template: '{{ isDebugMode }}
-
-              '
-          then:
-          - service: system_log.write
-            data_template:
-              message: 'Set {{ lightFriendlyName }} to {{ expectedBrightness | int
-                }} brightness. (Linear brightness would have been {{ linearExpectedBrightness
-                | int }}.) Delay is {{ delayInMilliseconds | int }} ms. Elapsed time
-                is {{ (as_timestamp(now()) - startTimestamp) | round(2) }} seconds.
-                (endBrightness is {{ endBrightness}}.)
-
-                '
-              level: warning
-      - delay:
-          milliseconds: '{{ delayInMilliseconds | float(0) }}'
-      - variables:
-          currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness')
-            %} {## If a light is off, its brightness will return \"None\"? So first
-            check if there's a valid brightness before getting the value ##} {% if
-            rawLightLevel %}\n\t{% set currentLightLevel = rawLightLevel | int %}\n{%
-            else %}\n\t{% set currentLightLevel = 0 %}\n{% endif %} {% if lampBrightnessScale
-            == \"zeroToOneHundred\" %}\n  {% set currentLightLevel = (currentLightLevel
-            / 2.55) | round(0) %}\n{% endif %} {{ currentLightLevel }}\n"
-          brightnessDifferenceFromExpected: '{{ ( (currentBrightness | int) - (expectedBrightness
-            | int) ) | abs }}
-
-            '
-          isBrightnessDifferenceAboveAutoCancelThreshold: "{% if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
-            %}\n  {{ (brightnessDifferenceFromExpected | int) >= (normalizedAutoCancelThreshold
-            | int) }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
-      - if:
-        - condition: template
-          value_template: '{{ autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
-            and isBrightnessDifferenceAboveAutoCancelThreshold }}
-
-            '
-        then:
-        - variables:
-            stopMessage: "{% if lampBrightnessScale == \"zeroToTwoFiftyFive\" %}\n
-              \ {% set currentBrightnessAsPercentage = (currentBrightness / 2.55)
-              | round(0) %}\n  {% set expectedBrightnessAsPercentage = (expectedBrightness
-              / 2.55) | round(0) %}\n  {% set differenceFromExpectedAsPercentage =
-              (brightnessDifferenceFromExpected / 2.55) | round(0) %}\n{% else %}\n
-              \ {% set currentBrightnessAsPercentage = currentBrightness %}\n  {%
-              set expectedBrightnessAsPercentage = expectedBrightness %}\n  {% set
-              differenceFromExpectedAsPercentage = brightnessDifferenceFromExpected
-              %}\n{% endif %}\n{% set stopMessage = \"Stopped Ashley’s Fader because
-              \" + (lightFriendlyName | string) + \" was found to be at \" + (currentBrightnessAsPercentage
-              | string) + \"%, a difference of \" + (differenceFromExpectedAsPercentage
-              | string) + \" percentage points from the expected brightness of \"
-              + (expectedBrightnessAsPercentage | string) + \"%, which is higher than
-              the auto-cancel threshold of \" + (autoCancelThreshold | string) + \"
-              percentage points.\" %} {{ stopMessage }}\n"
-        - if:
-          - condition: template
-            value_template: '{{ isDebugMode }}
-
-              '
-          then:
-          - service: system_log.write
-            data_template:
-              message: '{{ stopMessage }}
-
-                '
-              level: warning
-        - stop: '{{ stopMessage }}
-
-            '
-      - if:
-        - condition: template
-          value_template: "{## init ##} {% set stopEntityStatus = false %} {% if stopEntityIsEnabled
-            %}\n  {% if bool(states(stopEntity), false) %}\n    {% set stopEntityStatus
-            = true %}\n  {% endif %}\n{% endif %} {{ stopEntityStatus }}\n"
-        then:
-        - variables:
-            stopMessage: '{% set stopMessage = "Stopped Ashley’s Fader because " +
-              (stopEntityFriendlyName | string) + " is on." %} {{ stopMessage }}
-
-              '
-        - if:
-          - condition: template
-            value_template: '{{ isDebugMode }}
-
-              '
-          then:
-          - service: system_log.write
-            data_template:
-              message: '{{ stopMessage }}
-
-                '
-              level: warning
-        - stop: '{{ stopMessage }}
-
-            '
-      until:
-      - condition: template
-        value_template: "{{ (as_timestamp(now()) >= endTimestamp) \n  or ((endBrightness
-          >= startBrightness) and (expectedBrightness >= endBrightness))\n  or ((endBrightness
-          < startBrightness) and (expectedBrightness <= endBrightness)) }}\n"
-  - variables:
-      currentBrightness: "{% set rawLightLevel = state_attr(light, 'brightness') %}\n{##
-        If a light is off, its brightness will return 'None'. So first check if there's
-        a valid brightness before getting the value ##} {% if rawLightLevel %}\n\t{%
-        set currentLightLevel = rawLightLevel | int %}\n{% else %}\n\t{% set currentLightLevel
-        = 0 %}\n{% endif %} {% if lampBrightnessScale == \"zeroToOneHundred\" %}\n
-        \ {% set currentLightLevel = (currentLightLevel / 2.55) | round(0) %}\n{%
-        endif %} {{ currentLightLevel }}\n"
-      brightnessDifferenceFromExpected: '{{ ( (currentBrightness | int) - (endBrightness
-        | int) ) | abs }}
-
-        '
-      isBrightnessDifferenceAboveAutoCancelThreshold: "{% if autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged
-        %}\n  {{ (brightnessDifferenceFromExpected | int) > (normalizedAutoCancelThreshold
-        | int) }}\n{% else %}\n  {{ false }}\n{% endif %}\n"
-  - if:
-    - condition: template
-      value_template: '{{ ((currentBrightness | int) != (endBrightness | int))  and
-        ((not autoCancelTheFadeIfTheLampBrightnessIsManuallyChanged) or (not isBrightnessDifferenceAboveAutoCancelThreshold))
-        }}
-
-        '
-    then:
-    - if:
-      - condition: template
-        value_template: '{{ (lampBrightnessScale == "zeroToTwoFiftyFive") }}
-
-          '
-      then:
-      - service: light.turn_on
-        target:
-          entity_id: '{{ light }}'
-        data:
-          brightness: '{{ endBrightness }}'
-      else:
-      - service: light.turn_on
-        target:
-          entity_id: '{{ light }}'
-        data:
-          brightness_pct: '{{ endBrightness }}'
-  max: 10
-  icon: mdi:lightbulb-on-50
 terra_sunrise:
   alias: Terra sunrise
   sequence:
@@ -1155,15 +525,30 @@ charge_ev_message_with_optional_disable:
       event_data:
         action: '{{ action_dismiss }}'
       trigger: event
+    timeout:
+      hours: 2
+      minutes: 30
+      seconds: 0
+      milliseconds: 0
+    continue_on_timeout: false
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schreibtisch_links_power_strip_l3
+          target_state: 'on'
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
@@ -1210,15 +595,30 @@ charge_ev_message_with_optional_disable_stephan_iphone:
       event_data:
         action: '{{ action_dismiss }}'
       trigger: event
+    timeout:
+      hours: 2
+      minutes: 30
+      seconds: 0
+      milliseconds: 0
+    continue_on_timeout: false
   - choose:
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
       sequence:
-      - type: turn_on
-        device_id: 49e01e12b2a0a7a6bad4ffdbce655bf7
-        entity_id: 92b751a10b775683b1b0d030710be105
-        domain: switch
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schreibtisch_links_power_strip_l3
+          target_state: 'on'
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
@@ -1239,8 +639,9 @@ create_timelapse:
       output_filename: '{{ states(''sensor.job_name_2'') }}'
   - delay:
       hours: 0
-      minutes: 5
-      seconds: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
     enabled: true
   - action: shell_command.delete_files_webcam1
     metadata: {}
@@ -1329,33 +730,6 @@ wintergarten_dachfenster_rolladen_stop:
       button_label: rollo_stop
     continue_on_error: true
   alias: Wintergarten Dachfenster Rolladen Stop
-  description: ''
-wintergarten_dachfenster_close:
-  sequence:
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: window_close
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Close
-  description: ''
-wintergarten_dachfenster_open:
-  sequence:
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: window_open
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Open
-  description: ''
-wintergarten_dachfenster_stop:
-  sequence:
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: window_stop
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Stop
   description: ''
 boiler_save_energy_script:
   alias: Boiler Save Energy Script
@@ -1530,10 +904,6 @@ save_counts_and_notify_purge_status:
   description: Stores current DB row count, calculates purge threshold, waits for
     drop, and notifies if purge did not succeed within the expected time.
   fields:
-    threshold_offset:
-      description: Number of rows expected to be removed (e.g. 100000)
-      example: 100000
-      default: 100000
     timeout_minutes:
       description: How many minutes to wait for the purge to reduce DB rows
       example: 60
@@ -1542,6 +912,10 @@ save_counts_and_notify_purge_status:
       description: Identifier for this purge block (e.g. "2 Days")
       example: 2 Days
       default: Unknown
+    count:
+      selector:
+        text: {}
+      name: Count
   sequence:
   - if:
     - condition: template
@@ -1550,7 +924,11 @@ save_counts_and_notify_purge_status:
     - alias: Save current row count and calculate threshold
       variables:
         current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
-        threshold: '{{ current_count - threshold_offset }}'
+        entity_count: '{{ count | int(0) }}'
+        multiplier: '{% set multipliers = {''1d'': 50, ''2d'': 150, ''3d'': 250, ''7d'':
+          100} %} {{ multipliers.get(block_id | string, 200) }}'
+        calculated_offset: '{{ [entity_count * multiplier, 1000] | max }}'
+        threshold: '{{ current_count - calculated_offset }}'
     else:
     - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
   - alias: Save start row count for debugging
@@ -1584,13 +962,12 @@ save_counts_and_notify_purge_status:
           title: ⚠️ DB Purge Failed — {{ block_id }}
           message: '{% set removed_rows = current_count - states(''sensor.maria_db_rows'')
             | int(0) %} The DB purge for block ''{{ block_id }}'' likely failed.\n
-
-            • Start: {{ current_count }}\n • Threshold: {{ threshold }}\n • Final:
-            {{ states(''sensor.maria_db_rows'') | int(0) }}\n • {{''Added: +'' if
-            removed_rows <= 0 else ''Removed: ''}}{{ removed_rows | abs }} rows\n
-            • Timed out after {{ timeout_minutes }} minutes.\n\n
-
-            Consider checking your recorder and DB status manually.
+            • Entities targeted: {{ entity_count }}\n • Start: {{ current_count }}\n
+            • Target drop: {{ calculated_offset }} rows\n • Threshold: {{ threshold
+            }}\n • Final: {{ states(''sensor.maria_db_rows'') | int(0) }}\n • {{''Added:
+            +'' if removed_rows <= 0 else ''Removed: ''}}{{ removed_rows | abs }}
+            rows\n • Timed out after {{ timeout_minutes }} minutes.\n\n Consider checking
+            your recorder and DB status manually.
 
             '
           data:
@@ -1620,46 +997,67 @@ save_counts_and_notify_purge_status:
           data:
             title: ✅ DB Purge Succeeded — {{ block_id }}
             message: 'The DB purge for block ''{{ block_id }}'' completed successfully.\n
-
-              • Start: {{ current_count }}\n • Final: {{states(''sensor.maria_db_rows'')
-              | int(0) }}\n • Removed: {{current_count - states(''sensor.maria_db_rows'')
-              | int(0) }} rows\n • Finished in under {{ timeout_minutes }} minutes.
+              • Entities targeted: {{ entity_count }}\n • Start: {{ current_count
+              }}\n • Final: {{ states(''sensor.maria_db_rows'') | int(0) }}\n • Removed:
+              {{ current_count - states(''sensor.maria_db_rows'') | int(0) }} rows\n
+              • Finished in under {{ timeout_minutes }} minutes.
 
               '
             data:
               tag: db_purge_sucess_{{ block_id }}
   mode: parallel
   max: 10
-esphome_rgb_light_set:
-  alias: ESPHome Kallax Light
-  sequence:
-  - action: light.turn_on
-    data:
-      transition: 3
-      brightness_pct: 40
-    target:
-      entity_id: light.esp32_c3_mini_kallax_light_kallax_licht
-  description: ''
 run_fan_for_duration:
   alias: Run Fan For Duration
   mode: parallel
+  max: 50
   fields:
     fan_entity:
       description: The switch entity of the fan to run (e.g., switch.right_fan)
       example: switch.left_fan
+      required: true
+      selector:
+        entity:
+          domain: switch
+      name: Fan Entity
     duration:
-      description: How long the fan should run
-      example: 00:02:30
+      selector:
+        duration: {}
+      default:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      name: Duration
   sequence:
-  - target:
-      entity_id: '{{ fan_entity }}'
-    action: switch.turn_on
-    data: {}
-  - delay: '{{ duration }}'
-  - target:
-      entity_id: '{{ fan_entity }}'
-    action: switch.turn_off
-    data: {}
+  - repeat:
+      until:
+      - condition: template
+        value_template: '{{ is_state(fan_entity, "on")}}'
+      sequence:
+      - target:
+          entity_id: '{{ fan_entity }}'
+        action: switch.turn_on
+        data: {}
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
+  - delay: '{{ duration | default(''00:02:30'', true) }}'
+  - repeat:
+      until:
+      - condition: template
+        value_template: '{{ is_state(fan_entity, "off")}}'
+      sequence:
+      - target:
+          entity_id: '{{ fan_entity }}'
+        action: switch.turn_off
+        data: {}
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 1
+          milliseconds: 0
   description: ''
 restart_charging_process:
   sequence:
@@ -1682,6 +1080,789 @@ restart_charging_process:
   description: ''
 retry_action_with_backoff:
   alias: Retry Action with Backoff
+  description: 'Retries a service call until the entity reaches the desired state
+    or max retries are reached, using simple, linear, or exponential backoff. Supports
+    custom action domain and custom action type.
+
+    '
+  mode: parallel
+  fields:
+    entity_id:
+      name: Entity
+      description: The entity to monitor and act on.
+      required: true
+      selector:
+        entity: {}
+    target_state:
+      name: Target State
+      description: The desired state for the entity (e.g., on, off, open, closed,
+        or custom).
+      required: true
+      selector:
+        select:
+          options:
+          - label: 'On'
+            value: 'on'
+          - label: 'Off'
+            value: 'off'
+          - label: Open
+            value: open
+          - label: Closed
+            value: closed
+          - label: Custom
+            value: custom
+      default: 'off'
+    custom_target_state:
+      name: Custom Target State
+      description: Specify a custom state if Target State is 'Custom'.
+      required: false
+      selector:
+        text: {}
+    action_domain:
+      name: Action Domain
+      description: Domain for the service call (e.g., light, switch). Defaults to
+        'homeassistant'.
+      required: false
+      default: homeassistant
+      selector:
+        select:
+          options:
+          - label: Home Assistant (default)
+            value: homeassistant
+          - label: Switch
+            value: switch
+          - label: Light
+            value: light
+          - label: Custom
+            value: custom
+    custom_action_domain:
+      name: Custom Action Domain
+      description: Specify a custom domain if 'Custom' is selected above (e.g., cover,
+        climate)
+      required: false
+      selector:
+        text: {}
+    action_type:
+      name: Action Type
+      description: Action to perform (e.g., turn_on, turn_off, toggle, open, close,
+        or custom)
+      default: turn_on
+      selector:
+        select:
+          options:
+          - label: Turn On
+            value: turn_on
+          - label: Turn Off
+            value: turn_off
+          - label: Toggle
+            value: toggle
+          - label: Custom
+            value: custom
+    custom_action_type:
+      name: Custom Action Type
+      description: Specify a custom action type if 'Custom' is selected above (e.g.,
+        lock, set_temperature)
+      required: false
+      selector:
+        text: {}
+    service_data:
+      name: Service Data
+      description: 'Optional additional data for the service call (e.g., {"option":
+        "Charge"} for select.select_option). Must be valid YAML/dict format.'
+      required: false
+      selector:
+        text: {}
+    custom_action:
+      name: Custom Action
+      description: Optional override default action with a custom one.
+      required: false
+      selector:
+        action: {}
+    max_retries:
+      name: Max Retries
+      description: Maximum number of attempts.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 20
+          mode: box
+          step: 1
+    base_delay:
+      name: Base Delay
+      description: Base delay in seconds for backoff calculation.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+    max_delay:
+      name: Max Delay
+      description: Maximum delay in seconds for any backoff type.
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 600
+          mode: box
+          step: 1
+    backoff_type:
+      name: Backoff Type
+      description: Strategy for retry delays (simple, linear, exponential).
+      default: simple
+      selector:
+        select:
+          options:
+          - label: Simple
+            value: simple
+          - label: Linear
+            value: linear
+          - label: Exponential
+            value: exponential
+    notify_on_failure:
+      name: Notify on Failure
+      description: Send a notification if the target state was not reached after max_retries.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    notify_service:
+      name: Notify Service
+      description: Service to use for failure notifications (e.g., notify.duncan).
+      required: false
+      selector:
+        entity:
+          filter:
+            domain: notify
+    enable_power_controller:
+      name: Enable Power Controller
+      description: Monitor power consumption to confirm the device actually turned
+        on or off.
+      default: false
+      selector:
+        boolean: {}
+    power_sensor:
+      name: Power Sensor (Optional)
+      description: Explicit power sensor entity. If left blank, it will attempt auto-detection.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    power_threshold_off:
+      name: Power Threshold (Off Validation)
+      description: Power level (Watts) below which the device is considered fully
+        off.
+      default: 2
+      selector:
+        number:
+          min: 0.1
+          max: 100
+          step: 0.1
+          mode: box
+    power_threshold_on:
+      name: Power Threshold (On Validation)
+      description: Minimum power level (Watts) expected when the device is turned
+        on.
+      default: 5
+      selector:
+        number:
+          min: 0.1
+          max: 5000
+          step: 0.1
+          mode: box
+    power_report_delay:
+      name: Power Report Delay
+      description: Time to wait (seconds) for the sensor to update its reading after
+        a state change.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+    power_wait_timeout:
+      name: Power Wait Timeout
+      description: Additional time to wait (seconds) for power to clear the threshold
+        after the report delay.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+  sequence:
+  - variables:
+      effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+        | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
+      effective_action_domain: "{% set d = action_domain | default('homeassistant')
+        %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{%
+        else %}\n  {{ d }}\n{% endif %}\n"
+      effective_action_type: "{% set t = action_type | default('turn_on') %} {% if
+        t == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{
+        t }}\n{% endif %}\n"
+      effective_service_data: "{% set data_str = service_data | default('') | string
+        %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if
+        data_str.startswith('{') and data_str.endswith('}') %}\n    {{ data_str }}\n
+        \ {% else %}\n    {{ {} }}\n  {% endif %}\n{% else %}\n  {{ {} }}\n{% endif
+        %}\n"
+      power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
+      power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
+      power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
+      power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
+      effective_power_sensor: "{% if enable_power_controller | default(false) %}\n
+        \ {% if power_sensor is defined and power_sensor != none and power_sensor
+        | string | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set
+        dev_id = device_id(entity_id) %}\n    {% if dev_id %}\n      {% set entities
+        = device_entities(dev_id) %}\n      {% set ns = namespace(sensors=[]) %}\n
+        \     {% for e in entities %}\n        {% if e.startswith('sensor.') and state_attr(e,
+        'device_class') == 'power' %}\n          {% set ns.sensors = ns.sensors +
+        [e] %}\n        {% endif %}\n      {% endfor %}\n      {% if ns.sensors |
+        length == 1 %}\n        {{ ns.sensors[0] }}\n      {% else %}\n        none\n
+        \     {% endif %}\n    {% else %}\n      none\n    {% endif %}\n  {% endif
+        %}\n{% else %}\n  none\n{% endif %}\n"
+      power_enabled: '{{ enable_power_controller | default(false) and effective_power_sensor
+        != ''none'' and effective_target_state in [''on'', ''off''] }}'
+      has_service_data: '{{ service_data is defined and service_data not in [none,
+        '''', {}] }}'
+  - condition: template
+    value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
+    alias: Validate entity exists
+  - variables:
+      target_match: '{{ is_state(entity_id, effective_target_state) }}'
+      current_power: '{{ states(effective_power_sensor) | float(0) if power_enabled
+        else 0 }}'
+      power_invalid: "{{ power_enabled and target_match and (\n  (effective_target_state
+        == 'off' and current_power >= power_threshold_off_val) or\n  (effective_target_state
+        == 'on' and current_power < power_threshold_on_val)\n) }}"
+      power_ok: '{{ not power_enabled or not target_match or not power_invalid }}'
+    alias: Calculate Initial Step Variables
+  - alias: Skip if already in target state (power monitoring disabled)
+    condition: template
+    value_template: '{{ not target_match or power_enabled or has_service_data }}'
+  - alias: Skip if power signature is already valid
+    condition: template
+    value_template: '{{ not target_match or power_invalid or has_service_data }}'
+  - alias: Skip if already in target state
+    condition: template
+    value_template: '{{ not target_match or not power_ok or has_service_data }}'
+  - repeat:
+      until:
+      - condition: template
+        value_template: "{% set power_ok = true %} {% if effective_power_sensor !=
+          'none' and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
+          == 'off' %}\n    {% set power_ok = states(effective_power_sensor) | float(0)
+          < power_threshold_off_val %}\n  {% elif effective_target_state == 'on' %}\n
+          \   {% set power_ok = states(effective_power_sensor) | float(0) >= power_threshold_on_val
+          %}\n  {% endif %}\n{% endif %} {{ (((is_state(entity_id, effective_target_state)
+          and power_ok) or service_data is defined) or repeat.index >= max_retries
+          | int(10)) or states(entity_id) is in ['unavailable','unknown'] }}\n"
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ custom_action is defined and custom_action != none
+              }}'
+          sequence:
+          - repeat:
+              for_each: '{{ custom_action }}'
+              sequence:
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined and repeat.item.data
+                      is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.target is defined }}'
+                  sequence:
+                  - target: '{{ repeat.item.target }}'
+                    action: '{{ repeat.item.action }}'
+                - conditions:
+                  - condition: template
+                    value_template: '{{ repeat.item.data is defined }}'
+                  sequence:
+                  - data: '{{ repeat.item.data }}'
+                    action: '{{ repeat.item.action }}'
+                default:
+                - action: '{{ repeat.item.action }}'
+        default:
+        - target:
+            entity_id: '{{ entity_id }}'
+          data: '{{ effective_service_data }}'
+          action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{
+            effective_action_type }}
+
+            '
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+          sequence:
+          - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
+            timeout: "{% set bd = base_delay | default(5, true) | float() %} {% set
+              md = max_delay |default(60, true) | float() %} {% if backoff_type ==
+              'simple' %}\n  {{ [bd, md] | min }}\n{% elif backoff_type == 'linear'
+              %}\n  {{ [repeat.index * bd, md] | min }}\n{% elif backoff_type == 'exponential'
+              %}\n  {{ [2**(repeat.index-1) * bd, md] | min }}\n{% else %}\n  {{ [bd,
+              md] | min }}\n{% endif %}\n"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ effective_power_sensor != ''none'' and is_state(entity_id,
+              effective_target_state) and effective_target_state is in [''on'', ''off'']
+              }}
+
+              '
+          sequence:
+          - alias: Wait for power to hit the target threshold direction
+            wait_template: "{% if effective_target_state == 'off' %}\n  {{ states(effective_power_sensor)
+              | float(0) < power_threshold_off_val }}\n{% else %}\n  {{ states(effective_power_sensor)
+              | float(0) >= power_threshold_on_val }}\n{% endif %}\n"
+            timeout: '{{ power_report_delay_val + power_timeout_val }}'
+            continue_on_timeout: true
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{% if effective_target_state == 'off' %}\n  {{ states(effective_power_sensor)
+                  | float(0) >= power_threshold_off_val }}\n{% else %}\n  {{ states(effective_power_sensor)
+                  | float(0) < power_threshold_on_val }}\n{% endif %}\n"
+              sequence:
+              - alias: 'Power signature invalid: Run inverted cycle step to force
+                  retry'
+                action: "{% if effective_target_state == 'off' %}\n  homeassistant.turn_on\n{%
+                  else %}\n  homeassistant.turn_off\n{% endif %}\n"
+                target:
+                  entity_id: '{{ entity_id }}'
+              - alias: Short delay before next loop iteration
+                delay: 2
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: "{{ states(entity_id) is in\n      ['unavailable','unknown']
+          }}"
+      - condition: template
+        value_template: '{{ notify_on_failure | default(true) }}'
+      sequence:
+      - variables:
+          now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+            '' '') | replace(''_'', '' '')}}'
+          params_line: "action={{ effective_action_domain }}.{{ effective_action_type
+            }}, target={{ effective_target_state }}, retries={{ max_retries }}, base={{
+            base_delay }}s, max={{ max_delay }}s, backoff={{ backoff_type }},\n {{
+            \"custom_action=\" + custom_action|string if custom_action is defined
+            and custom_action != none else \"\" }}"
+          tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_'))
+            }}
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Entity: {{ friendly }} - {{states(entity_id)}}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
+            }}) | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ notify_on_failure | default(true) }}'
+      - condition: template
+        value_template: "{% set power_failed = false %} {% if effective_power_sensor
+          != 'none' and is_state(entity_id, effective_target_state) %}\n  {% if effective_target_state
+          == 'off' %}\n    {% set power_failed = states(effective_power_sensor) |
+          float(0) >= power_threshold_off_val %}\n  {% elif effective_target_state
+          == 'on' %}\n    {% set power_failed = states(effective_power_sensor) | float(0)
+          < power_threshold_on_val %}\n  {% endif %}\n{% endif %} {{ not is_state(entity_id,
+          effective_target_state) or power_failed }}\n"
+      sequence:
+      - variables:
+          now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+          friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+            '' '') | replace(''_'', '' '')}}'
+          params_line: "action={{ effective_action_domain }}.{{ effective_action_type
+            }},  target={{ effective_target_state }}, retries={{ max_retries | default(10)
+            }},  base={{ base_delay | default(5) }}s, max={{ max_delay | default(60)
+            }}s,  backoff={{ backoff_type | default('simple') }},\n {{ \"custom_action=\"
+            + custom_action|string if custom_action is defined and custom_action !=
+            none else \"\" }}"
+          tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_'))
+            }}
+      - action: '{{ notify_service | default(''notify.duncan'') }}'
+        data:
+          title: 'Retry failed: {{ friendly }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
+            }}) | {{ params_line }}'
+          data:
+            tag: '{{ tag_value }}'
+  max: 256
+send_ir_remote_command:
+  alias: Send IR Remote Command
+  description: Sends an IR code based on a label and then clears the entity
+  icon: mdi:remote
+  fields:
+    button_label:
+      name: Button Label
+      description: The name of the button to trigger (e.g., power, play_pause)
+      example: power
+      required: true
+  sequence:
+  - variables:
+      code_map:
+        power: B+YjqhFoAg4C4BUDAXIG4B0DQEdAK0AH4AsDwBtAB+ADAw+jneYjzAhoAv//5iPMCGgC
+        play_pause: B8cjrBFrAjIC4AMDQAFAD0ABQAcDawJ2BuADAwAyoA/AB4AbADIgAUALADJgAYAH4AMPBXYGMgIyAoAHAXYGgAcBMgKABweMnccjuAhrAg==
+        previous: Bcwj3hFCAuAXAQGPBuAZA+AXAeATQwd4ncwj3AhCAg==
+        next: BbIjthE+AuAXAQGYBuAVA+AXAeAXPw+EnbIj/wg+Av//siP/CD4C
+        volume_mute: BuMjsRFoAhtgAUAH4AsDBBsCcQZo4BQDARsC4AUDQC/gAxNAD+ADA0Ab4AMPB5Sd4yO6CGgC
+        volume_up: B9MjqhFnAhcC4BUDAXIG4BkDQEPAJ0AL4AcDQBvAE0ALAnIGFyADQAcJZwK2ndMjtQhnAg==
+        volume_down: B9AjqBFsAicC4AcDQAHgARMBdAbAAwAnoAvgBQcAJyABAnQGbOAAAwEnAsADQAEJbAJ0BicCJwJsAsADAXQG4AUDB5ud0CPPCCcC
+        fm: Bf0jpxFCAuAXAQGPBuAZA8ABQCvgCwFAF0ADQAFAB+ADAw9+nf0j5ghCAv///SPmCEIC
+        cd: B/kjsRFmAjUC4AsDQAFAFwM1Ao0G4A8DAGZgG4ABAmYCNSABBY0GNQI1AkAL4AEDQBOAAwhmAjUCZgKNBjXgAgMRZgJTnfkjwwhmAv//+SPDCDUC
+        usb: Be0joxFHAuABAQJ2AkfgCgEBfAbgIQPgFwHgC0sPip3tI74IdgL//+0jvghHAg==
+        bluetooth: BdwjpxE/AuAXAQGYBuAVA0ABQCNAAcAH4AMBwBPgAwdAC8ADD4Wd3CPbCD8C///cI9sIPwI=
+        eject: BdojoBE/AuAXAQGYBuAVA0ABQCPAAeADC0ABwA9AB0ADQAFAB8ADD4yd2iPVCD8C///aI9UIPwI=
+        rollo_close: B9YB4gTiBHoBQAPAC0AH4AcDAeIE4A0X4BUnCKRn1gHiBOIEeiAFAXoBwAtAB+AHAwHiBOANF+ASJwIE1gE=
+        rollo_open: A9sB4gRAAwPiBHIB4AMHQAvgAwMB4gSAH+ADE+ALCwPiBHIBQANAGwPiBINkQAdAAwHiBMATgAdAE+ADAwHiBOANF+ADI0ALDeIEcgHiBHIB2wHiBOIE
+        rollo_stop: EdUEegFYAtUEMQV6AdwB1QTVBIAHQAvgAwMB1QTgDRfgAyPAC0BLgAMFdGTVBHoBQBcB1QTgBQdAE+ADAwExBYAf4AMT4A8LCdUEegHVBHoBMQU=
+        window_stop: CeEEcwHaAeEE4QSAB+AHC0APQAMB4QTgAR9AD+AXAwHhBEAvAb9ngAcD4QThBEAPAeEEQAMB4QTgAQtAD0ADAeEE4AkTQBfgDwMF4QRzAdoB
+        window_open: C30B3ATYAdwE3AR9AUAHQAMB3ATgAQtAD0ADAdwE4AkTQBfgBwMB3ATgAycFu2fYAdwEQAMB3ATgARcB3ATgAQtAG0ADAdwE4AkTQBfgBwMN3AR9AdgB3ATYAdwE2AE=
+        window_close: BX8B5ATkBEAFBX8B3AHkBEADAeQE4AELQA9AAwHkBOAJE0AX4AcDAuQEfyBFAX8BQBcD5ARTZIAHAX8BQANAC0ADAeQE4AELQA9AAwHkBOAJE0AX4AcDDeQEfwHkBH8B3AHkBOQE
+      selected_code: '{{ code_map.get(button_label) }}'
+  - if:
+    - condition: template
+      value_template: '{{ selected_code is not none }}'
+    then:
+    - action: text.set_value
+      target:
+        entity_id: text.white_ir_sender_ir_code_to_send
+      data:
+        value: '{{ selected_code }}'
+      continue_on_error: true
+    - if:
+      - condition: template
+        value_template: '{{ button_label in [''rollo_open'', ''rollo_close''] }}'
+      then:
+      - action: input_boolean.turn_{{ 'off' if button_label == 'rollo_open' else 'on'
+          }}
+        target:
+          entity_id: input_boolean.rollo_state
+    - delay:
+        milliseconds: 500
+    - action: text.set_value
+      target:
+        entity_id: text.white_ir_sender_ir_code_to_send
+      data:
+        value: ''
+      continue_on_error: true
+    else:
+    - variables:
+        error_msg:
+          error: 'Unknown button label provided: {{ button_label }}'
+    - stop: 'Script halted: Unknown button label'
+      response_variable: error_msg
+  mode: queued
+  max: 10
+adjust_input_number:
+  alias: Adjust Input Number
+  description: Modify any numeric helper by a specific amount.
+  fields:
+    target_entity:
+      name: Target Entity
+      description: Select the input_number to modify.
+      required: true
+      selector:
+        entity:
+          domain: input_number
+    operation:
+      name: Operation
+      description: Add to or subtract from the current value.
+      default: add
+      selector:
+        select:
+          options:
+          - label: Add (+)
+            value: add
+          - label: Subtract (-)
+            value: subtract
+    amount:
+      name: Value
+      description: The amount to use for the adjustment.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1000000
+          step: 0.01
+          mode: box
+  sequence:
+  - action: input_number.set_value
+    target:
+      entity_id: '{{ target_entity }}'
+    data:
+      value: '{% set current = states(target_entity) | float(0) %} {% set val = amount
+        | float(0) %} {{ current + val if operation == ''add'' else current - val
+        }}
+
+        '
+notify_people_at_home_with_fallbacks:
+  alias: Notify People at Home (With Fallbacks)
+  description: Sends a notification to people home, with default values if fields
+    are missing.
+  fields:
+    message:
+      description: The main body of the notification
+      example: The garage is open
+      required: true
+      selector:
+        text:
+      name: Message
+    title:
+      description: '''Fallback: ''Home Assistant'''
+      example: Security
+      selector:
+        text:
+      name: Title
+    tag:
+      description: 'Fallback: ''general_notification'''
+      example: garage_status
+      selector:
+        text:
+      name: Notification Tag
+    color:
+      selector:
+        text: {}
+    notification_icon:
+      description: Optional notification icon (e.g. mdi:alert)
+      selector:
+        text:
+      name: Notification Icon
+    channel:
+      description: Notification Channel
+      selector:
+        text:
+      name: Channel
+  sequence:
+  - variables:
+      final_title: "{{ title if title is defined and title | trim | length > 0\n   else
+        'Home Assistant' }}"
+      final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
+        }}"
+      notify_data: "{% set base_data = dict(tag=final_tag) %} {% if color is defined
+        and color %}\n  {% set base_data = base_data | combine(dict(color=color))
+        %}\n{% endif %}  {% if notification_icon is defined and notification_icon
+        %}\n  {% set base_data = base_data | combine(dict(notification_icon=notification_icon))
+        %}\n{% endif %}  {% if channel is defined and channel %}\n  {% set base_data
+        = base_data | combine(dict(channel=channel)) %}\n{% endif %} {{ dict(message=message,
+        title=final_title, data=base_data) }}"
+  - if:
+    - condition: template
+      value_template: '{{ message == ''clear_notification'' }}'
+    then:
+    - action: notify.familie
+      data:
+        message: '{{ message }}'
+        data:
+          tag: '{{ final_tag }}'
+    else:
+    - if:
+      - condition: state
+        entity_id: binary_sensor.anyone_home
+        state:
+        - 'on'
+      then:
+      - repeat:
+          for_each:
+          - person: person.stephan
+            service: mobile_app_stephan_iphone
+          - person: person.katalin
+            service: mobile_app_fp4
+          - person: person.enya
+            service: mobile_app_iphone_von_enya
+          - person: person.duncan
+            service: duncan
+          sequence:
+          - if:
+            - condition: template
+              value_template: '{{ is_state(repeat.item.person, ''home'') }}'
+            then:
+            - action: notify.{{ repeat.item.service }}
+              continue_on_error: true
+              data: '{{ notify_data }}'
+      else:
+      - action: notify.familie
+        metadata: {}
+        data: '{{ notify_data }}'
+  mode: parallel
+  max: 50
+shawn_weekly_edge_cut:
+  alias: 'Shawn: Weekly Edge Cut'
+  description: "\U0001F4CB Intelligent Mowing Maintenance Control\n---\n#### **High-Level
+    Intent**\nThis script orchestrates a specialized dual-pass edge cutting routine
+    for the robotic mower, \"Shawn.\" It ensures that the perimeter is maintained
+    with high precision by running the edge-specific program twice in a controlled
+    loop.\n\n#### **Operational Strategy**\nThe routine utilizes a state-aware deployment
+    strategy. Rather than relying on simple timers, it monitors the mower's real-time
+    status to confirm successful deployment and docking before proceeding to the next
+    phase of the cycle.\n\n#### **Reliability Mechanisms**\nTo prevent the automation
+    from hanging indefinitely due to hardware or connectivity issues, every transitional
+    phase is protected by strict **timeout** constraints (ranging from 5 to 15 minutes).
+    The system provides mobile notifications at the start and conclusion of the process
+    for remote monitoring.\n\n---\n\n### Sequence & Logic Overview\n\n| Type | Entity
+    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Action | **button.shawn_kanten_mahen**
+    | Start Command | Triggers the specific edge-cutting hardware routine. |\n| Wait
+    | **sensor.shawn_rasenmaher_status** | Exit Dock | Confirms mower has transitioned
+    out of **standby** or **charging**. |\n| Wait | **sensor.shawn_rasenmaher_status**
+    | Active Work | Monitors for **mowing** or **on_the_way_home** to verify movement.
+    |\n| Action | **button.shawn_zum_dock_fahren** | Return Home | Commands the mower
+    to return to the charging station. |\n| Wait | **sensor.shawn_rasenmaher_status**
+    | Dock Confirmation | Ensures the mower is **charging** before initiating the
+    second pass. |\n\n---\n\n#### Edge Cutting Routine (2x Loop)\n- **Purpose**\n
+    \ To execute two consecutive edge-trimming passes to ensure complete coverage
+    and a clean finish.\n- **Logic Overview**\n  The system triggers the edge cut
+    and enters a \"watchdog\" mode. It first waits for the mower to physically leave
+    the base (not **standby**/**charging**). Once the mower is confirmed to be in
+    an active state (**mowing** or **on_the_way_home**), the system instructs it to
+    return to the dock to reset for the next pass.\n- **Effect**\n  Cycles the **button.shawn_kanten_mahen**
+    and **button.shawn_zum_dock_fahren** entities; updates user via **notify.duncan**.\n\n---\n\n###
+    Technical Overview\n- **Sceipt Mode**: Single (Default)\n- **Execution Method**:
+    Scripted sequence with a **repeat** loop (Count: 2)\n- **Key Inputs**: **sensor.shawn_rasenmaher_status**\n-
+    **Controlled Entities**: **button.shawn_kanten_mahen**, **button.shawn_zum_dock_fahren**,
+    **notify.duncan**\n- **Safety Mechanisms**: \n    - **5-minute timeout** for initial
+    dock exit.\n    - **15-minute timeout** for work completion and return-to-dock
+    transitions.\n\n---\n\n### \U0001F4A1 Notes\n- **State Transition Logic**: The
+    script uses a clever \"not in standby/charging\" wait template. This ensures that
+    the mower has actually acknowledged the command and begun movement before the
+    logic proceeds to look for active working states.\n- **Fail-Safe**: If the mower
+    becomes stuck or fails to reach the next state within 15 minutes, the sequence
+    will terminate, preventing the script from running in the background indefinitely.\n-
+    **Notification**: The use of **notify.duncan** provides a clear audit trail of
+    when the routine started and whether it reached the final completion stage."
+  sequence:
+  - action: notify.duncan
+    data:
+      title: '✂️ Shawn: Weekly Edge Cut'
+      message: Starting dual edge cut routine.
+      data:
+        tag: shawn_edge_cut
+  - repeat:
+      count: 2
+      sequence:
+      - action: button.press
+        target:
+          entity_id: button.shawn_kanten_mahen
+        data: {}
+      - wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - mowing_border
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
+        alias: Wait for border start
+      - alias: Wait for returning or working -> border is finished
+        wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - returning
+          - return
+          - mowing
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
+      - action: button.press
+        target:
+          entity_id: button.shawn_zum_dock_fahren
+        data: {}
+      - alias: Wait for Charging
+        wait_for_trigger:
+        - trigger: state
+          entity_id:
+          - lawn_mower.shawn
+          to:
+          - charging
+        timeout:
+          hours: 0
+          minutes: 15
+          seconds: 0
+          milliseconds: 0
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 30
+          milliseconds: 0
+        alias: 'Wait between Iterations '
+  - action: notify.duncan
+    data:
+      title: '✅ Shawn: Task Complete'
+      message: Dual edge cut routine finished successfully.
+      data:
+        tag: shawn_edge_cut
+pool_secure_pulsetime_update:
+  alias: Pool - Secure PulseTime Update
+  description: Disables auto-adjust, updates Tasmota, and holds the automation lock
+    safely in a background thread.
+  fields:
+    payload:
+      description: The Tasmota PulseTime payload string or template calculation
+      example: '28895'
+      required: true
+    lock_duration:
+      description: How long to keep the auto-adjust automation disabled (HH:MM:SS)
+      example: 00:05:00
+      required: true
+  sequence:
+  - action: automation.turn_off
+    data:
+      stop_actions: true
+    target:
+      entity_id: automation.pool_pulsetime_auto_adjust
+  - action: mqtt.publish
+    data:
+      topic: cmnd/tasmota_837238/pulsetime1
+      payload: '{{ payload }}'
+    continue_on_error: true
+  - delay: '{{ lock_duration }}'
+    continue_on_error: true
+  - action: automation.turn_on
+    target:
+      entity_id: automation.pool_pulsetime_auto_adjust
+toggle_goe11_key:
+  alias: Toggle GoE11 Key
+  fields:
+    key_name:
+      name: Key Name
+      description: The JSON key to toggle (e.g. pv_active)
+      selector:
+        text:
+      required: true
+  sequence:
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.goe11_cache
+    data:
+      value: '{% set c = states(''input_text.goe11_cache'') | from_json(default={})
+        %} {% set c = c if c is mapping else {} %} {% set new_val = not c.get(key_name,
+        false) %} {{ c | combine({key_name: new_val}) | to_json }}
+
+        '
+retry_action_with_backoff_power_monitoring:
+  alias: Retry Action with Backoff Power Monitoring
   description: 'Retries a service call until the entity reaches the desired state
     or max retries are reached, using simple, linear, or exponential backoff. Supports
     custom action domain and custom action type.
@@ -1838,33 +2019,135 @@ retry_action_with_backoff:
       default: notify.duncan
       selector:
         text: {}
-  variables:
-    effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
-      | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}\n"
-    effective_action_domain: "{% set d = action_domain | default('homeassistant')
-      %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{% else
-      %}\n  {{ d }}\n{% endif %}\n"
-    effective_action_type: "{% set t = action_type | default('turn_on') %} {% if t
-      == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{ t
-      }}\n{% endif %}\n"
-    effective_service_data: "{% set data_str = service_data | default('') | string
-      %}\n{% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if data_str.startswith('{')
-      and data_str.endswith('}') %}\n    {{ data_str }}\n  {% else %}\n    {{ {} }}\n
-      \ {% endif %}\n{% else %}\n  {{ {} }}\n{% endif %}\n"
+    enable_power_controller:
+      name: Enable Power Controller
+      description: Monitor power consumption to confirm the device actually turned
+        on or off.
+      default: false
+      selector:
+        boolean: {}
+    power_sensor:
+      name: Power Sensor (Optional)
+      description: Explicit power sensor entity. If left blank, it will attempt auto-detection.
+      required: false
+      selector:
+        entity:
+          domain: sensor
+          device_class: power
+    power_threshold_off:
+      name: Power Threshold (Off Validation)
+      description: Power level (Watts) below which the device is considered fully
+        off.
+      default: 2
+      selector:
+        number:
+          min: 0.1
+          max: 100
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_threshold_on:
+      name: Power Threshold (On Validation)
+      description: Minimum power level (Watts) expected when the device is turned
+        on.
+      default: 5
+      selector:
+        number:
+          min: 0.1
+          max: 5000
+          step: 0.1
+          mode: box
+          unit_of_measurement: W
+    power_report_delay:
+      name: Power Report Delay
+      description: Time to wait (seconds) for the sensor to update its reading after
+        a state change.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
+    power_wait_timeout:
+      name: Power Wait Timeout
+      description: Additional time to wait (seconds) for power to clear the threshold
+        after the report delay.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 60
+          step: 1
+          mode: box
+          unit_of_measurement: seconds
   sequence:
-  - condition: template
+  - alias: Define Base Variables
+    variables:
+      effective_target_state: "{% if target_state == \"custom\" %}\n  {{ custom_target_state
+        | default('') }}\n{% else %}\n  {{ target_state }}\n{% endif %}"
+      effective_action_domain: "{% set d = action_domain | default('homeassistant')
+        %} {% if d == 'custom' %}\n  {{ custom_action_domain | default('') }}\n{%
+        else %}\n  {{ d }}\n{% endif %}"
+      effective_action_type: "{% set t = action_type | default('turn_on') %} {% if
+        t == 'custom' %}\n  {{ custom_action_type | default('') }}\n{% else %}\n  {{
+        t }}\n{% endif %}"
+      effective_service_data: "{% set data_str = service_data | default('') | string
+        %} {% if data_str and data_str != 'None' and data_str.strip() %}\n  {% if
+        data_str.startswith('{') and data_str.endswith('}') %}\n    {{ data_str }}\n
+        \ {% else %}\n    {{ {} }}\n  {% endif %}\n{% else %}\n  {{ {} }}\n{% endif
+        %}"
+      power_threshold_off_val: '{{ power_threshold_off | default(2.0) | float }}'
+      power_threshold_on_val: '{{ power_threshold_on | default(5.0) | float }}'
+      power_timeout_val: '{{ power_wait_timeout | default(10) | int }}'
+      power_report_delay_val: '{{ power_report_delay | default(0) | int }}'
+      effective_power_sensor: "{% if enable_power_controller | default(false) %}\n
+        \ {% if power_sensor is defined and power_sensor != none and power_sensor
+        | string | trim != '' %}\n    {{ power_sensor }}\n  {% else %}\n    {% set
+        dev_id = device_id(entity_id) %}\n    {% if dev_id %}\n      {% set entities
+        = device_entities(dev_id) %}\n      {% set ns = namespace(sensors=[]) %}\n
+        \     {% for e in entities %}\n        {% if e.startswith('sensor.') and state_attr(e,
+        'device_class') == 'power' %}\n          {% set ns.sensors = ns.sensors +
+        [e] %}\n        {% endif %}\n      {% endfor %}\n      {{ ns.sensors[0] if
+        ns.sensors | length == 1 else 'none' }}\n    {% else %}\n      none\n    {%
+        endif %}\n  {% endif %}\n{% else %}\n  none\n{% endif %}"
+      power_enabled: '{{ enable_power_controller | default(false) and effective_power_sensor
+        != ''none'' and effective_target_state in [''on'', ''off''] }}'
+      has_service_data: '{{ service_data is defined and service_data not in [none,
+        '''', {}] }}'
+  - alias: Validate entity exists
+    condition: template
     value_template: '{{ entity_id is defined and states(entity_id) is not none }}'
-    alias: Validate entity exists
+  - alias: Calculate Initial Step Variables
+    variables:
+      target_match: '{{ is_state(entity_id, effective_target_state) }}'
+      current_power: '{{ states(effective_power_sensor) | float(0) if power_enabled
+        else 0 }}'
+      power_invalid: "{{ power_enabled and target_match and (\n  (effective_target_state
+        == 'off' and current_power >= power_threshold_off_val) or\n  (effective_target_state
+        == 'on' and current_power < power_threshold_on_val)\n) }}"
+      power_ok: '{{ not power_enabled or not target_match or not power_invalid }}'
+  - alias: Skip if already in target state (power monitoring disabled)
+    condition: template
+    value_template: '{{ not target_match or power_enabled or has_service_data }}'
+  - alias: Skip if power signature is already valid
+    condition: template
+    value_template: '{{ not target_match or power_invalid or has_service_data }}'
   - alias: Skip if already in target state
     condition: template
-    value_template: '{{ (not is_state(entity_id, effective_target_state)) or (service_data
-      is defined) }}'
+    value_template: '{{ not target_match or not power_ok or has_service_data }}'
   - repeat:
       until:
       - condition: template
-        value_template: "{{ ((is_state(entity_id, effective_target_state) or service_data
-          is defined) or repeat.index >= max_retries | int(10)) or states(entity_id)
-          is in\n      ['unavailable','unknown'] }}\n"
+        value_template: "{% set p_ok = true %} {% if power_enabled and is_state(entity_id,
+          effective_target_state) %}\n  {% set cur = states(effective_power_sensor)
+          | float(0) %}\n  {% set p_ok = (effective_target_state == 'off' and cur
+          < power_threshold_off_val) or\n                (effective_target_state ==
+          'on' and cur >= power_threshold_on_val) %}\n{% endif %}  {{ (is_state(entity_id,
+          effective_target_state) and p_ok) or\n   has_service_data or \n   repeat.index
+          >= (max_retries | int(10)) or \n   states(entity_id) in ['unavailable','unknown']
+          }}"
       sequence:
       - choose:
         - conditions:
@@ -1899,325 +2182,307 @@ retry_action_with_backoff:
                 default:
                 - action: '{{ repeat.item.action }}'
         default:
-        - target:
+        - action: '{{ effective_action_domain }}.{{ effective_action_type }}'
+          target:
             entity_id: '{{ entity_id }}'
           data: '{{ effective_service_data }}'
-          action: '{{ (effective_action_domain | default(''homeassistant'')) }}.{{
-            effective_action_type }}
-
-            '
       - choose:
         - conditions:
           - condition: template
             value_template: '{{ not is_state(entity_id, effective_target_state) }}'
           sequence:
           - wait_template: '{{ is_state(entity_id, effective_target_state) }}'
-            timeout: "{% set bd = base_delay | default(5, true) | float() %} {% set
-              md = max_delay |default(60, true) | float() %} {% if backoff_type ==
-              'simple' %}\n  {{ [bd, md] | min }}\n{% elif backoff_type == 'linear'
-              %}\n  {{ [repeat.index * bd, md] | min }}\n{% elif backoff_type == 'exponential'
-              %}\n  {{ [2**(repeat.index-1) * bd, md] | min }}\n{% else %}\n  {{ [bd,
-              md] | min }}\n{% endif %}\n"
+            timeout: "{% set bd = base_delay | default(5, true) | float %}  {% set
+              md = max_delay | default(60, true) | float %} {% set idx = repeat.index
+              %} {% if backoff_type == 'linear' %}\n  {{ [idx * bd, md] | min }}\n{%
+              elif backoff_type == 'exponential' %}\n  {{ [2**(idx-1) * bd, md] |
+              min }}\n{% else %}\n  {{ [bd, md] | min }}\n{% endif %}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ power_enabled and is_state(entity_id, effective_target_state)
+              }}'
+          sequence:
+          - alias: Wait for power to hit the target threshold direction
+            wait_template: "{% set cur = states(effective_power_sensor) | float(0)
+              %} {{ (effective_target_state == 'off' and cur < power_threshold_off_val)
+              or\n   (effective_target_state == 'on' and cur >= power_threshold_on_val)
+              }}"
+            timeout: '{{ power_report_delay_val + power_timeout_val }}'
+            continue_on_timeout: true
+          - choose:
+            - conditions:
+              - condition: template
+                value_template: "{% set cur = states(effective_power_sensor) | float(0)
+                  %} {{ (effective_target_state == 'off' and cur >= power_threshold_off_val)
+                  or\n   (effective_target_state == 'on' and cur < power_threshold_on_val)
+                  }}"
+              sequence:
+              - alias: Power signature invalid - Run inverted cycle step to force
+                  retry
+                action: '{{ ''homeassistant.turn_on'' if effective_target_state ==
+                  ''off'' else ''homeassistant.turn_off'' }}'
+                target:
+                  entity_id: '{{ entity_id }}'
+              - alias: Short delay before next loop iteration
+                delay: 2
+  - alias: Calculate Notification Variables
+    variables:
+      final_state: '{{ states(entity_id) }}'
+      power_failed: "{% set cur = states(effective_power_sensor) | float(0) %} {{
+        power_enabled and final_state == effective_target_state and (\n     (effective_target_state
+        == 'off' and cur >= power_threshold_off_val) or\n     (effective_target_state
+        == 'on' and cur < power_threshold_on_val)\n   ) }}"
+      now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
+        '' '') | replace(''_'', '' '') }}'
+      params_line: action={{ effective_action_domain }}.{{ effective_action_type }},
+        target={{ effective_target_state }}, retries={{ max_retries | default(10)
+        }}, base={{ base_delay | default(5) }}s, max={{ max_delay | default(60) }}s,
+        backoff={{ backoff_type | default('simple') }}, {{ "custom_action=" + custom_action|string
+        if custom_action is defined and custom_action != none else "" }}
+      tag_value: retry_action_with_backoff__{{ entity_id | replace('.', '_') }}
   - choose:
     - conditions:
       - condition: template
-        value_template: "{{ states(entity_id) is in\n      ['unavailable','unknown']
-          }}"
+        value_template: '{{ final_state in [''unavailable'',''unknown''] }}'
       - condition: template
         value_template: '{{ notify_on_failure | default(true) }}'
       sequence:
-      - variables:
-          now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-          friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
-            '' '') | replace(''_'', '' '')}}'
-          params_line: "action={{ effective_action_domain }}.{{ effective_action_type
-            }}, target={{ effective_target_state }}, retries={{ max_retries }}, base={{
-            base_delay }}s, max={{ max_delay }}s, backoff={{ backoff_type }},\n {{
-            \"custom_action=\" + custom_action|string if custom_action is defined
-            and custom_action != none else \"\" }}"
-          tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_'))
-            }}
       - action: '{{ notify_service | default(''notify.duncan'') }}'
         data:
-          title: 'Entity: {{ friendly }} - {{states(entity_id)}}'
-          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
-            }}) | {{ params_line }}'
+          title: 'Entity: {{ friendly }} - {{ final_state }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ final_state }})
+            | {{ params_line }}'
           data:
             tag: '{{ tag_value }}'
     - conditions:
       - condition: template
         value_template: '{{ notify_on_failure | default(true) }}'
       - condition: template
-        value_template: '{{ not is_state(entity_id, effective_target_state) }}'
+        value_template: '{{ final_state != effective_target_state or power_failed
+          }}'
       sequence:
-      - variables:
-          now_str: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
-          friendly: '{{ state_attr(entity_id, ''friendly_name'') or entity_id | replace(''.'',
-            '' '') | replace(''_'', '' '')}}'
-          params_line: "action={{ effective_action_domain }}.{{ effective_action_type
-            }},  target={{ effective_target_state }}, retries={{ max_retries | default(10)
-            }},  base={{ base_delay | default(5) }}s, max={{ max_delay | default(60)
-            }}s,  backoff={{ backoff_type | default('simple') }},\n {{ \"custom_action=\"
-            + custom_action|string if custom_action is defined and custom_action !=
-            none else \"\" }}"
-          tag_value: retry_action_with_backoff__{{ (entity_id | replace('.', '_'))
-            }}
       - action: '{{ notify_service | default(''notify.duncan'') }}'
         data:
           title: 'Retry failed: {{ friendly }}'
-          message: '{{ now_str }} | entity={{ entity_id }} (state={{ states(entity_id)
-            }}) | {{ params_line }}'
+          message: '{{ now_str }} | entity={{ entity_id }} (state={{ final_state }})
+            | {{ params_line }}'
           data:
             tag: '{{ tag_value }}'
-  max: 256
-send_ir_remote_command:
-  alias: Send IR Remote Command
-  description: Sends an IR code based on a label and then clears the entity
-  icon: mdi:remote
+save_counts_and_notify_purge_status_and_self_correction:
+  alias: Save Counts and Notify Purge Status and Self Correction
+  description: Stores current DB row count, calculates purge threshold using a self-correcting  multiplier,
+    waits for drop, and notifies on status or multiplier changes.
   fields:
-    button_label:
-      name: Button Label
-      description: The name of the button to trigger (e.g., power, play_pause)
-      example: power
-      required: true
+    timeout_minutes:
+      description: How many minutes to wait for the purge to reduce DB rows
+      example: 60
+      default: 60
+    block_id:
+      description: Identifier for this purge block (e.g. "2d")
+      example: 2d
+      default: Unknown
+    count:
+      selector:
+        text: {}
+      name: Count
+  variables:
+    default_stats: '{"1d":{"e":0,"m":50,"k":[]},"2d":{"e":0,"m":150,"k":[]},"3d":{"e":0,"m":250,"k":[]},"7d":{"e":0,"m":100,"k":[]}}'
   sequence:
-  - variables:
-      code_map:
-        power: B+YjqhFoAg4C4BUDAXIG4B0DQEdAK0AH4AsDwBtAB+ADAw+jneYjzAhoAv//5iPMCGgC
-        play_pause: B8cjrBFrAjIC4AMDQAFAD0ABQAcDawJ2BuADAwAyoA/AB4AbADIgAUALADJgAYAH4AMPBXYGMgIyAoAHAXYGgAcBMgKABweMnccjuAhrAg==
-        previous: Bcwj3hFCAuAXAQGPBuAZA+AXAeATQwd4ncwj3AhCAg==
-        next: BbIjthE+AuAXAQGYBuAVA+AXAeAXPw+EnbIj/wg+Av//siP/CD4C
-        volume_mute: BuMjsRFoAhtgAUAH4AsDBBsCcQZo4BQDARsC4AUDQC/gAxNAD+ADA0Ab4AMPB5Sd4yO6CGgC
-        volume_up: B9MjqhFnAhcC4BUDAXIG4BkDQEPAJ0AL4AcDQBvAE0ALAnIGFyADQAcJZwK2ndMjtQhnAg==
-        volume_down: B9AjqBFsAicC4AcDQAHgARMBdAbAAwAnoAvgBQcAJyABAnQGbOAAAwEnAsADQAEJbAJ0BicCJwJsAsADAXQG4AUDB5ud0CPPCCcC
-        fm: Bf0jpxFCAuAXAQGPBuAZA8ABQCvgCwFAF0ADQAFAB+ADAw9+nf0j5ghCAv///SPmCEIC
-        cd: B/kjsRFmAjUC4AsDQAFAFwM1Ao0G4A8DAGZgG4ABAmYCNSABBY0GNQI1AkAL4AEDQBOAAwhmAjUCZgKNBjXgAgMRZgJTnfkjwwhmAv//+SPDCDUC
-        usb: Be0joxFHAuABAQJ2AkfgCgEBfAbgIQPgFwHgC0sPip3tI74IdgL//+0jvghHAg==
-        bluetooth: BdwjpxE/AuAXAQGYBuAVA0ABQCNAAcAH4AMBwBPgAwdAC8ADD4Wd3CPbCD8C///cI9sIPwI=
-        eject: BdojoBE/AuAXAQGYBuAVA0ABQCPAAeADC0ABwA9AB0ADQAFAB8ADD4yd2iPVCD8C///aI9UIPwI=
-        rollo_close: B9YB4gTiBHoBQAPAC0AH4AcDAeIE4A0X4BUnCKRn1gHiBOIEeiAFAXoBwAtAB+AHAwHiBOANF+ASJwIE1gE=
-        rollo_open: A9sB4gRAAwPiBHIB4AMHQAvgAwMB4gSAH+ADE+ALCwPiBHIBQANAGwPiBINkQAdAAwHiBMATgAdAE+ADAwHiBOANF+ADI0ALDeIEcgHiBHIB2wHiBOIE
-        rollo_stop: EdUEegFYAtUEMQV6AdwB1QTVBIAHQAvgAwMB1QTgDRfgAyPAC0BLgAMFdGTVBHoBQBcB1QTgBQdAE+ADAwExBYAf4AMT4A8LCdUEegHVBHoBMQU=
-        window_stop: CeEEcwHaAeEE4QSAB+AHC0APQAMB4QTgAR9AD+AXAwHhBEAvAb9ngAcD4QThBEAPAeEEQAMB4QTgAQtAD0ADAeEE4AkTQBfgDwMF4QRzAdoB
-        window_open: C30B3ATYAdwE3AR9AUAHQAMB3ATgAQtAD0ADAdwE4AkTQBfgBwMB3ATgAycFu2fYAdwEQAMB3ATgARcB3ATgAQtAG0ADAdwE4AkTQBfgBwMN3AR9AdgB3ATYAdwE2AE=
-        window_close: BX8B5ATkBEAFBX8B3AHkBEADAeQE4AELQA9AAwHkBOAJE0AX4AcDAuQEfyBFAX8BQBcD5ARTZIAHAX8BQANAC0ADAeQE4AELQA9AAwHkBOAJE0AX4AcDDeQEfwHkBH8B3AHkBOQE
-      selected_code: '{{ code_map.get(button_label) }}'
   - if:
     - condition: template
-      value_template: '{{ selected_code is not none }}'
+      value_template: '{{ is_number(states(''sensor.maria_db_rows'')) }}'
     then:
-    - action: text.set_value
-      target:
-        entity_id: text.white_ir_sender_ir_code_to_send
-      data:
-        value: '{{ selected_code }}'
-      continue_on_error: true
-    - delay:
-        milliseconds: 500
-    - action: text.set_value
-      target:
-        entity_id: text.white_ir_sender_ir_code_to_send
-      data:
-        value: ''
-      continue_on_error: true
+    - alias: Save current row count and parse JSON for threshold
+      variables:
+        current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
+        entity_count: '{{ count | int(0) }}'
+        stats: '{% set raw = states(''input_text.db_purge_bucket_stats'') %} {{ (raw
+          if raw | length > 5 and raw.startswith(''{'') else default_stats) | from_json
+          }}'
+        block_data: '{{ stats.get(block_id, {"m": 200, "k": []}) }}'
+        multiplier: '{{ block_data.m | default(200) | int }}'
+        calculated_offset: '{{ (([entity_count * multiplier, 1000] | max) * 0.85)
+          | int(0) }}'
+        threshold: '{{ current_count - calculated_offset }}'
     else:
-    - variables:
-        error_msg:
-          error: 'Unknown button label provided: {{ button_label }}'
-    - stop: 'Script halted: Unknown button label'
-      response_variable: error_msg
-  mode: queued
-  max: 10
-adjust_input_number:
-  alias: Adjust Input Number
-  description: Modify any numeric helper by a specific amount.
-  fields:
-    target_entity:
-      name: Target Entity
-      description: Select the input_number to modify.
-      required: true
-      selector:
-        entity:
-          domain: input_number
-    operation:
-      name: Operation
-      description: Add to or subtract from the current value.
-      default: add
-      selector:
-        select:
-          options:
-          - label: Add (+)
-            value: add
-          - label: Subtract (-)
-            value: subtract
-    amount:
-      name: Value
-      description: The amount to use for the adjustment.
-      required: true
-      selector:
-        number:
-          min: 0
-          max: 1000000
-          step: 0.01
-          mode: box
-  sequence:
-  - action: input_number.set_value
+    - stop: sensor.maria_db_rows is not numeric; aborting purge status tracking.
+  - alias: Save start row count for debugging
+    action: input_number.set_value
     target:
-      entity_id: '{{ target_entity }}'
+      entity_id: input_number.db_row_count_start
     data:
-      value: '{% set current = states(target_entity) | float(0) %} {% set val = amount
-        | float(0) %} {{ current + val if operation == ''add'' else current - val
-        }}
+      value: '{{ current_count }}'
+  - alias: Wait for purge to complete
+    wait_for_trigger:
+    - value_template: '{% set rows = states(''sensor.maria_db_rows'') %}
 
-        '
-notify_people_at_home_with_fallbacks:
-  alias: Notify People at Home (With Fallbacks)
-  description: Sends a notification to people home, with default values if fields
-    are missing.
+        {{ is_number(rows) and (rows | int(0)) < (threshold | int(0)) }}'
+      trigger: template
+    timeout:
+      minutes: '{{ timeout_minutes | int(60) }}'
+    continue_on_timeout: true
+  - alias: Notify if purge did complete or not
+    choose:
+    - alias: Notify on purge failure
+      conditions:
+      - condition: template
+        value_template: '{{ not wait.completed and ((states(''sensor.maria_db_rows'')
+          | int(0)) >= threshold) }}
+
+          '
+      sequence:
+      - alias: Send failure notification
+        action: notify.duncan
+        data:
+          title: ⚠️ DB Purge Failed — {{ block_id }}
+          message: '{% set removed_rows = current_count - states(''sensor.maria_db_rows'')
+            | int(0) %}  The DB purge for block ''{{ block_id }}'' likely failed.\n
+            • Entities targeted: {{ entity_count }}\n • Start: {{ current_count }}\n
+            • Target drop: {{ calculated_offset }} rows (Mult: {{ multiplier }})\n
+            • Threshold: {{ threshold }}\n • Final: {{ states(''sensor.maria_db_rows'')
+            | int(0) }}\n • {{''Added: +'' if removed_rows <= 0 else ''Removed: ''}}{{
+            removed_rows | abs }} rows\n • Timed out after {{ timeout_minutes }} minutes.\n\n
+            Consider checking your recorder and DB status manually.
+
+            '
+          data:
+            tag: db_purge_failure_{{ block_id }}
+      - action: counter.increment
+        target:
+          entity_id: counter.db_purge_failure
+      - alias: Decay Multiplier on Failure to Prevent Starvation
+        variables:
+          stats_fail: '{% set raw = states(''input_text.db_purge_bucket_stats'') %}
+            {{ (raw if raw | length > 5 and raw.startswith(''{'') else default_stats)
+            | from_json }}'
+          current_block_fail: '{{ stats_fail.get(block_id, {"m": multiplier, "k":
+            []}) }}'
+          old_m: '{{ current_block_fail.m | default(multiplier) | int }}'
+          decayed_m: '{{ [(old_m * 0.95) | int, 50] | max }}'
+          new_block_data_fail:
+            e: '{{ entity_count }}'
+            m: '{{ decayed_m }}'
+            k: '{{ current_block_fail.k | default([]) }}'
+          new_stats_fail: '{{ dict(stats_fail, **{block_id: new_block_data_fail})
+            }}'
+      - alias: Save Decayed JSON to Input Text
+        action: input_text.set_value
+        target:
+          entity_id: input_text.db_purge_bucket_stats
+        data:
+          value: '{{ new_stats_fail | to_json() }}'
+    - alias: Notify on purge success & Run Self-Correction
+      conditions:
+      - condition: template
+        value_template: '{{ wait.completed }}'
+      sequence:
+      - alias: Calculate Self-Correcting Loop Variables
+        variables:
+          final_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
+          removed_rows: '{{ [current_count - final_count, 0] | max }}'
+          removed_k: '{{ (removed_rows / 1000) | round(2) }}'
+          stats_latest: '{% set raw = states(''input_text.db_purge_bucket_stats'')
+            %} {{ (raw if raw | length > 5 and raw.startswith(''{'') else default_stats)
+            | from_json }}'
+          current_block: '{{ stats_latest.get(block_id, {"m": multiplier, "k": []})
+            }}'
+          old_multiplier: '{{ current_block.m | default(multiplier) | int }}'
+          history_k: '{{ current_block.k | default([]) }}'
+          new_history_k: '{% set hist = history_k + [removed_k] %} {{ hist[-5:] }}
+
+            '
+          median_removed_k: '{{ new_history_k | median if new_history_k | length >
+            0 else 0 }}'
+          new_multiplier: '{{ [((median_removed_k * 1000) / entity_count) | int, 1000]
+            | min if entity_count > 0 and median_removed_k > 0 else old_multiplier
+            }}'
+          new_block_data:
+            e: '{{ entity_count }}'
+            m: '{{ new_multiplier }}'
+            k: '{{ new_history_k }}'
+          new_stats: '{{ dict(stats_latest, **{block_id: new_block_data}) }}'
+      - alias: Save Updated JSON to Input Text
+        action: input_text.set_value
+        target:
+          entity_id: input_text.db_purge_bucket_stats
+        data:
+          value: '{{ new_stats | to_json() }}'
+      - alias: Check if Multiplier Changed
+        if:
+        - condition: template
+          value_template: '{% set diff = (new_multiplier - old_multiplier) | abs %}
+            {{ diff > (old_multiplier * 0.10) and diff > 15 }}'
+        then:
+        - alias: Notify of Multiplier Change
+          action: notify.duncan
+          data:
+            title: "\U0001F504 DB Purge Multiplier Updated — {{ block_id }}"
+            message: 'The self-correcting loop adapted the multiplier for ''{{ block_id
+              }}''.\n • Old Multiplier: {{ old_multiplier }}\n • New Multiplier: {{
+              new_multiplier }}\n • Recent Removes (k): {{ new_history_k | join('',
+              '') }}\n • Current Entities: {{ entity_count }}
+
+              '
+            data:
+              tag: db_purge_multiplier_{{ block_id }}
+      - action: counter.increment
+        target:
+          entity_id: counter.db_purge_success
+      - if:
+        - condition: state
+          entity_id: input_boolean.automation_enable_purge_success_notification
+          state: 'on'
+        then:
+        - alias: Send success notification
+          action: notify.duncan
+          data:
+            title: ✅ DB Purge Succeeded — {{ block_id }}
+            message: 'The DB purge for block ''{{ block_id }}'' completed successfully.\n
+              • Entities targeted: {{ entity_count }}\n • Start: {{ current_count
+              }}\n • Final: {{ final_count }}\n • Removed: {{ removed_rows }} rows
+              (Mult: {{ new_multiplier }})\n • Finished in under {{ timeout_minutes
+              }} minutes.
+
+              '
+            data:
+              tag: db_purge_sucess_{{ block_id }}
+  mode: parallel
+  max: 10
+ha_start_settle_delay:
+  alias: HA Start Settle Delay
+  description: Waits for a specified duration if the automation trigger matches the
+    target ID.
+  mode: parallel
   fields:
-    message:
-      description: The main body of the notification
-      example: The garage is open
+    actual_trigger_id:
+      name: Actual Trigger ID
+      description: The trigger ID from the calling automation (pass {{ trigger.id
+        }}).
       required: true
-    title:
-      description: '''Fallback: ''Home Assistant'''
-      example: Security
-    tag:
-      description: 'Fallback: ''general_notification'''
-      example: garage_status
-    color:
-      description: Optional notification color (e.g. red)
-    notification_icon:
-      description: Optional notification icon (e.g. mdi:alert)
-    channel:
-      description: Notification Channel
+      example: ha_start
+      default: '{{ trigger.id }}'
+      selector:
+        text: {}
+    target_trigger_id:
+      name: Target Trigger ID
+      description: The trigger ID that requires waiting.
+      default: ha_start
+      selector:
+        text: {}
+    delay_duration:
+      selector:
+        duration: {}
+      default:
+        hours: 0
+        minutes: 0
+        seconds: 30
   sequence:
-  - variables:
-      final_title: "{{ title if title is defined and title | trim | length > 0\n   else
-        'Home Assistant' }}"
-      final_tag: "{{ tag if tag is defined and tag | trim | length > 0\n   else 'general_notification'
-        }}"
-      notify_data: "{% set base_data = dict(tag=final_tag) %} {% if color is defined
-        and color %}\n  {% set base_data = base_data | combine(dict(color=color))
-        %}\n{% endif %}  {% if notification_icon is defined and notification_icon
-        %}\n  {% set base_data = base_data | combine(dict(notification_icon=notification_icon))
-        %}\n{% endif %}  {% if channel is defined and channel %}\n  {% set base_data
-        = base_data | combine(dict(channel=channel)) %}\n{% endif %} {{ dict(message=message,
-        title=final_title, data=base_data) }}"
   - if:
     - condition: template
-      value_template: '{{ message == ''clear_notification'' }}'
+      value_template: '{{ actual_trigger_id == target_trigger_id }}'
     then:
-    - action: notify.familie
-      data:
-        message: '{{ message }}'
-        data:
-          tag: '{{ final_tag }}'
-    else:
-    - if:
-      - condition: state
-        entity_id: binary_sensor.anyone_home
-        state:
-        - 'on'
-      then:
-      - repeat:
-          for_each:
-          - person: person.stephan
-            service: mobile_app_stephan_iphone
-          - person: person.katalin
-            service: mobile_app_fp4
-          - person: person.enya
-            service: mobile_app_iphone_von_enya
-          - person: person.duncan
-            service: duncan
-          sequence:
-          - if:
-            - condition: template
-              value_template: '{{ is_state(repeat.item.person, ''home'') }}'
-            then:
-            - action: notify.{{ repeat.item.service }}
-              continue_on_error: true
-              data: '{{ notify_data }}'
-      else:
-      - action: notify.familie
-        metadata: {}
-        data: '{{ notify_data }}'
-  mode: parallel
-  max: 50
-shawn_weekly_edge_cut:
-  alias: 'Shawn: Weekly Edge Cut'
-  description: "\U0001F4CB Intelligent Mowing Maintenance Control\n---\n#### **High-Level
-    Intent**\nThis script orchestrates a specialized dual-pass edge cutting routine
-    for the robotic mower, \"Shawn.\" It ensures that the perimeter is maintained
-    with high precision by running the edge-specific program twice in a controlled
-    loop.\n\n#### **Operational Strategy**\nThe routine utilizes a state-aware deployment
-    strategy. Rather than relying on simple timers, it monitors the mower's real-time
-    status to confirm successful deployment and docking before proceeding to the next
-    phase of the cycle.\n\n#### **Reliability Mechanisms**\nTo prevent the automation
-    from hanging indefinitely due to hardware or connectivity issues, every transitional
-    phase is protected by strict **timeout** constraints (ranging from 5 to 15 minutes).
-    The system provides mobile notifications at the start and conclusion of the process
-    for remote monitoring.\n\n---\n\n### Sequence & Logic Overview\n\n| Type | Entity
-    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Action | **button.shawn_kanten_mahen**
-    | Start Command | Triggers the specific edge-cutting hardware routine. |\n| Wait
-    | **sensor.shawn_rasenmaher_status** | Exit Dock | Confirms mower has transitioned
-    out of **standby** or **charging**. |\n| Wait | **sensor.shawn_rasenmaher_status**
-    | Active Work | Monitors for **mowing** or **on_the_way_home** to verify movement.
-    |\n| Action | **button.shawn_zum_dock_fahren** | Return Home | Commands the mower
-    to return to the charging station. |\n| Wait | **sensor.shawn_rasenmaher_status**
-    | Dock Confirmation | Ensures the mower is **charging** before initiating the
-    second pass. |\n\n---\n\n#### Edge Cutting Routine (2x Loop)\n- **Purpose**\n
-    \ To execute two consecutive edge-trimming passes to ensure complete coverage
-    and a clean finish.\n- **Logic Overview**\n  The system triggers the edge cut
-    and enters a \"watchdog\" mode. It first waits for the mower to physically leave
-    the base (not **standby**/**charging**). Once the mower is confirmed to be in
-    an active state (**mowing** or **on_the_way_home**), the system instructs it to
-    return to the dock to reset for the next pass.\n- **Effect**\n  Cycles the **button.shawn_kanten_mahen**
-    and **button.shawn_zum_dock_fahren** entities; updates user via **notify.duncan**.\n\n---\n\n###
-    Technical Overview\n- **Sceipt Mode**: Single (Default)\n- **Execution Method**:
-    Scripted sequence with a **repeat** loop (Count: 2)\n- **Key Inputs**: **sensor.shawn_rasenmaher_status**\n-
-    **Controlled Entities**: **button.shawn_kanten_mahen**, **button.shawn_zum_dock_fahren**,
-    **notify.duncan**\n- **Safety Mechanisms**: \n    - **5-minute timeout** for initial
-    dock exit.\n    - **15-minute timeout** for work completion and return-to-dock
-    transitions.\n\n---\n\n### \U0001F4A1 Notes\n- **State Transition Logic**: The
-    script uses a clever \"not in standby/charging\" wait template. This ensures that
-    the mower has actually acknowledged the command and begun movement before the
-    logic proceeds to look for active working states.\n- **Fail-Safe**: If the mower
-    becomes stuck or fails to reach the next state within 15 minutes, the sequence
-    will terminate, preventing the script from running in the background indefinitely.\n-
-    **Notification**: The use of **notify.duncan** provides a clear audit trail of
-    when the routine started and whether it reached the final completion stage."
-  sequence:
-  - action: notify.duncan
-    data:
-      title: '✂️ Shawn: Weekly Edge Cut'
-      message: Starting dual edge cut routine.
-  - repeat:
-      count: 2
-      sequence:
-      - action: button.press
-        target:
-          entity_id: button.shawn_kanten_mahen
-      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') not in [''standby'',
-          ''charging'',''unavailable'',''unknown''] }}'
-        timeout: 00:05:00
-        continue_on_timeout: false
-      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing_border'']
-          }}'
-        timeout: 00:15:00
-        continue_on_timeout: false
-      - wait_template: '{{ states(''sensor.shawn_rasenmaher_status'') in [''mowing'',
-          ''on_the_way_home''] }}'
-        timeout: 00:15:00
-        continue_on_timeout: false
-      - action: button.press
-        target:
-          entity_id: button.shawn_zum_dock_fahren
-      - wait_template: '{{ is_state(''sensor.shawn_rasenmaher_status'', ''charging'')
-          }}'
-        timeout: 00:15:00
-        continue_on_timeout: false
-  - action: notify.duncan
-    data:
-      title: '✅ Shawn: Task Complete'
-      message: Dual edge cut routine finished successfully.
+    - delay: '{{ delay_duration }}'
+    - delay:
+        milliseconds: '{{ range(500, 2501) | random }}'

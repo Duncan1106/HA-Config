@@ -17,6 +17,46 @@ config:
         vertical: true
       - card:
           cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.mesh_69f2_cpu_usage
+            layout: horizontal
+            max_value: 100
+            name: WR3000 CPU
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.mesh_69f2_ram_usage
+            layout: horizontal
+            max_value: 100
+            name: WR3000 RAM
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.mesh_24eb_cpu_usage
+            layout: horizontal
+            max_value: 100
+            name: LT700 CPU
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.mesh_24eb_ram_usage
+            layout: horizontal
+            max_value: 100
+            name: LT700 RAM
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
           - cards:
             - align_header: center
               align_state: center
@@ -310,6 +350,7 @@ config:
                   \  {% endfor %}\n{% endif %}\n"
                 title: "\U0001F9DF Zombie Entities"
                 type: markdown
+              overlay-margin: 20px
               title: Expander Card
               title-card:
                 entity: sensor.system_ha_global_health_score
@@ -322,7 +363,7 @@ config:
                 type: gauge
                 unit: ' '
               title-card-button-overlay: true
-              title-card-clickable: true
+              title-card-clickable: false
               type: custom:expander-card
             type: vertical-stack
           type: vertical-stack
@@ -438,6 +479,64 @@ config:
               fill: false
               graph: line
             type: custom:mini-graph-card
+          - cards:
+            - entities:
+              - attribute: db_size_mb
+                entity: sensor.mariadb_info
+                icon: mdi:database
+                name: Database Size
+                type: attribute
+                unit_of_measurement: MB
+              - attribute: table_count
+                entity: sensor.mariadb_info
+                icon: mdi:table
+                name: Number of Tables
+                type: attribute
+                unit_of_measurement: tables
+              - attribute: states_records
+                entity: sensor.mariadb_info
+                icon: mdi:counter
+                name: Total Records
+                type: attribute
+                unit_of_measurement: records
+              title: Database Statistics
+              type: entities
+            - entities:
+              - entity: sensor.mariadb_info
+                icon: mdi:database
+                name: Server Status
+              - attribute: version
+                entity: sensor.mariadb_info
+                icon: mdi:database-check
+                name: Version
+                type: attribute
+              - attribute: queries_per_sec
+                entity: sensor.mariadb_info
+                icon: mdi:chart-line
+                name: Performance
+                type: attribute
+                unit_of_measurement: q/s
+              - attribute: uptime_seconds
+                entity: sensor.mariadb_info
+                icon: mdi:timer-outline
+                name: Uptime
+                type: attribute
+                unit_of_measurement: seconds
+              - attribute: connections
+                entity: sensor.mariadb_info
+                icon: mdi:connection
+                name: Active Connections
+                type: attribute
+                unit_of_measurement: connections
+              - attribute: total_queries
+                entity: sensor.mariadb_info
+                icon: mdi:database-search
+                name: Total Queries
+                type: attribute
+                unit_of_measurement: queries
+              title: MariaDB Status
+              type: entities
+            type: vertical-stack
           type: vertical-stack
         conditions:
         - entity: input_boolean.show_mariadb_graphs
@@ -457,6 +556,26 @@ config:
         vertical: true
       - card:
           cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.emqx_cpu_prozent
+            layout: horizontal
+            max_value: 100
+            name: CPU %
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.emqx_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name: RAM
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
           - cards:
             - entity: sensor.mqtt_stats_bytes_received
               fill_container: true
@@ -508,42 +627,10 @@ config:
           state: 'on'
         type: conditional
       type: vertical-stack
-    - color: blue
-      entity: sensor.tibber_node_battery_voltage
-      features_position: bottom
-      icon: mdi:pulse
-      multiline_secondary: false
-      primary: 'Tibber Pulse Uptime: {{ state_attr(entity,''uptime_human'') }}'
-      secondary: '{{ states(entity, with_unit=True) }}'
-      tap_action:
-        action: more-info
-      type: custom:mushroom-template-card
-      vertical: true
-    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
-        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
-        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
-        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
-        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
-        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
-        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
-        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
-        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
-        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
-        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
-        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
-        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
-        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
-        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
-        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
-        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
-        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
-        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
-        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
-        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
-        \ -%}\n{%- endfor -%}\n</details>"
-      type: markdown
-    - entity: todo.to_do_duncan
+    - display_order: none
+      entity: todo.anylist_to_do_duncan
       hide_completed: true
+      hide_section_headers: true
       type: todo-list
     - cards:
       - entities:
@@ -571,7 +658,6 @@ config:
       - condition: state
         entity: binary_sensor.home_assistant_beta_release_notes_window
         state: 'on'
-    - type: custom:custom-component-monitor-card
     icon: mdi:home-analytics
     title: Analytics
     type: masonry
@@ -756,7 +842,7 @@ config:
     type: sections
   - badges: []
     cards:
-    - entity: input_select.smart_home_status
+    - entity: select.smart_home_status_control
       fill_container: true
       layout: horizontal
       type: custom:mushroom-select-card
@@ -1379,6 +1465,19 @@ config:
           type: custom:auto-entities
         type: vertical-stack
       type: grid
+    - cards:
+      - heading: Throttle
+        heading_style: title
+        icon: mdi:database-clock
+        type: heading
+      - grid_options:
+          columns: full
+        hours: 2
+        limit: 15
+        title: ' '
+        type: custom:recorder-throttle-card
+      column_span: 2
+      type: grid
     title: DB Purge
     type: sections
   - cards: []
@@ -1416,4 +1515,55 @@ config:
         type: markdown
       type: grid
     title: Documentation Help
+    type: sections
+  - cards:
+    - content: "{%- set x = ['unavailable','unknown'] -%}\n{%- set ignore_int = ['Planta']\
+        \ -%}\n\n{# Calculate totals for the top header #}\n{%- set totals = namespace(entities=0,\
+        \ devices=[]) -%}\n{%- for i in states if i.state not in x -%}\n  {%- set\
+        \ c_id = config_entry_id(i.entity_id) -%}\n  {%- set c_title = config_entry_attr(c_id,\
+        \ 'title') if c_id else none -%}\n  \n  {%- if c_title not in ignore_int -%}\n\
+        \    {%- set totals.entities = totals.entities + 1 -%}\n    {%- set d_id =\
+        \ device_id(i.entity_id) -%}\n    {%- if d_id -%}\n      {%- set totals.devices\
+        \ = totals.devices + [d_id] -%}\n    {%- endif -%}\n  {%- endif -%}\n{%- endfor\
+        \ -%}\n\n{%- set total_devices = totals.devices | unique | list | count -%}\n\
+        \n{%- for d in states | groupby('domain') -%}\n  {%- if loop.first -%} \n\
+        \    <details>\n      <summary>\n        <b>Domains: {{loop.length}} ({{ total_devices\
+        \ }} Devices / {{ totals.entities }} Entities)</b>\n      </summary>\n  {%-\
+        \ endif -%}\n   \n   {%- set items = namespace(visible=[]) -%}\n   {%- for\
+        \ i in d[1] if i.state not in x -%}\n     {%- set c_id = config_entry_id(i.entity_id)\
+        \ -%}\n     {%- set c_title = config_entry_attr(c_id, 'title') if c_id else\
+        \ none -%}\n     {%- if c_title not in ignore_int -%}\n       {%- set items.visible\
+        \ = items.visible + [i] -%}\n     {%- endif -%}\n   {%- endfor -%}\n\n   {%-\
+        \ set entity_count = items.visible | count -%}\n\n   {%- if entity_count >\
+        \ 0 -%}\n   <details>\n    <summary>{{ d[0] | title }}: <b>{{ entity_count\
+        \ }}</b></summary>\n    {%- for i in items.visible -%}\n      {{- i.name -}}:\
+        \ <b>{{- i.state -}}</b><br>\n    {%- endfor -%}\n   </details>\n   {%- endif\
+        \ -%}\n{%- endfor -%}\n</details>"
+      type: markdown
+    max_columns: 4
+    path: test
+    sections:
+    - cards:
+      - content: "{%- set x = ['unavailable', 'unknown'] -%}\n{%- set ignore_int =\
+          \ ['Planta'] -%}\n\n{# Single-pass filtering & counting #}\n{%- set ns =\
+          \ namespace(entities=[], devices=[]) -%}\n{%- for i in states if i.state\
+          \ not in x -%}\n  {%- set c_id = config_entry_id(i.entity_id) -%}\n  {%-\
+          \ set c_title = config_entry_attr(c_id, 'title') if c_id else none -%}\n\
+          \  {%- if c_title not in ignore_int -%}\n    {%- set ns.entities = ns.entities\
+          \ + [i] -%}\n    {%- set d_id = device_id(i.entity_id) -%}\n    {%- if d_id\
+          \ -%}\n      {%- set ns.devices = ns.devices + [d_id] -%}\n    {%- endif\
+          \ -%}\n  {%- endif -%}\n{%- endfor -%}\n\n{%- set total_entities = ns.entities\
+          \ | count -%}\n{%- set total_devices = ns.devices | unique | list | count\
+          \ -%}\n{%- set domains = ns.entities | groupby('domain') -%}\n\n<details>\n\
+          <summary>\n  <b>Domains: {{ domains | count }} ({{ total_devices }} Devices\
+          \ / {{ total_entities }} Entities)</b>\n</summary>\n\n{%- for d in domains\
+          \ -%}\n  {%- set domain_name = d[0] -%}\n  {%- set items = d[1] -%}\n  <details>\n\
+          \    <summary>{{ domain_name | title }}: <b>{{ items | count }}</b></summary>\n\
+          \    {%- for i in items -%}\n      {{ i.name }}: <b>{{ i.state }}</b><br>\n\
+          \    {%- endfor -%}\n  </details>\n{%- endfor -%}\n</details>"
+        type: markdown
+      - type: custom:ha-trace-viewer
+      type: grid
+    subview: true
+    title: Test
     type: sections

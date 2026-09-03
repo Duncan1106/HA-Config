@@ -18,15 +18,32 @@ blueprint:
       default: true
       selector:
         boolean: {}
+    exclude_devices_enabled:
+      name: Enable Exclude Devices Filter
+      description: Do not trigger for specific devices when enabled.
+      default: true
+      selector:
+        boolean: {}
     excluded_devices:
       name: Devices to exclude (Optional)
-      description: Devices that you do not want to trigger this automation.
+      description: When enabled above, these devices will not trigger this automation.
       default:
       selector:
         device:
           multiple: true
-          entity:
-          - integration: battery_notes
+    include_devices_enabled:
+      name: Enable Include Devices Filter
+      description: Only trigger for specific devices when enabled.
+      default: false
+      selector:
+        boolean: {}
+    include_devices:
+      name: Devices to include (Optional)
+      description: When enabled above, only these devices will trigger this automation.
+      default:
+      selector:
+        device:
+          multiple: true
     additional_conditions:
       name: Additional conditions
       description: 'Extra conditions you may want to add to this automation
@@ -53,7 +70,10 @@ blueprint:
 variables:
   low_notification: !input low_notification
   high_notification: !input high_notification
+  exclude_devices_enabled: !input exclude_devices_enabled
   excluded_devices: !input excluded_devices
+  include_devices_enabled: !input include_devices_enabled
+  include_devices: !input include_devices
 triggers:
 - trigger: event
   event_type: battery_notes_battery_threshold
@@ -69,7 +89,13 @@ triggers:
   alias: Battery went high
 conditions:
 - condition: template
-  value_template: '{{ trigger.event.data.device_id not in excluded_devices}}'
+  value_template: '{{ not exclude_devices_enabled or (excluded_devices == none or
+    excluded_devices | length == 0 or trigger.event.data.device_id not in excluded_devices)
+    }}'
+- condition: template
+  value_template: '{{ not include_devices_enabled or (include_devices != none and
+    include_devices | length > 0 and trigger.event.data.device_id in include_devices)
+    }}'
 - alias: User pick
   condition: !input additional_conditions
 actions:

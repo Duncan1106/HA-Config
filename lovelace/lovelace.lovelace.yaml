@@ -86,87 +86,25 @@ config:
           - above: 0
             condition: numeric_state
             entity: sensor.stadt_rauenberg_vorwarnstufe
-      - cards:
-        - card:
-            double_tap_action:
-              action: navigate
-              navigation_path: /lovelace/smart
-            entity: person.duncan
-            fill_container: true
-            layout: vertical
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/maps
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: or
-            conditions:
-            - condition: user
-              users:
-              - e7fe7b076dbb49a3aaa82b75c63cc302
-              - 4f7767cac0c342edb25e991662a2f56c
-            - condition: state
-              entity: person.duncan
-              state_not: home
-          type: conditional
-        - card:
-            entity: person.enya
-            fill_container: true
-            layout: vertical
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/maps
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: or
-            conditions:
-            - condition: user
-              users:
-              - 944daa47da8b4cf5bd9aab91ab7458e6
-              - e7fe7b076dbb49a3aaa82b75c63cc302
-            - condition: state
-              entity: person.enya
-              state_not: home
-          type: conditional
-        - card:
-            entity: person.stephan
-            fill_container: true
-            layout: vertical
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/maps
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: or
-            conditions:
-            - condition: user
-              users:
-              - 690f4c6bedc44a9daad30c216f237d1d
-              - e7fe7b076dbb49a3aaa82b75c63cc302
-            - condition: state
-              entity: person.stephan
-              state_not: home
-          type: conditional
-        - card:
-            entity: person.katalin
-            fill_container: true
-            layout: vertical
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/maps
-            type: custom:mushroom-entity-card
-          conditions:
-          - condition: or
-            conditions:
-            - condition: user
-              users:
-              - 336b62364b064bd6996f5f9e67feb7b9
-              - e7fe7b076dbb49a3aaa82b75c63cc302
-            - condition: state
-              entity: person.katalin
-              state_not: home
-          type: conditional
-        type: horizontal-stack
+      - card:
+          type: horizontal-stack
+        card_param: cards
+        filter:
+          template: "{% set cards = namespace(list=[]) %}\n{% for p in states.person\
+            \ %}\n  {% set user_id = state_attr(p.entity_id, 'user_id') %}\n  {% set\
+            \ vis_conditions = [{'condition': 'state', 'entity': p.entity_id, 'state_not':\
+            \ 'home'}] %}\n  {% if user_id %}\n    {% set vis_conditions = vis_conditions\
+            \ + [{'condition': 'user', 'users': [user_id]}] %}\n  {% endif %}\n  \n\
+            \  {% set card = {\n    'type': 'custom:mushroom-entity-card',\n    'entity':\
+            \ p.entity_id,\n    'fill_container': true,\n    'layout': 'vertical',\n\
+            \    'tap_action': {\n      'action': 'navigate',\n      'navigation_path':\
+            \ '/lovelace/maps'\n    },\n    'visibility': [\n      {\n        'condition':\
+            \ 'or',\n        'conditions': vis_conditions\n      }\n    ]\n  } %}\n\
+            \  \n  {% if p.entity_id == 'person.duncan' %}\n    {% set card = dict(card,\
+            \ double_tap_action={'action': 'navigate', 'navigation_path': '/lovelace/smart'})\
+            \ %}\n  {% endif %}\n  \n  {% set cards.list = cards.list + [card] %}\n\
+            {% endfor %}\n{{ cards.list }}\n    \n"
+        type: custom:auto-entities
       - cards:
         - alignment_style: center
           card_style: chip
@@ -423,6 +361,7 @@ config:
                 value: 50
               - color: '#ff0050'
                 value: 20
+              decimals: 0
               entities:
               - entity: sensor.bkw_outlet_1_energy_power
               font_size: 60
@@ -775,34 +714,48 @@ config:
             navigation_path: /lovelace/dreame
           type: heading
         - cards:
-          - entity: vacuum.d9_max_gen_2
-            fill_container: true
-            layout: vertical
-            name: Dreame D9 Max Gen 2
-            primary_info: name
-            secondary_info: state
-            tap_action:
-              action: navigate
-              navigation_path: /lovelace/dreame
-            type: custom:mushroom-vacuum-card
           - entity: vacuum.dreamebot_d10_plus
-            fill_container: true
-            layout: vertical
-            name: Dreame D10 Plus
-            primary_info: name
-            secondary_info: state
+            features:
+            - commands:
+              - start_pause
+              - return_home
+              type: vacuum-commands
+            features_position: bottom
+            icon_tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/990e7401f4719a68ee0021ca37067f72
             tap_action:
               action: navigate
               navigation_path: /lovelace/dreame
-            type: custom:mushroom-vacuum-card
+            type: tile
+            vertical: true
+          - entity: vacuum.d9_max_gen_2
+            features:
+            - commands:
+              - start_pause
+              - return_home
+              type: vacuum-commands
+            features_position: bottom
+            icon_tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/2a504e345eda14cbe58039ef062f08b5
+            tap_action:
+              action: navigate
+              navigation_path: /lovelace/dreame
+            type: tile
+            vertical: true
           - entity: lawn_mower.shawn
-            layout: vertical
-            primary_info: name
-            secondary_info: state
+            features:
+            - type: lawn-mower-commands
+            features_position: bottom
+            icon_tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/e3a68c8fa635c886760ec8d6bd8039d5
             tap_action:
               action: navigate
               navigation_path: /lovelace/dreame
-            type: custom:mushroom-entity-card
+            type: tile
+            vertical: true
           type: horizontal-stack
         type: vertical-stack
       - cards:
@@ -855,7 +808,7 @@ config:
               state: unavailable
             - condition: user
               users:
-              - 690f4c6bedc44a9daad30c216f237d1d
+              - cce849c37010486fb13ef5e85c1b9e3f
           type: conditional
         - card:
             cards:
@@ -890,7 +843,7 @@ config:
             conditions:
             - condition: user
               users:
-              - 690f4c6bedc44a9daad30c216f237d1d
+              - cce849c37010486fb13ef5e85c1b9e3f
             - condition: state
               entity: binary_sensor.waschkuche_fenster_contact
               state_not: 'off'
@@ -899,7 +852,7 @@ config:
         visibility:
         - condition: user
           users:
-          - 690f4c6bedc44a9daad30c216f237d1d
+          - cce849c37010486fb13ef5e85c1b9e3f
           - e7fe7b076dbb49a3aaa82b75c63cc302
           - 4f7767cac0c342edb25e991662a2f56c
           - a83d0514cb88427e9f46c2eaacd1817b
@@ -932,24 +885,18 @@ config:
           heading: Boiler
           heading_style: title
           type: heading
-        - card:
-            entity: schedule.boiler_pumpe
-            icon: ''
-            layout: vertical
-            primary: '{{ "ON" if is_state(''schedule.boiler_pumpe'',''off'') else
-              "OFF" }} in {{ time_until(state_attr(''schedule.boiler_pumpe'', ''next_event''),
-              2) }}'
-            secondary: ''
-            tap_action:
-              action: more-info
-            type: custom:mushroom-template-card
-          conditions:
-          - condition: user
-            users:
-            - 4f7767cac0c342edb25e991662a2f56c
-            - e7fe7b076dbb49a3aaa82b75c63cc302
-            - 690f4c6bedc44a9daad30c216f237d1d
-          type: conditional
+        - entity: schedule.boiler_pumpe
+          features_position: bottom
+          icon: ''
+          multiline_secondary: false
+          primary: '{{ "Auto ON" if is_state(''schedule.boiler_pumpe'',''off'') else
+            "Auto OFF" }} in {{ time_until(state_attr(''schedule.boiler_pumpe'', ''next_event''),
+            2) }}'
+          secondary: ''
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+          vertical: true
         - bar_size: large
           custom_info: "{% set temp_raw = states('sensor.boiler_temperature') %} {%\
             \ if temp_raw not in ['unknown', 'unavailable', 'none', ''] %}\n  {% set\
@@ -971,8 +918,6 @@ config:
           entity: timer.boiler_on_demand
           force_circular_background: true
           hold_action:
-            action: none
-          icon_double_tap_action:
             action: none
           icon_hold_action:
             action: none
@@ -1020,13 +965,14 @@ config:
             type: custom:entity-progress-card
           keep:
             outer_padding: true
-          type: custom:stack-in-card
+          type: vertical-stack
         conditions:
         - condition: state
           entity: sensor.ups0_status
           state_not: Online
         - condition: user
           users:
+          - 4f7767cac0c342edb25e991662a2f56c
           - 4f7767cac0c342edb25e991662a2f56c
         type: conditional
       type: grid
@@ -1164,7 +1110,7 @@ config:
             include:
             - entity_id: sensor.pollenflug_*
               options:
-                bar_color: "{% set pollen_level = states('this.entity_id') | float\
+                bar_color: "{% set pollen_level = states('this.entity_id') | float(0)\
                   \ %}\n{% if pollen_level <= 0.5 %}\n  green\n{% elif pollen_level\
                   \ <= 1.5 %}\n  lime\n{% elif pollen_level <= 2.5 %}\n  orange\n\
                   {% else %}\n  red\n{% endif %}"
@@ -1218,7 +1164,7 @@ config:
         days_to_show: 7
         entities:
         - color: '#ff6c92'
-          entity: calendar.looping
+          entity: calendar.familie
           show_time: true
           split_multiday_events: true
         - color: '#86ebda'
@@ -1227,7 +1173,6 @@ config:
           show_location: false
           show_time: false
           split_multiday_events: false
-        - entity: calendar.google_family
         filter_duplicates: true
         first_day_of_week: monday
         show_past_events: true
@@ -1256,40 +1201,6 @@ config:
             show_conditions: true
             show_temp: true
           position: both
-      - delete_instead_of_complete: true
-        disable_debounce: true
-        filter_entity: input_text.search_todo_list
-        filter_items_entity: sensor.kellervorrate_combined_filtered_items
-        filter_key_buttons:
-        - filter_key: kellervorrate
-          icon: mdi:warehouse
-          name: "Kellervorr\xE4te"
-        - filter_key: safe
-          icon: mdi:safe
-          name: Kellervorrat (Safe)
-        - filter_key: katzen
-          icon: mdi:cat
-          name: Katzenfutter
-        - filter_key: marmelade
-          icon: mdi:fruit-cherries
-          name: Marmelade & Eingemachtes
-        - filter_key: kuhltruhe_k
-          icon: mdi:fridge
-          name: "K\xFChltruhe (Keller)"
-        - filter_key: kuhltruhe_g
-          icon: mdi:garage
-          name: "K\xFChltruhe (Garage)"
-        hash_entity: sensor.kellervorrate_combined_filtered_items_hash
-        hide_add_button: false
-        highlight_matches: true
-        max_items_with_filter: 25
-        max_items_without_filter: 5
-        shopping_list_entity: todo.einkaufsliste
-        show_more_buttons: 10,15,20,25
-        show_origin: true
-        title: "Kellervorr\xE4te"
-        type: custom:item-list-card
-        update_button_entity: input_button.update_kellervorrate
       type: grid
     title: Overview
     top_margin: false
@@ -1298,7 +1209,7 @@ config:
     - user: 2950af301cff4dbfa321eb69a51307b0
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
     - user: 336b62364b064bd6996f5f9e67feb7b9
   - badges:
@@ -1328,7 +1239,8 @@ config:
     path: energie
     sections:
     - cards:
-      - clickable_entities: true
+      - base_decimals: 1
+        clickable_entities: true
         dashboard_link: /energy
         dashboard_link_label: Energy
         disable_dots: false
@@ -1462,15 +1374,14 @@ config:
               unit_of_measurement: kWh
               unit_white_space: true
             use_metadata: false
-        kw_decimals: 1
+        kilo_decimals: 1
+        kilo_threshold: 1100
         max_expected_power: 15000
         min_expected_power: 100
         second_dashboard_link: /lovelace/solar-battery
         second_dashboard_link_label: Battery
         type: custom:power-flow-card-plus
         use_new_flow_rate_model: true
-        w_decimals: 1
-        watt_threshold: 1100
       - bar_color: '{{ iif((is_state(''sun.sun'', ''below_horizon'')), ''steelblue'',
           ''orange'', ''gray'') }}
 
@@ -1982,7 +1893,7 @@ config:
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
     - user: 336b62364b064bd6996f5f9e67feb7b9
     - user: ca3bf1e065c448d88fd26a1c405b655a
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
   - badges:
     - color: ''
@@ -2087,6 +1998,11 @@ config:
       tap_action:
         action: more-info
       type: custom:mushroom-template-badge
+    - entity: sensor.evs_home_and_ready_to_charge
+      show_icon: true
+      show_name: false
+      show_state: true
+      type: entity
     cards: []
     dense_section_placement: false
     icon: mdi:ev-plug-type2
@@ -2140,7 +2056,7 @@ config:
               \  {% if level <= 20 %}\n    red\n  {% elif level <= 50 %}\n    yellow\n\
               \  {% elif level <= 80 %}\n    orange\n  {% else %}\n    green\n  {%\
               \ endif %}\n{% endif %}"
-            entity: sensor.cupra_tavascan_battery_level
+            entity: sensor.cupra_tavascan_electric_vehicles_octopus_a_10a76963_cupra_tavascan_soc
             features_position: bottom
             icon: mdi:car
             icon_tap_action:
@@ -2610,6 +2526,7 @@ config:
                 entity: number.go_echarger_270862_amp
                 fill_container: true
                 layout: vertical
+                name: Ampere
                 type: custom:mushroom-number-card
               type: vertical-stack
             - cards:
@@ -2817,8 +2734,20 @@ config:
                 - condition: user
                   users:
                   - 4f7767cac0c342edb25e991662a2f56c
+                  - 4f7767cac0c342edb25e991662a2f56c
                 type: conditional
               type: horizontal-stack
+            - content: "### \u26A1 Charger Status\n{% set raw = states('input_text.goe11_cache')\
+                \ %}\n{% if raw in ['unavailable', 'unknown', ''] %}\n<font color=\"\
+                red\">**\u26A0\uFE0F FAULT: Cache Entity Missing/Empty**</font>\n\
+                {% else %}\n{% set cache = raw | from_json %}\n| Parameter | Value\
+                \ |\n| :--- | :--- |\n| **PV Charging** | {{ 'Active \u2705' if cache.pv_active\
+                \ else 'Disabled \u274C' }} |\n| **Min Amps** | {{ cache.min_amps\
+                \ }}A |\n| **SoC Limit** | {{ cache.soc_limit }}% |\n| **Grid Buffer**\
+                \ | {{ cache.grid_buffer }}W |\n| **Bat Offset** | {{ cache.bat_offset\
+                \ }}W |\n| **Restart Loop** | {{ cache.restarts }}/10 |\n| **Low Amps**\
+                \ | {{ 'Yes' if cache.low_amps else 'No' }} |\n{% endif %}"
+              type: markdown
             type: vertical-stack
           conditions:
           - condition: state
@@ -3053,6 +2982,7 @@ config:
                 entity: number.go_echarger_252682_amp
                 fill_container: true
                 layout: vertical
+                name: Ampere
                 type: custom:mushroom-number-card
               type: vertical-stack
             - cards:
@@ -3193,7 +3123,7 @@ config:
               type: horizontal-stack
             - cards:
               - card_mod:
-                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                     \ \"Neutral\") %}\n      background: var(--primary-color);\n \
                     \   {% endif %}\n}\n"
                 entity: select.go_echarger_252682_frc
@@ -3213,7 +3143,7 @@ config:
                     - select.go_echarger_252682_frc
                 type: button
               - card_mod:
-                  style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                  style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                     \ \"Don't charge\") %}\n      background: var(--primary-color);\n\
                     \    {% endif %}\n}\n"
                 entity: select.go_echarger_252682_frc
@@ -3233,7 +3163,7 @@ config:
                 type: button
               - card:
                   card_mod:
-                    style: "ha-card {\n    {% if is_state('sensor.go_echarger_252682_frc',\
+                    style: "ha-card {\n    {% if is_state('select.go_echarger_252682_frc',\
                       \ 'Charge') %}\n      background: var(--primary-color);\n  \
                       \  {% endif %}\n}\n"
                   entity: select.go_echarger_252682_frc
@@ -3267,77 +3197,8 @@ config:
         type: vertical-stack
       type: grid
     - cards:
-      - button-background: transparent
-        cards:
-        - card:
-            cards:
-            - cards:
-              - entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                hide_state: true
-                icon: mdi:ev-station
-                icon_tap_action:
-                  action: more-info
-                name: 11kW Surplus
-                tap_action:
-                  action: toggle
-                type: tile
-              - entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                hide_state: true
-                icon: mdi:ev-station
-                icon_tap_action:
-                  action: more-info
-                name: 22kW Surplus
-                tap_action:
-                  action: toggle
-                type: tile
-                vertical: false
-              type: horizontal-stack
-            - cards:
-              - entity: switch.esp32_c3_mini_goe11_controll_dont_stop_charging_11kw
-                icon: mdi:ev-plug-type2
-                icon_tap_action:
-                  action: more-info
-                name: Dont Stop Charging
-                type: tile
-              - entity: switch.esp32_c3_mini_goe22_controll_dont_stop_charging_22kw
-                icon: mdi:ev-plug-type2
-                icon_tap_action:
-                  action: more-info
-                name: Dont Stop Charging
-                type: tile
-              type: horizontal-stack
-            - cards:
-              - entity: sensor.esp32_c3_mini_goe11_controll_log_11kw
-                icon_tap_action:
-                  action: more-info
-                name: ' '
-                type: tile
-              - entity: sensor.esp32_c3_mini_goe22_controll_log_22kw
-                icon_tap_action:
-                  action: more-info
-                name: ' '
-                type: tile
-              type: horizontal-stack
-            type: vertical-stack
-          conditions:
-          - condition: or
-            conditions:
-            - condition: state
-              entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-              state_not: unavailable
-            - condition: state
-              entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-              state_not: unavailable
-          type: conditional
-        child-padding: 0em
-        clear: true
-        clear-children: false
-        expanded: true
-        gap: 0em
-        overlay-margin: 0em
-        padding: 0em
-        title-card:
-          badges:
+      - cards:
+        - badges:
           - color: state
             entity: switch.schreibtisch_links_power_strip_l3
             name: Controller
@@ -3350,22 +3211,11 @@ config:
             visibility:
             - condition: not
               conditions:
-              - condition: and
-                conditions:
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                  state_not: unavailable
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                  state_not: unavailable
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-                  state_not: unknown
-                - condition: state
-                  entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
-                  state_not: unknown
+              - condition: state
+                entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+                state_not: unavailable
           - color: state
-            entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
+            entity: automation.goe11_all_in_one_configless_controller
             name: 11kW
             show_icon: true
             show_state: true
@@ -3373,12 +3223,8 @@ config:
             tap_action:
               action: more-info
             type: entity
-            visibility:
-            - condition: state
-              entity: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-              state_not: unavailable
           - color: state
-            entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+            entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
             name: 22kW
             show_icon: true
             show_state: true
@@ -3388,7 +3234,7 @@ config:
             type: entity
             visibility:
             - condition: state
-              entity: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+              entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
               state_not: unavailable
           - color: state
             entity: sensor.solar_power_total
@@ -3409,8 +3255,126 @@ config:
           heading_style: title
           icon: mdi:solar-power
           type: heading
-        title-card-button-overlay: false
-        type: custom:expander-card
+        - cards:
+          - cards:
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).pv_active\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe11_cache
+              icon: mdi:solar-power
+              icon_height: 21px
+              name: PV Surplus 11kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: pv_active
+                perform_action: script.toggle_goe11_key
+                target: {}
+              type: button
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe11_cache') | from_json).never_stop\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe11_cache
+              icon: mdi:battery-charging-high
+              icon_height: 21px
+              name: Force Charge 11kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: never_stop
+                perform_action: script.toggle_goe11_key
+                target: {}
+              type: button
+            - content: "{% set state = states(\"input_text.goe11_cache\") %}\n{% if\
+                \ state not in ['unknown', 'unavailable'] and '{' in state %}\n  {%\
+                \ set data = state | from_json %}\n  {{ data.status_text if data is\
+                \ mapping else data }}\n{% else %}\n  Unbekannt\n{% endif %}\n"
+              type: markdown
+            type: vertical-stack
+          - cards:
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).pv_active\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe22_cache
+              icon: mdi:solar-power
+              icon_height: 21px
+              name: PV Surplus 22kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: pv_active
+                perform_action: script.toggle_goe22_key
+                target: {}
+              type: button
+            - card_mod:
+                style: "ha-card {\n  {% if (states('input_text.goe22_cache') | from_json).never_stop\
+                  \ %}\n    background: var(--primary-color);\n    color: var(--text-primary-color);\n\
+                  \  {% endif %}\n}\n"
+              entity: input_text.goe22_cache
+              icon: mdi:battery-charging-high
+              icon_height: 21px
+              name: Force Charge 22kW
+              show_icon: true
+              show_name: true
+              tap_action:
+                action: perform-action
+                data:
+                  key_name: never_stop
+                perform_action: script.toggle_goe22_key
+                target: {}
+              type: button
+            - content: "{% set state = states(\"input_text.goe22_cache\") %}\n{% if\
+                \ state not in ['unknown', 'unavailable'] and '{' in state %}\n  {%\
+                \ set data = state | from_json %}\n  {{ data.status_text if data is\
+                \ mapping else data }}\n{% else %}\n  Unbekannt\n{% endif %}\n"
+              type: markdown
+            type: vertical-stack
+            visibility:
+            - condition: state
+              entity: input_text.goe22_cache
+              state: unavailable
+          - card:
+              cards:
+              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+                hide_state: true
+                icon: mdi:ev-station
+                icon_tap_action:
+                  action: more-info
+                name: 22kW Surplus
+                tap_action:
+                  action: toggle
+                type: tile
+                vertical: false
+              - entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_dont_stop_charging_22kw
+                icon: mdi:ev-plug-type2
+                icon_tap_action:
+                  action: more-info
+                name: Dont Stop Charging
+                type: tile
+              - entity: sensor.duncan_zimmer_esp32_c3_mini_goe22_controll_log_22kw
+                features_position: bottom
+                icon_tap_action:
+                  action: more-info
+                name: ' '
+                type: tile
+                vertical: true
+              type: vertical-stack
+            conditions:
+            - condition: state
+              entity: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+              state_not: unavailable
+            type: conditional
+          type: horizontal-stack
+        type: vertical-stack
       - entity: button.go_echarger_270862_rst
         features_position: bottom
         name: 11kw Restart
@@ -3437,7 +3401,7 @@ config:
     type: sections
     visible:
     - user: 4f7767cac0c342edb25e991662a2f56c
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
     - user: 336b62364b064bd6996f5f9e67feb7b9
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
@@ -4169,10 +4133,7 @@ config:
           media_query: '(min-width: 768px)'
       type: grid
     - cards:
-      - badges:
-        - entity: camera.birdseye
-          type: entity
-        heading: Birdseye
+      - heading: 'Birdseye '
         heading_style: title
         icon: mdi:bird
         type: heading
@@ -4186,6 +4147,77 @@ config:
         style: '.pictureinpicture {display: none} .screenshot {display: none}'
         type: custom:webrtc-camera
         ui: true
+      - cards:
+        - badges:
+          - color: state
+            entity: update.frigate_update
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /config/updates
+            type: entity
+          - entity: sensor.frigate_folder_size
+            icon: mdi:folder-multiple-image
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /media-browser
+            type: entity
+          heading: Frigate
+          heading_style: title
+          icon: mdi:cctv
+          tap_action:
+            action: navigate
+            navigation_path: /app/ccab4aaf_frigate-fa
+          type: heading
+        - cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_cpu_prozent
+            frameless: false
+            layout: horizontal
+            marginless: false
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          type: horizontal-stack
+        - cards:
+          - content: "{% set uptime_sec = states('sensor.frigate_uptime') | float(0)\
+              \ %} {% set days = (uptime_sec // 86400) | int %} {% set hours = ((uptime_sec\
+              \ % 86400) // 3600) | int %} {% set minutes = ((uptime_sec % 3600) //\
+              \ 60) | int %}\n### \U0001F6E1\uFE0F Status & Info\n\n| Property | State\
+              \ |\n| :--- | :--- |\n| **Update** | `{{ states('update.frigate_server')\
+              \ }}` |\n| **Uptime** | `{% if days > 0 %}{{ days }}d {% endif %}{{\
+              \ hours }}h {{ minutes }}m` |\n| **Inference Time** | `{{ states('sensor.frigate_ov_inference_speed')\
+              \ }} ms` |\n| **GPU Load** | `{{ states('sensor.frigate_intel_qsv_gpu_load')\
+              \ }}%` |\n"
+            type: markdown
+          - content: "### \U0001F4CA Performance\n| Metric | Value |\n| :--- | :---\
+              \ |\n| **Camera FPS** | `{{ states('sensor.frigate_camera_fps') }} FPS`\
+              \ | \n| **Detection FPS** | `{{ states('sensor.frigate_detection_fps')\
+              \ }} FPS` |\n| **Process FPS** | `{{ states('sensor.frigate_process_fps')\
+              \ }} FPS` |\n| **Skipped FPS** | `{{ states('sensor.frigate_skipped_fps')\
+              \ }} FPS` |\n"
+            type: markdown
+          type: horizontal-stack
+        type: vertical-stack
       column_span: 2
       type: grid
     subview: false
@@ -4193,7 +4225,7 @@ config:
     type: sections
     visible:
     - user: 4f7767cac0c342edb25e991662a2f56c
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: 2950af301cff4dbfa321eb69a51307b0
     - user: a83d0514cb88427e9f46c2eaacd1817b
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
@@ -4235,6 +4267,26 @@ config:
             - wind_speed
           default_forecast: daily
           entity: weather.forecast_home
+          forecast:
+            extra_attribute: precipitation_probability
+            hourly_group_size: 1
+            mode: chart
+            show_sun_times: true
+          forecast_action:
+            tap_action:
+              action: more-info
+          show_condition_effects: false
+          show_current: true
+          show_forecast: true
+          tap_action:
+            action: more-info
+          temperature_entity: sensor.gw1100a_outdoor_temperature
+          type: custom:weather-forecast-card
+        - current:
+            show_attributes:
+            - wind_speed
+          default_forecast: daily
+          entity: weather.weather_fusion_ai_home
           forecast:
             extra_attribute: precipitation_probability
             hourly_group_size: 1
@@ -4293,167 +4345,37 @@ config:
         type: custom:mushroom-entity-card
       type: grid
     - cards:
-      - card:
-          data_source: RainViewer-DarkSky
-          extra_labels: false
-          frame_count: 15
-          frame_delay: 200
-          map_style: Dark
-          show_marker: true
-          show_playback: true
-          show_range: false
-          show_recenter: true
-          show_scale: true
-          show_zoom: true
-          square_map: true
-          static_map: false
-          type: custom:weather-radar-card
-          zoom_level: 9
-        conditions:
-        - condition: user
-          users:
-          - 690f4c6bedc44a9daad30c216f237d1d
-          - e7fe7b076dbb49a3aaa82b75c63cc302
-          - 4f7767cac0c342edb25e991662a2f56c
-        type: conditional
-      - card:
-          data_source: RainViewer-Original
-          extra_labels: false
-          show_marker: true
-          show_playback: true
-          show_range: false
-          show_recenter: true
-          show_scale: true
-          show_zoom: true
-          square_map: true
-          static_map: false
-          type: custom:weather-radar-card
-          zoom_level: 9
-        conditions:
-        - condition: user
-          users:
-          - 944daa47da8b4cf5bd9aab91ab7458e6
-          - 336b62364b064bd6996f5f9e67feb7b9
-        type: conditional
-      - buttons_config:
-          buttons:
-          - button_text: -12h
-            colors:
-              active_bg_color: inherit
-              active_border_color: red
-              active_color: red
-              bg_color: inherit
-              color: green
-            shift_period: -12h
-            type: period_shift
-          - button_text: +12h
-            colors:
-              active_bg_color: inherit
-              active_color: red
-              bg_color: inherit
-              color: green
-            shift_period: +12h
-            type: period_shift
-          - button_text: Play
-            delay: 50
-            period_back: -10w
-            statistics_period: hour
-            step_period: +3h
-            type: period_shift_play
-            use_statistics: true
-            window_period: +10d
-          - active: true
-            button_text: 7 days
-            preset_period: last_7_days
-            type: period_selector
-          - active: false
-            button_text: This month
-            preset_period: this_month
-            statistics_period: 5minute
-            type: period_selector
-            use_statistics: true
-          location: bottom
-        corner_info:
-          top_left:
-            entity: sensor.gw1100a_wind_gust
-            label: Current gust speed
-            label_text_size: 60
-            precision: 1
-            unit: ' km/h'
-            value_text_size: 40
-          top_right:
-            entity: sensor.wind_direction
-            label: Wind direction
-            label_text_size: 60
-            precision: 1
-            value_text_size: 40
-        current_direction:
-          arrow_size: 50
-          center_circle_size: 30
-          hide_direction_below_speed: 0
-          show_arrow: true
-        disable_animations: false
-        matching_strategy:
-          name: full-time
-        refresh_interval: 300
-        rose_config:
-          center_calm_percentage: true
-        show_intercardinal_directions: true
-        show_secondary_intercardinal_directions: true
-        type: custom:windrose-card
-        wind_direction_entity:
-          entity: sensor.gw1100a_wind_direction
-          statistics_period: hour
-          use_statistics: false
-        windspeed_bar_location: bottom
-        windspeed_entities:
-        - entity: sensor.gw1100a_wind_speed
-          name: Speed
-          output_speed_unit: mps
-          speed_range_beaufort: true
-          speed_unit: auto
-          use_statistics: false
-          windspeed_bar_full: true
-        - entity: sensor.gw1100a_wind_gust
-          name: Gust
-          output_speed_unit: mps
-          speed_range_beaufort: false
-          speed_ranges:
-          - color: rgb(0,255,0)
-            from_value: 0
-          - color: yellow
-            from_value: 2
-          - color: hsl(200, 100%, 60%)
-            from_value: 5
-          - color: orange
-            from_value: 10
-          - color: red
-            from_value: 15
-          speed_unit: auto
-          use_statistics: false
-          windspeed_bar_full: false
-      - aspect_ratio: '16:9'
-        default_mode: map
-        hide_message: true
-        level: surface
-        location: zone.home
-        metric_rain: default
-        metric_temp: default
-        metric_wind: default
-        overlay: wind
-        product: ecmwf
+      - center_latitude: 48.6873
+        center_longitude: 9.1653
+        data_source: RainViewer
+        dwd_wind: 'off'
+        extra_labels: false
+        forecast_minutes: 60
+        markers:
+        - color: '#00ff00'
+          entity: zone.home
+          icon: mdi:home
+          track: true
+        past_minutes: 60
         show_marker: true
-        show_pressure: false
-        show_spot: false
-        type: custom:windy-card
-        zoom: 9
+        show_playback: true
+        show_range: false
+        show_recenter: true
+        show_scale: true
+        show_zoom: true
+        smooth_animation: true
+        square_map: false
+        static_map: false
+        type: custom:weather-radar-card
+        wind_source: dwd_icon
+        zoom_level: 9
       type: grid
     title: Weather
     type: sections
     visible:
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: ca3bf1e065c448d88fd26a1c405b655a
     - user: 336b62364b064bd6996f5f9e67feb7b9
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
@@ -4497,7 +4419,7 @@ config:
           action: none
         name: Master Switch Garagentor
         tap_action:
-          action: none
+          action: more-info
         type: custom:mushroom-entity-card
         visibility:
         - condition: state
@@ -4861,7 +4783,7 @@ config:
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: 336b62364b064bd6996f5f9e67feb7b9
   - badges: []
     cards: []
@@ -4988,6 +4910,10 @@ config:
           tap_action:
             action: more-info
           type: entity
+          visibility:
+          - condition: state
+            entity: switch.pool_pumpe
+            state: 'on'
         - color: state
           entity: sensor.pool_temperature_zigbee_battery_plus
           show_icon: true
@@ -5183,7 +5109,7 @@ config:
     title: Pool
     type: sections
     visible:
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: ca3bf1e065c448d88fd26a1c405b655a
     - user: 2950af301cff4dbfa321eb69a51307b0
     - user: a83d0514cb88427e9f46c2eaacd1817b
@@ -5200,164 +5126,189 @@ config:
           type: vertical-stack
         card_param: cards
         filter:
-          template: "{# --- CONFIGURATION SECTION --- #}  {% set config = {\n  'days_ahead':\
+          template: "{# --- CONFIGURATION SECTION --- #} {% set config = {\n  'days_ahead':\
             \ states('input_number.plant_days_ahead') | int(1),\n  'icons': {\n  \
-            \  'watering': 'mdi:water',\n    'cleaning': 'mdi:spray-bottle',\n   \
-            \ 'fertilizer_liquid': 'mdi:water-outline',\n    'fertilizer_sticks':\
+            \  'watering': 'mdi:water',\n    'cleaning': 'mdi:creation-outline',\n\
+            \    'fertilizer_liquid': 'mdi:water-outline',\n    'fertilizer_sticks':\
             \ 'mdi:eyedropper',\n    'done': 'mdi:check',\n    'all_done': 'mdi:flower'\n\
             \  },\n  'colors': {\n    'watering': 'blue',\n    'standard': 'green',\n\
             \    'overdue': 'red'\n  },\n  'liquid_mediums': ['semi', 'hydro', 'air',\
             \ 'pon', 'leca', 'seramis'],\n  'tasks': [\n    {'key': 'geplante_bewasserung',\
-            \ 'label': 'Watering Needed', 'type': 'watering'},\n    {'key': 'geplante_dungung',\
-            \ 'label': 'Fertilizing Needed', 'type': 'fertilizing'},\n    {'key':\
-            \ 'geplante_reinigung', 'label': 'Cleaning Needed', 'type': 'cleaning'}\n\
-            \  ],\n  'weekdays': [\"Montag\", \"Dienstag\", \"Mittwoch\", \"Donnerstag\"\
-            , \"Freitag\", \"Samstag\", \"Sonntag\"]\n} %}  {# ------------------------------\
-            \ #}\n{% set today = now().date() %}   {% set limit_date = (now() + timedelta(days=config.days_ahead)).date()\
-            \ %}\n{% set ns = namespace(all_items=[]) %}\n{# STAGE 1: Gather and process\
-            \ all matching items globally #} {% for task in config.tasks %}\n  {%\
-            \ set task_entities = states.sensor \n     | selectattr('entity_id', 'search',\
-            \ task.key) \n     | rejectattr('state', 'in', ['unknown', 'unavailable'])\
-            \ \n     | list %}\n\n  {% for state in task_entities %}\n    {% set dt\
-            \ = as_local(as_datetime(state.state)) %}\n    {% if dt and dt.date()\
-            \ <= limit_date %}\n      {% set task_date = dt.date() %}\n      {% set\
-            \ diff = (task_date - today).days %}\n      \n      {% if diff == 0 %}\
-            \ {% set date_label = \"HEUTE\" %}\n      {% elif diff == 1 %} {% set\
-            \ date_label = \"MORGEN\" %}\n      {% elif diff > 1 %} {% set date_label\
-            \ = config.weekdays[task_date.weekday()] %}\n      {% elif diff == -1\
-            \ %} {% set date_label = \"vor 1 Tag\" %}\n      {% else %} {% set date_label\
-            \ = \"vor \" ~ (diff | abs) ~ \" Tagen\" %}\n      {% endif %}\n\n   \
-            \   {% set dev_id = device_id(state.entity_id) %}\n      {% set area =\
-            \ area_name(state.entity_id) or \"No Area\" %}\n      \n      {% if dev_id\
-            \ %}\n        {% set dev_entities = device_entities(dev_id) %}\n     \
-            \   {% set img_entity = dev_entities | select('search', '^image\\.') |\
-            \ first | default(none) %}\n        {% set task_suffix = task.key.replace('geplante_',\
-            \ '') ~ '_abschliessen' %}\n        {% set btn_entity = dev_entities |\
-            \ select('search', task_suffix) | first | default(none) %}\n        \n\
-            \        {% set medium_entity = dev_entities | select('search', '_wachstumsmedium')\
-            \ | first | default(none) %}\n        {% set medium_state = states(medium_entity)\
+            \ 'label': 'Bew\xE4sserung f\xE4llig', 'type': 'watering'},\n    {'key':\
+            \ 'geplante_dungung', 'label': 'D\xFCngung f\xE4llig', 'type': 'fertilizing'},\n\
+            \    {'key': 'geplante_reinigung', 'label': 'Reinigung f\xE4llig', 'type':\
+            \ 'cleaning'}\n  ],\n  'weekdays': [\"Montag\", \"Dienstag\", \"Mittwoch\"\
+            , \"Donnerstag\", \"Freitag\", \"Samstag\", \"Sonntag\"]\n} %} {# ------------------------------\
+            \ #}\n{% set today = now().date() %} {% set limit_date = (today + timedelta(days=config.days_ahead))\
+            \ %}\n{% set ns = namespace(all_items=[]) %}\n{# STAGE 1: Single-pass\
+            \ gather of all matching entities #} {% set task_keys = config.tasks |\
+            \ map(attribute='key') | list %} {% set key_rx = '(' ~ task_keys | join('|')\
+            \ ~ ')' %}\n{% set task_entities = states.sensor \n   | selectattr('entity_id',\
+            \ 'search', key_rx) \n   | rejectattr('state', 'in', ['unknown', 'unavailable',\
+            \ 'none']) \n   | list %}\n\n{% for state in task_entities %}\n  {% set\
+            \ dt = as_datetime(state.state) %}\n  \n  {# FIX 1: Guard as_local against\
+            \ None states #}\n  {% if dt and as_local(dt).date() <= limit_date %}\n\
+            \    {% set dt_local = as_local(dt) %}\n    {% set task_date = dt_local.date()\
+            \ %}\n    {% set diff = (task_date - today).days %}\n    \n    {# Identify\
+            \ which task configuration matches this sensor #}\n    {% set matched_task\
+            \ = namespace(task=none) %}\n    {% for t in config.tasks %}\n      {%\
+            \ if t.key in state.entity_id %} {% set matched_task.task = t %} {% endif\
+            \ %}\n    {% endfor %}\n    {% set task = matched_task.task %}\n    \n\
+            \    {% if task %}\n      {# FIX 8: Add short date to weekday #}\n   \
+            \   {% if diff == 0 %} {% set date_label = \"HEUTE\" %}\n      {% elif\
+            \ diff == 1 %} {% set date_label = \"MORGEN\" %}\n      {% elif diff >\
+            \ 1 %} {% set date_label = config.weekdays[task_date.weekday()] ~ ', '\
+            \ ~ task_date.strftime('%d.%m.') %}\n      {% elif diff == -1 %} {% set\
+            \ date_label = \"vor 1 Tag\" %}\n      {% else %} {% set date_label =\
+            \ \"vor \" ~ (diff | abs) ~ \" Tagen\" %}\n      {% endif %}\n\n     \
+            \ {% set dev_id = device_id(state.entity_id) %}\n      {% set area = area_name(state.entity_id)\
+            \ or \"Kein Bereich\" %}\n      \n      {% if dev_id %}\n        {% set\
+            \ dev_entities = device_entities(dev_id) %}\n        \n        {# FIX\
+            \ 5 + HA Suffix Fix: Anchor regex, but allow optional HA deduplication\
+            \ suffixes like _2 #}\n        {% set img_entity = dev_entities | select('search',\
+            \ '^image\\.') | first | default(none) %}\n        {% set task_suffix\
+            \ = task.key.replace('geplante_', '') ~ '_abschliessen(_[0-9]+)?$' %}\n\
+            \        {% set btn_entity = dev_entities | select('search', task_suffix)\
+            \ | first | default(none) %}\n        \n        {% set medium_entity =\
+            \ dev_entities | select('search', '_wachstumsmedium(_[0-9]+)?$') | first\
+            \ | default(none) %}\n        {% set medium_state = states(medium_entity)\
             \ if medium_entity else 'unknown' %}\n        {% set medium_val = medium_state\
-            \ if medium_state not in ['unknown', 'unavailable'] else 'Soil' %}\n\n\
-            \        {% if img_entity and btn_entity %}\n          {% set is_overdue\
-            \ = diff < 0 %}\n          \n          {% set current_icon = config.icons.watering\
-            \ if task.type == 'watering' else (config.icons.cleaning if task.type\
-            \ == 'cleaning' else 'mdi:help') %}\n          {% set main_color = config.colors.watering\
-            \ if task.type == 'watering' else config.colors.standard %}\n        \
-            \  {% set done_color = config.colors.standard %}\n\n          {% if task.type\
-            \ == 'fertilizing' %}\n            {% set med_cleaned = medium_val | string\
-            \ | lower | replace(' ', '') %}\n            {% set is_liquid = namespace(check=false)\
-            \ %}\n            {% for m in config.liquid_mediums %}\n             \
-            \ {% if m in med_cleaned %} {% set is_liquid.check = true %} {% endif\
-            \ %}\n            {% endfor %}\n            {% if is_liquid.check %} {%\
-            \ set current_icon = config.icons.fertilizer_liquid %}\n            {%\
-            \ else %} {% set current_icon = config.icons.fertilizer_sticks %}\n  \
-            \          {% endif %}\n          {% endif %}\n\n          {% if is_overdue\
-            \ %}\n            {% set main_color = config.colors.overdue %}\n     \
-            \       {% set done_color = config.colors.overdue %}\n          {% endif\
-            \ %}\n\n          {% set secondary_lines = [] %}\n          {% if is_overdue\
-            \ %} {% set secondary_lines = secondary_lines + ['\u26A0\uFE0F F\xC4LLIG']\
-            \ %} {% endif %}\n          {% set secondary_lines = secondary_lines +\
-            \ [date_label] %}\n          {% if task.type == 'fertilizing' %} {% set\
-            \ secondary_lines = secondary_lines + ['Medium: ' ~ medium_val] %} {%\
-            \ endif %}\n\n          {% set safe_name = (state_attr(state.entity_id,\
-            \ 'friendly_name') or state.entity_id).split(' Geplante')[0] %}\n\n  \
-            \        {% set item_data = {\n            \"date\": dt.timestamp(),\n\
-            \            \"area\": area,\n            \"task_type\": task.type,\n\
-            \            \"task_label\": task.label,\n            \"is_overdue\":\
-            \ is_overdue,\n            \"card\": {\n              \"type\": \"horizontal-stack\"\
-            ,\n              \"cards\": [\n                { \"type\": \"picture-entity\"\
+            \ if medium_state not in ['unknown', 'unavailable', 'none'] else 'Erde'\
+            \ %}\n\n        {% set is_overdue = diff < 0 %}\n        \n        {%\
+            \ set current_icon = config.icons.watering if task.type == 'watering'\
+            \ else (config.icons.cleaning if task.type == 'cleaning' else 'mdi:help')\
+            \ %}\n        {% set main_color = config.colors.watering if task.type\
+            \ == 'watering' else config.colors.standard %}\n        {% set done_color\
+            \ = config.colors.standard %}\n\n        {# FIX 7: Robust Regex search\
+            \ for liquid mediums #}\n        {% if task.type == 'fertilizing' %}\n\
+            \          {% set med_cleaned = medium_val | string | lower | replace('\
+            \ ', '') %}\n          {% if med_cleaned is search(config.liquid_mediums\
+            \ | join('|')) %}\n            {% set current_icon = config.icons.fertilizer_liquid\
+            \ %}\n          {% else %}\n            {% set current_icon = config.icons.fertilizer_sticks\
+            \ %}\n          {% endif %}\n        {% endif %}\n\n        {% if is_overdue\
+            \ %}\n          {% set main_color = config.colors.overdue %}\n       \
+            \   {% set done_color = config.colors.overdue %}\n        {% endif %}\n\
+            \n        {% set secondary_lines = [] %}\n        {% if is_overdue %}\
+            \ {% set secondary_lines = secondary_lines + ['\u26A0\uFE0F F\xC4LLIG']\
+            \ %} {% endif %}\n        {% set secondary_lines = secondary_lines + [date_label]\
+            \ %}\n        {% if task.type == 'fertilizing' %} {% set secondary_lines\
+            \ = secondary_lines + ['Medium: ' ~ medium_val] %} {% endif %}\n\n   \
+            \     {# FIX 10: Clean regex replacement for names #}\n        {% set\
+            \ raw_name = state_attr(state.entity_id, 'friendly_name') or state.entity_id\
+            \ %}\n        {% set safe_name = raw_name | regex_replace(find=' Geplante.*$',\
+            \ replace='', ignorecase=True) | trim %}\n\n        {# FIX 9: Build row\
+            \ dynamically so plants aren't dropped if missing an image/btn #}\n  \
+            \      {% set row_cards = [] %}\n        \n        {% if img_entity %}\n\
+            \          {% set row_cards = row_cards + [{ \"type\": \"picture-entity\"\
             , \"entity\": img_entity, \"aspect_ratio\": \"1:1\", \"fit_mode\": \"\
             fill\", \"show_name\": '', \"show_state\": '', \"tap_action\": { \"action\"\
-            : \"more-info\" } },\n                { \n                  \"type\":\
-            \ \"custom:mushroom-template-card\", \n                  \"primary\":\
-            \ safe_name, \n                  \"secondary\": secondary_lines | join('\\\
-            n'), \n                  \"entity\": state.entity_id, \n             \
-            \     \"icon\": current_icon, \n                  \"multiline_secondary\"\
-            : 'true', \n                  \"vertical\": 'true', \n               \
-            \   \"icon_color\": main_color, \n                  \"tap_action\": {\
-            \ \"action\": \"more-info\" } \n                },\n                {\
-            \ \"type\": \"custom:mushroom-template-card\", \"primary\": \"Done\",\
-            \ \"icon\": config.icons.done, \"icon_color\": done_color, \"layout\"\
-            : \"vertical\", \"tap_action\": { \"action\": \"perform-action\", \"perform_action\"\
-            : \"button.press\", \"target\": { \"entity_id\": btn_entity } } }\n  \
-            \            ]\n            }\n          } %}\n          {% set ns.all_items\
-            \ = ns.all_items + [item_data] %}\n        {% endif %}\n      {% endif\
-            \ %}\n    {% endif %}\n  {% endfor %}\n{% endfor %}\n{# STAGE 1.5: Build\
-            \ Card Array with Stats and Controls #} {% set total_tasks = ns.all_items\
-            \ | length %} {% set total_overdue = ns.all_items | selectattr('is_overdue',\
-            \ 'eq', true) | list | length %} {% set watering_count = ns.all_items\
-            \ | selectattr('task_type', 'eq', 'watering') | list | length %} {% set\
+            : \"more-info\" } }] %}\n        {% endif %}\n\n        {% set row_cards\
+            \ = row_cards + [{ \n          \"type\": \"custom:mushroom-template-card\"\
+            , \n          \"primary\": safe_name, \n          \"secondary\": secondary_lines\
+            \ | join('\\n'), \n          \"entity\": state.entity_id, \n         \
+            \ \"icon\": current_icon, \n          \"multiline_secondary\": 'true',\
+            \ \n          \"vertical\": 'true', \n          \"icon_color\": main_color,\
+            \ \n          \"tap_action\": { \"action\": \"more-info\" } \n       \
+            \ }] %}\n\n        {% if btn_entity %}\n          {% set row_cards = row_cards\
+            \ + [{ \n            \"type\": \"custom:mushroom-template-card\", \n \
+            \           \"primary\": \"Erledigt\", \n            \"icon\": config.icons.done,\
+            \ \n            \"icon_color\": done_color, \n            \"layout\":\
+            \ \"vertical\", \n            \"tap_action\": { \n              \"action\"\
+            : \"perform-action\", \n              \"perform_action\": \"button.press\"\
+            , \n              \"target\": { \"entity_id\": btn_entity },\n       \
+            \       \"confirmation\": { \"text\": safe_name ~ \" als erledigt markieren?\"\
+            \ }\n            } \n          }] %}\n        {% endif %}\n\n        {%\
+            \ set item_data = {\n          \"date\": dt_local.timestamp(),\n     \
+            \     \"area\": area,\n          \"task_type\": task.type,\n         \
+            \ \"task_label\": task.label,\n          \"is_overdue\": is_overdue,\n\
+            \          \"card\": {\n            \"type\": \"horizontal-stack\",\n\
+            \            \"cards\": row_cards\n          }\n        } %}\n       \
+            \ {% set ns.all_items = ns.all_items + [item_data] %}\n      {% endif\
+            \ %}\n    {% endif %}\n  {% endif %}\n{% endfor %}\n{# STAGE 1.5: Build\
+            \ Card Array with Stats and Controls #}  {% set total_tasks = ns.all_items\
+            \ | length %}  {% set total_overdue = ns.all_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %}  {% set watering_count = ns.all_items\
+            \ | selectattr('task_type', 'eq', 'watering') | list | length %}  {% set\
             \ fertilizing_count = ns.all_items | selectattr('task_type', 'eq', 'fertilizing')\
-            \ | list | length %} {% set cleaning_count = ns.all_items | selectattr('task_type',\
-            \ 'eq', 'cleaning') | list | length %}\n{% set markdown_content %} {%\
-            \ if total_tasks > 0 %} <font color=\"green\">**<ha-icon icon=\"mdi:flower\"\
-            ></ha-icon> Anstehende Aufgaben: {{ total_tasks }}**</font> {% if total_overdue\
-            \ > 0 %} <font color=\"red\">**<ha-icon icon=\"mdi:alert-circle\"></ha-icon>\
-            \ Davon \xFCberf\xE4llig: {{ total_overdue }}**</font> {% endif %}\n<ha-icon\
-            \ icon=\"mdi:water\"></ha-icon> **Gie\xDFen:** {{ watering_count }} |\
-            \ <ha-icon icon=\"mdi:leaf\"></ha-icon> **D\xFCngen:** {{ fertilizing_count\
-            \ }} | <ha-icon icon=\"mdi:spray-bottle\"></ha-icon> **Reinigen:** {{\
-            \ cleaning_count }} {% else %} <font color=\"green\">**<ha-icon icon=\"\
-            mdi:check-all\"></ha-icon> Alles erledigt!**</font> Keine offenen Aufgaben\
-            \ f\xFCr den gew\xE4hlten Zeitraum. {% endif %} {% endset %}\n{% set cards_ns\
-            \ = namespace(cards=[\n  {\n    \"type\": \"custom:mushroom-number-card\"\
-            ,\n    \"entity\": \"input_number.plant_days_ahead\",\n    \"layout\"\
-            : \"horizontal\",\n    \"display_mode\": \"buttons\"\n  },\n  {\n    \"\
-            type\": \"markdown\",\n    \"content\": markdown_content | trim\n  }\n\
-            ]) %}\n{# STAGE 2: Group and Render (Area -> Task Type) #} {% if total_tasks\
-            \ > 0 %}\n  {% set unique_areas = ns.all_items | map(attribute='area')\
-            \ | unique | sort %}\n  \n  {% for area in unique_areas %}\n    {% set\
-            \ area_items = ns.all_items | selectattr('area', 'eq', area) | list %}\n\
-            \    {% set area_id_safe = area | lower | replace(' ', '-') | replace('_',\
-            \ '-') %}\n    {% set area_overdue_count = area_items | selectattr('is_overdue',\
-            \ 'eq', true) | list | length %}\n    \n    {% set area_title = area ~\
-            \ ' (' ~ area_items | length ~ ')' %}\n    {% if area_overdue_count >\
-            \ 0 %}\n      {% set area_title = area_title ~ ' \u2014 \u26A0\uFE0F '\
-            \ ~ area_overdue_count ~ ' overdue' %}\n    {% endif %}\n\n    {% set\
-            \ unique_tasks_in_area = area_items | map(attribute='task_type') | unique\
-            \ | sort %}\n    {% set final_area_cards = namespace(list=[]) %}\n\n \
-            \   {% if unique_tasks_in_area | length == 1 %}\n      {# Ditch the inner\
-            \ expander entirely since there is only 1 type of task in this area #}\n\
-            \      {% set final_area_cards.list = area_items | sort(attribute='date')\
-            \ | map(attribute='card') | list %}\n    {% else %}\n      {# Multiple\
-            \ task types exist, keep nesting them under inner expanders #}\n     \
-            \ {% for t_type in unique_tasks_in_area %}\n        {% set task_items\
-            \ = area_items | selectattr('task_type', 'eq', t_type) | sort(attribute='date')\
-            \ | list %}\n        {% set task_label = task_items[0].task_label %}\n\
-            \        {% set task_overdue_count = task_items | selectattr('is_overdue',\
-            \ 'eq', true) | list | length %}\n        \n        {% set task_title\
-            \ = task_label ~ ' (' ~ task_items | length ~ ')' %}\n        {% if task_overdue_count\
-            \ > 0 %}\n          {% set task_title = task_title ~ ' \u2014 \u26A0\uFE0F\
-            \ ' ~ task_overdue_count ~ ' overdue' %}\n        {% endif %}\n\n    \
-            \    {% set raw_cards = task_items | map(attribute='card') | list %}\n\
-            \        \n        {% set task_expander_base = {\n          \"type\":\
-            \ \"custom:expander-card\",\n          \"title-card-clickable\": 'true',\n\
-            \          \"title-card-button-overlay\": 'true',\n          \"child-padding\"\
-            : \"0px\",\n          \"storage-id\": area_id_safe ~ \"-\" ~ t_type,\n\
-            \          \"title-card\": {\n            \"type\": \"custom:mushroom-title-card\"\
-            ,\n            \"title\": task_title\n          },\n          \"cards\"\
-            : raw_cards\n        } %}\n        \n        {% set task_expander = task_expander_base\
-            \ | combine( {\"expanded\": 'true'} if loop.first else {} ) %}\n     \
-            \   {% set final_area_cards.list = final_area_cards.list + [task_expander]\
-            \ %}\n      {% endfor %}\n    {% endif %}\n\n    {# Top-Level Area Expander\
-            \ #}\n    {% set area_expander_base = {\n      \"type\": \"custom:expander-card\"\
+            \ | list | length %}  {% set cleaning_count = ns.all_items | selectattr('task_type',\
+            \ 'eq', 'cleaning') | list | length %}\n{% set cards_ns = namespace(cards=[\n\
+            \  {\n    \"type\": \"custom:mushroom-number-card\",\n    \"entity\":\
+            \ \"input_number.plant_days_ahead\",\n    \"layout\": \"horizontal\",\n\
+            \    \"display_mode\": \"buttons\"\n  }\n]) %}\n{# COMPACT MARKDOWN OVERVIEW\
+            \ #} {% if total_tasks > 0 %}\n  {% set markdown_content -%} \n    <font\
+            \ color=\"green\">**<ha-icon icon=\"mdi:flower\"></ha-icon> Aufgaben:\
+            \ {{ total_tasks }}**</font>{%- if total_overdue > 0 %} <font color=\"\
+            red\">**\u26A0\uFE0F {{ total_overdue }} \xFCberf\xE4llig**</font>{% endif\
+            \ %} &nbsp;|&nbsp; <ha-icon icon=\"mdi:water\"></ha-icon> {{ watering_count\
+            \ }} &nbsp;|&nbsp; <ha-icon icon=\"mdi:leaf\"></ha-icon> {{ fertilizing_count\
+            \ }} &nbsp;|&nbsp; <ha-icon icon=\"mdi:spray-bottle\"></ha-icon> {{ cleaning_count\
+            \ }}\n  {%- endset %}\n  {% set cards_ns.cards = cards_ns.cards + [{\"\
+            type\": \"markdown\", \"content\": markdown_content | trim}] %}\n  \n\
+            \  {# STAGE 2: Group and Render (Area -> Task Type) #}\n  {% set unique_areas\
+            \ = ns.all_items | map(attribute='area') | unique | sort | list %}\n \
+            \ \n  {% for area in unique_areas %}\n    {% set area_items = ns.all_items\
+            \ | selectattr('area', 'eq', area) | list %}\n    {% set area_id_safe\
+            \ = area | lower | replace(' ', '-') | replace('_', '-') %}\n    {% set\
+            \ area_overdue_count = area_items | selectattr('is_overdue', 'eq', true)\
+            \ | list | length %}\n    \n    {# NEW AREA TITLE BREAKDOWN #}\n    {%\
+            \ set a_wat = area_items | selectattr('task_type', 'eq', 'watering') |\
+            \ list | length %}\n    {% set a_fer = area_items | selectattr('task_type',\
+            \ 'eq', 'fertilizing') | list | length %}\n    {% set a_cle = area_items\
+            \ | selectattr('task_type', 'eq', 'cleaning') | list | length %}\n   \
+            \ \n    {% set breakdown = [] %}\n    {% if a_wat > 0 %} {% set breakdown\
+            \ = breakdown + [a_wat ~ ' Gie\xDFen'] %} {% endif %}\n    {% if a_fer\
+            \ > 0 %} {% set breakdown = breakdown + [a_fer ~ ' D\xFCngen'] %} {% endif\
+            \ %}\n    {% if a_cle > 0 %} {% set breakdown = breakdown + [a_cle ~ '\
+            \ Reinigen'] %} {% endif %}\n    \n    {% set area_title = area ~ ' ('\
+            \ ~ area_items | length ~ '): ' ~ breakdown | join(', ') %}\n    {% if\
+            \ area_overdue_count > 0 %}\n      {% set area_title = area_title ~ '\
+            \ | \u26A0\uFE0F ' ~ area_overdue_count ~ ' \xFCberf\xE4llig' %}\n   \
+            \ {% endif %}\n\n    {% set unique_tasks_in_area = area_items | map(attribute='task_type')\
+            \ | unique | list %}\n    {% set final_area_cards = namespace(list=[])\
+            \ %}\n\n    {% if unique_tasks_in_area | length == 1 %}\n      {% set\
+            \ final_area_cards.list = area_items | sort(attribute='date') | map(attribute='card')\
+            \ | list %}\n    {% else %}\n      {# Preserve Config Order instead of\
+            \ alphabetizing inner expanders #}\n      {% for t in config.tasks %}\n\
+            \        {% if t.type in unique_tasks_in_area %}\n          {% set task_items\
+            \ = area_items | selectattr('task_type', 'eq', t.type) | sort(attribute='date')\
+            \ | list %}\n          {% set task_label = task_items[0].task_label %}\n\
+            \          {% set task_overdue_count = task_items | selectattr('is_overdue',\
+            \ 'eq', true) | list | length %}\n          \n          {% set task_title\
+            \ = task_label ~ ' (' ~ task_items | length ~ ')' %}\n          {% if\
+            \ task_overdue_count > 0 %}\n            {% set task_title = task_title\
+            \ ~ ' \u2014 \u26A0\uFE0F ' ~ task_overdue_count ~ ' \xFCberf\xE4llig'\
+            \ %}\n          {% endif %}\n\n          {% set raw_cards = task_items\
+            \ | map(attribute='card') | list %}\n          \n          {# FIX 11:\
+            \ Prefixed storage-id #}\n          {% set task_expander_base = {\n  \
+            \          \"type\": \"custom:expander-card\",\n            \"title-card-clickable\"\
+            : 'true',\n            \"title-card-button-overlay\": 'true',\n      \
+            \      \"child-padding\": \"0px\",\n            \"storage-id\": \"plant-area-\"\
+            \ ~ area_id_safe ~ \"-\" ~ t.type,\n            \"title-card\": {\n  \
+            \            \"type\": \"custom:mushroom-title-card\",\n             \
+            \ \"title\": task_title\n            },\n            \"cards\": raw_cards\n\
+            \          } %}\n          \n          {% set is_first_task = (final_area_cards.list\
+            \ | length == 0) %}\n          {% set task_expander = task_expander_base\
+            \ | combine( {\"expanded\": 'true'} if is_first_task else {} ) %}\n  \
+            \        {% set final_area_cards.list = final_area_cards.list + [task_expander]\
+            \ %}\n        {% endif %}\n      {% endfor %}\n    {% endif %}\n\n   \
+            \ {% set area_expander_base = {\n      \"type\": \"custom:expander-card\"\
             ,\n      \"title-card-clickable\": 'true',\n      \"title-card-button-overlay\"\
             : 'true',\n      \"child-padding\": \"4px\",\n      \"storage-id\": \"\
-            area-\" ~ area_id_safe,\n      \"title-card\": {\n        \"type\": \"\
-            custom:mushroom-title-card\",\n        \"title\": area_title\n      },\n\
-            \      \"cards\": final_area_cards.list\n    } %}\n    \n    {# Auto-expand\
-            \ the very first area card if it's the only one #}\n    {% set area_expander\
-            \ = area_expander_base | combine( {\"expanded\": 'true'} if (cards_ns.cards\
-            \ | length == 2) else {} ) %}\n    {% set cards_ns.cards = cards_ns.cards\
-            \ + [area_expander] %}\n  {% endfor %}\n{% else %}\n  {# Fallback when\
-            \ all tasks are complete #}\n  {% set days_label = \"Tag\" if config.days_ahead\
-            \ == 1 else \"Tagen\" %}\n  {% set secondary = \"Keine Aufgaben f\xFC\
-            r \" ~ config.days_ahead ~ \" \" ~ days_label %}\n  {% set cards_ns.cards\
-            \ = cards_ns.cards + [{\n    \"type\": \"custom:mushroom-template-card\"\
-            ,\n    \"primary\": \"Alles erledigt!\",\n    \"secondary\": secondary,\n\
-            \    \"icon\": config.icons.all_done,\n    \"icon_color\": config.colors.standard,\n\
-            \    \"layout\": \"vertical\"\n  }] %}\n{% endif %}\n{{ cards_ns.cards\
-            \ | tojson }}"
+            plant-area-\" ~ area_id_safe,\n      \"title-card\": {\n        \"type\"\
+            : \"custom:mushroom-title-card\",\n        \"title\": area_title\n   \
+            \   },\n      \"cards\": final_area_cards.list\n    } %}\n    \n    {#\
+            \ Now this works correctly because we know exactly how many areas exist\
+            \ #}\n    {% set area_expander = area_expander_base | combine( {\"expanded\"\
+            : 'true'} if (unique_areas | length == 1) else {} ) %}\n    {% set cards_ns.cards\
+            \ = cards_ns.cards + [area_expander] %}\n  {% endfor %}\n{% else %}\n\
+            \  {# Fallback when all tasks are complete #}\n  {% set days_label = \"\
+            Tag\" if config.days_ahead == 1 else \"Tagen\" %}\n  {% set secondary\
+            \ = \"Keine Aufgaben f\xFCr \" ~ config.days_ahead ~ \" \" ~ days_label\
+            \ %}\n  {% set cards_ns.cards = cards_ns.cards + [{\n    \"type\": \"\
+            custom:mushroom-template-card\",\n    \"primary\": \"Alles erledigt!\"\
+            ,\n    \"secondary\": secondary,\n    \"icon\": config.icons.all_done,\n\
+            \    \"icon_color\": config.colors.standard,\n    \"layout\": \"vertical\"\
+            \n  }] %}\n{% endif %}\n{{ cards_ns.cards | tojson }}\n    "
         type: custom:auto-entities
       type: grid
     title: Planta
@@ -5497,7 +5448,7 @@ config:
     - user: a83d0514cb88427e9f46c2eaacd1817b
     - user: 944daa47da8b4cf5bd9aab91ab7458e6
     - user: 336b62364b064bd6996f5f9e67feb7b9
-    - user: 690f4c6bedc44a9daad30c216f237d1d
+    - user: cce849c37010486fb13ef5e85c1b9e3f
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
     - user: ca3bf1e065c448d88fd26a1c405b655a
@@ -5647,11 +5598,14 @@ config:
           card_param: cards
           filter:
             exclude:
-            - label: light_schrag
+            - label:
+                active_choice: label
+                label: light_schrag
               options: {}
             include:
-            - domain: light
-              entity_id: light.gx53_*
+            - entity_id:
+                active_choice: custom
+                custom: light.gx53_*
               options:
                 entity: this.entity_id
                 features:
@@ -5673,11 +5627,14 @@ config:
           card_param: cards
           filter:
             exclude:
-            - label: light_gerade
+            - label:
+                active_choice: label
+                label: light_gerade
               options: {}
             include:
-            - domain: light
-              entity_id: light.gx53_*
+            - entity_id:
+                active_choice: custom
+                custom: light.gx53_*
               options:
                 entity: this.entity_id
                 features:
@@ -6090,6 +6047,12 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
+        - entity: switch.kallax_plant_light_zigbee_l1
+          fill_container: false
+          name: Kallax Plant Box
+          tap_action:
+            action: toggle
+          type: custom:mushroom-entity-card
         - entity: switch.bett_strip_l4
           fill_container: false
           tap_action:
@@ -6110,16 +6073,6 @@ config:
           tap_action:
             action: toggle
           type: custom:mushroom-entity-card
-        - collapsible_controls: true
-          entity: light.regal_big_led_light
-          fill_container: true
-          show_brightness_control: true
-          show_color_control: false
-          show_color_temp_control: true
-          tap_action:
-            action: toggle
-          type: custom:mushroom-light-card
-          use_light_color: true
         - collapsible_controls: true
           entity: light.rp2040_paludarium_paludarium_light_rgb
           show_brightness_control: true
@@ -6223,118 +6176,121 @@ config:
     - user: 4f7767cac0c342edb25e991662a2f56c
     - user: e7fe7b076dbb49a3aaa82b75c63cc302
   - badges: []
-    cards:
-    - entities:
-      - color: Green
-        entity: device_tracker.renault_zoe_standort
-        name: Zoe
-      - color: Orange
-        entity: device_tracker.lsjwh4097rn105299_vehicle_position
-        name: MG4
-      - color: Blue
-        entity: device_tracker.cupra_tavascan_position
-        name: Tavascan
-      - color: Lightgreen
-        entity: person.duncan
-        name: Duncan
-      - color: Lightblue
-        entity: person.stephan
-      - color: Yellow
-        entity: person.enya
-      - color: Red
-        entity: person.katalin
-      legend_position: left
-      location_zone_entity: zone.home
-      moving_animation_enabled: true
-      type: custom:radar-card
-    - auto_fit: true
-      entities:
-      - entity: person.duncan
-      geo_location_sources: []
-      hours_to_show: 12
-      theme_mode: auto
-      title: Duncan Location
-      type: map
-      visibility:
-      - condition: state
-        entity: person.duncan
-        state_not: home
-    - auto_fit: true
-      entities:
-      - entity: person.katalin
-      - entity: zone.home
-      - entity: zone.mama_arbeit
-      geo_location_sources: []
-      hours_to_show: 12
-      theme_mode: auto
-      title: Mama Location
-      type: map
-      visibility:
-      - condition: state
-        entity: person.katalin
-        state_not: home
-    - auto_fit: true
-      entities:
-      - entity: person.stephan
-      - entity: zone.papa_arbeit
-      - entity: zone.home
-      geo_location_sources: []
-      hours_to_show: 12
-      theme_mode: auto
-      title: Papa Location
-      type: map
-      visibility:
-      - condition: state
-        entity: person.stephan
-        state_not: home
-    - auto_fit: true
-      entities:
-      - entity: person.enya
-      - entity: zone.home
-      - entity: zone.finian
-      - entity: zone.heidelberg_bahnhof
-      - entity: zone.wiesloch_bahnhof
-      geo_location_sources: []
-      hours_to_show: 12
-      theme_mode: auto
-      title: Enya Location
-      type: map
-      visibility:
-      - condition: state
-        entity: person.enya
-        state_not: home
-    - auto_fit: true
-      entities:
-      - entity: device_tracker.cupra_tavascan_position
-      hours_to_show: 24
-      theme_mode: auto
-      title: TavascanLocation
-      type: map
-      visibility:
-      - condition: state
-        entity: sensor.cupra_tavascan_battery_level
-        state_not: unavailable
-      - condition: state
-        entity: sensor.cupra_tavascan_battery_level
-        state_not: unknown
-    - auto_fit: true
-      entities:
-      - entity: device_tracker.renault_zoe_standort
-      hours_to_show: 24
-      theme_mode: auto
-      title: 'Zoe Location '
-      type: map
-    - auto_fit: true
-      entities:
-      - entity: device_tracker.lsjwh4097rn105299_vehicle_position
-      hours_to_show: 24
-      theme_mode: auto
-      title: 'MG4 Location '
-      type: map
+    cards: []
     icon: mdi:map
+    max_columns: 4
     path: maps
+    sections:
+    - cards: []
+      type: grid
+    - cards:
+      - entities:
+        - color: Green
+          entity: device_tracker.renault_zoe_standort
+          name: Zoe
+        - color: Orange
+          entity: device_tracker.lsjwh4097rn105299_vehicle_position
+          name: MG4
+        - color: Blue
+          entity: device_tracker.cupra_tavascan_position
+          name: Tavascan
+        - color: Lightgreen
+          entity: person.duncan
+          name: Duncan
+        - color: Lightblue
+          entity: person.stephan
+        - color: Yellow
+          entity: person.enya
+        - color: Red
+          entity: person.katalin
+        legend_position: left
+        location_zone_entity: zone.home
+        moving_animation_enabled: true
+        type: custom:radar-card
+      - cards:
+        - entity: person.duncan
+          fill_container: true
+          layout: vertical
+          name: Duncan anfragen
+          tap_action:
+            action: perform-action
+            data:
+              message: request_location_update
+            perform_action: notify.send_message
+            target:
+              entity_id: notify.poco_f7
+          type: custom:mushroom-entity-card
+        - entity: device_tracker.enyas_iphone
+          fill_container: true
+          layout: vertical
+          name: 'Enya anfragen '
+          tap_action:
+            action: perform-action
+            data:
+              command: Locate Device(s) using iCloud
+              device_name: e146d7ea7dd792848fa6d8090a91ff6c
+            perform_action: icloud3.action
+            target: {}
+          type: custom:mushroom-entity-card
+        - entity: device_tracker.stephans_iphone
+          fill_container: true
+          layout: vertical
+          name: Stephan anfragen
+          tap_action:
+            action: perform-action
+            data:
+              command: Locate Device(s) using iCloud
+              device_name: 3675fe049f5a257fe6eebb6533252e74
+            perform_action: icloud3.action
+            target: {}
+          type: custom:mushroom-entity-card
+        - entity: person.katalin
+          fill_container: true
+          layout: vertical
+          name: Katalin anfragen
+          tap_action:
+            action: perform-action
+            data:
+              message: request_location_update
+            perform_action: notify.send_message
+            target:
+              entity_id:
+              - notify.fp4
+          type: custom:mushroom-entity-card
+        type: horizontal-stack
+      - card:
+          type: vertical-stack
+        card_param: cards
+        filter:
+          template: "{% set people = expand([\n  'person.duncan',\n  'person.enya',\n\
+            \  'person.stephan',\n  'person.katalin'\n]) | sort(attribute='name')\
+            \ | map(attribute='entity_id') | list %}\n\n{% set cars = expand([\n \
+            \ 'device_tracker.renault_zoe_standort',\n  'device_tracker.lsjwh4097rn105299_vehicle_position'\n\
+            ]) | sort(attribute='name') | map(attribute='entity_id') | list %}\n\n\
+            {% set away_people = people | reject('is_state', 'home') | list %}\n{%\
+            \ set away_cars = cars | reject('is_state', 'home') | list %}\n\n{% set\
+            \ ns = namespace(configs=[]) %}\n\n{% if away_people | length == people\
+            \ | length %}\n  {% set ns.configs = [{\"title\": \"All Away - Overview\"\
+            , \"entities\": people}] %}\n{% elif away_people | length == 0 %}\n  {%\
+            \ for c in cars %}\n    {% set title = (state_attr(c, 'friendly_name')\
+            \ or 'Car') ~ \" Location\" %}\n    {% set ns.configs = ns.configs + [{\"\
+            title\": title, \"entities\": [{\"entity\": c}]}] %}\n  {% endfor %}\n\
+            {% else %}\n  {% for e in away_people + away_cars %}\n    {% set title\
+            \ = (state_attr(e, 'friendly_name') or 'Entity') ~ \" Location\" %}\n\
+            \    {% set ns.configs = ns.configs + [{\"title\": title, \"entities\"\
+            : [{\"entity\": e}]}] %}\n  {% endfor %}\n{% endif %}\n\n{% set ns_cards\
+            \ = namespace(out=[]) %}\n{% for cfg in ns.configs %}\n  {% set ns_cards.out\
+            \ = ns_cards.out + [{\n    \"type\": \"map\",\n    \"title\": cfg.title,\n\
+            \    \"entities\": cfg.entities,\n    \"hours_to_show\": 24,\n    \"auto_fit\"\
+            : 'true',\n    \"theme_mode\": \"auto\"\n  }] %}\n{% endfor %}\n\n{{ ns_cards.out\
+            \ | tojson }}\n"
+        grid_options:
+          rows: auto
+        type: custom:auto-entities
+      type: grid
     subview: true
     title: Maps
+    type: sections
     visible:
     - user: 2950af301cff4dbfa321eb69a51307b0
   - cards: []
@@ -6563,6 +6519,141 @@ config:
         type: tile
         vertical: false
       type: grid
+    - cards:
+      - heading: New section
+        type: heading
+      - cards:
+        - content: "{% set t_lo = states('sensor.t_h_terra_lo_temperature') | float(0)\
+            \ %}\n{% set t_ro = states('sensor.t_h_terra_ro_temperature') | float(0)\
+            \ %}\n{% set t_lu = states('sensor.t_h_terra_lu_temperature') | float(0)\
+            \ %}\n{% set t_ru = states('sensor.t_h_terra_ru_temperature') | float(0)\
+            \ %}\n\n{% set h_lo = states('sensor.t_h_terra_lo_humidity') | float(0)\
+            \ %}\n{% set h_ro = states('sensor.t_h_terra_ro_humidity') | float(0)\
+            \ %}\n{% set h_lu = states('sensor.t_h_terra_lu_humidity') | float(0)\
+            \ %}\n{% set h_ru = states('sensor.t_h_terra_ru_humidity') | float(0)\
+            \ %}\n\n{% set t_top = (t_lo + t_ro) / 2 %}\n{% set t_bot = (t_lu + t_ru)\
+            \ / 2 %}\n{% set h_top = (h_lo + h_ro) / 2 %}\n{% set h_bot = (h_lu +\
+            \ h_ru) / 2 %}\n\n| Zone | Avg Temperature | Avg Humidity |\n| :--- |\
+            \ :---: | :---: |\n| **Top (150cm)** | **{{\"%.1f\"|format(t_top)}} \xB0\
+            C** | **{{\"%.1f\"|format(h_top)}}%** |\n| **Bottom (15-20cm)** | **{{\"\
+            %.1f\"|format(t_bot)}} \xB0C** | **{{\"%.1f\"|format(h_bot)}}%** |\n|\
+            \ **Vertical Delta (\u0394)** | \U0001F321\uFE0F *{{\"%.1f\"|format(t_top\
+            \ - t_bot)}} \xB0C diff* | \U0001F4A7 *{{\"%.1f\"|format(h_top - h_bot)}}%\
+            \ diff* |\n"
+          title: "\U0001F33F Terrarium Microclimate Analysis (150\xD7100 cm)"
+          type: markdown
+        - cards:
+          - card:
+              cards:
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: "{{ '%.1f' | format(states('sensor.t_h_terra_lo_temperature')\
+                  \ | float(0)) }} \xB0C"
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: "{{ '%.1f' | format(states('sensor.t_h_terra_ro_temperature')\
+                  \ | float(0)) }} \xB0C"
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: "{{ '%.1f' | format(states('sensor.t_h_terra_lu_temperature')\
+                  \ | float(0)) }} \xB0C"
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: "{{ '%.1f' | format(states('sensor.t_h_terra_ru_temperature')\
+                  \ | float(0)) }} \xB0C"
+                type: custom:mushroom-template-card
+                vertical: true
+              columns: 2
+              square: false
+              title: "\U0001F321\uFE0F Temperature Heatmap"
+              type: grid
+            card_mod:
+              style: "ha-card {\n  {% set t_lo = states('sensor.t_h_terra_lo_temperature')\
+                \ | float(22) %}\n  {% set t_ro = states('sensor.t_h_terra_ro_temperature')\
+                \ | float(22) %}\n  {% set t_lu = states('sensor.t_h_terra_lu_temperature')\
+                \ | float(20) %}\n  {% set t_ru = states('sensor.t_h_terra_ru_temperature')\
+                \ | float(20) %}\n  \n  {% set t_top = (t_lo + t_ro) / 2 %}\n  {%\
+                \ set t_bot = (t_lu + t_ru) / 2 %}\n  \n  {% set hue_top = max(15,\
+                \ min(210, 210 - ((t_top - 18) * 16.25))) %}\n  {% set hue_bot = max(15,\
+                \ min(210, 210 - ((t_bot - 18) * 16.25))) %}\n  \n  background: linear-gradient(to\
+                \ bottom, hsla({{ hue_top }}, 80%, 45%, 0.35), hsla({{ hue_bot }},\
+                \ 80%, 45%, 0.35));\n  border-radius: 16px;\n  padding: 12px;\n}\n"
+            type: custom:mod-card
+          - card:
+              cards:
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: '{{ ''%.1f'' | format(states(''sensor.t_h_terra_lo_humidity'')
+                  | float(0)) }}%'
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: '{{ ''%.1f'' | format(states(''sensor.t_h_terra_ro_humidity'')
+                  | float(0)) }}%'
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: '{{ ''%.1f'' | format(states(''sensor.t_h_terra_lu_humidity'')
+                  | float(0)) }}%'
+                type: custom:mushroom-template-card
+                vertical: true
+              - card_mod:
+                  style: "ha-card {\n  background: rgba(var(--rgb-card-background-color),\
+                    \ 0.1);\n  backdrop-filter: blur(4px);\n  border: 1px solid rgba(255,\
+                    \ 255, 255, 0.08);\n  --card-primary-font-size: 16px;\n  --card-primary-font-weight:\
+                    \ 600;\n}\n"
+                primary: '{{ ''%.1f'' | format(states(''sensor.t_h_terra_ru_humidity'')
+                  | float(0)) }}%'
+                type: custom:mushroom-template-card
+                vertical: true
+              columns: 2
+              square: false
+              title: "\U0001F4A7 Humidity Heatmap"
+              type: grid
+            card_mod:
+              style: "ha-card {\n  {% set h_lo = states('sensor.t_h_terra_lo_humidity')\
+                \ | float(50) %}\n  {% set h_ro = states('sensor.t_h_terra_ro_humidity')\
+                \ | float(50) %}\n  {% set h_lu = states('sensor.t_h_terra_lu_humidity')\
+                \ | float(70) %}\n  {% set h_ru = states('sensor.t_h_terra_ru_humidity')\
+                \ | float(70) %}\n  \n  {% set h_top = (h_lo + h_ro) / 2 %}\n  {%\
+                \ set h_bot = (h_lu + h_ru) / 2 %}\n  \n  {% set hue_top = max(20,\
+                \ min(200, 20 + ((h_top - 40) * 4.5))) %}\n  {% set hue_bot = max(20,\
+                \ min(200, 20 + ((h_bot - 40) * 4.5))) %}\n  \n  background: linear-gradient(to\
+                \ bottom, hsla({{ hue_top }}, 75%, 40%, 0.35), hsla({{ hue_bot }},\
+                \ 75%, 40%, 0.35));\n  border-radius: 16px;\n  padding: 12px;\n}\n"
+            type: custom:mod-card
+          type: horizontal-stack
+        type: vertical-stack
+      type: grid
     subview: true
     title: Terrarium
     type: sections
@@ -6613,7 +6704,8 @@ config:
           points: hover
         show_graph: true
         type: custom:mini-graph-card
-      - clickable_entities: true
+      - base_decimals: 2
+        clickable_entities: true
         disable_dots: false
         display_zero_lines:
           grey_color:
@@ -6670,7 +6762,8 @@ config:
               decimals: 2
               entity: sensor.esp32_c3_zero_epever_generated_energy_today
               unit_of_measurement: kWh
-        kw_decimals: 2
+        kilo_decimals: 2
+        kilo_threshold: 1000
         max_expected_power: 2000
         max_flow_rate: 6
         min_expected_power: 0
@@ -6678,8 +6771,6 @@ config:
         transparency_zero_lines: 0
         type: custom:power-flow-card-plus
         use_new_flow_rate_model: true
-        w_decimals: 2
-        watt_threshold: 1000
       - entities:
         - attribute: c37c_014a_ab1b_febe
           entity: sensor.solcast_pv_forecast_prognose_verbleibende_leistung_heute
@@ -7075,49 +7166,355 @@ config:
           type: entity
         heading: Router
         heading_style: title
+        icon: mdi:router-network
         type: heading
-      - entity: sensor.o2_router_power
-        features:
-        - hours_to_show: 24
-          type: trend-graph
-        features_position: bottom
-        grid_options:
-          columns: full
-        hide_state: false
-        name: Internet Power
-        type: tile
-        vertical: false
-      - collapsed_sections:
-        - switches
-        device_id: f25566ea435365c5d4c37837584d186c
-        entity_order:
-        - sensor.adguard_home_anzahl_regeln
-        - sensor.daily_dns_abfragen
-        exclude_entities:
-        - sensor.adguard_home_durch_jugendschutz_blockiert
-        - sensor.adguard_home_durch_safe_browsing_blockiert
-        - switch.adguard_home_abfrageprotokoll
-        type: custom:adguard-card
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
-          - 2950af301cff4dbfa321eb69a51307b0
-          - 690f4c6bedc44a9daad30c216f237d1d
-      - entities:
-        - entity: binary_sensor.internet_connection
-        - entity: binary_sensor.cloud_flare_either_connected
-        - entity: binary_sensor.google_either_connected
-        - entity: binary_sensor.quad9_either_connected
-        - entity: switch.o2_router
-        - entity: sensor.o2_router_power
-        hours_to_show: 4
-        title: History
-        type: history-graph
-        visibility:
-        - condition: user
-          users:
-          - 4f7767cac0c342edb25e991662a2f56c
+      - cards:
+        - cards:
+          - cards:
+            - bar_size: large
+              decimal: 1
+              entity: sensor.mesh_69f2_cpu_usage
+              frameless: false
+              layout: horizontal
+              marginless: false
+              max_value: 100
+              name: WR3000 CPU
+              show_more_info: true
+              theme: optimal_when_low
+              type: custom:entity-progress-card
+              unit: '%'
+            - bar_size: large
+              decimal: 1
+              entity: sensor.mesh_69f2_ram_usage
+              layout: horizontal
+              max_value: 100
+              name: WR3000 RAM
+              show_more_info: true
+              theme: optimal_when_low
+              type: custom:entity-progress-card
+              unit: '%'
+            type: horizontal-stack
+          - cards:
+            - align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.mesh_69f2_total_upload_speed
+              font_size: 65
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Upload
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            - align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.mesh_69f2_total_download_speed
+              font_size: 65
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Download
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            type: horizontal-stack
+          - cards:
+            - bar_size: large
+              decimal: 1
+              entity: sensor.mesh_24eb_cpu_usage
+              layout: horizontal
+              max_value: 100
+              name: LT700 CPU
+              show_more_info: true
+              theme: optimal_when_low
+              type: custom:entity-progress-card
+              unit: '%'
+            - bar_size: large
+              decimal: 1
+              entity: sensor.mesh_24eb_ram_usage
+              layout: horizontal
+              max_value: 100
+              name: LT700 RAM
+              show_more_info: true
+              theme: optimal_when_low
+              type: custom:entity-progress-card
+              unit: '%'
+            type: horizontal-stack
+          - cards:
+            - align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.mesh_24eb_total_upload_speed
+              font_size: 65
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Upload
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            - align_header: center
+              align_state: center
+              cache: true
+              decimals: 2
+              entities:
+              - sensor.mesh_24eb_total_download_speed
+              font_size: 65
+              hour24: true
+              hours_to_show: 24
+              line_width: 2
+              name: Download
+              points_per_hour: 10
+              show:
+                icon: false
+                labels: false
+                points: false
+              type: custom:mini-graph-card
+            type: horizontal-stack
+          type: vertical-stack
+        clear-children: true
+        overlay-margin: 20px
+        title: Expander Card
+        title-card:
+          entity: sensor.o2_router_power
+          features:
+          - hours_to_show: 24
+            type: trend-graph
+          features_position: bottom
+          grid_options:
+            columns: full
+          hide_state: false
+          name: Internet Power
+          type: tile
+          vertical: false
+        title-card-button-overlay: true
+        type: custom:expander-card
+      type: grid
+    - cards:
+      - heading: Network
+        heading_style: title
+        icon: mdi:check-network
+        type: heading
+      - cards:
+        - content: "{% set node = 'sensor.tibber_node_battery_voltage' %}\n{% set\
+            \ bridge = 'sensor.tibber_node_bridge_status' %}\n{% set nodes_attr =\
+            \ state_attr(bridge, 'nodes') %}\n{% set bridge_node = nodes_attr[0] if\
+            \ nodes_attr and nodes_attr | length > 0 else {} %}\n{% set em0 = state_attr(node,\
+            \ 'time_in_em0_ms') | default(0) %}\n{% set em1 = state_attr(node, 'time_in_em1_ms')\
+            \ | default(0) %}\n{% set em2 = state_attr(node, 'time_in_em2_ms') | default(0)\
+            \ %}\n{% set total_ms = em0 + em1 + em2 %}\n{% set sleep_pct = (em2 /\
+            \ total_ms * 100) | round(1) if total_ms > 0 else 0 %}\n\n### \U0001F309\
+            \ Bridge (Hardware & Network)\n|  |  |\n| :--- | :--- |\n| **Uptime**\
+            \ | `{{ state_attr(bridge, 'uptime_human') }}` |\n| **Wi-Fi Connection**\
+            \ | `{{ state_attr(bridge, 'wifi_quality') }}` (`{{ state_attr(bridge,\
+            \ 'rssi') }} dBm` on `{{ state_attr(bridge, 'ssid') }}` / Ch {{ state_attr(bridge,\
+            \ 'channel') }}) |\n| **Network Config** | IP: `{{ state_attr(bridge,\
+            \ 'ip') }}` \\| GW: `{{ state_attr(bridge, 'gateway') }}` \\| DNS: `{{\
+            \ state_attr(bridge, 'dns0') }}` |\n| **Power Supply** | `{{ state_attr(bridge,\
+            \ 'vacrms') }} V AC` (VCC: `{{ state_attr(bridge, 'vcc') }} V`) |\n| **Free\
+            \ RAM (Heap)** | `{{ (state_attr(bridge, 'heap') / 1024) | round(1) }}\
+            \ KB` |\n| **Model & Firmware** | `{{ state_attr(bridge, 'model') }}`\
+            \ (v`{{ state_attr(bridge, 'manifest_version') }}`) |\n| **Reconnect Counts**\
+            \ | Wi-Fi: `{{ state_attr(bridge, 'wificon') }}` \\| MQTT: `{{ state_attr(bridge,\
+            \ 'mqttcon') }}` |\n\n---\n\n### \u26A1 Pulse Node & RF Link\n|  |  |\n\
+            | :--- | :--- |\n| **Node Uptime** | `{{ state_attr(node, 'uptime_human')\
+            \ }}` |\n| **Battery & Temp** | `{{ state_attr(node, 'node_battery_voltage')\
+            \ }} V` \\| `{{ state_attr(node, 'node_temperature') | round(1) }} \xB0\
+            C` |\n| **Node RF Signal** | `{{ state_attr(node, 'lqi_quality') }}` (`{{\
+            \ state_attr(node, 'node_avg_rssi') | round(1) }} dBm` / LQI: `{{ state_attr(node,\
+            \ 'node_avg_lqi') | round(1) }}`) |\n| **Bridge \u2794 Node RSSI**| `{{\
+            \ bridge_node.rssi | round(1) if bridge_node.rssi is defined else 'N/A'\
+            \ }} dBm` (Seen `{{ bridge_node.seen if bridge_node.seen is defined else\
+            \ 'N/A' }}s ago`) |\n| **Deep Sleep Ratio**| `{{ sleep_pct }}%` time spent\
+            \ in EM2 power saving mode |\n| **TX Power & FW** | Power Level `{{ state_attr(node,\
+            \ 'radio_tx_power') }}` \\| FW `{{ state_attr(node, 'node_version') }}`\
+            \ |\n\n---\n\n### \U0001F441\uFE0F Meter Optical Head & Diagnostics\n\
+            |  |  |\n| :--- | :--- |\n| **Mode & IR Level** | Mode `{{ state_attr(node,\
+            \ 'meter_mode') }}` \\| RX Auto-Level: `{{ state_attr(node, 'acmp_rx_autolevel_9600')\
+            \ }}` |\n| **Packets (Sent / Recv)**| Sent: `{{ state_attr(node, 'meter_pkg_count_sent')\
+            \ }}` \\| Recv: `{{ state_attr(node, 'meter_pkg_count_recv') }}` |\n|\
+            \ **Valid Meter Readings**| `{{ state_attr(node, 'meter_reading_count_recv')\
+            \ }}` successful readings |\n| **Reading Errors** | Invalid: `{{ state_attr(node,\
+            \ 'invalid_meter_readings_count') }}` \\| Corrupt: `{{ state_attr(node,\
+            \ 'meter_corrupt_reading_count_recv') }}` \\| Compression: `{{ state_attr(node,\
+            \ 'compression_error_readings_count') }}` |\n"
+          type: markdown
+        clear: false
+        clear-children: true
+        overlay-margin: 40px
+        title: Tibber Pulse
+        title-card:
+          color: blue
+          entity: sensor.tibber_node_battery_voltage
+          features:
+          - detail: true
+            hours_to_show: 24
+            type: trend-graph
+          features_position: bottom
+          grid_options:
+            columns: full
+          icon: mdi:pulse
+          multiline_secondary: false
+          primary: 'Tibber Pulse Uptime: {{ state_attr(entity,''uptime_human'') }}'
+          secondary: '{{ states(entity, with_unit=True) }}'
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+          vertical: true
+        title-card-button-overlay: true
+        type: custom:expander-card
+      - cards:
+        - badges:
+          - color: state
+            entity: switch.adguard_home_schutz
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /config/devices/device/f25566ea435365c5d4c37837584d186c
+            type: entity
+          heading: Adguard
+          heading_style: title
+          icon: mdi:security-network
+          tap_action:
+            action: navigate
+            navigation_path: /app/a0d7b954_adguard
+          type: heading
+        - cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.adguard_home_cpu_prozent
+            frameless: false
+            layout: horizontal
+            marginless: false
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.adguard_home_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          type: horizontal-stack
+        - cards:
+          - content: "{% set schutz = '\u2705' if is_state('switch.adguard_home_schutz',\
+              \ 'on') else '\u274C' %}\n{% set filterung = '\u2705' if is_state('switch.adguard_home_filterung',\
+              \ 'on') else '\u274C' %}\n{% set safe_browsing = '\u2705' if is_state('switch.adguard_home_safe_browsing',\
+              \ 'on') else '\u274C' %}\n{% set protokoll = '\u2705' if is_state('switch.adguard_home_abfrageprotokoll',\
+              \ 'on') else '\u274C' %}\n\n### \U0001F6E1\uFE0F Status & Features\n\
+              \n| Feature | State |\n| :--- | :--- |\n| **Hauptschutz** | {{ schutz\
+              \ }} |\n| **Filterung** | {{ filterung }} |\n| **Safe Browsing** | {{\
+              \ safe_browsing }} |\n| **Abfrageprotokoll** | {{ protokoll }} |\n"
+            type: markdown
+          - content: "### \U0001F4CA Statistics\n\n| Metric | Value |\n| :--- | :---\
+              \ |\n| **Blockrate** | `{{ states('sensor.adguard_home_anteil_blockierter_dns_abfragen')\
+              \ }}%` |\n| **Blockierte Abfragen** | `{{ states('sensor.adguard_home_blockierte_dns_abfragen')\
+              \ }}` |\n| **DNS (Gesamt)** | `{{ states('sensor.adguard_home_dns_abfragen')\
+              \ }}` |\n| **DNS (Heute)** | `{{ states('sensor.daily_dns_abfragen')\
+              \ }}` |\n| **Filterregeln** | `{{ states('sensor.adguard_home_anzahl_regeln')\
+              \ }}` |\n| **\xD8 Zeit** | `{{ states('sensor.adguard_home_durchschnittliche_verarbeitungsgeschwindigkeit')\
+              \ }} ms` |\n"
+            type: markdown
+          type: horizontal-stack
+        type: vertical-stack
+      - cards:
+        - badges:
+          - color: state
+            entity: update.frigate_update
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /config/updates
+            type: entity
+          - entity: sensor.frigate_folder_size
+            icon: mdi:folder-multiple-image
+            show_icon: true
+            show_state: true
+            tap_action:
+              action: navigate
+              navigation_path: /media-browser
+            type: entity
+          heading: Frigate
+          heading_style: title
+          icon: mdi:cctv
+          tap_action:
+            action: navigate
+            navigation_path: /app/ccab4aaf_frigate-fa
+          type: heading
+        - cards:
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_cpu_prozent
+            frameless: false
+            layout: horizontal
+            marginless: false
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          - bar_size: large
+            decimal: 1
+            entity: sensor.frigate_full_access_arbeitsspeicher_in_prozent
+            layout: horizontal
+            max_value: 100
+            name:
+              type: entity
+            show_more_info: true
+            theme: optimal_when_low
+            type: custom:entity-progress-card
+            unit: '%'
+          type: horizontal-stack
+        - cards:
+          - content: "{% set uptime_sec = states('sensor.frigate_uptime') | float(0)\
+              \ %} {% set days = (uptime_sec // 86400) | int %} {% set hours = ((uptime_sec\
+              \ % 86400) // 3600) | int %} {% set minutes = ((uptime_sec % 3600) //\
+              \ 60) | int %}\n### \U0001F6E1\uFE0F Status & Info\n\n| Property | State\
+              \ |\n| :--- | :--- |\n| **Update** | `{{ states('update.frigate_server')\
+              \ }}` |\n| **Uptime** | `{% if days > 0 %}{{ days }}d {% endif %}{{\
+              \ hours }}h {{ minutes }}m` |\n| **Inference Time** | `{{ states('sensor.frigate_ov_inference_speed')\
+              \ }} ms` |\n| **GPU Load** | `{{ states('sensor.frigate_intel_qsv_gpu_load')\
+              \ }}%` |\n"
+            type: markdown
+          - content: "### \U0001F4CA Performance\n| Metric | Value |\n| :--- | :---\
+              \ |\n| **Camera FPS** | `{{ states('sensor.frigate_camera_fps') }} FPS`\
+              \ | \n| **Detection FPS** | `{{ states('sensor.frigate_detection_fps')\
+              \ }} FPS` |\n| **Process FPS** | `{{ states('sensor.frigate_process_fps')\
+              \ }} FPS` |\n| **Skipped FPS** | `{{ states('sensor.frigate_skipped_fps')\
+              \ }} FPS` |\n"
+            type: markdown
+          type: horizontal-stack
+        type: vertical-stack
       type: grid
     subview: true
     title: Internet
@@ -7955,58 +8352,6 @@ config:
         - entity: sensor.inverter_battery_current
         type: entities
       type: grid
-    - cards:
-      - heading: History
-        type: heading
-      - entities:
-        - sensor.inverter_battery
-        - sensor.inverter_battery_voltage
-        - sensor.inverter_battery_current
-        - sensor.battery_1_bat1_soc
-        - sensor.battery_2_bat2_soc
-        - sensor.battery_1_bat1_current
-        - sensor.battery_2_bat2_current
-        - sensor.battery_1_bat1_voltage
-        - sensor.battery_2_bat2_voltage
-        - sensor.battery_1_bat1_average_cell_voltage
-        - sensor.battery_1_bat1_cell_01
-        - sensor.battery_1_bat1_cell_02
-        - sensor.battery_1_bat1_cell_03
-        - sensor.battery_1_bat1_cell_04
-        - sensor.battery_1_bat1_cell_05
-        - sensor.battery_1_bat1_cell_06
-        - sensor.battery_1_bat1_cell_07
-        - sensor.battery_1_bat1_cell_08
-        - sensor.battery_1_bat1_cell_09
-        - sensor.battery_1_bat1_cell_10
-        - sensor.battery_1_bat1_cell_11
-        - sensor.battery_1_bat1_cell_12
-        - sensor.battery_1_bat1_cell_13
-        - sensor.battery_1_bat1_cell_14
-        - sensor.battery_1_bat1_cell_15
-        - sensor.battery_1_bat1_cell_16
-        - sensor.battery_1_bat1_cell_voltage_difference
-        - sensor.battery_2_bat2_average_cell_voltage
-        - sensor.battery_2_bat2_cell_01
-        - sensor.battery_2_bat2_cell_02
-        - sensor.battery_2_bat2_cell_03
-        - sensor.battery_2_bat2_cell_04
-        - sensor.battery_2_bat2_cell_05
-        - sensor.battery_2_bat2_cell_06
-        - sensor.battery_2_bat2_cell_07
-        - sensor.battery_2_bat2_cell_08
-        - sensor.battery_2_bat2_cell_09
-        - sensor.battery_2_bat2_cell_10
-        - sensor.battery_2_bat2_cell_11
-        - sensor.battery_2_bat2_cell_12
-        - sensor.battery_2_bat2_cell_13
-        - sensor.battery_2_bat2_cell_14
-        - sensor.battery_2_bat2_cell_15
-        - sensor.battery_2_bat2_cell_16
-        - sensor.battery_2_bat2_cell_voltage_difference
-        hours_to_show: 1
-        title: History
-        type: history-graph
     subview: true
     title: Home Battery
     type: sections
