@@ -50,17 +50,6 @@
       minutes: 15
       seconds: 0
     id: 'Off'
-  - type: not_occupied
-    device_id: 561b2fddd9cec3889faf18b8ccf214a0
-    entity_id: b4a408441c08e8103747f1fac6b78b62
-    domain: binary_sensor
-    trigger: device
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 5
-    id: 'Off'
-    enabled: false
   - trigger: state
     entity_id:
     - binary_sensor.everything_presence_lite_f1c0d0_occupancy
@@ -385,8 +374,8 @@
         target:
           entity_id: counter.ev_charging_messages
         action: counter.increment
-  mode: parallel
-  max: 10
+  mode: queued
+  max: 2
 - id: '1705389061375'
   alias: Homeassistent Start & Stop
   description: "## \U0001F504 Home Assistant Start & Stop Automation\n\n### \U0001F4CB
@@ -441,11 +430,6 @@
       metadata: {}
       data: {}
       target:
-        device_id: 888e1a1c64b67f6233d2487f81fdb6a1
-    - action: homeassistant.reload_config_entry
-      metadata: {}
-      data: {}
-      target:
         device_id: 8d93cc1ec24be9b80935c68d04f8549f
     - delay:
         hours: 0
@@ -486,26 +470,16 @@
     input:
       power_sensor: sensor.spulmaschine_energy_power
       include_start_notify: disable_start_notify_options
-      start_notify_device: []
       end_notify_device:
       - 3b177c6db2b7618a07b7cf691b4a3a9c
       - 0d88285a82251e06c1a2bfced7afbd00
       - 2f1b9530bd2a8a239c9716ad67359eba
       - 905c163dcc62544838edb078413723b2
       end_message_title: Spülmaschine
-      end_custom_actions:
-      - action: button.press
-        metadata: {}
-        target:
-          entity_id: button.spulmaschine_force_end_cycle
-        data: {}
-        enabled: false
       start_appliance_power: 15
       end_message: 'Spülmaschine ausräumen '
       start_message: ' '
       include_end_notify: enable_end_notify_options
-      include_custom_actions: []
-      start_custom_actions: []
       end_appliance_power: 2
       end_time_delay: 1
       include_power_tracking: disable_power_tracking
@@ -747,6 +721,18 @@
     - condition: state
       entity_id: input_boolean.automation_enable_sunrise
       state: 'on'
+    - condition: not
+      conditions:
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: sensor.energy_summary_1st_block
+          state:
+          - unknown
+        - condition: state
+          entity_id: sensor.energy_summary_1st_block
+          state:
+          - unavailable
     then:
     - data:
         title: 'Daily Energy Summary:'
@@ -918,16 +904,15 @@
         data:
           tag: forecast_today
       action: notify.duncan
-  mode: parallel
-  max: 10
+  mode: single
 - id: '1710589916637'
   alias: Fire Detection from Temperature Sensors
   description: This automation monitors temperature sensors for potential fire conditions.
     It sends notifications if the temperature exceeds a specified threshold, helping
     to ensure safety by alerting when fire risk is detected.
   triggers:
-  - seconds: /15
-    trigger: time_pattern
+  - trigger: time_pattern
+    minutes: /1
   conditions:
   - condition: template
     value_template: '{{ sensors != '''' }}'
@@ -1380,22 +1365,22 @@
   alias: Adjust Person Counter if necessary
   description: ''
   triggers:
-  - type: occupied
-    device_id: 8d90a3db9282aaec047e6d784c3c33ea
-    entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    to:
+    - 'on'
     id: Bed occupied
-  - type: not_occupied
-    device_id: 561b2fddd9cec3889faf18b8ccf214a0
-    entity_id: b4a408441c08e8103747f1fac6b78b62
-    domain: binary_sensor
-    trigger: device
+  - trigger: state
+    entity_id:
+    - binary_sensor.everything_presence_lite_f1c0d0_occupancy
+    to:
+    - 'off'
+    id: Room empty
     for:
       hours: 0
       minutes: 1
       seconds: 0
-    id: Room empty
   conditions: []
   actions:
   - alias: Adjust when in bed
@@ -1424,21 +1409,21 @@
       - condition: trigger
         id:
         - Room empty
-      - type: is_not_occupied
-        condition: device
-        device_id: 8d90a3db9282aaec047e6d784c3c33ea
-        entity_id: 18ae1b20fc6bbb0a1b8bb168b0ff19c3
-        domain: binary_sensor
+      - condition: state
+        entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+        state:
+        - 'off'
       - condition: numeric_state
         entity_id: number.esp32_s3_zero_lichtschranke_person_counter
         enabled: true
         above: 0.5
     then:
-    - device_id: ffc86bfcc740ddde767208e2a0031ecd
-      domain: number
-      entity_id: 2a17997fb79eae57b456a9cfb917ae18
-      type: set_value
-      value: 0
+    - action: number.set_value
+      metadata: {}
+      target:
+        entity_id: number.esp32_s3_zero_lichtschranke_person_counter
+      data:
+        value: '0'
   mode: single
 - id: '1712821937547'
   alias: Notify Time in Bed
@@ -1506,7 +1491,11 @@
     continue_on_timeout: false
   - wait_template: '{{ states(''sensor.terrarium_zigbee_strip_power'')|float(0) >=
       baseline + 5 }}'
-    timeout: 00:01:00
+    timeout:
+      hours: 0
+      minutes: 5
+      seconds: 0
+      milliseconds: 0
     continue_on_timeout: true
   - variables:
       current_power: '{{ states(''sensor.terrarium_zigbee_strip_power'')|float(0)
@@ -2356,24 +2345,14 @@
     - conditions:
       - condition: trigger
         id:
+        - sunset
         - sunrise
       sequence:
       - action: script.turn_on
         metadata: {}
         data: {}
         target:
-          entity_id: script.terra_sunrise
-      alias: Sunrise
-    - conditions:
-      - condition: trigger
-        id:
-        - sunset
-      sequence:
-      - action: script.turn_on
-        metadata: {}
-        data: {}
-        target:
-          entity_id: script.terra_sunset
+          entity_id: script.terra_{{trigger.id}}
       alias: Sunset
     - conditions:
       - condition: trigger
@@ -2387,7 +2366,7 @@
           entity_id: input_boolean.luftbefeuchter_aktiv
       alias: Luftbefeuchter Boolean Sync
   mode: parallel
-  max: 10
+  max: 6
 - id: '1717951712000'
   alias: Pool Heating Control for Optimal Temperature
   description: "  ## ☀️ Pool Heating Control for Optimal Temperature\n\n  ### \U0001F4CB
@@ -2806,59 +2785,6 @@
     metadata: {}
     data:
       addon: bf995ce7_saic_python_mqtt_gateway-pre
-  mode: single
-- id: '1724944606723'
-  alias: Vacation or Daily Mode
-  description: Automatically adjusts home settings for vacation or daily living modes.
-    Sends notifications based on the current mode.
-  triggers:
-  - entity_id:
-    - input_select.smart_home_status
-    from: Daily
-    to: Vacation
-    id: Vacation
-    trigger: state
-  - entity_id:
-    - input_select.smart_home_status
-    from: Vacation
-    to: Daily
-    id: Daily
-    trigger: state
-  conditions: []
-  actions:
-  - alias: Vacation
-    if:
-    - condition: trigger
-      id:
-      - Vacation
-    then:
-    - action: homeassistant.turn_off
-      metadata: {}
-      data: {}
-      target:
-        label_id: vacation_mode
-    - action: notify.notify
-      metadata: {}
-      data:
-        message: 'euer Smart Home '
-        title: "Viel Spaß im Urlaub \U0001F3D6️"
-      alias: 'Viel Spaß im Urlaub '
-  - alias: Daily
-    if:
-    - condition: trigger
-      id:
-      - Daily
-    then:
-    - action: homeassistant.turn_on
-      target:
-        label_id: vacation_mode
-      data: {}
-    - alias: 'Viel Spaß im Urlaub '
-      action: notify.notify
-      metadata: {}
-      data:
-        message: 'Ich hoffe ihr seid erholt '
-        title: 'Willkommen zurück '
   mode: single
 - id: '1726817233810'
   alias: Restart at 3:15 every second Night
@@ -3506,40 +3432,6 @@
         service_data:
           transition: 0.25
   mode: restart
-- id: '1730294194772'
-  alias: Aqara H1 EU Decoupled Switch Right
-  description: "## Aqara H1 EU Decoupled Switch Right  \n\nThis automation manages
-    the **Aqara H1 EU Decoupled Switch (right button)**.  \nIt toggles the **Gerade
-    switch** when the right button is pressed under specific conditions.  \n\n###
-    Key Features:\n- **Trigger**:  \n  Fired when the **single_right** action event
-    from the Aqara H1 EU switch is detected.  \n\n- **Conditions**:  \n  1. The switch
-    must be in **decoupled mode** (`select.duncan_lichtschalter_operation_mode_right`).
-    \ \n  2. A **10-second cooldown** prevents the automation from retriggering too
-    quickly.  \n\n- **Action**:  \n  Toggles the state of the **Gerade switch** (`switch.duncan_lichtschalter_right`).
-    \ \n\n### Purpose:  \nThis automation allows the right button of the Aqara H1
-    EU switch to independently control the **Gerade switch**, while enforcing a cooldown
-    to avoid rapid toggling."
-  triggers:
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_right
-    trigger: device
-  conditions:
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_right
-    state: decoupled
-  - condition: template
-    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
-      default( as_datetime(''0''), true)) > timedelta(seconds=10) }}'
-  actions:
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id:
-      - switch.duncan_lichtschalter_right
-  mode: single
 - id: '1730367818444'
   alias: Cupra Unlocked Reminder
   description: Sends a notification if the Cupra vehicle remains unlocked for 15 minutes
@@ -3790,10 +3682,6 @@
     entity_id:
     - sensor.tibber_bridge_0100020800ff_in_k
     to: unavailable
-  - trigger: state
-    entity_id:
-    - sensor.tibber_bridge_0100020800ff_in_k
-    to: unavailable
     for:
       hours: 0
       minutes: 3
@@ -3806,18 +3694,6 @@
       hours: 0
       minutes: 10
       seconds: 0
-  - trigger: state
-    entity_id:
-    - sensor.tibber_bridge_0100020800ff_in_k
-    to: unavailable
-    for:
-      hours: 0
-      minutes: 30
-      seconds: 0
-  - trigger: state
-    entity_id:
-    - sensor.tibber_bridge_0100020800ff_in_k
-    to: unknown
   - trigger: state
     entity_id:
     - sensor.tibber_bridge_0100020800ff_in_k
@@ -3834,18 +3710,6 @@
       hours: 0
       minutes: 10
       seconds: 0
-  - trigger: state
-    entity_id:
-    - sensor.tibber_bridge_0100020800ff_in_k
-    to: unknown
-    for:
-      hours: 0
-      minutes: 30
-      seconds: 0
-  - trigger: numeric_state
-    entity_id:
-    - sensor.total_money_generated
-    below: 1
   - trigger: numeric_state
     entity_id:
     - sensor.total_money_generated
@@ -3862,17 +3726,6 @@
       minutes: 10
       seconds: 0
     below: 1
-  - trigger: numeric_state
-    entity_id:
-    - sensor.total_money_generated
-    for:
-      hours: 0
-      minutes: 30
-      seconds: 0
-    below: 1
-  - trigger: sun
-    event: sunset
-    offset: 0
   conditions: []
   actions:
   - repeat:
@@ -4034,6 +3887,8 @@
           entity_id: person.stephan
           state:
           - home
+      - condition: template
+        value_template: '{{ trigger.from_state.state != ''home''}}'
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -4243,42 +4098,6 @@
     target:
       entity_id: datetime.inverter_date_time
     action: datetime.set_value
-  mode: single
-- id: '1738246026422'
-  alias: Aqara H1 EU Decoupled Switch Left
-  description: "## Aqara H1 EU Decoupled Switch Left  \n\nThis automation handles
-    the behavior of the **Aqara H1 EU Decoupled Switch (left button)**.  \nIt is designed
-    to toggle the **Schräg switch** whenever the decoupled left button is pressed.
-    \ \n\n### Key Features:\n- **Trigger**:  \n  Activated by the **single_left**
-    action event from the Aqara H1 EU switch.  \n\n- **Conditions**:  \n  1. The switch
-    must be in **decoupled mode** (`select.duncan_lichtschalter_operation_mode_left`).
-    \ \n  2. A **cooldown period of 10 seconds** ensures the automation does not trigger
-    repeatedly if pressed too quickly.  \n\n- **Action**:  \n  Toggles the state of
-    the **Schräg switch** (`switch.duncan_lichtschalter_left`).  \n\n### Purpose:
-    \ \nThis automation allows the left button of the Aqara H1 EU switch to act as
-    a wireless trigger for controlling the Schräg switch, while avoiding accidental
-    or rapid re-triggers through a built-in cooldown."
-  triggers:
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_left
-    metadata: {}
-    trigger: device
-  conditions:
-  - condition: state
-    entity_id: select.duncan_lichtschalter_operation_mode_left
-    state: decoupled
-  - condition: template
-    value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
-      default( as_datetime(''0''), true)) > timedelta(seconds=10) }}'
-  actions:
-  - action: switch.toggle
-    metadata: {}
-    data: {}
-    target:
-      entity_id:
-      - switch.duncan_lichtschalter_left
   mode: single
 - id: '1738339387324'
   alias: Orangina Lamp Light
@@ -4586,6 +4405,7 @@
     entity_id:
     - sensor.tibber_node_battery_voltage
     below: 3.025
+    attribute: node_battery_voltage
   conditions: []
   actions:
   - action: notify.duncan
@@ -4711,12 +4531,14 @@
     from: 'on'
     to: 'off'
     id: trockner_fertig
+    alias: Trockner Clear
   - trigger: state
     entity_id:
     - input_boolean.waschmaschine_fertig
     from: 'on'
     to: 'off'
     id: waschmaschine_fertig
+    alias: Waschmaschine Clear
   conditions: []
   actions:
   - variables:
@@ -4743,16 +4565,6 @@
       sequence:
       - repeat:
           sequence:
-          - action: notify.familie
-            metadata: {}
-            data:
-              data:
-                tag: waschmaschine_fertig
-                color: yellow
-                notification_icon: mdi:washing-machine
-              title: Waschmaschine fertig
-              message: Bitte ausräumen
-            enabled: false
           - action: script.notify_people_at_home_with_fallbacks
             data:
               title: Waschmaschine fertig
@@ -4797,16 +4609,6 @@
       sequence:
       - repeat:
           sequence:
-          - action: notify.familie
-            metadata: {}
-            data:
-              data:
-                tag: trockner_fertig
-                color: yellow
-                notification_icon: mdi:tumble-dryer
-              title: Trockner fertig
-              message: Bitte ausräumen
-            enabled: false
           - action: script.notify_people_at_home_with_fallbacks
             data:
               title: Trockner fertig
@@ -4854,7 +4656,7 @@
             tag: '{{ trigger.id }}'
           message: clear_notification
   mode: parallel
-  max: 10
+  max: 6
 - id: '1740525979043'
   alias: Turn all off if going to bed
   description: Turns off various lights and power strips in the bedroom when a person
@@ -5034,11 +4836,6 @@
     subtype: button_2_double
     trigger: device
     id: Waschmaschine
-  - trigger: numeric_state
-    entity_id:
-    - sensor.trockner_lauft_seit
-    above: 5
-    id: Waschmaschine
   conditions: []
   actions:
   - choose:
@@ -5210,8 +5007,8 @@
       payload: "{% set avg_soc = states('sensor.felicity_ess_soc_avg') | float(0)
         %}\n{% if avg_soc > 0 %}\n  {{ avg_soc }}\n{% else %}\n  {{ states('sensor.inverter_battery')
         }}\n{% endif %}\n"
-  mode: parallel
-  max: 10
+  mode: single
+  max_exceeded: silent
 - id: '1742316986881'
   alias: Wall Panel Display Control
   description: "### \U0001F4CB Intelligent Display Control\nThis automation manages
@@ -5516,6 +5313,8 @@
       - condition: trigger
         id:
         - Enter
+      - condition: template
+        value_template: '{{ trigger.from_state.state != ''home''}}'
       sequence:
       - action: notify.duncan
         metadata: {}
@@ -5527,6 +5326,11 @@
             tag: home_arrival_enya
             url: /lovelace/maps
             clickAction: /lovelace/maps
+      - delay:
+          hours: 0
+          minutes: 1
+          seconds: 0
+          milliseconds: 0
     - conditions:
       - condition: trigger
         id:
@@ -5538,8 +5342,8 @@
           message: clear_notification
           data:
             tag: home_arrival_enya
-  mode: queued
-  max: 3
+  mode: single
+  max_exceeded: silent
 - id: '1747048995618'
   alias: Coffee Machine Power Control
   description: "## ☕ Coffee Machine Power Control\n\n### \U0001F4CB **Automatic Smart-Plug
@@ -6292,14 +6096,14 @@
   mode: single
 - id: '1749938010439'
   alias: Reset Deye Battery Capacity closer to real
-  description: "## \U0001F50B Reset Deye Battery Capacity  \n\n### \U0001F4CB **Keeping
-    SOC Estimation in Check**  \nThe Deye inverter tends to overshoot its calculated
-    battery capacity. This automation corrects the capacity estimate by making small
-    adjustments around the true SOC reported by the BMS, keeping values closer to
-    reality.  \n\n---\n\n### ⏰ **Triggers**  \n| Condition | Entity/Event | Threshold
-    |\n|-----------|--------------|-----------|\n| **Daily Reset** | `sunset` | Exact
-    time |\n| **Midnight Reset** | `00:00:00` | Exact time |\n| **SOC Full** | `sensor.felicity_ess_soc_avg`
-    | Above **99.9%** |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
+  description: "### \U0001F4CB **Keeping SOC Estimation in Check**  \nThe Deye inverter
+    tends to overshoot its calculated battery capacity. This automation corrects the
+    capacity estimate by making small adjustments around the true SOC reported by
+    the BMS, keeping values closer to reality.  \n\n---\n\n### ⏰ **Triggers**  \n|
+    Condition | Entity/Event | Threshold |\n|-----------|--------------|-----------|\n|
+    **Daily Reset** | `sunset` | Exact time |\n| **Midnight Reset** | `00:00:00` |
+    Exact time |\n| **SOC Full** | `sensor.felicity_ess_soc_avg` | Above **99.9%**
+    |\n\n---\n\n### ✅ **Conditions**  \n- `sensor.inverter_battery_corrected_capacity`
     > `number.inverter_battery_capacity`  \n- `sensor.felicity_ess_soc_avg` > **99%**
     \ \n\n---\n\n### \U0001F3AF **Correction Logic**  \n\n#### **Step 1**  \n- Increase
     inverter’s capacity value by **+1**  \n\n#### **Step 2**  \n- Wait **30s**  \n\n####
@@ -6317,7 +6121,7 @@
   - trigger: numeric_state
     entity_id:
     - sensor.felicity_ess_soc_avg
-    above: 99.9
+    above: 98.9
   conditions:
   - condition: numeric_state
     entity_id: sensor.inverter_battery_corrected_capacity
@@ -6335,10 +6139,14 @@
         {{ states(''number.inverter_battery_capacity'')|int(500) + 1 }}'
     target:
       entity_id: number.inverter_battery_capacity
-  - delay:
+  - wait_for_trigger:
+    - trigger: state
+      entity_id:
+      - sensor.inverter_battery_corrected_capacity
+    timeout:
       hours: 0
-      minutes: 0
-      seconds: 30
+      minutes: 1
+      seconds: 0
       milliseconds: 0
   - action: number.set_value
     metadata: {}
@@ -7578,13 +7386,10 @@
   use_blueprint:
     path: SgtBatten/Stable.yaml
     input:
-      presence_filter:
-      - ''
       camera:
       - camera.ding_dong_tapo
       notify_group: notify.duncan
       attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
-      zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
       final_update: true
       final_delay: 10
@@ -7599,6 +7404,11 @@
       - cat
       - person
       - package
+      url_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg'
+      tap_action: /ccab4aaf_frigate-fa/dashboard
+      button_1: View Clip
+      url_1: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
+      alert_once: true
 - id: '1751496337388'
   alias: Frigate Notifications (0.14.0.2w) Keller
   description: Sends notifications with snapshots from the Keller camera using Frigate
@@ -7606,17 +7416,13 @@
   use_blueprint:
     path: SgtBatten/Stable.yaml
     input:
-      presence_filter:
-      - ''
       camera:
       - camera.keller_tapo
       notify_group: notify.duncan
-      attachment_2: ''
-      zone_filter: false
       notify_device: 905c163dcc62544838edb078413723b2
-      final_update: false
+      final_update: true
       final_delay: 10
-      message: '{{ label }} detected - {{ camera_name }} at {{event[''after''][''start_time'']|timestamp_custom(''%H:%M'')}}'
+      message: '{{ label }} detected - {{ camera_name }}'
       attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
@@ -7627,6 +7433,12 @@
       - cat
       - person
       channel: Frigate
+      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
+      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
+      alert_once: true
+      tap_action: /ccab4aaf_frigate-fa/dashboard
+      url_1: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
+      url_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg'
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
   description: "## \U0001F31E Rollo Sommer Automatisch Steuern (mit Grund und Manueller
@@ -10337,6 +10149,25 @@
   triggers:
   - trigger: time_pattern
     minutes: /2
+    enabled: false
+  - trigger: state
+    entity_id:
+    - switch.terrarium_zigbee_strip_l1
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 1
+  - trigger: state
+    entity_id:
+    - switch.terrarium_zigbee_strip_l1
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 30
   conditions:
   - condition: state
     entity_id: input_boolean.terrarium_on
@@ -11396,7 +11227,7 @@
             type: hourly
           target:
             entity_id:
-            - weather.micro_weather_station
+            - weather.weather_fusion_ai_home
             - weather.forecast_home
           response_variable: weather_data
           action: weather.get_forecasts
@@ -11977,6 +11808,7 @@
           data:
             tag: nas-alert-{{ trigger.entity_id }}
   mode: parallel
+  max: 3
 - id: 1705101110242_battery_plus_low
   alias: 'Notify: Offline or Low Battery Devices (Detailed)'
   description: "# \U0001F50B **Notify: Offline or Low Battery Devices**\n\n### \U0001F4CB
@@ -12757,224 +12589,6 @@
         data: {}
   mode: parallel
   max: 10
-- id: '1776775331415'
-  alias: 'Battery Maintenance: Balancing Soak Cycle'
-  description: "### \U0001F4CB Intelligent Battery Maintenance Control\n\nThis automation
-    manages a \"Soak Cycle\" for the inverter battery system to facilitate cell balancing
-    at high States of Charge (SOC). By intelligently disabling the **Time of Use (TOU)**
-    switch, the system prevents heavy discharging once the battery reaches a near-full
-    state, ensuring the cells have sufficient time at high voltage for the BMS to
-    balance effectively.\n\n* **High-level intent:** Prioritize battery health by
-    restricting discharge during peak solar periods once the battery is nearly full.\n*
-    **Operational strategy:** Solar-aware maintenance triggered only when a high daily
-    yield is forecasted, ensuring enough energy is available to maintain the soak
-    without sacrificing household autonomy.\n* **Reliability mechanisms:** Utilizes
-    a robust **backoff retry script** for switch commands to ensure critical state
-    changes occur even during transient communication drops.\n\n---\n\n### Trigger
-    Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :--- | :---
-    | :--- | :--- |\n| **Numeric State** | `sensor.inverter_battery` > **95%** | `start_soak`
-    | Initiates the maintenance window when the battery is nearly full. |\n| **Time**
-    | **16:00 (4:00 PM)** | `stop_soak` | Ends the maintenance window to resume normal
-    discharge for evening loads. |\n\n---\n\n### Operational Logic Sections\n\n####
-    Balancing Phase (Start Soak)\n* **Purpose:** Restrict battery discharge to allow
-    cells to balance at high voltage.\n* **Logic Overview:** Executes if the battery
-    is above **95%**, the time is between **08:00 and 15:00**, the daily solar forecast
-    (`sensor.solcast_pv_forecast_prognose_heute`) exceeds **50kWh**, and the **Time
-    of Use** switch is currently **on**.\n* **Effect:** Sets `switch.esp32_s3_zero_deye8k_time_of_use`
-    to **off** and sends a mobile notification with the current SOC and forecast data.\n\n####
-    Normalization Phase (Stop Soak)\n* **Purpose:** Restore standard Time of Use settings
-    for evening operation.\n* **Logic Overview:** Triggered specifically at **16:00**
-    via the `stop_soak` ID.\n* **Effect:** Sets `switch.esp32_s3_zero_deye8k_time_of_use`
-    to **on** and notifies the user of the system status, confirming whether the house
-    has successfully resumed battery power.\n\n---\n\n### Technical Overview\n\n*
-    **Automation Mode:** `restart`\n* **Execution Method:** `script.retry_action_with_backoff`\n*
-    **Key Inputs:**\n    * `sensor.inverter_battery` (Threshold: **95%**)\n    * `sensor.solcast_pv_forecast_prognose_heute`
-    (Threshold: **50kWh**)\n* **Controlled Entities:**\n    * `switch.esp32_s3_zero_deye8k_time_of_use`\n*
-    **Safety Mechanisms:**\n    * **Action Retries:** Up to **10 retries** with a
-    **60s max delay** and **simple backoff** to ensure the inverter registers the
-    command.\n    * **Notification Loop:** Real-time feedback via `notify.duncan`
-    if the switch fails to toggle, allowing for manual intervention.\n\n---\n\n###
-    \U0001F4A1 Notes\n\n* **Forecast Dependency:** The **50kWh** threshold ensures
-    that maintenance only occurs on high-production days, preventing the system from
-    disabling battery discharge when solar energy might be insufficient.\n* **Time
-    Windows:** The start logic is constrained to **08:00 - 15:00** to ensure the soak
-    happens during peak sun, while the **16:00** stop time ensures the battery is
-    available for the primary evening discharge period.\n* **Fail-Safe:** By using
-    `continue_on_error: true` alongside the retry script, the automation remains resilient
-    and will continue to attempt notification even if the hardware communication is
-    temporarily interrupted."
-  triggers:
-  - entity_id:
-    - sensor.felicity_ess_soc_avg
-    above: 95
-    id: start_soak
-    trigger: numeric_state
-  - at: '16:00:00'
-    id: stop_soak
-    trigger: time
-  - trigger: time_pattern
-    minutes: /2
-    id: maintain_soak
-  conditions:
-  - condition: or
-    conditions:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - maintain_soak
-      - condition: time
-        after: 08:00:00
-        before: '16:00:00'
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-        state: 'off'
-      alias: Maintain Soak
-    - alias: Start Soak
-      condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - start_soak
-      - condition: numeric_state
-        entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 50
-      - condition: time
-        after: 08:00:00
-        before: '15:00:00'
-      - condition: state
-        entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-        state:
-        - 'on'
-    - condition: trigger
-      id:
-      - stop_soak
-      alias: Stop Soak
-  actions:
-  - variables:
-      target_amps: "{% set cells = [\n  states('sensor.battery_2_bat2_cell_01')|float(0),
-        states('sensor.battery_2_bat2_cell_02')|float(0),\n  states('sensor.battery_2_bat2_cell_03')|float(0),
-        states('sensor.battery_2_bat2_cell_04')|float(0),\n  states('sensor.battery_2_bat2_cell_05')|float(0),
-        states('sensor.battery_2_bat2_cell_06')|float(0),\n  states('sensor.battery_2_bat2_cell_07')|float(0),
-        states('sensor.battery_2_bat2_cell_08')|float(0),\n  states('sensor.battery_2_bat2_cell_09')|float(0),
-        states('sensor.battery_2_bat2_cell_10')|float(0),\n  states('sensor.battery_2_bat2_cell_11')|float(0),
-        states('sensor.battery_2_bat2_cell_12')|float(0),\n  states('sensor.battery_2_bat2_cell_13')|float(0),
-        states('sensor.battery_2_bat2_cell_14')|float(0),\n  states('sensor.battery_2_bat2_cell_15')|float(0),
-        states('sensor.battery_2_bat2_cell_16')|float(0)\n] %}  {% set max_cell =
-        cells | max %} {{ 0 if max_cell >= 3.50 else (2 if max_cell >= 3.45 else 10)
-        }}"
-  - choose:
-    - conditions:
-      - condition: trigger
-        id: start_soak
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-          target_state: 'off'
-          base_delay: 10
-        continue_on_error: true
-      - data:
-          title: "\U0001F50B Balancing Soak: Active"
-          message: '{% set switch = states(''switch.esp32_s3_zero_deye8k_time_of_use'')
-            %}
-
-            Result: {{ "✅ TOU Disabled" if switch == ''off'' else "⚠️ Switch Failed
-            to Toggle" }}
-
-            SOC: {{ states(''sensor.inverter_battery'') }}%, Forecast: {{ states(''sensor.solcast_pv_forecast_prognose_heute'')
-            | round(1) }}kWh
-
-            Discharge is now restricted to prioritize cell balancing.'
-        action: notify.duncan
-        continue_on_error: true
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.esp32_s3_zero_deye8k_enable_charge_automations
-          target_state: 'off'
-        continue_on_error: true
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.esp32_s3_zero_deye8k_battery_charge_solar
-          target_state: 'off'
-        continue_on_error: true
-      - action: number.set_value
-        metadata: {}
-        target:
-          entity_id: number.inverter_battery_max_charging_current
-        data:
-          value: '{{ target_amps }}'
-    - conditions:
-      - condition: trigger
-        id: maintain_soak
-      sequence:
-      - action: number.set_value
-        target:
-          entity_id: number.inverter_battery_max_charging_current
-        data:
-          value: '{{ target_amps }}'
-    - conditions:
-      - condition: trigger
-        id: stop_soak
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.esp32_s3_zero_deye8k_time_of_use
-          target_state: 'on'
-          base_delay: 10
-        continue_on_error: true
-      - action: number.set_value
-        metadata: {}
-        target:
-          entity_id: number.inverter_battery_max_charging_current
-        data:
-          value: '120'
-      - data:
-          title: "\U0001F3E0 Normal Mode: Resumed"
-          message: '{% set switch = states(''switch.esp32_s3_zero_deye8k_time_of_use'')
-            %} Maintenance window finished. Status: {{ "✅ \nHouse on Battery" if switch
-            == ''on'' else "❌ \nTOU Still Disabled (Check Connection)" }}
-
-            The house is {{ "now drawing from the battery" if switch == ''on'' else
-            "still running on Bypass/Solar/Grid" }}.'
-        action: notify.duncan
-        continue_on_error: true
-  mode: queued
-  max: 4
 - id: '1777634714624'
   alias: Pool Pump Pulse Sync & Monitor
   description: 'Combined: Periodically polls Tasmota and processes the returned PulseTime1
@@ -13297,8 +12911,7 @@
                 data:
                   title: '{{ repeat.item.name }}'
                   message: Rollo schließen
-  mode: parallel
-  max: 10
+  mode: single
 - id: batterie_sicherungs_ueberwachung_esphome
   alias: Batterie Sicherungs-Überwachung via ESPHome
   description: "### \U0001F4CB Intelligent Battery Breaker Control\n\n- **High-Level
@@ -13967,7 +13580,7 @@
       target:
         entity_id: input_boolean.dreame_d9_max_gen_2_behalter_entleeren
       data: {}
-  mode: single
+  mode: restart
 - id: '1784585268645'
   alias: iCloud3 Alert Message (Summary)
   description: Send and Alert Msg (Summary)
@@ -14045,18 +13658,6 @@
       variables:
         fan_entity: switch.plant_tent_fan
         duration: 00:10:00
-  mode: single
-- id: '1786041255154'
-  alias: Upgrade Advisor Daily Analysis
-  description: ''
-  triggers:
-  - trigger: time
-    at: '12:00:00'
-  conditions: []
-  actions:
-  - action: upgrade_advisor.analyze
-    metadata: {}
-    data: {}
   mode: single
 - id: '1786950699374'
   alias: 'System: Forward Persistent Notifications'
@@ -14269,4 +13870,275 @@
     data:
       message: 'Turned off {{ device_name }} because power {{ condition_text }} {{
         duration_text }} (current reading: {{ current_reading }}W).'
+  mode: single
+- id: '1788596377392'
+  alias: 'Pool: Adaptive Pipe Break Protection & Learning'
+  description: Combines real-time pipe break detection (90th percentile + dynamic
+    offset)  with a nightly environmental learning loop based on temperature.
+  triggers:
+  - trigger: state
+    entity_id: sensor.pool_power
+    id: power_monitor
+  - trigger: time
+    at: '23:00:00'
+    id: nightly_learning
+  conditions:
+  - condition: or
+    conditions:
+    - condition: trigger
+      id:
+      - nightly_learning
+    - condition: state
+      entity_id: switch.pool_pumpe
+      state:
+      - 'on'
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: power_monitor
+      - condition: numeric_state
+        entity_id: sensor.pool_power
+        above: 50
+      - condition: template
+        value_template: '{% set current = states(''sensor.pool_power'') | float(0)
+          %}  {% set baseline = states(''sensor.gartenhaus_pool_pumpe_pool_power_rolling_percentile'')
+          | float(887) %}  {% set offset = states(''input_number.pool_power_learned_offset'')
+          | float(0) %}
+
+          {# Triggers if power exceeds dynamic baseline + offset + 25W margin #}  {{
+          current > (baseline + offset + 25) }}
+
+          '
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state:
+        - 'on'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: ⚠️ Pool System Warning
+          message: 'Abnormal power draw detected: {{ states(''sensor.pool_power'')
+            }} W  (Baseline: {{ states(''sensor.gartenhaus_pool_pumpe_pool_power_rolling_percentile'')
+            }} W + Offset: {{ states(''input_number.pool_power_learned_offset'') }}
+            W). Monitoring for 30 seconds before auto-shutoff.
+
+            '
+      - wait_for_trigger:
+        - trigger: template
+          value_template: '{% set current = states(''sensor.pool_power'') | float(0)
+            %}  {% set baseline = states(''sensor.gartenhaus_pool_pumpe_pool_power_rolling_percentile'')
+            | float(887) %}  {% set offset = states(''input_number.pool_power_learned_offset'')
+            | float(0) %}  {{ current <= (baseline + offset + 15) }}
+
+            '
+        timeout:
+          seconds: 30
+        continue_on_timeout: true
+      - if:
+        - condition: template
+          value_template: '{{ wait.trigger == none }}'
+        then:
+        - action: switch.turn_off
+          target:
+            entity_id: switch.pool_pumpe
+        - action: notify.duncan
+          data:
+            title: "\U0001F6A8 Emergency Pool Shutoff"
+            message: Pump turned off automatically. Power remained above safety thresholds
+              for over 30 seconds.
+        enabled: false
+    - conditions:
+      - condition: trigger
+        id: nightly_learning
+      - condition: state
+        entity_id: switch.pool_pumpe
+        state: 'off'
+      sequence:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.pool_power_learned_offset
+        data:
+          value: "{% set current_offset = states('input_number.pool_power_learned_offset')
+            | float(0) %} {% set ambient_temp = states('sensor.gw1100a_outdoor_temperature')
+            | float(20) %}\n{# \n   Calculates new offset keeping 90% of old memory
+            + Temp deviation.\n   Limits output to 1 decimal place.\n#} {{ (current_offset
+            * 0.9 + (ambient_temp - 20) * 0.5) | round(1) }}\n"
+  mode: single
+- id: '1788893404743'
+  alias: Aqara H1 EU Switch Right - Mode Switch & Delayed Off
+  description: Verwendet control_relay fuer latenzfreies Einschalten im AUS-Zustand.
+    Beim Druecken im decoupled Modus wird im AUS-Zustand explizit EINGESCHALTET und
+    im AN-Zustand verzögert AUSGESCHALTET.
+  triggers:
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_right
+    trigger: device
+    id: button_pressed
+  - trigger: state
+    alias: Schalter wurde EINGESCHALTET
+    entity_id: switch.duncan_lichtschalter_right
+    to: 'on'
+    id: switch_turned_on
+  - trigger: state
+    alias: Schalter wurde AUSGESCHALTET
+    entity_id: switch.duncan_lichtschalter_right
+    to: 'off'
+    id: switch_turned_off
+  actions:
+  - if:
+    - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
+      condition: trigger
+      id: switch_turned_on
+    then:
+    - alias: Sofort auf decoupled stellen um Folge-Events abzufangen
+      action: select.select_option
+      target:
+        entity_id: select.duncan_lichtschalter_operation_mode_right
+      data:
+        option: decoupled
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AUS -> Synchronisiere
+        Einschalten
+      condition: trigger
+      id: button_pressed
+    - condition: state
+      entity_id: switch.duncan_lichtschalter_right
+      state: 'off'
+    - condition: state
+      entity_id: select.duncan_lichtschalter_operation_mode_right
+      state: decoupled
+    then:
+    - alias: Licht explizit einschalten
+      action: switch.turn_on
+      target:
+        entity_id: switch.duncan_lichtschalter_right
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AN -> Verzögert Ausschalten
+      condition: trigger
+      id: button_pressed
+    - condition: state
+      entity_id: switch.duncan_lichtschalter_right
+      state: 'on'
+    - condition: state
+      entity_id: select.duncan_lichtschalter_operation_mode_right
+      state: decoupled
+    - alias: entprell
+      condition: template
+      value_template: '{% set last_chg = states.switch.duncan_lichtschalter_right.last_changed
+        %} {{ (now() - last_chg).total_seconds() > 1.5 }}'
+    then:
+    - alias: Warte verbleibende Mindestlaufzeit ab
+      delay: '{% set min_on_time = 10 %} {% set last_chg = states.switch.duncan_lichtschalter_right.last_changed
+        %} {% set elapsed = (now() - last_chg).total_seconds() %} {% set remaining
+        = min_on_time - elapsed %} {{ [0, remaining] | max | round(1) }}'
+    - alias: Licht ausschalten
+      action: switch.turn_off
+      target:
+        entity_id: switch.duncan_lichtschalter_right
+  - if:
+    - alias: Schalter wurde ausgeschaltet -> Verzögert auf control_relay stellen
+      condition: trigger
+      id: switch_turned_off
+    then:
+    - action: script.turn_on
+      metadata: {}
+      target:
+        entity_id: script.lichtschalter_betriebsmodus_verzogert_zurucksetzen
+      data:
+        variables:
+          switch_entity: switch.duncan_lichtschalter_right
+          select_entity: select.duncan_lichtschalter_operation_mode_right
   mode: parallel
+  max: 10
+- id: '1788894755341'
+  alias: Aqara H1 EU Switch Left - Mode Switch & Delayed Off
+  description: Verwendet control_relay fuer latenzfreies Einschalten im AUS-Zustand.
+    Beim Druecken im decoupled Modus wird im AUS-Zustand explizit EINGESCHALTET und
+    im AN-Zustand verzögert AUSGESCHALTET.
+  triggers:
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_left
+    trigger: device
+    id: button_pressed
+  - trigger: state
+    alias: Schalter wurde EINGESCHALTET
+    entity_id: switch.duncan_lichtschalter_left
+    to: 'on'
+    id: switch_turned_on
+  - trigger: state
+    alias: Schalter wurde AUSGESCHALTET
+    entity_id: switch.duncan_lichtschalter_left
+    to: 'off'
+    id: switch_turned_off
+  conditions: []
+  actions:
+  - if:
+    - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
+      condition: trigger
+      id: switch_turned_on
+    then:
+    - alias: Sofort auf decoupled stellen um Folge-Events abzufangen
+      action: select.select_option
+      target:
+        entity_id: select.duncan_lichtschalter_operation_mode_left
+      data:
+        option: decoupled
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AUS -> Synchronisiere
+        Einschalten
+      condition: trigger
+      id: button_pressed
+    - condition: state
+      entity_id: switch.duncan_lichtschalter_left
+      state: 'off'
+    - condition: state
+      entity_id: select.duncan_lichtschalter_operation_mode_left
+      state: decoupled
+    then:
+    - alias: Licht explizit einschalten
+      action: switch.turn_on
+      target:
+        entity_id: switch.duncan_lichtschalter_left
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AN -> Verzögert Ausschalten
+      condition: trigger
+      id: button_pressed
+    - condition: state
+      entity_id: switch.duncan_lichtschalter_left
+      state: 'on'
+    - condition: state
+      entity_id: select.duncan_lichtschalter_operation_mode_left
+      state: decoupled
+    - alias: entprell
+      condition: template
+      value_template: '{% set last_chg = states.switch.duncan_lichtschalter_left.last_changed
+        %} {{ (now() - last_chg).total_seconds() > 1.5 }}'
+    then:
+    - alias: Warte verbleibende Mindestlaufzeit ab
+      delay: '{% set min_on_time = 10 %} {% set last_chg = states.switch.duncan_lichtschalter_left.last_changed
+        %} {% set elapsed = (now() - last_chg).total_seconds() %} {% set remaining
+        = min_on_time - elapsed %} {{ [0, remaining] | max | round(1) }}'
+    - alias: Licht ausschalten
+      action: switch.turn_off
+      target:
+        entity_id: switch.duncan_lichtschalter_left
+  - if:
+    - alias: Schalter wurde ausgeschaltet -> Verzögert auf control_relay stellen
+      condition: trigger
+      id: switch_turned_off
+    then:
+    - action: script.turn_on
+      metadata: {}
+      target:
+        entity_id: script.lichtschalter_betriebsmodus_verzogert_zurucksetzen
+      data:
+        variables:
+          switch_entity: switch.duncan_lichtschalter_left
+          select_entity: select.duncan_lichtschalter_operation_mode_left
+  mode: parallel
+  max: 10

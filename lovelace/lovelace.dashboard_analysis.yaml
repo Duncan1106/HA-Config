@@ -479,6 +479,35 @@ config:
               fill: false
               graph: line
             type: custom:mini-graph-card
+          - content: '{% set raw = states(''input_text.db_purge_bucket_stats'') %}
+
+              {% if raw | length > 5 and raw.startswith(''{'') %}
+
+              {% set stats = raw | from_json %}
+
+              | Bucket | Entities | Multiplier | Recent Drops (k) | Median (k) |
+
+              | :--- | :--- | :--- | :--- | :--- |
+
+              {% for bucket, data in stats.items() -%}
+
+              {% set k_list = data.k | default([]) -%}
+
+              {% set median = k_list | median | round(2) if k_list | length > 0 else
+              0 -%}
+
+              | **{{ bucket }}** | {{ data.e }} | {{ data.m }} | {{ k_list | join('',
+              '') if k_list else ''-'' }} | {{ median }} |
+
+              {% endfor %}
+
+              {% else %}
+
+              > *Waiting for initialization or data unavailable.*
+
+              {% endif %}'
+            title: Purge Bucket Statistics
+            type: markdown
           - cards:
             - entities:
               - attribute: db_size_mb

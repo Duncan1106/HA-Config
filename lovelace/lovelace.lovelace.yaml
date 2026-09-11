@@ -105,49 +105,47 @@ config:
             \ %}\n  {% endif %}\n  \n  {% set cards.list = cards.list + [card] %}\n\
             {% endfor %}\n{{ cards.list }}\n    \n"
         type: custom:auto-entities
-      - cards:
-        - alignment_style: center
-          card_style: chip
-          day_style: counter
-          drop_todayevents_from: '12:00:00'
-          entities:
-          - calendar.apps_by_abfall
-          event_grouping: true
-          fill_container: true
-          filter_events: true
-          full_size: false
-          hide_time_range: false
-          items_per_row: 1
-          next_days: 50
-          only_all_day_events: false
-          pattern:
-          - icon: mdi:delete-variant
-            type: others
-          - color: green
-            icon: mdi:recycle
-            label: Wertstoff
-            pattern: Wertstoff
-            type: recycle
-          - color: brown
-            icon: mdi:bio
-            label: "Biom\xFCll"
-            pattern: Bio
-            type: organic
-          - color: grey
-            icon: mdi:trash-can
-            label: "Restm\xFCll"
-            pattern: Rest
-            type: waste
-          - color: blue
-            icon: mdi:glass-fragile
-            label: Glasbox
-            pattern: Glas
-            type: paper
-          refresh_rate: 60
-          type: custom:trash-card
-          use_summary: false
-          with_label: true
-        type: vertical-stack
+      - alignment_style: center
+        card_style: chip
+        day_style: counter
+        drop_todayevents_from: '12:00:00'
+        entities:
+        - calendar.apps_by_abfall
+        event_grouping: true
+        fill_container: true
+        filter_events: true
+        full_size: false
+        hide_time_range: false
+        items_per_row: 1
+        next_days: 50
+        only_all_day_events: false
+        pattern:
+        - icon: mdi:delete-variant
+          type: others
+        - color: green
+          icon: mdi:recycle
+          label: Wertstoff
+          pattern: Wertstoff
+          type: recycle
+        - color: brown
+          icon: mdi:bio
+          label: "Biom\xFCll"
+          pattern: Bio
+          type: organic
+        - color: grey
+          icon: mdi:trash-can
+          label: "Restm\xFCll"
+          pattern: Rest
+          type: waste
+        - color: blue
+          icon: mdi:glass-fragile
+          label: Glasbox
+          pattern: Glas
+          type: paper
+        refresh_rate: 60
+        type: custom:trash-card
+        use_summary: false
+        with_label: true
       - cards:
         - cards:
           - card:
@@ -919,6 +917,10 @@ config:
           force_circular_background: true
           hold_action:
             action: none
+          icon: ''
+          icon_animation:
+            effect: washing_machine
+            jinja: '{{ is_state("switch.zirkulationspumpe_zigbee", "on")}}'
           icon_hold_action:
             action: none
           icon_tap_action:
@@ -4245,27 +4247,6 @@ config:
             show_attributes:
             - wind_speed
           default_forecast: daily
-          entity: weather.micro_weather_station
-          forecast:
-            extra_attribute: precipitation_probability
-            hourly_group_size: 1
-            mode: chart
-            scroll_to_selected: false
-            show_sun_times: true
-          forecast_action:
-            tap_action:
-              action: more-info
-          show_condition_effects: false
-          show_current: true
-          show_forecast: true
-          tap_action:
-            action: more-info
-          temperature_entity: sensor.gw1100a_outdoor_temperature
-          type: custom:weather-forecast-card
-        - current:
-            show_attributes:
-            - wind_speed
-          default_forecast: daily
           entity: weather.forecast_home
           forecast:
             extra_attribute: precipitation_probability
@@ -4436,6 +4417,27 @@ config:
           condition: numeric_state
           entity: sensor.garagentor_energy_power
         type: conditional
+      - entity: cover.garage_garage_door_controller_garagentor
+        icon: mdi:cat
+        icon_height: 30px
+        show_icon: true
+        show_name: false
+        tap_action:
+          action: perform-action
+          confirmation: true
+          data:
+            position: 15
+          perform_action: cover.set_cover_position
+          target:
+            entity_id: cover.garage_garage_door_controller_garagentor
+        type: button
+        visibility:
+        - condition: state
+          entity: binary_sensor.garagedoor_zigbee_contact
+          state: 'off'
+        - condition: state
+          entity: sun.sun
+          state: above_horizon
       type: vertical-stack
     - cards:
       - badges:
@@ -5099,6 +5101,8 @@ config:
         - entity: automation.pool_pulsetime_auto_adjust
           secondary_info: last-triggered
         - entity: automation.pool_pump_pulse_sync_monitor
+          secondary_info: last-triggered
+        - entity: automation.pool_adaptive_pipe_break_anomaly_protection
           secondary_info: last-triggered
         type: entities
         visibility:
@@ -6191,9 +6195,6 @@ config:
         - color: Orange
           entity: device_tracker.lsjwh4097rn105299_vehicle_position
           name: MG4
-        - color: Blue
-          entity: device_tracker.cupra_tavascan_position
-          name: Tavascan
         - color: Lightgreen
           entity: person.duncan
           name: Duncan
@@ -6507,17 +6508,6 @@ config:
           type: tile
           vertical: false
         type: horizontal-stack
-      - entity: sensor.terrarium_zigbee_strip_power
-        features:
-        - hours_to_show: 12
-          type: trend-graph
-        features_position: bottom
-        grid_options:
-          columns: full
-        name: Terrarium 12h
-        state_content: state
-        type: tile
-        vertical: false
       type: grid
     - cards:
       - heading: New section
