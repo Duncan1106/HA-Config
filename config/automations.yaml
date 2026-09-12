@@ -2577,37 +2577,6 @@
           message: 'Battery Level: {{ trigger.event.data.previous_battery_level}}%
             -> {{ trigger.event.data.battery_level}}%, last replaced {{ time_since(trigger.event.data.battery_last_replaced)}}'
         action: notify.duncan
-- id: '1720824045012'
-  alias: Battery Notes - Battery Threshold
-  description: ''
-  use_blueprint:
-    path: andrew-codechimp/battery_notes_battery_threshold.yaml
-    input:
-      excluded_devices:
-      - null
-      on_low_actions:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          data:
-            tag: battery_notes_threshold {{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id
-              }}
-          title: '{{ trigger.event.data.device_name }} Battery Low
-
-            '
-          message: 'The device has a battery level of {{ trigger.event.data.battery_level
-            }}% {{ ''\n'' -}} You need {{ trigger.event.data.battery_quantity }}×
-            {{ trigger.event.data.battery_type }}
-
-            '
-      on_high_actions:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          data:
-            tag: battery_notes_threshold {{ trigger.event.data.device_id }}-{{ trigger.event.data.source_entity_id
-              }}
-          message: clear_notification
 - id: '1721083497910'
   alias: Fan for BKW AC Inverter
   description: "## \U0001F32C️ Fan Control for BKW Inverter\n\nThis automation controls
@@ -8799,9 +8768,14 @@
   - condition: template
     value_template: "{{ now() - (state_attr(this.entity_id, 'last_triggered')\n            |
       default(as_datetime('1970-01-01T00:00:00'), true)) > timedelta(minutes=5) }}\n"
-  - condition: template
-    value_template: "{% set hour = now().hour %} \n{% set outdoor = states('sensor.gw1100a_outdoor_temperature')
-      | float(0) %}\n{{ (6 <= hour < 22) or (outdoor > 10) }}\n"
+  - condition: or
+    conditions:
+    - condition: numeric_state
+      entity_id: sensor.gw1100a_outdoor_temperature
+      above: 10
+    - condition: time
+      after: 06:00:00
+      before: '22:00:00'
   actions:
   - action: script.ha_start_settle_delay
     metadata: {}
@@ -13778,28 +13752,28 @@
       entity_id: switch.schreibtisch_rechts_power_strip_l3
   - alias: Wait for USB-C PD handshake
     delay: 00:01:00
-  - alias: Verify power increase delta
-    choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ (states(''sensor.schreibtisch_rechts_power'') | float(0)
-          - baseline_power) < 15 }}
+  - if:
+    - condition: template
+      value_template: '{{ (states(''sensor.schreibtisch_rechts_power'') | float(0)
+        - baseline_power) < 15 }}
 
-          '
-      sequence:
-      - alias: Turn off switch on abort
-        action: switch.turn_off
-        target:
-          entity_id: switch.schreibtisch_rechts_power_strip_l3
-      - stop: 'Aborted: Power did not rise significantly. Laptop disconnected or fully
-          charged.'
-  - alias: Wait for charge duration
-    delay:
-      minutes: 39
-  - alias: Terminate charging
-    action: switch.turn_off
-    target:
-      entity_id: switch.schreibtisch_rechts_power_strip_l3
+        '
+    then:
+    - alias: Turn off switch on abort
+      action: switch.turn_off
+      target:
+        entity_id: switch.schreibtisch_rechts_power_strip_l3
+      data: {}
+    - stop: 'Aborted: Power did not rise significantly. Laptop disconnected or fully
+        charged.'
+    else:
+    - alias: Wait for charge duration
+      delay:
+        minutes: 39
+    - alias: Terminate charging
+      action: switch.turn_off
+      target:
+        entity_id: switch.schreibtisch_rechts_power_strip_l3
   mode: single
 - id: '1788210800826'
   alias: Turn Off Bett Plugs on High Power
@@ -13905,8 +13879,7 @@
           | float(887) %}  {% set offset = states(''input_number.pool_power_learned_offset'')
           | float(0) %}
 
-          {# Triggers if power exceeds dynamic baseline + offset + 25W margin #}  {{
-          current > (baseline + offset + 25) }}
+          {{ current > (baseline + offset + 25 ) }}
 
           '
       - condition: state
@@ -13976,16 +13949,24 @@
     subtype: single_right
     trigger: device
     id: button_pressed
-  - trigger: state
-    alias: Schalter wurde EINGESCHALTET
-    entity_id: switch.duncan_lichtschalter_right
-    to: 'on'
+  - alias: Schalter wurde EINGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_right
+    to:
+    - 'on'
     id: switch_turned_on
-  - trigger: state
-    alias: Schalter wurde AUSGESCHALTET
-    entity_id: switch.duncan_lichtschalter_right
-    to: 'off'
+    from:
+    - 'off'
+  - alias: Schalter wurde AUSGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_right
+    to:
+    - 'off'
     id: switch_turned_off
+    from:
+    - 'on'
   actions:
   - if:
     - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
@@ -14064,16 +14045,24 @@
     subtype: single_left
     trigger: device
     id: button_pressed
-  - trigger: state
-    alias: Schalter wurde EINGESCHALTET
-    entity_id: switch.duncan_lichtschalter_left
-    to: 'on'
+  - alias: Schalter wurde EINGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_left
+    to:
+    - 'on'
     id: switch_turned_on
-  - trigger: state
-    alias: Schalter wurde AUSGESCHALTET
-    entity_id: switch.duncan_lichtschalter_left
-    to: 'off'
+    from:
+    - 'off'
+  - alias: Schalter wurde AUSGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_left
+    to:
+    - 'off'
     id: switch_turned_off
+    from:
+    - 'on'
   conditions: []
   actions:
   - if:
