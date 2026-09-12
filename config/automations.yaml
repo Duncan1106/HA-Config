@@ -1540,37 +1540,36 @@
   mode: single
 - id: '1714558482048'
   alias: Notify on Overcurrent Phase
-  description: "⚡ **Notify on Overcurrent Phase**\n\n---\n\n### \U0001F4CB Intelligent
-    Load Management Control\n\n**High-Level Intent**\nThis automation provides critical
-    infrastructure protection by monitoring the electrical load across all three phases
-    (**L1, L2, L3**) of the main smart meter. Its primary goal is to prevent fuse
-    trips by detecting sustained overcurrent events and executing immediate remedial
-    actions.\n\n**Operational Strategy**\nThe system employs a **safety-first protection
-    strategy**. Upon detecting a current draw exceeding the defined **Fuse Limit**,
-    it triggers an immediate notification and attempts to gracefully reduce the load
-    of high-consumption devices (EV Chargers) before resorting to a full shutdown
-    of those services.\n\n**Reliability Mechanisms**\nTo ensure high availability
-    and successful execution, the automation utilizes a **retry script with backoff**
-    (`script.retry_action_with_backoff`) for charger shutdowns. This ensures that
-    even if a device is momentarily offline or a command fails, the system will persist
-    for up to **10 retries** with increasing delays to secure the electrical system.\n\n---\n\n###
-    Trigger Overview Table\n\n| Type | Entity / Condition | ID | Purpose |\n| :---
-    | :--- | :--- | :--- |\n| **Numeric State** | **Smart Meter Phase L1** > **Fuse
-    Limit** | `overcurrent_l1` | Detect phase 1 overload for 30s |\n| **Numeric State**
-    | **Smart Meter Phase L2** > **Fuse Limit** | `overcurrent_l2` | Detect phase
-    2 overload for 30s |\n| **Numeric State** | **Smart Meter Phase L3** > **Fuse
-    Limit** | `overcurrent_l3` | Detect phase 3 overload for 30s |\n\n---\n\n### Operational
-    Logic Sections\n\n#### Overcurrent Mitigation Mode\n**Purpose**\nProtect the main
-    building fuse by reducing high-draw loads immediately upon detection of an overcurrent
-    event.\n\n**Logic Overview**\nTriggered when any phase attribute on the **Smart
-    Meter MQTT Data** sensor exceeds the **input_number.fuselimit** for a sustained
-    period of **30 seconds**.\n\n**Effect**\n* **Notification:** Dispatches an urgent
-    alert via `notify.duncan` detailing the affected phase, the current amperage,
-    and the threshold exceeded.\n* **Active Load Reduction:** Checks if EV chargers
-    are currently active (Amps > **6** and Power > **10**). If active, it reduces
-    the charging rate to **75%** of the current value.\n* **Emergency Cut-off:** If
-    the charger is at its minimum or the reduction fails, it initiates a script to
-    force the charging state to **Don't charge**.\n\n---\n\n### Technical Overview\n\n*
+  description: "### \U0001F4CB Intelligent Load Management Control\n\n**High-Level
+    Intent**\nThis automation provides critical infrastructure protection by monitoring
+    the electrical load across all three phases (**L1, L2, L3**) of the main smart
+    meter. Its primary goal is to prevent fuse trips by detecting sustained overcurrent
+    events and executing immediate remedial actions.\n\n**Operational Strategy**\nThe
+    system employs a **safety-first protection strategy**. Upon detecting a current
+    draw exceeding the defined **Fuse Limit**, it triggers an immediate notification
+    and attempts to gracefully reduce the load of high-consumption devices (EV Chargers)
+    before resorting to a full shutdown of those services.\n\n**Reliability Mechanisms**\nTo
+    ensure high availability and successful execution, the automation utilizes a **retry
+    script with backoff** (`script.retry_action_with_backoff`) for charger shutdowns.
+    This ensures that even if a device is momentarily offline or a command fails,
+    the system will persist for up to **10 retries** with increasing delays to secure
+    the electrical system.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity
+    / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Numeric State**
+    | **Smart Meter Phase L1** > **Fuse Limit** | `overcurrent_l1` | Detect phase
+    1 overload for 30s |\n| **Numeric State** | **Smart Meter Phase L2** > **Fuse
+    Limit** | `overcurrent_l2` | Detect phase 2 overload for 30s |\n| **Numeric State**
+    | **Smart Meter Phase L3** > **Fuse Limit** | `overcurrent_l3` | Detect phase
+    3 overload for 30s |\n\n---\n\n### Operational Logic Sections\n\n#### Overcurrent
+    Mitigation Mode\n**Purpose**\nProtect the main building fuse by reducing high-draw
+    loads immediately upon detection of an overcurrent event.\n\n**Logic Overview**\nTriggered
+    when any phase attribute on the **Smart Meter MQTT Data** sensor exceeds the **input_number.fuselimit**
+    for a sustained period of **30 seconds**.\n\n**Effect**\n* **Notification:** Dispatches
+    an urgent alert via `notify.duncan` detailing the affected phase, the current
+    amperage, and the threshold exceeded.\n* **Active Load Reduction:** Checks if
+    EV chargers are currently active (Amps > **6** and Power > **10**). If active,
+    it reduces the charging rate to **75%** of the current value.\n* **Emergency Cut-off:**
+    If the charger is at its minimum or the reduction fails, it initiates a script
+    to force the charging state to **Don't charge**.\n\n---\n\n### Technical Overview\n\n*
     **Automation Mode:** `parallel` (Max: 6) - Allows simultaneous handling of multiple
     phase triggers.\n* **Execution Method:** Uses direct service calls for amperage
     adjustment and `script.retry_action_with_backoff` for reliable state changes.\n*
@@ -14142,3 +14141,23 @@
           select_entity: select.duncan_lichtschalter_operation_mode_left
   mode: parallel
   max: 10
+- id: '1789209418169'
+  alias: EV Gateway Refresh Mode on MG4 Connection
+  description: Switches the gateway refresh mode to charging_detection when MG4 connects
+    to either the 11kW or 22kW go-e charger.
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.go_e_11kw_car
+    - sensor.go_e_22kw_car
+    to:
+    - MG4
+  conditions: []
+  actions:
+  - action: select.select_option
+    metadata: {}
+    target:
+      entity_id: select.lsjwh4097rn105299_gateway_refresh_mode
+    data:
+      option: charging_detection
+  mode: single
