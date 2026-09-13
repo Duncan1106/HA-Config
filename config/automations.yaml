@@ -2262,22 +2262,19 @@
     routines, periodic heat checks, and humidity control.\n\n\n---\n\n\n### ⏰ Triggers\n\n-
     **Every 5 minutes:** Regular daytime heat check  \n- **Humidifier sensor:** (`binary_sensor.luftbefeuchter_on_windows`)
     turns **on**  \n- **Sunrise:** Executes 30 minutes **after** sunrise  \n- **Sunset:**
-    Executes 30 minutes **before** sunset  \n- **Humidifier switch:** (`switch.terrarium_zigbee_strip_l1`)
-    turns **off**\n  → keeps the boolean state synchronized  \n\n\n---\n\n\n### ✅
-    Conditions\n\n- Operates **only during daytime** (between sunrise and sunset)
-    \ \n- Requires **terrarium master switch**\n  (`input_boolean.terrarium_on`) to
-    be **on**  \n\n\n---\n\n\n### \U0001F3AF Actions / Workflow\n\n**☀️ Daytime Heat
-    Lamp Control**  \n- Runs `script.warmelampe` every 5 minute during daytime if
-    the terrarium is active  \n\n**\U0001F4A7 Humidifier Control**  \n- Runs `script.luftbefeuchter`
-    when the humidifier sensor turns on and the terrarium is active  \n\n**\U0001F305
-    Sunrise Routine**  \n- Activates `script.terra_sunrise` 30 minutes after sunrise
-    \ \n\n**\U0001F307 Sunset Routine**  \n- Activates `script.terra_sunset` 30 minutes
-    before sunset  \n\n**\U0001F504 Humidifier Boolean Sync**  \n- When `switch.terrarium_zigbee_strip_l1`
-    turns off, resets\n  `input_boolean.luftbefeuchter_aktiv`\n  to maintain logical
-    synchronization  \n\n\n---\n\n\n### \U0001F527 Technical Specs\n\n- **Mode:**
-    `parallel`  \n- **Max concurrent runs:** 10  \n- Uses **`choose` blocks** to isolate
-    day, sunrise, sunset, and sensor actions  \n- Integrates both **time-based** and
-    **sensor-driven** logic for robust climate control\n"
+    Executes 30 minutes **before** sunset  \n\n---\n\n\n### ✅ Conditions\n\n- Operates
+    **only during daytime** (between sunrise and sunset)  \n- Requires **terrarium
+    master switch**\n  (`input_boolean.terrarium_on`) to be **on**  \n\n\n---\n\n\n###
+    \U0001F3AF Actions / Workflow\n\n**☀️ Daytime Heat Lamp Control**  \n- Runs `script.warmelampe`
+    every 5 minute during daytime if the terrarium is active  \n\n**\U0001F4A7 Humidifier
+    Control**  \n- Runs `script.luftbefeuchter` when the humidifier sensor turns on
+    and the terrarium is active  \n\n**\U0001F305 Sunrise Routine**  \n- Activates
+    `script.terra_sunrise` 30 minutes after sunrise  \n\n**\U0001F307 Sunset Routine**
+    \ \n- Activates `script.terra_sunset` 30 minutes before sunset  \n\n\n---\n\n\n###
+    \U0001F527 Technical Specs\n\n- **Mode:** `queued`  \n- **Max concurrent runs:**
+    6 \n- Uses **`choose` blocks** to isolate day, sunrise and sunset, and sensor
+    actions  \n- Integrates both **time-based** and **sensor-driven** logic for robust
+    climate control\n"
   triggers:
   - minutes: /5
     id: '5'
@@ -2295,12 +2292,6 @@
     event: sunset
     offset: -00:30:00
     id: sunset
-  - trigger: state
-    entity_id:
-    - switch.terrarium_zigbee_strip_l1
-    id: Luftbefeuchter off
-    to:
-    - 'off'
   conditions:
   - condition: sun
     before: sunset
@@ -2352,19 +2343,8 @@
         data: {}
         target:
           entity_id: script.terra_{{trigger.id}}
-      alias: Sunset
-    - conditions:
-      - condition: trigger
-        id:
-        - Luftbefeuchter off
-      sequence:
-      - action: input_boolean.turn_off
-        metadata: {}
-        data: {}
-        target:
-          entity_id: input_boolean.luftbefeuchter_aktiv
-      alias: Luftbefeuchter Boolean Sync
-  mode: parallel
+      alias: 'Sunrise and Sunset '
+  mode: queued
   max: 6
 - id: '1717951712000'
   alias: Pool Heating Control for Optimal Temperature
@@ -5217,7 +5197,7 @@
             >= 0 %}\n    {{ light_max }}\n  {% else %}\n    {% set scaled = max(light_max
             * light_float, 10) / 2 %}\n    {{ [scaled, light_max] | min }}\n  {% endif
             %}"
-  mode: parallel
+  mode: queued
   max_exceeded: silent
   max: 10
 - id: '1744046298527'
