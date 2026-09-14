@@ -325,55 +325,35 @@
     to:
     - home
   conditions:
-  - condition: and
-    conditions:
-    - condition: sun
-      before: sunset
-      after: sunrise
-    - condition: numeric_state
-      entity_id: counter.ev_charging_messages
-      below: 10
-    - condition: and
-      conditions:
-      - condition: state
-        entity_id: select.go_echarger_252682_trx
-        state: None
-      - condition: state
-        entity_id: select.go_echarger_270862_trx
-        state: None
-    - condition: template
-      value_template: '{{ states(''sensor.evs_home_and_ready_to_charge'') | contains(''%'')
-        }}'
-    - condition: numeric_state
-      entity_id: sensor.grid_export_negative
-      below: -1248
+  - condition: sun
+    before: sunset
+    after: sunrise
+  - condition: numeric_state
+    entity_id: sensor.grid_export_negative
+    below: -1248
+  - condition: numeric_state
+    entity_id: counter.ev_charging_messages
+    below: 10
+  - condition: state
+    entity_id: select.go_echarger_252682_trx
+    state: None
+  - condition: state
+    entity_id: select.go_echarger_270862_trx
+    state: None
+  - condition: template
+    value_template: '{{ states(''sensor.evs_home_and_ready_to_charge'') | contains(''%'')
+      }}'
   actions:
-  - parallel:
-    - alias: Notify Papa
-      if:
-      - condition: zone
-        entity_id: person.stephan
-        zone: zone.home
-      then:
-      - metadata: {}
-        data: {}
-        action: script.charge_ev_message_with_optional_disable_stephan_iphone
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.ev_charging_messages
-        action: counter.increment
-      enabled: true
-    - alias: Notify Duncan
-      sequence:
-      - action: script.charge_ev_message_with_optional_disable
-        metadata: {}
-        data: {}
-      - metadata: {}
-        data: {}
-        target:
-          entity_id: counter.ev_charging_messages
-        action: counter.increment
+  - action: counter.increment
+    metadata: {}
+    target:
+      entity_id: counter.ev_charging_messages
+    data: {}
+  - action: script.turn_on
+    metadata: {}
+    target:
+      entity_id: script.charge_ev_message_combined
+    data: {}
   mode: queued
   max: 2
 - id: '1705389061375'
@@ -2509,7 +2489,7 @@
   mode: single
 - id: '1720823999014'
   alias: Battery Notes - Battery Replaced
-  description: ''
+  description: notify of replaced battery of a battery powered device
   use_blueprint:
     path: andrew-codechimp/battery_notes_battery_replaced.yaml
     input:
@@ -7400,66 +7380,6 @@
         action: notify.duncan
       - data: {}
         action: hassio.host_reboot
-- id: '1751225518081'
-  alias: Frigate Notifications (0.14.0.2w) Ding Dong
-  description: Sends notification with snapshot, video, and event preview from Frigate
-    detection on Ding Dong camera to specified notify group and device.
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera:
-      - camera.ding_dong_tapo
-      notify_group: notify.duncan
-      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
-      notify_device: 905c163dcc62544838edb078413723b2
-      final_update: true
-      final_delay: 10
-      message: '{{ label }} detected - {{ camera_name }}'
-      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1&format=android'
-      icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
-        else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: true
-      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
-      channel: Frigate
-      labels:
-      - cat
-      - person
-      - package
-      url_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg'
-      tap_action: /ccab4aaf_frigate-fa/dashboard
-      button_1: View Clip
-      url_1: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
-      alert_once: true
-- id: '1751496337388'
-  alias: Frigate Notifications (0.14.0.2w) Keller
-  description: Sends notifications with snapshots from the Keller camera using Frigate
-    detection events, filtering presence and notifying a specific group and device.
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera:
-      - camera.keller_tapo
-      notify_group: notify.duncan
-      notify_device: 905c163dcc62544838edb078413723b2
-      final_update: true
-      final_delay: 10
-      message: '{{ label }} detected - {{ camera_name }}'
-      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1'
-      icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
-        else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
-      update_sub_label: true
-      silence_timer: 30
-      initial_delay: 1
-      labels:
-      - cat
-      - person
-      channel: Frigate
-      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
-      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
-      alert_once: true
-      tap_action: /ccab4aaf_frigate-fa/dashboard
-      url_1: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
-      url_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg'
 - id: '1751542900177'
   alias: Rollo Sommer Automatisch Steuern (mit Grund und Manueller Modus)
   description: "## \U0001F31E Rollo Sommer Automatisch Steuern (mit Grund und Manueller
@@ -9339,7 +9259,40 @@
   mode: single
 - id: '1761770991521'
   alias: Beta Release Notification
-  description: ''
+  description: "\U0001F680 **Beta Release Notification**\n\n### \U0001F4CB Intelligent
+    Beta Release Notification Control\n\nThis automation monitors incoming Home Assistant
+    beta releases and dispatches condensed, readable notifications to the user once
+    summary details are ready and validated.\n\n* **High-Level Intent:** Notify the
+    target device when a new Home Assistant beta release short AI summary becomes
+    available.\n* **Operational Strategy:** Attribute-driven triggering coupled with
+    active notification window validation to restrict dispatch to approved timeframes.\n*
+    **Reliability Mechanisms:** Implements a **5-minute** state stabilization period
+    to avoid sending incomplete summaries, alongside single-instance execution to
+    prevent duplicate notifications.\n\n---\n\n### ⚡ Trigger Overview\n\n| Type |
+    Entity / Condition | Purpose |\n| --- | --- | --- |\n| State | **sensor.home_assistant_beta_release_notes**
+    (attribute: **ai_summary_short**) | Detects when the **ai_summary_short** attribute
+    updates and remains stable for **5 minutes**. |\n\n---\n\n### ⚙️ Operational Logic\n\n####
+    Beta Notification Dispatch\n\n* **Purpose:** Send a formatted notification containing
+    the release version, AI summary, and deep link to **notify.duncan**.\n* **Logic
+    Overview:** Evaluates whether **binary_sensor.home_assistant_beta_release_notes_window**
+    is currently in state **on**.\n* **Effect:** Triggers action **notify.duncan**
+    with dynamic title based on **sensor.home_assistant_beta_release_notes**, body
+    content from **ai_summary_short**, direct click URL from **beta_url**, and notification
+    tag **beta_release_summary**.\n\n---\n\n### \U0001F6E0️ Technical Overview\n\n*
+    **Automation Mode:** **single**\n* **Execution Method:** Direct action call (**notify.duncan**)\n*
+    **Key Inputs:**\n  * **sensor.home_assistant_beta_release_notes** (state & attributes
+    **ai_summary_short**, **beta_url**)\n  * **binary_sensor.home_assistant_beta_release_notes_window**
+    (state: **on**)\n* **Controlled Entities:**\n  * **notify.duncan**\n* **Safety
+    Mechanisms:**\n  * **5-minute** stability duration (**for: 00:05:00**) before
+    triggering action\n  * Window state evaluation via **binary_sensor.home_assistant_beta_release_notes_window**\n
+    \ * Concurrency control via **single** execution mode\n\n---\n\n### \U0001F4A1
+    Notes\n\n* **Attribute Debouncing:** Enforcing a **5-minute** holding duration
+    on **ai_summary_short** prevents prematurely sending partial or transient metadata
+    updates.\n* **Window-Gated Delivery:** Utilizing **binary_sensor.home_assistant_beta_release_notes_window**
+    ensures notifications are only dispatched during appropriate time windows.\n*
+    **Notification Management:** Assigning **tag: beta_release_summary** ensures new
+    beta announcements update any existing unread release alerts instead of cluttering
+    the notification tray.\n"
   triggers:
   - trigger: state
     entity_id:
@@ -13657,31 +13610,37 @@
     data:
       force: false
   mode: single
-- id: '1785747192960'
-  alias: Frigate Notifications (0.14.0.2w) Terrasse
-  description: ''
-  use_blueprint:
-    path: SgtBatten/Stable.yaml
-    input:
-      camera:
-      - camera.terrasse_tapo
-      notify_device: 905c163dcc62544838edb078413723b2
-      notify_group: notify.duncan
-      labels:
-      - cat
-      message: '{{ label }} detected - {{ camera_name }}'
-      attachment: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/snapshot.jpg?bbox=1&format=android'
-      attachment_2: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/event_preview.gif'
-      final_update: true
-      video: '{{base_url}}/api/frigate{{client_id}}/notifications/{{id}}/{{camera}}/clip.mp4'
-      final_delay: 10
-      channel: Frigate
 - id: '1785867481539'
   alias: Plant Tent Fan
-  description: ''
+  description: "\U0001F331 **Plant Tent Fan Air Circulation**\n\n### \U0001F4CB Intelligent
+    Plant Tent Fan Control\n\nAutomates periodic air circulation inside the plant
+    growth tent to promote healthy transpiration, prevent stagnant microclimates,
+    and manage humidity accumulation.\n\n* **High-Level Intent**: Maintain routine
+    air movement within the plant environment on a recurring schedule.\n* **Operational
+    Strategy**: Time-pattern interval execution running a fixed 10-minute ventilation
+    cycle every 2 hours.\n* **Reliability Mechanisms**: Asynchronously delegates runtime
+    and shutoff handling to **`script.run_fan_for_duration`**, isolating duration
+    logic from the primary trigger setup.\n\n---\n\n### Trigger Overview Table\n\n|
+    Type | Entity / Condition | Purpose |\n| --- | --- | --- |\n| **Time Pattern**
+    | **Hours: `/2`** | Initiates air circulation cycle every 2 hours |\n\n---\n\n###
+    Operational Logic\n\n#### Periodic Airflow Mode\n\n* **Purpose**: Provides regular
+    airflow across foliage to prevent mold formation and air stagnation.\n* **Logic
+    Overview**: Fires unconditionally every 2 hours with no restricting conditions.\n*
+    **Effect**: Triggers **`script.run_fan_for_duration`** with target entity **`switch.plant_tent_fan`**
+    set for **`00:10:00`**.\n\n---\n\n### Technical Overview\n\n* **Automation Mode**:
+    **`single`**\n* **Execution Method**: Asynchronous execution of **`script.run_fan_for_duration`**
+    via **`script.turn_on`**\n* **Key Inputs**:\n  * **`fan_entity`**: **`switch.plant_tent_fan`**\n
+    \ * **`duration`**: **`00:10:00`**\n* **Controlled Entities**: **`switch.plant_tent_fan`**\n*
+    **Safety Mechanisms**: **`single`** execution mode prevents multiple overlapping
+    instances if triggered repeatedly.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Decoupled
+    Architecture**: Delegating duration tracking to a generic script (**`script.run_fan_for_duration`**)
+    avoids blocking automation loops and allows parameter reuse across other ventilation
+    controls.\n* **Duty Cycle Rationale**: The 10-minute runtime per 2-hour block
+    (**`8.3%`** duty cycle) provides baseline airflow without over-drying plant growth
+    media."
   triggers:
   - trigger: time_pattern
-    minutes: '0'
+    hours: /2
   conditions: []
   actions:
   - action: script.turn_on
@@ -14020,7 +13979,8 @@
   mode: single
 - id: '1789236950076'
   alias: Frigate Notifications (0.14.0.2y)
-  description: ''
+  description: advanced detection automation for persons and cats on 4 Cameras around
+    the house
   use_blueprint:
     path: SgtBatten/Stable.yaml
     input:

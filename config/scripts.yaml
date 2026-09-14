@@ -495,147 +495,6 @@ warmelampe:
     and bedroom mode. Controls picture light, kallax light, and night light with different
     brightness levels during day, regular night, and bedtime scenarios while considering
     motion detection.
-charge_ev_message_with_optional_disable:
-  mode: restart
-  sequence:
-  - alias: Set up variables
-    variables:
-      action_confirm: '{{ ''CONFIRM_'' ~ context.id }}'
-      action_dismiss: '{{ ''DISMISS_'' ~ context.id }}'
-  - alias: Send notification
-    domain: mobile_app
-    type: notify
-    device_id: 905c163dcc62544838edb078413723b2
-    title: ☀️ EV Charging ☀️
-    message: 'Plug in a Car to charge with Solar:
-
-      {{ states(''sensor.evs_home_and_ready_to_charge'') }}  {# Shows the Evs based
-      on device tracker and their soc, if not full and at home then the ouput is for
-      example Zoe: 99% or Zoe: 99%\nID.4: 87% #}'
-    data:
-      tag: ev_duncan
-      actions:
-      - action: '{{ action_confirm }}'
-        title: Will do
-      - action: '{{ action_dismiss }}'
-        title: Car Full or no Car
-    enabled: true
-  - alias: Awaiting response
-    wait_for_trigger:
-    - event_type: mobile_app_notification_action
-      event_data:
-        action: '{{ action_confirm }}'
-      trigger: event
-    - event_type: mobile_app_notification_action
-      event_data:
-        action: '{{ action_dismiss }}'
-      trigger: event
-    timeout:
-      hours: 2
-      minutes: 30
-      seconds: 0
-      milliseconds: 0
-    continue_on_timeout: false
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.schreibtisch_links_power_strip_l3
-          target_state: 'on'
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
-      sequence:
-      - metadata: {}
-        data:
-          value: 10
-        target:
-          entity_id: counter.ev_charging_messages
-        action: counter.set_value
-  alias: Charge EV Message with optional Disable Poco F6
-  description: ''
-charge_ev_message_with_optional_disable_stephan_iphone:
-  mode: restart
-  sequence:
-  - alias: Set up variables
-    variables:
-      action_confirm: '{{ ''CONFIRM_'' ~ context.id }}'
-      action_dismiss: '{{ ''DISMISS_'' ~ context.id }}'
-  - alias: Send notification
-    domain: mobile_app
-    type: notify
-    device_id: 3b177c6db2b7618a07b7cf691b4a3a9c
-    title: ☀️ E-Auto Laden ☀️
-    message: 'Lade dein Auto mit Solar:
-
-      {{ states(''sensor.evs_home_and_ready_to_charge'') }}  {# Shows the Evs based
-      on device tracker and their soc, if not full and at home then the ouput is for
-      example Zoe: 99% or Zoe: 99%\nID.4: 87% #}'
-    data:
-      tag: ev_stephan
-      actions:
-      - action: '{{ action_confirm }}'
-        title: Mach ich
-      - action: '{{ action_dismiss }}'
-        title: Kein Auto oder alle voll
-  - alias: Awaiting response
-    wait_for_trigger:
-    - event_type: mobile_app_notification_action
-      event_data:
-        action: '{{ action_confirm }}'
-      trigger: event
-    - event_type: mobile_app_notification_action
-      event_data:
-        action: '{{ action_dismiss }}'
-      trigger: event
-    timeout:
-      hours: 2
-      minutes: 30
-      seconds: 0
-      milliseconds: 0
-    continue_on_timeout: false
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == action_confirm }}'
-      sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.schreibtisch_links_power_strip_l3
-          target_state: 'on'
-    - conditions:
-      - condition: template
-        value_template: '{{ wait.trigger.event.data.action == action_dismiss }}'
-      sequence:
-      - metadata: {}
-        data:
-          value: 10
-        target:
-          entity_id: counter.ev_charging_messages
-        action: counter.set_value
-  alias: Charge EV Message with optional Disable Stephan Iphone
-  description: ''
 create_timelapse:
   alias: Create Timelapse
   sequence:
@@ -655,87 +514,6 @@ create_timelapse:
   description: ''
   mode: queued
   max: 10
-wintergarten_dachfenster_rolladen_close:
-  sequence:
-  - action: script.turn_off
-    metadata: {}
-    target:
-      entity_id:
-      - script.wintergarten_dachfenster_rolladen_open
-      - script.wintergarten_dachfenster_rolladen_stop
-    data: {}
-    continue_on_error: true
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: rollo_close
-    continue_on_error: true
-  - action: input_boolean.turn_on
-    metadata: {}
-    target:
-      entity_id: input_boolean.rollo_state
-    data: {}
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 30
-      milliseconds: 0
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: rollo_close
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Rolladen Close
-  description: ''
-wintergarten_dachfenster_rolladen_open:
-  sequence:
-  - action: script.turn_off
-    metadata: {}
-    target:
-      entity_id:
-      - script.wintergarten_dachfenster_rolladen_stop
-      - script.wintergarten_dachfenster_rolladen_close
-    data: {}
-    continue_on_error: true
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: rollo_open
-    continue_on_error: true
-  - action: input_boolean.turn_off
-    metadata: {}
-    target:
-      entity_id: input_boolean.rollo_state
-    data: {}
-  - delay:
-      hours: 0
-      minutes: 0
-      seconds: 30
-      milliseconds: 0
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: rollo_open
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Rolladen Open
-  description: ''
-wintergarten_dachfenster_rolladen_stop:
-  sequence:
-  - action: script.turn_off
-    metadata: {}
-    target:
-      entity_id:
-      - script.wintergarten_dachfenster_rolladen_open
-      - script.wintergarten_dachfenster_rolladen_close
-    data: {}
-    continue_on_error: true
-  - action: script.send_ir_remote_command
-    metadata: {}
-    data:
-      button_label: rollo_stop
-    continue_on_error: true
-  alias: Wintergarten Dachfenster Rolladen Stop
-  description: ''
 boiler_save_energy_script:
   alias: Boiler Save Energy Script
   description: Locks in timings at start based on temperature and status
@@ -836,19 +614,6 @@ boiler_save_energy_script:
             notify_service: notify.duncan
             target_state: 'off'
             entity_id: light.esp32_c3_mini_treppenhaus_licht
-        - action: script.retry_action_with_backoff
-          metadata: {}
-          data:
-            action_domain: light
-            action_type: turn_off
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: simple
-            notify_on_failure: true
-            notify_service: notify.duncan
-            target_state: 'off'
-            entity_id: light.ganglicht_zigbee_led
   alias: 5 Min Turn Off Ganglicht
   description: ''
   mode: restart
@@ -2494,3 +2259,108 @@ lichtschalter_betriebsmodus_verzogert_zurucksetzen_2:
       entity_id: '{{ select_entity }}'
     data:
       option: control_relay
+charge_ev_message_combined:
+  alias: Charge EV Message (Combined)
+  description: Sends EV charging notification to Duncan and Stephan and handles response.
+  mode: restart
+  sequence:
+  - alias: Set up variables
+    variables:
+      action_confirm: '{{ ''CONFIRM_'' ~ context.id }}'
+      action_dismiss: '{{ ''DISMISS_'' ~ context.id }}'
+  - parallel:
+    - alias: Send notification to Duncan
+      domain: mobile_app
+      type: notify
+      device_id: 905c163dcc62544838edb078413723b2
+      title: ☀️ EV Charging ☀️
+      message: 'Plug in a Car to charge with Solar:
+
+        {{ states(''sensor.evs_home_and_ready_to_charge'') }}'
+      data:
+        tag: ev_duncan
+        actions:
+        - action: '{{ action_confirm }}'
+          title: Will do
+        - action: '{{ action_dismiss }}'
+          title: Car Full or no Car
+    - alias: Send notification to Stephan if home
+      if:
+      - condition: state
+        entity_id: person.stephan
+        state: home
+      then:
+      - domain: mobile_app
+        type: notify
+        device_id: 3b177c6db2b7618a07b7cf691b4a3a9c
+        title: ☀️ E-Auto Laden ☀️
+        message: 'Lade dein Auto mit Solar:
+
+          {{ states(''sensor.evs_home_and_ready_to_charge'') }}'
+        data:
+          tag: ev_stephan
+          actions:
+          - action: '{{ action_confirm }}'
+            title: Mach ich
+          - action: '{{ action_dismiss }}'
+            title: Kein Auto oder alle voll
+  - alias: Awaiting response from either device
+    wait_for_trigger:
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_confirm }}'
+      trigger: event
+    - event_type: mobile_app_notification_action
+      event_data:
+        action: '{{ action_dismiss }}'
+      trigger: event
+    timeout:
+      hours: 2
+      minutes: 30
+      seconds: 0
+      milliseconds: 0
+    continue_on_timeout: true
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is defined and wait.trigger.event.data.action
+          == action_confirm }}'
+      sequence:
+      - action: script.retry_action_with_backoff
+        metadata: {}
+        data:
+          action_domain: switch
+          action_type: turn_on
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: simple
+          notify_on_failure: true
+          notify_service: notify.duncan
+          entity_id: switch.schreibtisch_links_power_strip_l3
+          target_state: 'on'
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is defined and wait.trigger.event.data.action
+          == action_dismiss }}'
+      sequence:
+      - metadata: {}
+        data:
+          value: 10
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.set_value
+  - alias: Clear notifications on both devices
+    parallel:
+    - domain: mobile_app
+      type: notify
+      device_id: 905c163dcc62544838edb078413723b2
+      message: clear_notification
+      data:
+        tag: ev_duncan
+    - domain: mobile_app
+      type: notify
+      device_id: 3b177c6db2b7618a07b7cf691b4a3a9c
+      message: clear_notification
+      data:
+        tag: ev_stephan
