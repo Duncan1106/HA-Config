@@ -463,8 +463,8 @@
       action: notify.duncan
   mode: single
 - id: '1706398043305'
-  alias: 'Spülmaschine fertig '
-  description: ''
+  alias: Spülmaschine fertig
+  description: Detect Blueprint for Dishwasher finished
   use_blueprint:
     path: Blackshome/appliance-notifications.yaml
     input:
@@ -1363,67 +1363,30 @@
   max: 15
 - id: '1712612224089'
   alias: Adjust Person Counter if necessary
-  description: ''
+  description: adjusts the person counter if the lichtschranke didnt catcb it correctly
   triggers:
   - trigger: state
-    entity_id:
-    - binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-    to:
-    - 'on'
-    id: Bed occupied
+    entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
+    to: 'on'
+    id: bed
   - trigger: state
-    entity_id:
-    - binary_sensor.everything_presence_lite_f1c0d0_occupancy
-    to:
-    - 'off'
-    id: Room empty
+    entity_id: binary_sensor.everything_presence_lite_f1c0d0_occupancy
+    to: 'off'
     for:
-      hours: 0
       minutes: 1
-      seconds: 0
-  conditions: []
+    id: room
+  conditions:
+  - condition: template
+    value_template: "{% set count = states('number.esp32_s3_zero_lichtschranke_person_counter')
+      | int(0) %} {% if trigger.id == 'bed' %}\n  {{ count < 1 }}\n{% else %}\n  {{
+      is_state('binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied',
+      'off') and count > 0 }}\n{% endif %}"
   actions:
-  - alias: Adjust when in bed
-    if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - Bed occupied
-      - condition: numeric_state
-        entity_id: number.esp32_s3_zero_lichtschranke_person_counter
-        below: 1
-        enabled: true
-    then:
-    - metadata: {}
-      data:
-        value: '1'
-      target:
-        entity_id:
-        - number.esp32_s3_zero_lichtschranke_person_counter
-      action: number.set_value
-  - alias: Adjust when room empty
-    if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - Room empty
-      - condition: state
-        entity_id: binary_sensor.esp32_c3_mini_bett_nachtlicht_master_bed_occupied
-        state:
-        - 'off'
-      - condition: numeric_state
-        entity_id: number.esp32_s3_zero_lichtschranke_person_counter
-        enabled: true
-        above: 0.5
-    then:
-    - action: number.set_value
-      metadata: {}
-      target:
-        entity_id: number.esp32_s3_zero_lichtschranke_person_counter
-      data:
-        value: '0'
+  - action: number.set_value
+    target:
+      entity_id: number.esp32_s3_zero_lichtschranke_person_counter
+    data:
+      value: '{{ 1 if trigger.id == ''bed'' else 0 }}'
   mode: single
 - id: '1712821937547'
   alias: Notify Time in Bed
@@ -1796,7 +1759,7 @@
     from: 'on'
     id: Stopped
   - hours: '20'
-    minutes: '*'
+    minutes: /2
     id: Force Stop
     trigger: time_pattern
   conditions:
@@ -2736,7 +2699,38 @@
   mode: single
 - id: '1726817233810'
   alias: Restart at 3:15 every second Night
-  description: ''
+  description: "\U0001F504 **Bi-Daily Scheduled Core Reboot**\n\n---\n\n### \U0001F4CB
+    Intelligent Core Control\n\n* **High-Level Intent**: Executes a routine off-peak
+    reboot of Home Assistant Core every second night to maintain system stability
+    and clear memory cache.\n* **Operational Strategy**: Utilizes time-based triggers
+    restricted to even-numbered calendar days during low-traffic hours (03:15).\n*
+    **Reliability Mechanisms**: Employs double-gate validation checks for system uptime
+    and UPS power integrity prior to triggering the restart action.\n\n---\n\n###
+    ⏱️ Trigger Overview\n\n| Type | Entity / Condition | Purpose |\n| :--- | :---
+    | :--- |\n| **Time** | `03:15:00` | Initiates the bi-daily maintenance evaluation
+    during off-peak hours |\n\n---\n\n### ⚙️ Operational Logic\n\n### Scheduled Maintenance
+    Mode\n\n* **Purpose**: Safely restarts Home Assistant Core when maintenance prerequisites
+    are met.\n* **Logic Overview**: All of the following conditions must simultaneously
+    evaluate to **True**:\n  1. **Even Calendar Day Check**: `{{ now().day | int(1)
+    % 2 == 0 }}` (Ensures execution occurs every alternate day).\n  2. **Uptime Gate**:
+    **`binary_sensor.up_longer_than_1_day`** is **`on`** (Verifies the instance has
+    been active for more than 24 hours).\n  3. **Power Integrity Gate**: **`sensor.ups0_status`**
+    is **`Online`** (Confirms the server is receiving stable mains power).\n* **Effect**:
+    Calls the **`homeassistant.restart`** service.\n\n---\n\n### \U0001F6E0️ Technical
+    Overview\n\n* **Automation Mode**: **`single`**\n* **Execution Method**: Direct
+    service call (**`homeassistant.restart`**)\n* **Key Inputs**:\n  * **`binary_sensor.up_longer_than_1_day`**\n
+    \ * **`sensor.ups0_status`**\n  * System Date / Clock (**`now().day`**)\n* **Controlled
+    Entities**: Home Assistant Core\n* **Safety Mechanisms**:\n  * **Power Interruption
+    Guard**: Halts restart execution if **`sensor.ups0_status`** is on battery or
+    offline, mitigating database corruption risks.\n  * **Redundant Loop Guard**:
+    Requires **`binary_sensor.up_longer_than_1_day`** to be **`on`**, preventing repeated
+    reboot cycles if a manual restart occurred recently.\n\n---\n\n### \U0001F4A1
+    Notes\n\n* **Bi-Daily Alternation**: The template expression `now().day % 2 ==
+    0` provides a lightweight calendar-day schedule without requiring helper entities
+    or state trackers.\n* **Database & File System Protection**: Verifying UPS online
+    status ensures disk writes during shutdown and startup sequence occur under stable
+    grid power.\n* **Off-Peak Window**: Running at 03:15:00 minimizes impact on daily
+    user automations, presence tracking, and active media playback."
   triggers:
   - at: 03:15:00
     trigger: time
@@ -6972,10 +6966,16 @@
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
-      - condition: state
-        entity_id: sensor.go_e_11kw_car
-        state:
-        - Tavascan
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: sensor.go_e_11kw_car
+          state:
+          - Tavascan
+        - condition: state
+          entity_id: sensor.go_e_22kw_car
+          state:
+          - Tavascan
       sequence:
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -6992,26 +6992,52 @@
           target_state: 'off'
         alias: Turn Battery Off via retry Script
         enabled: true
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: select.go_echarger_270862_frc
-          target_state: custom
-          custom_action:
-          - action: select.select_option
-            metadata: {}
-            data:
-              option: Charge
-            target:
-              entity_id:
-              - select.go_echarger_270862_frc
-          custom_target_state: Charge
+      - if:
+        - condition: state
+          entity_id: sensor.go_e_11kw_car
+          state:
+          - Tavascan
+        then:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id:
+                - select.go_echarger_270862_frc
+            custom_target_state: Charge
+        else:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Charge
+              target:
+                entity_id: select.go_echarger_252682_frc
+            custom_target_state: Charge
       alias: Start EV Charging, Octopus Intelligent Mode
     - conditions:
       - condition: trigger
@@ -7020,31 +7046,63 @@
       - condition: state
         entity_id: input_select.octopus_night_time
         state: Intelligent
-      - condition: state
-        entity_id: sensor.go_e_11kw_car
-        state:
-        - Tavascan
+      - condition: or
+        conditions:
+        - condition: state
+          entity_id: sensor.go_e_11kw_car
+          state:
+          - Tavascan
+        - condition: state
+          entity_id: sensor.go_e_22kw_car
+          state:
+          - Tavascan
       sequence:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: select.go_echarger_270862_frc
-          target_state: custom
-          custom_action:
-          - action: select.select_option
-            metadata: {}
-            data:
-              option: Don't charge
-            target:
-              entity_id:
-              - select.go_echarger_270862_frc
-          custom_target_state: Don't charge
+      - if:
+        - condition: state
+          entity_id: sensor.go_e_11kw_car
+          state:
+          - Tavascan
+        then:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_270862_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
+              target:
+                entity_id:
+                - select.go_echarger_270862_frc
+            custom_target_state: Don't charge
+        else:
+        - action: script.retry_action_with_backoff
+          metadata: {}
+          data:
+            max_retries: 10
+            base_delay: 5
+            max_delay: 60
+            backoff_type: simple
+            notify_on_failure: true
+            notify_service: notify.duncan
+            entity_id: select.go_echarger_252682_frc
+            target_state: custom
+            custom_action:
+            - action: select.select_option
+              metadata: {}
+              data:
+                option: Don't charge
+              target:
+                entity_id: select.go_echarger_252682_frc
+            custom_target_state: Don't charge
       - if:
         - condition: or
           conditions:
@@ -7270,7 +7328,7 @@
             value_template: '{% set battery_discharging = states(''sensor.battery_discharge'')
               | float(0) > 50 %}
 
-              {{ (battery_discharging) or (repeat.index >= 3) }}'
+              {{ (not battery_discharging) or (repeat.index >= 3) }}'
         enabled: true
       alias: Fallback Battery Protection from Discharge to EV
   mode: parallel
@@ -9825,7 +9883,7 @@
             }}A in {{ ns_shorts.short_parts | join('' '') }} -> saving {{ "{:.2f}".format(state_attr(''binary_sensor.charge_battery_at_night'',''saved_cost_eur'')|float(0))
             }} €'
           data:
-            tag: night_battery_charge1
+            tag: night_battery_charge
       - action: script.retry_action_with_backoff
         metadata: {}
         data:
