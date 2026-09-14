@@ -935,9 +935,6 @@
       - sensor.esp32_c3_mini_terra_duncan_room_temperature
       - sensor.esp32_c3_zero_epever_bme280_temperature
       - sensor.inverter_battery_temperature
-      - sensor.esphome_az_envy_2_temperature_gartenhaus
-      - sensor.esphome_az_envy_1_temperature_heizraum
-      - sensor.esphome_az_envy_3_temperature_3d_printer
       - sensor.gw1100a_indoor_temperature
       - sensor.t_h_duncan_zigbee_temperature
       - sensor.t_h_waschkuche_zigbee_temperature
@@ -949,6 +946,9 @@
       - sensor.t_h_hobbyraum_zigbee_temperature
       - sensor.treppenhaus_temperature
       - sensor.esp32_c3_zero_epever_battery_temperature
+      - sensor.gang_bewegung_temperature
+      - sensor.153931628718174_outdoor_temperature
+      - sensor.153931628718174_indoor_temperature
       - sensor.og_temperatur
       - sensor.eg_temperatur
       - sensor.kg_temperatur
@@ -3542,6 +3542,17 @@
           entity_id:
           - switch.schreibtisch_rechts_power_strip_l2
           - switch.schreibtisch_rechts_power_strip_l3
+  - alias: DOUBLE
+    if:
+    - condition: trigger
+      id:
+      - double
+    then:
+    - action: switch.toggle
+      metadata: {}
+      target:
+        entity_id: switch.schreibtisch_links_power_strip_l2
+      data: {}
   mode: restart
 - id: '1735214695890'
   alias: Dunstabzugshaube
@@ -10057,45 +10068,56 @@
   mode: single
 - id: '1763821325453'
   alias: Terrarium Humidifier Auto-Off
-  description: "### \U0001F4CB Intelligent Humidification Safety Control\n\n**High-level
-    intent**\nThis automation serves as a safety watchdog for the terrarium environment,
-    ensuring that the humidification system does not run indefinitely. It monitors
-    the active state of the hardware and enforces a strict operational window.\n\n**Operational
-    strategy**\nThe system employs a polling-based safety check rather than a simple
-    state-change trigger. By evaluating conditions every two minutes, it ensures that
-    even if a single event-based trigger were missed, the \"off\" command would be
-    issued shortly thereafter once the duration threshold is met.\n\n**Reliability
-    mechanisms**\nTo overcome potential Zigbee mesh interference or \"popcorn effect\"
-    command drops, this automation utilizes a robust **retry script with backoff**.
-    If the initial command fails, the system will attempt to turn off the switch up
-    to 10 times with increasing delays.\n\n---\n\n### Trigger Overview Table\n\n|
-    Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **Time
-    Pattern** | Every **2 minutes** | N/A | Periodic heartbeat check to verify device
-    state and runtime duration. |\n\n---\n\n### Operational Logic Sections\n\n####
-    Normal Shutdown Mode\n**Purpose**\nEnforce a maximum duty cycle for the humidification
-    hardware to prevent over-saturation of the terrarium and protect the motor from
-    burnout.\n\n**Logic Overview**\nThe automation executes only if **input_boolean.terrarium_on**
-    is **on** (Global System Enable) AND **switch.terrarium_zigbee_l1** has been continuously
-    **on** for at least **10 minutes**.\n\n**Effect**\nTriggers the **script.retry_action_with_backoff**
-    to transition **switch.terrarium_zigbee_l1** to the **off** state.\n\n---\n\n###
-    Technical Overview\n\n* **Automation Mode**: `restart` (Ensures the most recent
-    trigger takes precedence during execution)\n* **Execution method**: External retry
-    script (**script.retry_action_with_backoff**)\n* **Key Inputs**: `input_boolean.terrarium_on`\n*
-    **Controlled Entities**: `switch.terrarium_zigbee_l1`\n* **Safety Mechanisms**:
-    \n    * **Max Retries**: 10 attempts\n    * **Backoff**: Simple increment (5s
-    to 60s)\n    * **Failure Notification**: Sends an alert via **notify.duncan**
-    if the device fails to turn off after all retries.\n\n---\n\n### \U0001F4A1 Notes\n\n*
-    **Polling Strategy**: Using a `/2` minute time pattern instead of a `state` trigger
-    provides an extra layer of redundancy. If the Home Assistant core restarts exactly
-    at the 10-minute mark of a cycle, the time pattern will catch the \"over-time\"
-    state on the next sweep.\n* **Retry Logic**: The use of a backoff algorithm (5s
-    base to 60s max) is specifically designed to bypass temporary Zigbee interference
-    or network congestion.\n* **Silent Throttling**: The `max_exceeded: silent` configuration
-    prevents logbook clutter during rapid state evaluations.\n"
+  description: "\U0001F4A7 **Terrarium Humidifier Auto-Off**\n\n\U0001F4CB Intelligent
+    Terrarium Humidifier Control\n\nThis automation provides a time-based safety shutoff
+    for the terrarium humidifier power switch. Its high-level intent is to turn off
+    **`switch.terrarium_zigbee_strip_l1`** after it has remained **`on`** beyond the
+    intended 10-minute runtime window. The operational strategy is condition-gated
+    auto-off: the shutoff only proceeds when the terrarium master control **`input_boolean.terrarium_on`**
+    is **`on`** and the target switch is still **`on`**. Reliability is handled through
+    **`script.retry_action_with_backoff`**, which retries the off command with backoff
+    and sends a failure notification if the switch cannot be turned off.\n\n---\n\n##
+    Trigger Overview\n\n| Type | Entity / Condition | ID | Purpose |\n|---|---|---|---|\n|
+    State | **`switch.terrarium_zigbee_strip_l1`** has been **`on`** for **`10m 1s`**
+    | — | Primary auto-off trigger after the 10-minute runtime window |\n| State |
+    **`switch.terrarium_zigbee_strip_l1`** has been **`on`** for **`10m 15s`** | —
+    | Fallback auto-off trigger shortly after the primary threshold |\n| State | **`switch.terrarium_zigbee_strip_l1`**
+    has been **`on`** for **`10m 30s`** | — | Final fallback auto-off trigger if earlier
+    triggers did not complete the shutoff |\n\n---\n\n## Operational Logic\n\n####
+    Auto-Off Activation\n\n**Purpose**  \nTurn off the terrarium humidifier power
+    switch after it has remained on beyond the configured runtime window.\n\n**Logic
+    Overview**  \nThe automation fires when **`switch.terrarium_zigbee_strip_l1`**
+    has been in the **`on`** state for **`10m 1s`**, **`10m 15s`**, or **`10m 30s`**.
+    It continues only if:\n\n- **`input_boolean.terrarium_on`** is **`on`**\n- **`switch.terrarium_zigbee_strip_l1`**
+    is still **`on`**\n\n**Effect**  \nCalls **`script.retry_action_with_backoff`**
+    to execute **`switch.turn_off`** against **`switch.terrarium_zigbee_strip_l1`**.\n\n####
+    Failure-Resilient Shutoff\n\n**Purpose**  \nEnsure the off command succeeds even
+    if transient communication or device failures occur.\n\n**Logic Overview**  \nThe
+    retry script is configured with:\n\n- Action domain: **`switch`**\n- Action type:
+    **`turn_off`**\n- Max retries: **`10`**\n- Base delay: **`5`** seconds\n- Max
+    delay: **`60`** seconds\n- Backoff type: **`simple`**\n- Notify on failure: **`true`**\n-
+    Notify service: **`notify.duncan`**\n- Target state: **`off`**\n\n**Effect**  \nAttempts
+    to set **`switch.terrarium_zigbee_strip_l1`** to **`off`**. If all retries fail,
+    a notification is sent through **`notify.duncan`**.\n\n---\n\n## Technical Overview\n\n-
+    **Automation Mode**: **`single`**\n- **Execution Method**: **`script.retry_action_with_backoff`**\n-
+    **Key Inputs**:\n  - **`input_boolean.terrarium_on`**\n  - **`switch.terrarium_zigbee_strip_l1`**
+    current state\n  - Trigger durations: **`10m 1s`**, **`10m 15s`**, **`10m 30s`**\n-
+    **Controlled Entities**:\n  - **`switch.terrarium_zigbee_strip_l1`**\n- **Safety
+    Mechanisms**:\n  - Conditions require the terrarium master boolean to be **`on`**\n
+    \ - Conditions require the target switch to still be **`on`**\n  - Retry logic
+    with simple backoff\n  - Failure notification via **`notify.duncan`**\n  - **`max_exceeded:
+    silent`** suppresses repeated-run warnings\n\n---\n\n## \U0001F4A1 Notes\n\n-
+    The three staggered duration triggers — **`10m 1s`**, **`10m 15s`**, and **`10m
+    30s`** — provide multiple opportunities to initiate the auto-off sequence.\n-
+    The conditions prevent unnecessary off commands when the terrarium master control
+    is disabled or the switch is already off.\n- **`single`** mode prevents overlapping
+    executions, while **`max_exceeded: silent`** avoids warning noise if a trigger
+    fires while a previous run is still active.\n- The retry configuration uses up
+    to **10** attempts, a **5-second** base delay, a **60-second** maximum delay,
+    and simple backoff to improve reliability without immediate repeated attempts.\n-
+    Failure notification is explicitly routed to **`notify.duncan`** when the switch
+    cannot be turned off after retries."
   triggers:
-  - trigger: time_pattern
-    minutes: /2
-    enabled: false
   - trigger: state
     entity_id:
     - switch.terrarium_zigbee_strip_l1
@@ -10105,6 +10127,15 @@
       hours: 0
       minutes: 10
       seconds: 1
+  - trigger: state
+    entity_id:
+    - switch.terrarium_zigbee_strip_l1
+    to:
+    - 'on'
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 15
   - trigger: state
     entity_id:
     - switch.terrarium_zigbee_strip_l1
@@ -10123,10 +10154,6 @@
     entity_id: switch.terrarium_zigbee_strip_l1
     state:
     - 'on'
-    for:
-      hours: 0
-      minutes: 10
-      seconds: 0
   actions:
   - action: script.retry_action_with_backoff
     metadata: {}
@@ -10141,7 +10168,7 @@
       notify_service: notify.duncan
       entity_id: switch.terrarium_zigbee_strip_l1
       target_state: 'off'
-  mode: restart
+  mode: single
   max_exceeded: silent
 - id: '1763832773682'
   alias: Daily Garage & Gartenhaus Temperature Notification
@@ -13910,199 +13937,6 @@
             + Temp deviation.\n   Limits output to 1 decimal place.\n#} {{ (current_offset
             * 0.9 + (ambient_temp - 20) * 0.5) | round(1) }}\n"
   mode: single
-- id: '1788893404743'
-  alias: Aqara H1 EU Switch Right - Mode Switch & Delayed Off
-  description: Verwendet control_relay fuer latenzfreies Einschalten im AUS-Zustand.
-    Beim Druecken im decoupled Modus wird im AUS-Zustand explizit EINGESCHALTET und
-    im AN-Zustand verzögert AUSGESCHALTET.
-  triggers:
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_right
-    trigger: device
-    id: button_pressed
-  - alias: Schalter wurde EINGESCHALTET
-    trigger: state
-    entity_id:
-    - switch.duncan_lichtschalter_right
-    to:
-    - 'on'
-    id: switch_turned_on
-    from:
-    - 'off'
-  - alias: Schalter wurde AUSGESCHALTET
-    trigger: state
-    entity_id:
-    - switch.duncan_lichtschalter_right
-    to:
-    - 'off'
-    id: switch_turned_off
-    from:
-    - 'on'
-  actions:
-  - if:
-    - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
-      condition: trigger
-      id: switch_turned_on
-    then:
-    - alias: Sofort auf decoupled stellen um Folge-Events abzufangen
-      action: select.select_option
-      target:
-        entity_id: select.duncan_lichtschalter_operation_mode_right
-      data:
-        option: decoupled
-  - if:
-    - alias: Taster gedrueckt im decoupled Modus und Licht war AUS -> Synchronisiere
-        Einschalten
-      condition: trigger
-      id: button_pressed
-    - condition: state
-      entity_id: switch.duncan_lichtschalter_right
-      state: 'off'
-    - condition: state
-      entity_id: select.duncan_lichtschalter_operation_mode_right
-      state: decoupled
-    then:
-    - alias: Licht explizit einschalten
-      action: switch.turn_on
-      target:
-        entity_id: switch.duncan_lichtschalter_right
-  - if:
-    - alias: Taster gedrueckt im decoupled Modus und Licht war AN -> Verzögert Ausschalten
-      condition: trigger
-      id: button_pressed
-    - condition: state
-      entity_id: switch.duncan_lichtschalter_right
-      state: 'on'
-    - condition: state
-      entity_id: select.duncan_lichtschalter_operation_mode_right
-      state: decoupled
-    - alias: entprell
-      condition: template
-      value_template: '{% set last_chg = states.switch.duncan_lichtschalter_right.last_changed
-        %} {{ (now() - last_chg).total_seconds() > 1.5 }}'
-    then:
-    - alias: Warte verbleibende Mindestlaufzeit ab
-      delay: '{% set min_on_time = 10 %} {% set last_chg = states.switch.duncan_lichtschalter_right.last_changed
-        %} {% set elapsed = (now() - last_chg).total_seconds() %} {% set remaining
-        = min_on_time - elapsed %} {{ [0, remaining] | max | round(1) }}'
-    - alias: Licht ausschalten
-      action: switch.turn_off
-      target:
-        entity_id: switch.duncan_lichtschalter_right
-  - if:
-    - alias: Schalter wurde ausgeschaltet -> Verzögert auf control_relay stellen
-      condition: trigger
-      id: switch_turned_off
-    then:
-    - action: script.turn_on
-      metadata: {}
-      target:
-        entity_id: script.lichtschalter_betriebsmodus_verzogert_zurucksetzen
-      data:
-        variables:
-          switch_entity: switch.duncan_lichtschalter_right
-          select_entity: select.duncan_lichtschalter_operation_mode_right
-  mode: parallel
-  max: 10
-- id: '1788894755341'
-  alias: Aqara H1 EU Switch Left - Mode Switch & Delayed Off
-  description: Verwendet control_relay fuer latenzfreies Einschalten im AUS-Zustand.
-    Beim Druecken im decoupled Modus wird im AUS-Zustand explizit EINGESCHALTET und
-    im AN-Zustand verzögert AUSGESCHALTET.
-  triggers:
-  - domain: mqtt
-    device_id: adf0a0e198e203d27f9ac23dd706eceb
-    type: action
-    subtype: single_left
-    trigger: device
-    id: button_pressed
-  - alias: Schalter wurde EINGESCHALTET
-    trigger: state
-    entity_id:
-    - switch.duncan_lichtschalter_left
-    to:
-    - 'on'
-    id: switch_turned_on
-    from:
-    - 'off'
-  - alias: Schalter wurde AUSGESCHALTET
-    trigger: state
-    entity_id:
-    - switch.duncan_lichtschalter_left
-    to:
-    - 'off'
-    id: switch_turned_off
-    from:
-    - 'on'
-  conditions: []
-  actions:
-  - if:
-    - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
-      condition: trigger
-      id: switch_turned_on
-    then:
-    - alias: Sofort auf decoupled stellen um Folge-Events abzufangen
-      action: select.select_option
-      target:
-        entity_id: select.duncan_lichtschalter_operation_mode_left
-      data:
-        option: decoupled
-  - if:
-    - alias: Taster gedrueckt im decoupled Modus und Licht war AUS -> Synchronisiere
-        Einschalten
-      condition: trigger
-      id: button_pressed
-    - condition: state
-      entity_id: switch.duncan_lichtschalter_left
-      state: 'off'
-    - condition: state
-      entity_id: select.duncan_lichtschalter_operation_mode_left
-      state: decoupled
-    then:
-    - alias: Licht explizit einschalten
-      action: switch.turn_on
-      target:
-        entity_id: switch.duncan_lichtschalter_left
-  - if:
-    - alias: Taster gedrueckt im decoupled Modus und Licht war AN -> Verzögert Ausschalten
-      condition: trigger
-      id: button_pressed
-    - condition: state
-      entity_id: switch.duncan_lichtschalter_left
-      state: 'on'
-    - condition: state
-      entity_id: select.duncan_lichtschalter_operation_mode_left
-      state: decoupled
-    - alias: entprell
-      condition: template
-      value_template: '{% set last_chg = states.switch.duncan_lichtschalter_left.last_changed
-        %} {{ (now() - last_chg).total_seconds() > 1.5 }}'
-    then:
-    - alias: Warte verbleibende Mindestlaufzeit ab
-      delay: '{% set min_on_time = 10 %} {% set last_chg = states.switch.duncan_lichtschalter_left.last_changed
-        %} {% set elapsed = (now() - last_chg).total_seconds() %} {% set remaining
-        = min_on_time - elapsed %} {{ [0, remaining] | max | round(1) }}'
-    - alias: Licht ausschalten
-      action: switch.turn_off
-      target:
-        entity_id: switch.duncan_lichtschalter_left
-  - if:
-    - alias: Schalter wurde ausgeschaltet -> Verzögert auf control_relay stellen
-      condition: trigger
-      id: switch_turned_off
-    then:
-    - action: script.turn_on
-      metadata: {}
-      target:
-        entity_id: script.lichtschalter_betriebsmodus_verzogert_zurucksetzen
-      data:
-        variables:
-          switch_entity: switch.duncan_lichtschalter_left
-          select_entity: select.duncan_lichtschalter_operation_mode_left
-  mode: parallel
-  max: 10
 - id: '1789209418169'
   alias: EV Gateway Refresh Mode on MG4 Connection
   description: Switches the gateway refresh mode to charging_detection when MG4 connects
@@ -14152,3 +13986,115 @@
       icon: mdi:{{'account-outline' if label == 'Person' else 'dog' if label == 'Dog'
         else 'cat' if label == 'Cat' else 'car' if label == 'Car' else 'home-assistant'}}
       final_delay: 10
+- id: '1789388057495'
+  alias: Aqara H1 EU Switch Dual - Mode Switch & Delayed Off
+  description: Combined automation for both Left and Right channels. Uses control_relay
+    for latency-free switching when OFF, auto-switches to decoupled when ON, and handles
+    delayed turn-off with minimum runtime and debouncing.
+  triggers:
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_left
+    trigger: device
+    id: button_pressed_left
+    alias: Taster Links gedrückt
+  - domain: mqtt
+    device_id: adf0a0e198e203d27f9ac23dd706eceb
+    type: action
+    subtype: single_right
+    trigger: device
+    id: button_pressed_right
+    alias: Taster Rechts gedrückt
+  - alias: Schalter wurde EINGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_left
+    - switch.duncan_lichtschalter_right
+    to:
+    - 'on'
+    from:
+    - 'off'
+    id: switch_turned_on
+  - alias: Schalter wurde AUSGESCHALTET
+    trigger: state
+    entity_id:
+    - switch.duncan_lichtschalter_left
+    - switch.duncan_lichtschalter_right
+    to:
+    - 'off'
+    from:
+    - 'on'
+    id: switch_turned_off
+  conditions: []
+  actions:
+  - variables:
+      side: "{% if trigger.id == 'button_pressed_left' or (trigger.entity_id is defined
+        and 'left' in trigger.entity_id) %}\n  left\n{% else %}\n  right\n{% endif
+        %}"
+      switch_entity: switch.duncan_lichtschalter_{{ side }}
+      select_entity: select.duncan_lichtschalter_operation_mode_{{ side }}
+  - if:
+    - alias: Schalter wurde eingeschaltet -> Sofort auf decoupled stellen
+      condition: trigger
+      id: switch_turned_on
+    then:
+    - alias: Sofort auf decoupled stellen um Folge-Events abzufangen
+      action: select.select_option
+      target:
+        entity_id: '{{ select_entity }}'
+      data:
+        option: decoupled
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AUS -> Synchronisiere
+        Einschalten
+      condition: trigger
+      id:
+      - button_pressed_left
+      - button_pressed_right
+    - condition: template
+      value_template: '{{ states(switch_entity) == ''off'' }}'
+    - condition: template
+      value_template: '{{ states(select_entity) == ''decoupled'' }}'
+    then:
+    - alias: Licht explizit einschalten
+      action: switch.turn_on
+      target:
+        entity_id: '{{ switch_entity }}'
+  - if:
+    - alias: Taster gedrueckt im decoupled Modus und Licht war AN -> Verzögert Ausschalten
+      condition: trigger
+      id:
+      - button_pressed_left
+      - button_pressed_right
+    - condition: template
+      value_template: '{{ states(switch_entity) == ''on'' }}'
+    - condition: template
+      value_template: '{{ states(select_entity) == ''decoupled'' }}'
+    - alias: entprell
+      condition: template
+      value_template: '{% set last_chg = states[switch_entity].last_changed %} {{
+        (now() - last_chg).total_seconds() > 1.5 }}'
+    then:
+    - alias: Warte verbleibende Mindestlaufzeit ab
+      delay: '{% set min_on_time = 10 %} {% set last_chg = states[switch_entity].last_changed
+        %} {% set elapsed = (now() - last_chg).total_seconds() %} {% set remaining
+        = min_on_time - elapsed %} {{ [0, remaining] | max | round(1) }}'
+    - alias: Licht ausschalten
+      action: switch.turn_off
+      target:
+        entity_id: '{{ switch_entity }}'
+  - if:
+    - alias: Schalter wurde ausgeschaltet -> Verzögert auf control_relay stellen
+      condition: trigger
+      id: switch_turned_off
+    then:
+    - action: script.turn_on
+      target:
+        entity_id: script.lichtschalter_betriebsmodus_verzogert_zurucksetzen
+      data:
+        variables:
+          switch_entity: '{{ switch_entity }}'
+          select_entity: '{{ select_entity }}'
+  mode: parallel
+  max: 10
