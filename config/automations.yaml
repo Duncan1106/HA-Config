@@ -7852,460 +7852,190 @@
   max: 4
 - id: '1754293444382'
   alias: Paludarium Pump & Fan Cycle (Daytime, Combined Zones)
-  description: "\U0001F33F **Paludarium Pump & Fan Cycle (Daytime, Combined Zones)**\n\n---\n\n###
-    \U0001F4CB Intelligent Paludarium Environmental Control\n\nThis automation provides
-    comprehensive environmental management for three distinct Paludarium zones (**Left**,
-    **Right**, and **Kallax**). It manages lighting, water circulation, and ventilation
-    through a synchronized schedule.\n\n* **High-Level Intent:** Maintain consistent
-    humidity and light cycles across multiple terrarium setups.\n* **Operational Strategy:**
-    A sun-based approach ensures natural diurnal rhythms, using a time-pattern trigger
-    to evaluate interval-based hardware cycles (pumps/fans).\n* **Reliability Mechanisms:**
-    Uses the `script.retry_action_with_backoff` for critical state changes, ensuring
-    that intermittent Zigbee/Wi-Fi connectivity does not lead to failed environmental
-    transitions.\n\n---\n\n### Trigger Overview Table\n\n| Type | Entity / Condition
-    | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| Time Pattern | Every **5 minute**
-    | N/A | Periodic check of pump/fan durations and light states. |\n\n---\n\n###
-    Operational Logic Sections\n\n#### Daytime Mode\n* **Purpose:** Active growth
-    and display phase.\n* **Logic Overview:** Evaluated when the sun is between **sunrise**
-    and **sunset**.\n* **Effect:** * **Main Power Strips:** Ensured **on** to provide
-    power to subsystems.\n    * **Lighting:** Individual zone lights (Left, Right,
-    Kallax) are switched **on**.\n    * **Pump/Fan Cycle:** Pumps run for **5 minutes**,
-    followed by an **off** period of **15 minutes**. When a pump turns off, a fan
-    cooldown script is initiated for **2.5 minutes**.\n\n#### Nighttime Mode\n* **Purpose:**
-    Rest phase and energy conservation.\n* **Logic Overview:** Evaluated when the
-    sun is between **sunset** and **sunrise**.\n* **Effect:**\n    * **Subsystems:**
-    All **Pumps**, **Fans**, and **Lights** across all zones are switched **off**.\n
-    \   * **Main Power:** The primary power strips (**Main Left**, **Main Right**)
-    are switched **off** to minimize standby power consumption.\n\n---\n\n### Technical
-    Overview\n\n* **Automation Mode:** `single` (max_exceeded: silent)\n* **Execution
-    Method:** * `script.retry_action_with_backoff` (State management)\n    * `script.run_fan_for_duration`
-    (Ventilation control)\n* **Key Inputs:** Sun elevation, time-pattern intervals,
-    and defined variables for durations (**5m ON / 15m OFF**).\n* **Controlled Entities:**
-    * `switch.desk_paludarium_turm_links_l1/2/3`\n    * `switch.desk_paludarium_links_l1/2/3`\n
-    \   * `switch.desk_paludarium_turm_rechts_l1/2/3`\n    * `switch.schreibtisch_links_power_strip_l1`\n
-    \   * `switch.schreibtisch_rechts_power_strip_l5`\n* **Safety Mechanisms:** Automated
-    retries with exponential backoff (up to 10 attempts) and persistent notifications
-    to **notify.duncan** upon hardware failure.\n\n---\n\n### \U0001F4A1 Notes\n\n*
-    **Zone Isolation:** Each zone (Left, Right, Kallax) operates its pump/fan cycle
-    independently within the daytime logic, preventing a failure in one zone from
-    impacting others.\n* **Power Sequencing:** Daytime logic includes a fallback check;
-    if a zone light is off, it checks if the main power strip is on before attempting
-    to engage the light, ensuring power is available before sending sub-device commands.\n*
-    **Cooling Integration:** The fan is explicitly triggered by the end of a pump
-    cycle, likely to manage humidity spikes or motor heat post-circulation."
+  description: "\U0001F33F Intelligent Paludarium Environmental Control (DRY Data-Driven
+    Architecture)"
   triggers:
-  - minutes: /5
-    trigger: time_pattern
+  - trigger: time_pattern
+    minutes: /5
   conditions: []
   actions:
-  - variables:
-      pump_on_duration: 00:05:00
-      pump_off_duration: 00:15:00
+  - alias: Set Zone Variables & Duration Configuration
+    variables:
+      pump_on_duration: 300
+      pump_off_duration: 900
       fan_duration: 00:02:30
-      pump_left: switch.desk_paludarium_turm_links_l3
-      fan_left: switch.desk_paludarium_turm_links_l1
-      light_left: switch.desk_paludarium_turm_links_l2
-      pump_kallax: switch.desk_paludarium_links_l2
-      fan_kallax: switch.desk_paludarium_links_l3
-      light_kallax: switch.desk_paludarium_links_l1
-      pump_right: switch.desk_paludarium_turm_rechts_l1
-      fan_right: switch.desk_paludarium_turm_rechts_l2
-      light_right: switch.desk_paludarium_turm_rechts_l3
-      main_left: switch.schreibtisch_links_power_strip_l1
-      main_right: switch.schreibtisch_rechts_power_strip_l5
-  - alias: DAYTIME
+      zones:
+      - name: left
+        main: switch.schreibtisch_links_power_strip_l1
+        light: switch.desk_paludarium_turm_links_l2
+        pump: switch.desk_paludarium_turm_links_l3
+        fan: switch.desk_paludarium_turm_links_l1
+      - name: right
+        main: switch.schreibtisch_rechts_power_strip_l5
+        light: switch.desk_paludarium_turm_rechts_l3
+        pump: switch.desk_paludarium_turm_rechts_l1
+        fan: switch.desk_paludarium_turm_rechts_l2
+      - name: kallax
+        main:
+        light: switch.desk_paludarium_links_l1
+        pump: switch.desk_paludarium_links_l2
+        fan: switch.desk_paludarium_links_l3
+  - alias: Solar Elevation Check (Daytime vs Nighttime)
     if:
-    - condition: sun
-      before: sunset
-      after: sunrise
+    - condition: state
+      entity_id: sun.sun
+      state: above_horizon
     then:
-    - alias: Left Light
-      if:
-      - condition: template
-        value_template: '{{ is_state(light_left, ''off'')  and is_state(main_left,
-          ''on'')}}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_left }}'
-          target_state: 'on'
-      else:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ main_left }}'
-          target_state: 'on'
-    - alias: Right Light
-      if:
-      - condition: template
-        value_template: '{{ is_state(light_right, ''off'') and is_state(main_right,
-          ''on'') }}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_right }}'
-          target_state: 'on'
-      else:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ main_right }}'
-          target_state: 'on'
-    - alias: Kallax Light
-      if:
-      - condition: template
-        value_template: '{{ is_state(light_kallax, ''off'') }}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_kallax }}'
-          target_state: 'on'
-    - alias: Left Pump & Fan
-      choose:
-      - alias: Left Zone Control
-        conditions:
-        - condition: template
-          value_template: '{{ is_state(main_left, ''on'') }}'
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_links_l3
-            state: 'on'
-            for: '{{ pump_on_duration }}'
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_links_l3
-            state: 'off'
-            for: '{{ pump_off_duration }}'
+    - alias: Daytime Cycle (Iterate Zones)
+      repeat:
+        for_each: '{{ zones }}'
         sequence:
-        - choose:
-          - alias: Left Pump ON duration elapsed - Turn pump OFF and start fan cooldown
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_turm_links_l3
-              state: 'on'
-              for: '{{ pump_on_duration }}'
-            sequence:
-            - action: switch.turn_off
-              data: {}
-              target:
-                entity_id: '{{ pump_left }}'
-            - data:
-                fan_entity: '{{ fan_left }}'
-                duration: '{{ fan_duration }}'
-              action: script.run_fan_for_duration
-          - alias: Left Pump OFF duration elapsed - Turn pump ON
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_turm_links_l3
-              state: 'off'
-              for: '{{ pump_off_duration }}'
-            sequence:
-            - action: switch.turn_on
-              data: {}
-              target:
-                entity_id: '{{ pump_left }}'
-    - alias: Right Pump & Fan
-      choose:
-      - alias: Right Zone Control
-        conditions:
-        - condition: template
-          value_template: '{{ is_state(main_right, ''on'') }}'
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_rechts_l1
-            state: 'on'
-            for: '{{ pump_on_duration }}'
-          - condition: state
-            entity_id: switch.desk_paludarium_turm_rechts_l1
-            state: 'off'
-            for: '{{ pump_off_duration }}'
+        - alias: Check and Enable Main Power Strip
+          if:
+          - condition: template
+            value_template: '{{ repeat.item.main is not none and is_state(repeat.item.main,
+              ''off'') }}'
+          then:
+          - alias: Turn ON Main Power Switch
+            action: script.retry_action_with_backoff
+            data:
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: '{{ repeat.item.main }}'
+              target_state: 'on'
+          - alias: Allow Power Strip Voltage to Settle
+            delay: 00:00:02
+        - alias: Check and Enable Zone Light
+          if:
+          - condition: template
+            value_template: '{{ is_state(repeat.item.light, ''off'') }}'
+          then:
+          - alias: Turn ON Zone Light
+            action: script.retry_action_with_backoff
+            data:
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: '{{ repeat.item.light }}'
+              target_state: 'on'
+        - alias: Process Active Duty Cycle for Pump and Fan
+          if:
+          - condition: template
+            value_template: '{{ repeat.item.main is none or is_state(repeat.item.main,
+              ''on'') }}'
+          then:
+          - choose:
+            - alias: Pump ON duration elapsed -> Turn OFF & run fan
+              conditions:
+              - condition: template
+                value_template: "{{ is_state(repeat.item.pump, 'on') and \n   states[repeat.item.pump]
+                  is defined and\n   (now() - states[repeat.item.pump].last_changed).total_seconds()
+                  >= pump_on_duration }}"
+              sequence:
+              - alias: Turn OFF Water Pump
+                action: switch.turn_off
+                target:
+                  entity_id: '{{ repeat.item.pump }}'
+              - alias: Trigger Fan Cooldown Run
+                action: script.run_fan_for_duration
+                data:
+                  fan_entity: '{{ repeat.item.fan }}'
+                  duration: '{{ fan_duration }}'
+            - alias: Pump OFF duration elapsed -> Turn ON
+              conditions:
+              - condition: template
+                value_template: "{{ is_state(repeat.item.pump, 'off') and \n   states[repeat.item.pump]
+                  is defined and\n   (now() - states[repeat.item.pump].last_changed).total_seconds()
+                  >= pump_off_duration }}"
+              sequence:
+              - alias: Turn ON Water Pump
+                action: switch.turn_on
+                target:
+                  entity_id: '{{ repeat.item.pump }}'
+    else:
+    - alias: Nighttime Teardown (Iterate Zones)
+      repeat:
+        for_each: '{{ zones }}'
         sequence:
-        - choose:
-          - alias: Right Pump ON duration elapsed - Turn pump OFF and start fan cooldown
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_turm_rechts_l1
-              state: 'on'
-              for: '{{ pump_on_duration }}'
-            sequence:
-            - target:
-                entity_id: '{{ pump_right }}'
-              action: switch.turn_off
-              data: {}
-            - data:
-                fan_entity: '{{ fan_right }}'
-                duration: '{{ fan_duration }}'
-              action: script.run_fan_for_duration
-          - alias: Right Pump OFF duration elapsed - Turn pump ON
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_turm_rechts_l1
-              state: 'off'
-              for: '{{ pump_off_duration }}'
-            sequence:
-            - target:
-                entity_id: '{{ pump_right }}'
-              action: switch.turn_on
-              data: {}
-    - alias: Kallax Pump & Fan
-      choose:
-      - alias: Kallax Zone Control
-        conditions:
-        - condition: or
-          conditions:
-          - condition: state
-            entity_id: switch.desk_paludarium_links_l2
-            state: 'on'
-            for: '{{ pump_on_duration }}'
-          - condition: state
-            entity_id: switch.desk_paludarium_links_l2
-            state: 'off'
-            for: '{{ pump_off_duration }}'
-        sequence:
-        - choose:
-          - alias: Kallax Pump ON duration elapsed - Turn pump OFF and start fan cooldown
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_links_l2
-              state: 'on'
-              for: '{{ pump_on_duration }}'
-            sequence:
-            - target:
-                entity_id: '{{ pump_kallax }}'
-              action: switch.turn_off
-              data: {}
-            - data:
-                fan_entity: '{{ fan_kallax }}'
-                duration: '{{ fan_duration }}'
-              action: script.run_fan_for_duration
-          - alias: Kallax Pump OFF duration elapsed - Turn pump ON
-            conditions:
-            - condition: state
-              entity_id: switch.desk_paludarium_links_l2
-              state: 'off'
-              for: '{{ pump_off_duration }}'
-            sequence:
-            - target:
-                entity_id: '{{ pump_kallax }}'
-              action: switch.turn_on
-              data: {}
-  - alias: NIGHTTIME
-    if:
-    - condition: sun
-      before: sunrise
-      after: sunset
-    then:
-    - alias: if left MAIN is ON, then switch Light, Pump and Fan OFF
-      if:
-      - condition: template
-        value_template: '{{ is_state(main_left, ''on'') }}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_left }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_left }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_left }}'
-          target_state: 'off'
-      - wait_template: '{{ is_state(light_left ,''off'') and is_state(pump_left ,''off'')  and
-          is_state(fan_left ,''off'') }}'
-        timeout: 00:00:30
-        continue_on_timeout: true
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ main_left }}'
-          target_state: 'off'
-    - alias: if right MAIN is ON, then switch Light, Pump and Fan OFF
-      if:
-      - condition: template
-        value_template: '{{ is_state(main_right, ''on'') }}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_right }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_right }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_right }}'
-          target_state: 'off'
-      - wait_template: '{{ is_state(light_right ,''off'') and is_state(pump_right,''off'')  and
-          is_state(fan_right,''off'') }}'
-        timeout: 00:00:30
-        continue_on_timeout: true
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ main_right }}'
-          target_state: 'off'
-    - alias: Kallax OFF
-      if:
-      - condition: template
-        value_template: '{{ is_state(light_kallax,''on'') or is_state(pump_kallax,''on'')
-          or is_state(fan_kallax,''on'') }}'
-      then:
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ light_kallax }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ pump_kallax }}'
-          target_state: 'off'
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: '{{ fan_kallax }}'
-          target_state: 'off'
+        - alias: Disable Active Subsystems
+          if:
+          - condition: template
+            value_template: '{{ repeat.item.main is none or is_state(repeat.item.main,
+              ''on'') }}'
+          then:
+          - alias: Turn OFF Water Pump
+            action: script.retry_action_with_backoff
+            data:
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: '{{ repeat.item.pump }}'
+              target_state: 'off'
+          - alias: Turn OFF Zone Light
+            action: script.retry_action_with_backoff
+            data:
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: '{{ repeat.item.light }}'
+              target_state: 'off'
+          - alias: Turn OFF Ventilation Fan
+            action: script.retry_action_with_backoff
+            data:
+              action_domain: switch
+              action_type: turn_off
+              max_retries: 10
+              base_delay: 5
+              max_delay: 60
+              backoff_type: simple
+              notify_on_failure: true
+              notify_service: notify.duncan
+              entity_id: '{{ repeat.item.fan }}'
+              target_state: 'off'
+          - alias: Safe Power Cut for Main Strip
+            if:
+            - condition: template
+              value_template: '{{ repeat.item.main is not none }}'
+            then:
+            - alias: Wait for Sub-Devices to Reach OFF State
+              wait_template: "{{ is_state(repeat.item.light, 'off') and \n   is_state(repeat.item.pump,
+                'off') and \n   is_state(repeat.item.fan, 'off') }}"
+              timeout: 00:00:30
+              continue_on_timeout: true
+            - alias: Turn OFF Main Power Switch
+              action: script.retry_action_with_backoff
+              data:
+                action_domain: switch
+                action_type: turn_off
+                max_retries: 10
+                base_delay: 5
+                max_delay: 60
+                backoff_type: simple
+                notify_on_failure: true
+                notify_service: notify.duncan
+                entity_id: '{{ repeat.item.main }}'
+                target_state: 'off'
   mode: single
   max_exceeded: silent
 - id: '1755587220350'
@@ -9995,7 +9725,7 @@
           value: '{% set target = state_attr(''binary_sensor.charge_battery_at_night'',''offset_charge_target_percent'')
             | float(0) %} {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
   mode: parallel
-  max: 10
+  max: 5
 - id: '1763753257619'
   alias: Notify on Terrarium Sensor Failure
   description: "  ## ⚡ Terrarium DHT Sensor Failure & Recovery Monitoring\n\n  ###
