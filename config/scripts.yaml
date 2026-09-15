@@ -1496,6 +1496,7 @@ shawn_weekly_edge_cut:
       sequence:
       - variables:
           round_start_time: '{{ now() }}'
+          battery_start: '{{ states("sensor.shawn_batterie") }}'
       - action: button.press
         target:
           entity_id: button.shawn_kanten_mahen
@@ -1549,7 +1550,10 @@ shawn_weekly_edge_cut:
           message: '{% set duration = (now() - as_datetime(round_start_time)).total_seconds()
             | int %} {% set minutes = duration // 60 %} {% set seconds = duration
             % 60 %} Runde {{ repeat.index }} von 3 beendet. Dauer: {{ minutes }} Min.
-            {{ seconds }} Sek.'
+            {{ seconds }} Sek.
+
+            {% set usage = (battery_start | int(0)) - (states("sensor.shawn_batterie")
+            | int(0)) %} Verbrauch: {{ usage }}%'
           data:
             tag: shawn_edge_cut
       - delay: '{{ 0 if repeat.last else 30 }}'
@@ -1560,6 +1564,7 @@ shawn_weekly_edge_cut:
       message: Triple-Edge-Cut-Routine erfolgreich nach 3 Runden beendet.
       data:
         tag: shawn_edge_cut
+    enabled: false
 pool_secure_pulsetime_update:
   alias: Pool - Secure PulseTime Update
   description: Disables auto-adjust, updates Tasmota, and holds the automation lock
