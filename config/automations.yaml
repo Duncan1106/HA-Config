@@ -4332,21 +4332,80 @@
   max: 3
 - id: '1739881671493'
   alias: Notify for Tibber Pulse Battery Replacement
-  description: Notifies when the Tibber Pulse battery voltage drops below a threshold,
-    indicating it's time for replacement.
+  description: Tracks delayed updates (>20s) with a counter, auto-resets stale strikes
+    after 10m, and triggers on 3 strikes, total silence (>2m), or low voltage.
   triggers:
-  - trigger: numeric_state
+  - trigger: state
     entity_id:
-    - sensor.tibber_node_battery_voltage
+    - sensor.tibber_bridge_0100100700ff
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 20
+    id: slow_update
+  - trigger: state
+    entity_id: sensor.tibber_bridge_0100100700ff
+    for:
+      minutes: 2
+    id: power_dead
+  - trigger: numeric_state
+    entity_id: sensor.tibber_node_battery_voltage
     below: 3.025
     attribute: node_battery_voltage
+    id: voltage_low
+  - trigger: numeric_state
+    entity_id: counter.tibber_pulse_slow_updates
+    above: 0
+    for:
+      minutes: 10
+    id: counter_stale
   conditions: []
   actions:
-  - action: notify.duncan
-    metadata: {}
-    data:
-      message: 'Replace Batteries: 2x AA'
-      title: Tibber Pulse
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - counter_stale
+      sequence:
+      - action: counter.reset
+        target:
+          entity_id: counter.tibber_pulse_slow_updates
+    default:
+    - variables:
+        is_slow_strike: '{{ trigger.id == ''slow_update'' }}'
+        is_dead: '{{ trigger.id == ''power_dead'' }}'
+        is_voltage: '{{ trigger.id == ''voltage_low'' }}'
+    - if:
+      - condition: template
+        value_template: '{{ is_slow_strike }}'
+      then:
+      - action: counter.increment
+        target:
+          entity_id: counter.tibber_pulse_slow_updates
+    - variables:
+        current_count: '{{ states(''counter.tibber_pulse_slow_updates'') | int(0)
+          }}'
+        notify_condition: '{{ (is_slow_strike and current_count >= 3) or is_dead or
+          is_voltage }}'
+        reason: "{% if is_dead %}\n  Complete signal loss (2 min)\n{% elif is_voltage
+          %}\n  Voltage sag below 3.025V\n{% elif is_slow_strike and current_count
+          >= 3 %}\n  Reporting delayed >20s 3 times within 10 min\n{% else %}\n  none\n{%
+          endif %}"
+    - if:
+      - condition: template
+        value_template: '{{ notify_condition }}'
+      then:
+      - action: notify.duncan
+        data:
+          title: Tibber Pulse
+          message: 'Replace Batteries: 2x AA (Reason: {{ reason }})'
+      - if:
+        - condition: template
+          value_template: '{{ is_slow_strike and current_count >= 3 }}'
+        then:
+        - action: counter.reset
+          target:
+            entity_id: counter.tibber_pulse_slow_updates
   mode: single
 - id: '1739891374135'
   alias: Briefkasten Notification
