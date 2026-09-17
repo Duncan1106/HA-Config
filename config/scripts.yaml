@@ -1546,25 +1546,24 @@ shawn_weekly_edge_cut:
           milliseconds: 0
       - action: notify.duncan
         data:
-          title: '⏱️ Shawn: Runde {{ repeat.index }} abgeschlossen'
-          message: '{% set duration = (now() - as_datetime(round_start_time)).total_seconds()
+          title: "{% if repeat.last %}\n  ✅ Shawn: Task Complete\n{% else %}\n  ⏱️
+            Shawn: Runde {{ repeat.index }} abgeschlossen\n{% endif %}"
+          message: "{% set duration = (now() - as_datetime(round_start_time)).total_seconds()
             | int %} {% set minutes = duration // 60 %} {% set seconds = duration
-            % 60 %} Runde {{ repeat.index }} von 3 beendet. Dauer: {{ minutes }} Min.
-            {{ seconds }} Sek.
-
-            {% set usage = (battery_start | int(0)) - (states("sensor.shawn_batterie")
-            | int(0)) %} Verbrauch: {{ usage }}%'
+            % 60 %} {% set usage = battery_start - (states(\"sensor.shawn_batterie\")
+            | int(0)) %} Runde {{ repeat.index }} von 3 beendet. Dauer: {{ minutes
+            }} Min. {{ seconds }} Sek. Verbrauch: {{ usage }}% {% if repeat.last %}\n\U0001F389
+            Triple-Edge-Cut-Routine erfolgreich beendet. {% endif %}"
           data:
             tag: shawn_edge_cut
-      - delay: '{{ 0 if repeat.last else 30 }}'
-        alias: Wait between Iterations
-  - action: notify.duncan
-    data:
-      title: '✅ Shawn: Task Complete'
-      message: Triple-Edge-Cut-Routine erfolgreich nach 3 Runden beendet.
-      data:
-        tag: shawn_edge_cut
-    enabled: false
+      - wait_template: '{{ repeat.last or (states("sensor.shawn_batterie") | int(0)
+          >= battery_start) }}'
+        timeout:
+          hours: 0
+          minutes: 30
+          seconds: 0
+          milliseconds: 0
+        alias: Wait for battery to recharge used capacity
 pool_secure_pulsetime_update:
   alias: Pool - Secure PulseTime Update
   description: Disables auto-adjust, updates Tasmota, and holds the automation lock
