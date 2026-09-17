@@ -1473,17 +1473,7 @@ notify_people_at_home_with_fallbacks:
   mode: parallel
   max: 50
 shawn_weekly_edge_cut:
-  alias: 'Shawn: Weekly Edge Cut'
-  description: "\U0001F4CB Intelligent Mowing Maintenance Control\n---\n#### **High-Level
-    Intent** This script orchestrates a specialized triple-pass edge cutting routine
-    for the robotic mower, \"Shawn.\" It ensures that the perimeter is maintained
-    with high precision by running the edge-specific program three times in a controlled
-    loop.\n#### **Operational Strategy** Monitors mower state transitions and sends
-    round-by-round notifications including  the elapsed round time.\n---\n### Technical
-    Overview - **Script Mode**: Single (Default) - **Execution Method**: Scripted
-    sequence with a **repeat** loop (Count: 3) - **Key Inputs**: **lawn_mower.shawn**
-    - **Controlled Entities**: **button.shawn_kanten_mahen**, **button.shawn_zum_dock_fahren**,
-    **notify.duncan**"
+  alias: 'Shawn: Edge Cut'
   sequence:
   - action: notify.duncan
     data:
@@ -1496,7 +1486,7 @@ shawn_weekly_edge_cut:
       sequence:
       - variables:
           round_start_time: '{{ now() }}'
-          battery_start: '{{ states("sensor.shawn_batterie") }}'
+          battery_start: '{{ states("sensor.shawn_batterie") | int(0) }}'
       - action: button.press
         target:
           entity_id: button.shawn_kanten_mahen
@@ -1544,26 +1534,80 @@ shawn_weekly_edge_cut:
           minutes: 15
           seconds: 0
           milliseconds: 0
-      - action: notify.duncan
-        data:
-          title: "{% if repeat.last %}\n  ✅ Shawn: Task Complete\n{% else %}\n  ⏱️
-            Shawn: Runde {{ repeat.index }} abgeschlossen\n{% endif %}"
-          message: "{% set duration = (now() - as_datetime(round_start_time)).total_seconds()
-            | int %} {% set minutes = duration // 60 %} {% set seconds = duration
-            % 60 %} {% set usage = battery_start - (states(\"sensor.shawn_batterie\")
-            | int(0)) %} Runde {{ repeat.index }} von 3 beendet. Dauer: {{ minutes
-            }} Min. {{ seconds }} Sek. Verbrauch: {{ usage }}% {% if repeat.last %}\n\U0001F389
-            Triple-Edge-Cut-Routine erfolgreich beendet. {% endif %}"
-          data:
-            tag: shawn_edge_cut
-      - wait_template: '{{ repeat.last or (states("sensor.shawn_batterie") | int(0)
+      - variables:
+          battery_docked: '{{ states("sensor.shawn_batterie") | int(0) }}'
+          mow_duration: '{{ (now() - as_datetime(round_start_time)).total_seconds()
+            | int }}'
+          battery_used: '{{ battery_start - battery_docked }}'
+          recharge_start_time: '{{ now() }}'
+      - alias: Wait for battery to recharge used capacity
+        wait_template: '{{ repeat.last or (states("sensor.shawn_batterie") | int(0)
           >= battery_start) }}'
         timeout:
           hours: 0
           minutes: 30
           seconds: 0
           milliseconds: 0
-        alias: Wait for battery to recharge used capacity
+      - variables:
+          battery_recharged: '{{ (states("sensor.shawn_batterie") | int(0)) - battery_docked
+            }}'
+          recharge_duration: '{{ (now() - as_datetime(recharge_start_time)).total_seconds()
+            | int }}'
+      - action: notify.duncan
+        data:
+          title: "{% if repeat.last %}\n  ✅ Shawn: Task Complete\n{% else %}\n  ⏱️
+            Shawn: Runde {{ repeat.index }} abgeschlossen\n{% endif %}"
+          message: "{% set m_min = mow_duration // 60 %} {% set m_sec = mow_duration
+            % 60 %} Runde {{ repeat.index }} von 3 beendet. Mähdauer: {{ m_min }}
+            Min. {{ m_sec }} Sek. Verbrauch: {{ battery_used }}% {% if not repeat.last
+            %} {% set r_min = recharge_duration // 60 %} {% set r_sec = recharge_duration
+            % 60 %} Wieder aufgeladen: +{{ battery_recharged }}% in {{ r_min }} Min.
+            {{ r_sec }} Sek. (bereit für Runde {{ repeat.index + 1 }}) {% else %}\n\U0001F389
+            Triple-Edge-Cut-Routine erfolgreich beendet. {% endif %}"
+          data:
+            tag: shawn_edge_cut
+  description: "\U0001F4CB Intelligent Robotic Mower Edge Control\n\n- **High-level
+    intent**: Automates a high-precision, triple-pass lawn border trimming routine
+    to ensure consistent and thorough edge maintenance.\n- **Operational strategy**:
+    Executes a 3-iteration repeat loop that triggers edge cutting, monitors state
+    transitions, returns the mower to dock, and enforces intermediate recharge holds
+    before starting subsequent passes.\n- **Reliability mechanisms**: Incorporates
+    explicit state-transition timeouts across all operational stages and dynamically
+    tracks battery baselines to guarantee adequate energy capacity prior to each run.\n\n---\n\n####
+    Edge Cutting Phase\n\n- **Purpose**: Initiates border mowing and monitors execution
+    until the edge trimming pass completes.\n- **Logic Overview**: Presses **button.shawn_kanten_mahen**
+    and waits for **lawn_mower.shawn** to transition to state **mowing_border** (timeout:
+    **15 minutes**). Subsequently monitors for transition to **returning**, **working**,
+    **return**, or **mowing** (timeout: **15 minutes**).\n- **Effect**: Triggers **button.shawn_kanten_mahen**;
+    logs **round_start_time** and records baseline capacity in **battery_start**.\n\n####
+    Docking & Recovery Phase\n\n- **Purpose**: Commands mower to dock and halts loop
+    execution until power consumed during the pass is restored.\n- **Logic Overview**:
+    Presses **button.shawn_zum_dock_fahren** and waits for **lawn_mower.shawn** to
+    reach state **charging** (timeout: **15 minutes**). Evaluates **sensor.shawn_batterie**
+    via template wait until capacity equals/exceeds **battery_start** or **repeat.last**
+    evaluates to **true** (timeout: **30 minutes**).\n- **Effect**: Activates **button.shawn_zum_dock_fahren**;
+    calculates **battery_docked**, **mow_duration**, **battery_used**, **battery_recharged**,
+    and **recharge_duration**.\n\n#### Progress & Telemetry Phase\n\n- **Purpose**:
+    Dispatches real-time operational statistics and completion alerts to the notification
+    system.\n- **Logic Overview**: Evaluates iteration state (**repeat.index** and
+    **repeat.last**) to format and publish pass telemetry or final routine completion
+    summaries.\n- **Effect**: Calls **notify.duncan** with calculated runtime (minutes
+    and seconds), battery percentage consumed, and recharge durations.\n\n---\n\n###
+    Technical Overview\n\n- **Script Mode**: **single**\n- **Execution Method**: Repeat
+    loop with inline variable calculations, state-trigger wait conditions, and template
+    wait evaluations.\n- **Key Inputs**: **sensor.shawn_batterie**, **lawn_mower.shawn**\n-
+    **Controlled Entities**: **button.shawn_kanten_mahen**, **button.shawn_zum_dock_fahren**,
+    **notify.duncan**\n- **Safety Mechanisms**: **15-minute** timeouts on mower state
+    transitions (**mowing_border**, active completion, **charging**) and a **30-minute**
+    timeout on battery recovery holds.\n\n---\n\n### \U0001F4A1 Notes\n\n- **Dynamic
+    Baseline Recharging**: Records **battery_start** capacity prior to each pass and
+    holds execution until **sensor.shawn_batterie** recovers to that exact level,
+    preventing battery exhaustion across repeated passes.\n- **Final Iteration Bypass**:
+    Evaluates `repeat.last` within the recharge wait template to bypass unnecessary
+    recharge delays after the 3rd pass, concluding the script immediately upon docking.\n-
+    **State-Driven Synchronization**: Relies on explicit state machine triggers rather
+    than hardcoded sleep delays, making execution responsive to actual mowing speeds
+    while guarding against deadlocks via strict timeout limits.\n"
 pool_secure_pulsetime_update:
   alias: Pool - Secure PulseTime Update
   description: Disables auto-adjust, updates Tasmota, and holds the automation lock
