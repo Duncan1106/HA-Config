@@ -1474,15 +1474,27 @@ notify_people_at_home_with_fallbacks:
   max: 50
 shawn_weekly_edge_cut:
   alias: 'Shawn: Edge Cut'
+  fields:
+    total_rounds:
+      name: Total Rounds
+      description: Number of edge cut passes to perform
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
   sequence:
+  - variables:
+      total_rounds: '{{ total_rounds | default(5) | int() }}'
   - action: notify.duncan
     data:
       title: '✂️ Shawn: Edge Cut gestartet'
-      message: Triple-Edge-Cut-Routine gestartet (3 Runden).
+      message: Edge-Cut-Routine gestartet ({{ total_rounds }} Runden).
       data:
         tag: shawn_edge_cut
   - repeat:
-      count: 3
+      count: '{{ total_rounds }}'
       sequence:
       - variables:
           round_start_time: '{{ now() }}'
@@ -1558,12 +1570,13 @@ shawn_weekly_edge_cut:
           title: "{% if repeat.last %}\n  ✅ Shawn: Task Complete\n{% else %}\n  ⏱️
             Shawn: Runde {{ repeat.index }} abgeschlossen\n{% endif %}"
           message: "{% set m_min = mow_duration // 60 %} {% set m_sec = mow_duration
-            % 60 %} Runde {{ repeat.index }} von 3 beendet. Mähdauer: {{ m_min }}
-            Min. {{ m_sec }} Sek. Verbrauch: {{ battery_used }}% {% if not repeat.last
-            %} {% set r_min = recharge_duration // 60 %} {% set r_sec = recharge_duration
-            % 60 %} Wieder aufgeladen: +{{ battery_recharged }}% in {{ r_min }} Min.
-            {{ r_sec }} Sek. (bereit für Runde {{ repeat.index + 1 }}) {% else %}\n\U0001F389
-            Triple-Edge-Cut-Routine erfolgreich beendet. {% endif %}"
+            % 60 %} Runde {{ repeat.index }} von {{ total_rounds }} beendet. \nMähdauer:
+            {{ m_min }} Min. {{ m_sec }} Sek. \nVerbrauch: {{ battery_used }}% {%
+            if not repeat.last %} {% set r_min = recharge_duration // 60 %} {% set
+            r_sec = recharge_duration % 60 %} \nWieder aufgeladen: +{{ battery_recharged
+            }}% in {{ r_min }} Min. {{ r_sec }} Sek. (bereit für Runde {{ repeat.index
+            + 1 }}) {% else %}\n\U0001F389 Edge-Cut-Routine erfolgreich nach {{ total_rounds
+            }} Runden beendet. {% endif %}"
           data:
             tag: shawn_edge_cut
   description: "\U0001F4CB Intelligent Robotic Mower Edge Control\n\n- **High-level
