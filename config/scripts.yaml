@@ -2402,3 +2402,60 @@ charge_ev_message_combined:
       message: clear_notification
       data:
         tag: ev_stephan
+laundry_reminder_loop:
+  alias: Laundry Reminder Loop
+  description: Loops repeating notifications and TTS announcements until the appliance
+    flag turns off.
+  mode: parallel
+  max: 4
+  fields:
+    title:
+      description: Title for the notification
+      example: Waschmaschine fertig
+    boolean_entity:
+      description: Input boolean entity to monitor
+      example: input_boolean.waschmaschine_fertig
+    tag:
+      description: Notification tag for updates and clearing
+      example: waschmaschine_fertig
+    icon:
+      description: MDI icon string
+      example: mdi:washing-machine
+    messages:
+      description: List of custom messages to pick from randomly
+      example: '[''Räum das Ding aus'', ''Ab in den Keller'']'
+  sequence:
+  - repeat:
+      sequence:
+      - variables:
+          selected_message: '{{ messages | random }}'
+      - action: script.notify_people_at_home_with_fallbacks
+        data:
+          title: '{{ title }}'
+          message: '{{ selected_message }}'
+          tag: '{{ tag }}'
+          color: yellow
+          notification_icon: '{{ icon }}'
+      - action: chime_tts.say
+        target:
+          entity_id: media_player.lenovo_tab_p11
+        data:
+          chime_path: classical
+          tts_platform: tts.google_ai_tts
+          offset: -750
+          cache: true
+          volume_level: 0.65
+          message: '{{ selected_message }}'
+      - wait_template: '{{ is_state(boolean_entity, ''off'') }}'
+        timeout:
+          minutes: 10
+        continue_on_timeout: true
+      until:
+      - condition: template
+        value_template: '{{ is_state(boolean_entity, ''off'') }}'
+  - action: notify.familie
+    metadata: {}
+    data:
+      data:
+        tag: '{{ tag }}'
+      message: clear_notification

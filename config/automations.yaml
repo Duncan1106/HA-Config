@@ -13928,3 +13928,78 @@
           select_entity: '{{ select_entity }}'
   mode: parallel
   max: 8
+- id: '1789844266865'
+  alias: Waschmaschine und Trockner Erinnerungen
+  description: Triggers laundry reminder loop scripts asynchronously.
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.waschmaschine_fertig
+    from: 'off'
+    to: 'on'
+    id: Waschmaschine
+  - trigger: state
+    entity_id:
+    - input_boolean.trockner_fertig
+    from: 'off'
+    to: 'on'
+    id: Trockner
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - Waschmaschine
+      - condition: time
+        after: 06:00:00
+        before: '23:00:00'
+      sequence:
+      - action: script.turn_on
+        target:
+          entity_id: script.laundry_reminder_loop
+        data:
+          variables:
+            title: Waschmaschine fertig
+            boolean_entity: input_boolean.waschmaschine_fertig
+            tag: waschmaschine_fertig
+            icon: mdi:washing-machine
+            messages:
+            - Räum das Ding aus
+            - Ab in den Keller
+            - Ich schleuder mich zu Tode
+            - Manuellen Entladeprozess starten
+            - Feucht. Schwer. Jetzt
+            - Befreie die Socken, bevor sie rebellieren
+            - 'Angetreten: Wäsche!'
+      alias: Waschmaschine
+    - conditions:
+      - condition: trigger
+        id:
+        - Trockner
+      - condition: time
+        after: 06:00:00
+        before: '23:00:00'
+      sequence:
+      - action: script.turn_on
+        target:
+          entity_id: script.laundry_reminder_loop
+        data:
+          variables:
+            title: Trockner fertig
+            boolean_entity: input_boolean.trockner_fertig
+            tag: trockner_fertig
+            icon: mdi:tumble-dryer
+            messages:
+            - Räum das Ding aus
+            - Ab in den Keller
+            - Ich hab mich trocken gewirbelt
+            - Manuellen Entladeprozess starten
+            - Trocken. Warm. Jetzt.
+            - Befreie die Socken, bevor sie rebellieren
+            - Zeit die Socken zu sortieren
+            - Bitte das Flusensieb streicheln
+            - 'Angetreten: Wäsche!'
+      alias: Trockner
+  mode: parallel
+  max: 4
