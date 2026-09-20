@@ -4902,9 +4902,10 @@
     id: Display On
   - trigger: state
     entity_id:
-    - switch.lenovo_tab_p11_bildschirmschoner
+    - switch.kuche_lenovo_lenovo_tb_j606f_screensaver
     id: Display changed
-    to: 'on'
+    to:
+    - 'on'
     for:
       hours: 0
       minutes: 0
@@ -4914,16 +4915,11 @@
     - sensor.lenovo_tab_p11_ram_usage
     above: 90
     id: High RAM usage
-    enabled: false
+    enabled: true
   - trigger: time
     at: 02:00:00
-    id: High RAM usage
-    enabled: false
-  - entity_id:
-    - sensor.average_illuminance
-    trigger: state
-    id: Brightness
-    enabled: false
+    id: Periodic Restart
+    enabled: true
   conditions:
   - condition: or
     conditions:
@@ -4948,8 +4944,9 @@
             after: '23:00:00'
             before: sensor.sun_next_rising
           - condition: state
-            entity_id: switch.lenovo_tab_p11_bildschirm
-            state: 'on'
+            entity_id: light.kuche_lenovo_lenovo_tb_j606f_screen
+            state:
+            - 'on'
           alias: Redo Screensaver
         - alias: Screen Brightness
           condition: and
@@ -4964,6 +4961,7 @@
       condition: trigger
       id:
       - High RAM usage
+      - Periodic Restart
   actions:
   - choose:
     - conditions:
@@ -4971,24 +4969,22 @@
         id:
         - Display Off
       sequence:
-      - action: switch.turn_off
+      - action: light.turn_off
         metadata: {}
-        data: {}
         target:
-          entity_id:
-          - switch.lenovo_tab_p11_bildschirm
+          entity_id: light.kuche_lenovo_lenovo_tb_j606f_screen
+        data: {}
       alias: Mitternacht -> Bildschirm Aus
     - conditions:
       - condition: trigger
         id:
         - Display On
       sequence:
-      - action: switch.turn_on
+      - action: light.turn_on
         metadata: {}
-        data: {}
         target:
-          entity_id:
-          - switch.lenovo_tab_p11_bildschirm
+          entity_id: light.kuche_lenovo_lenovo_tb_j606f_screen
+        data: {}
       alias: Sunrise -> Bildschirm An
     - conditions:
       - condition: trigger
@@ -5001,45 +4997,28 @@
           seconds: 15
           milliseconds: 0
         enabled: true
-      - action: switch.turn_off
+      - action: light.turn_off
         metadata: {}
-        data: {}
         target:
-          entity_id:
-          - switch.lenovo_tab_p11_bildschirm
+          entity_id: light.kuche_lenovo_lenovo_tb_j606f_screen
+        data: {}
       alias: Bildschirm Aus wenn nach Mitternacht, vor Sonnenaufgang
     - conditions:
       - condition: trigger
         id:
         - High RAM usage
+        - Periodic Restart
       sequence:
       - action: button.press
         metadata: {}
         data: {}
         target:
-          entity_id: button.lenovo_tab_p11_browser_neu_starten
+          entity_id:
+          - button.kuche_lenovo_lenovo_tb_j606f_restart_app
       - delay:
           hours: 0
           minutes: 5
           seconds: 0
-          milliseconds: 0
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_off
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.lenovo_tab_p11_bildschirmschoner
-          target_state: 'off'
-      - delay:
-          hours: 0
-          minutes: 0
-          seconds: 30
           milliseconds: 0
       - action: script.retry_action_with_backoff
         metadata: {}
@@ -5052,33 +5031,8 @@
           backoff_type: simple
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.lenovo_tab_p11_bildschirmschoner
+          entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver
           target_state: 'on'
-    - conditions:
-      - condition: trigger
-        id:
-        - Brightness
-      sequence:
-      - action: number.set_value
-        metadata: {}
-        target:
-          entity_id: number.lenovo_tab_p11_bildschirmhelligkeit
-        data:
-          value: "  {% set light_max = 250 %}\n  {% set light_float = (states('sensor.average_illuminance')
-            | float(0)) / 1000 %}\n  {% if state_attr('sun.sun','elevation') | float(-90)
-            >= 0 %}\n    {{ light_max }}\n  {% else %}\n    {% set scaled = max(light_max
-            * light_float, 10) %}\n    {{ [scaled, light_max] | min }}\n  {% endif
-            %}"
-      - action: number.set_value
-        metadata: {}
-        target:
-          entity_id: number.lenovo_tab_p11_bildschirmschoner_helligkeit
-        data:
-          value: "{% set light_max = 200 %}\n  {% set light_float = (states('sensor.average_illuminance')
-            | float(0)) / 1000 %}\n  {% if state_attr('sun.sun','elevation') | float(-90)
-            >= 0 %}\n    {{ light_max }}\n  {% else %}\n    {% set scaled = max(light_max
-            * light_float, 10) / 2 %}\n    {{ [scaled, light_max] | min }}\n  {% endif
-            %}"
   mode: queued
   max_exceeded: silent
   max: 10
@@ -9622,89 +9576,6 @@
             | float(0) %} {{ [ (target | round(0, ''ceil'')), 100 ] | min }}'
   mode: parallel
   max: 5
-- id: '1763753257619'
-  alias: Notify on Terrarium Sensor Failure
-  description: "  ## ⚡ Terrarium DHT Sensor Failure & Recovery Monitoring\n\n  ###
-    \U0001F4CB **Intelligent DHT Sensor Monitoring**\n\n  This automation monitors
-    the three DHT22 sensors in the terrarium (**Left**,\n  **Middle**, **Right**)
-    via a central status sensor. \n\n  It manages the full lifecycle of the alert:
-    triggering a notification when sensors\n  fail and **automatically clearing**
-    that notification once the issue is resolved.\n\n  ---\n\n  ### ⏰ **Trigger Overview**\n\n
-    \ | ID | Entity | Condition | Purpose |\n  |:---|:---|:---|:---|\n  | `Error`
-    | `sensor.esp32_c3_mini_terra_dht_status` | From `\"All Good\"` for 30s | Detects
-    when one or more sensors fail. |\n  | `Clear` | `sensor.esp32_c3_mini_terra_dht_status`
-    | To `\"All Good\"` for 30s | Detects when all sensors are back online. |\n\n
-    \ ---\n\n  ### ⚡ **Actions & Logic**\n\n  The automation uses a `choose` block
-    to handle the two trigger IDs:\n\n  **1. Trigger: `Error`**\n  * **Action:** Sends
-    a notification to Duncan with the title **\"DHT Sensor Problem\"**.\n  * **Dynamic
-    Logic:** * Splits the status string to identify specific broken sensors.\n      *
-    Formats the message for singular (*\"The Left DHT sensor...\"*) or plural (*\"The
-    Left & Middle DHT sensors...\"*).\n  * **Tracking:** Uses the tag `dht_sensor_problem`
-    to group the notification.\n\n  **2. Trigger: `Clear`**\n  * **Action:** Sends
-    the `clear_notification` command using the `dht_sensor_problem` tag.\n  * **Result:**
-    Removes the existing error notification from Duncan's device once the sensors
-    are fixed.\n\n  ---\n\n  ### ⚙️ **Technical Overview**\n\n  * **Mode:** `single`
-    — prevents overlapping execution logic.\n  * **Persistence:** Uses `tag: dht_sensor_problem`
-    to ensure the recovery trigger knows exactly which notification to dismiss.\n
-    \ * **Reliability:** A 30-second sustained state is required for both error and
-    recovery to prevent \"flapping\" notifications due to momentary signal drops.\n\n
-    \ ---\n\n  ### \U0001F4A1 **Status Mapping**\n  The logic expects `sensor.esp32_c3_mini_terra_dht_status`
-    to report:\n  * `All Good` when healthy.\n  * Space-separated names (e.g., `Left
-    Middle`) when failing."
-  triggers:
-  - trigger: state
-    entity_id:
-    - sensor.esp32_c3_mini_terra_dht_status
-    from:
-    - All Good
-    to:
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-    id: Error
-  - trigger: state
-    entity_id:
-    - sensor.esp32_c3_mini_terra_dht_status
-    to:
-    - All Good
-    id: Clear
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Error
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          title: DHT Sensor Problem
-          message: "\n  {% set broken = states('sensor.esp32_c3_mini_terra_dht_status')
-            %}\n  {% if broken != \"All Good\" %}\n    {% set sensors = broken.split('
-            ') %}\n    {% if sensors | length == 1 %}\n      The {{ sensors[0] }}
-            DHT sensor is broken. Check the wiring.\n    {% else %}\n      The {{
-            sensors[:-1] | join(', ') }} & {{ sensors[-1] }} DHT sensors are broken.
-            Check the wiring.\n    {% endif %}\n  {% endif %}\n"
-          data:
-            tag: dht_sensor_problem
-    - conditions:
-      - condition: trigger
-        id:
-        - Clear
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          data:
-            tag: dht_sensor_problem
-          message: clear_notification
-  mode: single
 - id: '1763821325453'
   alias: Terrarium Humidifier Auto-Off
   description: "\U0001F4A7 **Terrarium Humidifier Auto-Off**\n\n\U0001F4CB Intelligent
@@ -13143,8 +13014,7 @@
     data: {}
   - action: chime_tts.say
     target:
-      entity_id:
-      - media_player.lenovo_tab_p11
+      entity_id: media_player.lenovo_lenovo_tb_j606f
     data:
       chime_path: toast
       tts_platform: tts.google_ai_tts
@@ -13824,3 +13694,88 @@
       alias: Trockner
   mode: parallel
   max: 4
+- id: '1789881622596'
+  alias: 'System: Unified Hardware & Sensor Health Monitor'
+  description: 'Consolidated automation for tracking hardware faults and connection
+    timeouts. Designed for easy extension via prefix-based trigger IDs (error_* /
+    clear_*).
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.smart_meter_mqtt_data
+    to:
+    - 'on'
+    - unavailable
+    for:
+      seconds: 30
+    id: error_smart_meter
+  - trigger: state
+    entity_id: binary_sensor.smart_meter_mqtt_data
+    to: 'off'
+    for:
+      seconds: 30
+    id: clear_smart_meter
+  - trigger: state
+    entity_id: sensor.esp32_c3_mini_terra_dht_status
+    from: All Good
+    for:
+      seconds: 30
+    id: error_terrarium
+  - trigger: state
+    entity_id: sensor.esp32_c3_mini_terra_dht_status
+    to: All Good
+    for:
+      seconds: 30
+    id: clear_terrarium
+  actions:
+  - variables:
+      is_error: '{{ trigger.id.startswith(''error'') }}'
+      tag_id: '{% if ''smart_meter'' in trigger.id %}smart_meter_problem {% elif ''terrarium''
+        in trigger.id %}dht_sensor_problem {% endif %}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ is_error }}'
+      sequence:
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ tag_id == ''smart_meter_problem'' }}'
+          sequence:
+          - variables:
+              notify_title: ⚠️ Smart Meter Alert
+              notify_message: "{% if trigger.to_state.state == 'on' %}\n  The Smart
+                Meter reports a problem (Hardware status = 0).\n{% elif trigger.to_state.state
+                == 'unavailable' %}\n  The Smart Meter stopped reporting (Communication
+                timeout).\n{% else %}\n  The Smart Meter status changed to {{ trigger.to_state.state
+                }}.\n{% endif %}\n"
+        - conditions:
+          - condition: template
+            value_template: '{{ tag_id == ''dht_sensor_problem'' }}'
+          sequence:
+          - variables:
+              notify_title: "\U0001F40D DHT Sensor Problem"
+              notify_message: "{% set broken = trigger.to_state.state %} {% if broken
+                != 'All Good' %}\n  {% set sensors = broken.split(' ') %}\n  {% if
+                sensors | length == 1 %}\n    The {{ sensors[0] }} DHT sensor is broken.
+                Check the wiring.\n  {% else %}\n    The {{ sensors[:-1] | join(',
+                ') }} & {{ sensors[-1] }} DHT sensors are broken. Check the wiring.\n
+                \ {% endif %}\n{% endif %}\n"
+      - action: notify.duncan
+        data:
+          title: '{{ notify_title }}'
+          message: '{{ notify_message }}'
+          data:
+            tag: '{{ tag_id }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ not is_error }}'
+      sequence:
+      - action: notify.duncan
+        data:
+          message: clear_notification
+          data:
+            tag: '{{ tag_id }}'
+  mode: queued
+  max: 10
