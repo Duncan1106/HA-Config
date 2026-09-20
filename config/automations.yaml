@@ -880,60 +880,6 @@
           tag: forecast_today
       action: notify.duncan
   mode: single
-- id: '1710589916637'
-  alias: Fire Detection from Temperature Sensors
-  description: This automation monitors temperature sensors for potential fire conditions.
-    It sends notifications if the temperature exceeds a specified threshold, helping
-    to ensure safety by alerting when fire risk is detected.
-  triggers:
-  - trigger: time_pattern
-    minutes: /1
-  conditions:
-  - condition: template
-    value_template: '{{ sensors != '''' }}'
-  actions:
-  - choose: []
-    default:
-    - metadata: {}
-      data:
-        message: Fire detected in {{sensors}}
-      action: notify.duncan
-    - metadata: {}
-      data:
-        message: Feuer erkannt bei {{sensors}}
-      action: notify.familie
-      enabled: false
-  variables:
-    threshold: 45
-    include:
-      entity_id:
-      - sensor.esp32_c3_mini_terra_duncan_room_temperature
-      - sensor.esp32_c3_zero_epever_bme280_temperature
-      - sensor.inverter_battery_temperature
-      - sensor.gw1100a_indoor_temperature
-      - sensor.t_h_duncan_zigbee_temperature
-      - sensor.t_h_waschkuche_zigbee_temperature
-      - sensor.t_h_weinkeller_zigbee_temperature
-      - sensor.t_h_bad_zigbee_temperature
-      - sensor.t_h_kinderbad_zigbee_temperature
-      - sensor.t_h_garage_zigbee_temperature
-      - sensor.t_h_gasteklo_zigbee_temperature
-      - sensor.t_h_hobbyraum_zigbee_temperature
-      - sensor.treppenhaus_temperature
-      - sensor.esp32_c3_zero_epever_battery_temperature
-      - sensor.gang_bewegung_temperature
-      - sensor.153931628718174_outdoor_temperature
-      - sensor.153931628718174_indoor_temperature
-    sensors: "{% set result = namespace(sensors=[]) %} {% for s in expand(include.entity_id)
-      %}\n  {% if s.domain == 'sensor' %}\n    {% set u = s.attributes.unit_of_measurement
-      | default('', true) %}\n    {% set v_raw = s.state | float(-999) %}\n    {%
-      if v_raw != -999 %}\n      {% set v = (v_raw - 32) * 5/9 if u in ['°F','F','Fahrenheit']
-      else v_raw %}\n      {% if v >= 0 and v > (threshold | float) %}\n        {%
-      set result.sensors = result.sensors + [ s.name ~ ' (' ~ (v | round(2)) ~ ' °C)'
-      ] %}\n      {% endif %}\n    {% endif %}\n  {% elif s.domain == 'binary_sensor'
-      and s.state == 'on' %}\n    {% set result.sensors = result.sensors + [ s.name
-      ] %}\n  {% endif %}\n{% endfor %} {{ result.sensors | join(', ') }}"
-  mode: single
 - id: '1710856538174'
   alias: Count Battery Full
   description: "  ## \U0001F50B Count Battery Full Automation\n\n  ### \U0001F4CB
@@ -13656,3 +13602,32 @@
             tag: '{{ tag_id }}'
   mode: queued
   max: 10
+- id: '1789938880360'
+  alias: Fire Detection from Temperature Sensors
+  description: Meldet Feuer, wenn ein mit 'fire_watch' gelabelter Temperatursensor
+    den Schwellwert von 45 °C überschreitet. Nutzt den Template-Sensor binary_sensor.fire_risk_detected
+    als Auslöser.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.fire_risk_detected
+    to: 'on'
+  conditions: []
+  actions:
+  - action: notify.duncan
+    data:
+      title: "\U0001F525 Feuer erkannt"
+      message: 'Feuer erkannt bei: {{ state_attr(''binary_sensor.fire_risk_detected'',
+        ''triggered_sensors'') }}'
+  - action: notify.familie
+    data:
+      title: "\U0001F525 Feuer erkannt"
+      message: 'Feuer erkannt bei: {{ state_attr(''binary_sensor.fire_risk_detected'',
+        ''triggered_sensors'') }}'
+    enabled: false
+  - action: persistent_notification.create
+    data:
+      title: "\U0001F525 Feuer erkannt"
+      message: '{{ state_attr(''binary_sensor.fire_risk_detected'', ''triggered_sensors'')
+        }}'
+      notification_id: fire_alert
+  mode: single

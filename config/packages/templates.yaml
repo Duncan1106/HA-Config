@@ -1303,24 +1303,27 @@ template:
         icon: mdi:fire-alert
         variables:
           threshold: 45
+          labeled: "{{ label_entities('fire_watch') }}"
           fire_sensors: >-
             {% set ns = namespace(list=[]) %}
-            {% for s in label_entities('fire_watch') | expand %}
-              {% set u = s.attributes.unit_of_measurement | default('', true) %}
-              {% set v = s.state | float(-999) %}
+            {% for eid in labeled %}
+              {% set u = state_attr(eid, 'unit_of_measurement') | default('', true) %}
+              {% set v = states(eid) | float(-999) %}
               {% if v != -999 %}
                 {% set v_c = (v - 32) * 5/9 if u in ['°F','F','Fahrenheit'] else v %}
                 {% if v_c > threshold %}
-                  {% set ns.list = ns.list + [s.name ~ ' (' ~ (v_c | round(1)) ~ ' °C)'] %}
+                  {% set ns.list = ns.list + [ state_attr(eid, 'friendly_name') | default(eid, true) ~ ' (' ~ (v_c | round(1)) ~ ' °C)' ] %}
                 {% endif %}
               {% endif %}
             {% endfor %}
             {{ ns.list | join(', ') }}
-          count: "{{ fire_sensors.split(',') | map('trim') | select('!=', '') | list | length }}"
-        availability: "{{ label_entities('fire_watch') | count > 0 }}"
+          count: >-
+            {{ fire_sensors.split(',') | map('trim') | select('!=', '') | list | length }}
+        availability: "{{ labeled | count > 0 }}"
         state: "{{ count > 0 }}"
         attributes:
           triggered_sensors: "{{ fire_sensors }}"
           triggered_count: "{{ count }}"
           threshold: "{{ threshold }}"
+          monitored_count: "{{ labeled | count }}"
           updated: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
