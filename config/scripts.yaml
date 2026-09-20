@@ -775,8 +775,8 @@ save_counts_and_notify_purge_status:
               '
             data:
               tag: db_purge_sucess_{{ block_id }}
-  mode: parallel
-  max: 10
+  mode: queued
+  max: 2
 run_fan_for_duration:
   alias: Run Fan For Duration
   mode: parallel
@@ -2112,7 +2112,7 @@ save_counts_and_notify_purge_status_and_self_correction:
     block_data: '{{ stats.get(block_id, {"m": 200, "k": []}) }}'
     multiplier: '{{ block_data.m | default(200) | int }}'
     entity_count: '{{ count | int(0) }}'
-    calculated_offset: '{{ (([entity_count * multiplier, 1000] | max) * 0.85) | int(0)
+    calculated_offset: '{{ (([entity_count * multiplier, 1500] | max) * 0.85) | int(0)
       }}'
     current_count: '{{ states(''sensor.maria_db_rows'') | int(0) }}'
     threshold: '{{ current_count - calculated_offset }}'
@@ -2154,7 +2154,7 @@ save_counts_and_notify_purge_status_and_self_correction:
         \ {{ history_k }}\n{% endif %}"
       new_multiplier: "{% if is_success %}\n  {% set median_k = new_history_k | median
         if new_history_k | length > 0 else 0 %}\n  {{ [((median_k * 1000) / entity_count)
-        | int, 1000] | min if entity_count > 0 and median_k > 0 else multiplier }}\n{%
+        | int, 1500] | min if entity_count > 0 and median_k > 0 else multiplier }}\n{%
         else %}\n  {{ [(multiplier * 0.95) | int, 50] | max }}\n{% endif %}"
       new_stats: '{% set new_block = dict(e=entity_count, m=new_multiplier, k=new_history_k)
         %} {{ dict(stats, **{block_id: new_block}) }}'
