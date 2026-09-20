@@ -3361,68 +3361,6 @@
         service_data:
           transition: 0.25
   mode: restart
-- id: '1730367818444'
-  alias: Cupra Unlocked Reminder
-  description: Sends a notification if the Cupra vehicle remains unlocked for 15 minutes
-    while stationary, and clears the notification once the vehicle is locked.
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.cupra_tavascan_doors_locked
-    to:
-    - 'on'
-    for:
-      hours: 0
-      minutes: 15
-      seconds: 0
-    id: Unlocked
-  - trigger: state
-    entity_id:
-    - binary_sensor.cupra_tavascan_doors_locked
-    to:
-    - 'off'
-    id: Locked
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Unlocked
-      - condition: state
-        entity_id: binary_sensor.cupra_tavascan_vehicle_moving
-        state: 'off'
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          title: Tavascan ⚠️
-          data:
-            tag: duncan_vw_lock
-          message: ' Verriegel dein Auto!'
-      - action: notify.mobile_app_stephan_iphone
-        data:
-          data:
-            tag: stephan_vw_lock
-          message: Verriegel dein Auto!
-          title: Tavascan ⚠️
-    - conditions:
-      - condition: trigger
-        id:
-        - Locked
-      sequence:
-      - action: notify.duncan
-        metadata: {}
-        data:
-          data:
-            tag: duncan_vw_lock
-          message: clear_notification
-      - action: notify.mobile_app_stephan_iphone
-        data:
-          data:
-            tag: stephan_vw_lock
-          message: clear_notification
-  mode: single
 - id: '1730391958900'
   alias: Daily or Power Save Mode
   description: Automates the transition between Daily and Power Save modes for efficient
@@ -3476,7 +3414,7 @@
   mode: single
 - id: '1732984794991'
   alias: 'Button Zigbee '
-  description: ''
+  description: 'Performs configured actions on button press on Duncan Schreibtisch '
   triggers:
   - domain: mqtt
     device_id: 5d41bd478ba9cb5fabcb3b24df25d9fd
@@ -4784,7 +4722,7 @@
     automatically sources its payload from the hardware-direct register (**sensor.inverter_battery**).\n"
   triggers:
   - trigger: time_pattern
-    seconds: /10
+    seconds: /5
   conditions:
   - condition: or
     conditions:
@@ -4797,7 +4735,7 @@
       state: 'on'
   - condition: template
     value_template: '{{ now() - (state_attr(this.entity_id, ''last_triggered'') |
-      default( as_datetime(''0''), true)) >= timedelta(seconds=5) }}'
+      default( as_datetime(''0''), true)) >= timedelta(seconds=4) }}'
   actions:
   - action: mqtt.publish
     metadata: {}
@@ -4892,7 +4830,7 @@
     id: Display On
   - trigger: state
     entity_id:
-    - switch.kuche_lenovo_lenovo_tb_j606f_screensaver
+    - switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
     id: Display changed
     to:
     - 'on'
@@ -5021,7 +4959,7 @@
           backoff_type: simple
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver
+          entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
           target_state: 'on'
   mode: queued
   max_exceeded: silent
@@ -10080,14 +10018,13 @@
   max: 3
 - id: '1765713065237'
   alias: Ambient Lights Scheduler
-  description: "\U0001F4A1 **Ambient Lights Scheduler**\n\n### \U0001F4CB Intelligent
-    Ambient Lighting Control\n\nThis automation manages the home's decorative and
-    atmospheric lighting based on a combination of time-of-day scheduling and occupancy.
-    By integrating both standard and seasonal lighting, it ensures the home environment
-    is properly illuminated only when necessary.\n\n**Operational Strategy:**\nThe
-    system follows a **Presence-Aware & Conditional** strategy. Lights are only activated
-    if the lighting schedule is active **and** the home is occupied. If either condition
-    becomes false, the lights are deactivated to conserve energy.\n\n**Reliability
+  description: "### \U0001F4CB Intelligent Ambient Lighting Control\n\nThis automation
+    manages the home's decorative and atmospheric lighting based on a combination
+    of time-of-day scheduling and occupancy. By integrating both standard and seasonal
+    lighting, it ensures the home environment is properly illuminated only when necessary.\n\n**Operational
+    Strategy:**\nThe system follows a **Presence-Aware & Conditional** strategy. Lights
+    are only activated if the lighting schedule is active **and** the home is occupied.
+    If either condition becomes false, the lights are deactivated to conserve energy.\n\n**Reliability
     Mechanisms:**\nTo combat potential Zigbee mesh interference or hardware unavailability,
     this automation utilizes a **recursive retry script** with **exponential backoff**.
     Each command is attempted up to 5 times, ensuring state consistency even in unreliable
@@ -10156,8 +10093,8 @@
   - variables:
       entities:
       - switch.fenster_licht_hinten_zigbee
-      - switch.fenster_licht_vorne_zigbee
       entities_seasonal:
+      - switch.fenster_licht_vorne_zigbee
       - switch.weihnachtsbaum_zigbee
       - switch.treppe_led_lichterkette_zigbee
   - choose:
@@ -13363,7 +13300,7 @@
     entity_id: sensor.pool_power
     id: power_monitor
   - trigger: time
-    at: '23:00:00'
+    at: '20:00:00'
     id: nightly_learning
   conditions:
   - condition: or
