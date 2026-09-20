@@ -1658,11 +1658,11 @@
   max: 6
 - id: '1716307846138'
   alias: Pool Runtime Control
-  description: "## \U0001F31E Pool Runtime Control\n\n### \U0001F4CB Purpose\nControls
-    the daily runtime of the pool pump, dynamically adjusting runtime\nbased on weather
-    conditions, solar power availability, and pool temperature\ntrends. The automation
-    ensures efficient use of solar energy while\nmaintaining optimal pool operation.\n\n---\n\n###
-    ⏰ Triggers\n| Trigger Type                     | Details / Thresholds                          |\n|----------------------------------|----------------------------------------------|\n|
+  description: "### \U0001F4CB Purpose\nControls the daily runtime of the pool pump,
+    dynamically adjusting runtime\nbased on weather conditions, solar power availability,
+    and pool temperature\ntrends. The automation ensures efficient use of solar energy
+    while\nmaintaining optimal pool operation.\n\n---\n\n### ⏰ Triggers\n| Trigger
+    Type                     | Details / Thresholds                          |\n|----------------------------------|----------------------------------------------|\n|
     Time Pattern                      | 09:00–11:00 every 2 minutes (Early Start)
     \  |\n| Time Pattern                      | 11:00–12:00 (Force Start)                    |\n|
     Numeric State                     | `input_number.pulsetimeactualvalue` < 250/150
@@ -1699,21 +1699,6 @@
     Extend logic uses a counter to prevent excessive prolonging of pump operation.\n-
     Notifications help track temperature changes and pool runtime efficiency."
   triggers:
-  - hours: '9'
-    minutes: /2
-    id: On early
-    trigger: time_pattern
-    enabled: false
-  - hours: '10'
-    minutes: /2
-    id: On early
-    trigger: time_pattern
-    enabled: false
-  - hours: '11'
-    minutes: /2
-    id: Force Start
-    trigger: time_pattern
-    enabled: false
   - trigger: template
     value_template: "{{\n  is_state('switch.pool_pumpe', 'off') \nand \n  ('09:30:00'
       <= now().strftime('%H:%M:%S') <= '10:59:00') and \n  (now().minute % 2 == 0)
@@ -1745,10 +1730,12 @@
     to: 'off'
     from: 'on'
     id: Stopped
-  - hours: '20'
-    minutes: /2
+  - trigger: template
+    value_template: "{{\n  is_state('switch.pool_pumpe', 'on') \nand \n  ('19:59:59'
+      <= now().strftime('%H:%M:%S') <= '21:59:59') and \n  (now().minute % 2 == 0)
+      \n}}"
     id: Force Stop
-    trigger: time_pattern
+    alias: Force Stop if still on
   conditions:
   - condition: or
     conditions:
