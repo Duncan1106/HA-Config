@@ -1732,38 +1732,20 @@
     id: Stopped
   - trigger: template
     value_template: "{{\n  is_state('switch.pool_pumpe', 'on') \nand \n  ('19:59:59'
-      <= now().strftime('%H:%M:%S') <= '21:59:59') and \n  (now().minute % 2 == 0)
+      <= now().strftime('%H:%M:%S') <= '20:59:59') and \n  (now().minute % 2 == 0)
       \n}}"
     id: Force Stop
     alias: Force Stop if still on
   conditions:
   - condition: or
     conditions:
-    - alias: Early Start Condition
+    - alias: Start Condition
       condition: and
       conditions:
-      - condition: time
-        after: 09:30:00
-        before: '10:59:00'
       - condition: trigger
         id:
         - On early
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state:
-        - 'off'
-    - alias: Force Start Condition
-      condition: and
-      conditions:
-      - condition: trigger
-        id:
         - Force Start
-      - condition: time
-        after: '10:59:59'
-        before: '12:00:00'
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state: 'off'
     - condition: and
       conditions:
       - alias: 'Extend Condition '
@@ -1777,6 +1759,7 @@
       - condition: trigger
         id:
         - Extend
+      alias: Extend Condition
     - alias: Stopped Cleanup (Always Allow)
       condition: and
       conditions:
@@ -1792,9 +1775,6 @@
       - condition: trigger
         id:
         - Force Stop
-      - condition: time
-        after: '14:00:00'
-        before: '21:00:00'
   actions:
   - alias: Early Start
     if:
@@ -1812,15 +1792,6 @@
         - condition: numeric_state
           entity_id: sensor.grid_export
           above: 2000
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state: 'off'
-      - condition: numeric_state
-        entity_id: sensor.sun_solar_azimuth
-        above: 95
-      - condition: numeric_state
-        entity_id: sensor.solcast_pv_forecast_prognose_heute
-        above: 40
     then:
     - action: switch.turn_on
       metadata: {}
@@ -1869,14 +1840,9 @@
           Jetzt: {{ states(''input_number.pool_temp_start'')}}°C'
   - alias: Force Start
     if:
-    - condition: and
-      conditions:
-      - condition: trigger
-        id:
-        - Force Start
-      - condition: state
-        entity_id: switch.pool_pumpe
-        state: 'off'
+    - condition: trigger
+      id:
+      - Force Start
     then:
     - action: switch.turn_on
       metadata: {}
@@ -2123,11 +2089,6 @@
             payload: '0'
             lock_duration: 00:00:01
       alias: Adjust pulsetime to 0 if not already 0
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 0
-        milliseconds: 100
     - alias: Notify once for Temperature Change
       if:
       - condition: state
