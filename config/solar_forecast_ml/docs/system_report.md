@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-09-21 23:30 | System: 18.53 kWp
+> Generated: 2026-09-22 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,9 +19,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 4918.2 kWh
+**Total Production:** 4981.2 kWh
 
-**Average Accuracy:** 75.0%
+**Average Accuracy:** 75.2%
 
 ### Seasonal Production
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 57.98 kWh | 1159.6 kWh |
+| Autumn | 75.48 kWh | 58.21 kWh | 1222.5 kWh |
 
 ---
 
@@ -50,20 +50,20 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-09-21 | 890 | 39 | 6 | 1.85 | geometry_contrast_recorded |
+| 2026-09-22 | 901 | 40 | 6 | 1.75 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.345 west k_p90=2.388; k_p90 > 1)
-- elev 10 excluded from headline (elev < 20; east k_p90=0.495 west k_p90=1.194; k_p90 > 1)
+- elev 10 excluded from headline (elev < 20; east k_p90=0.502 west k_p90=1.194; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
 | 0 | east | 34 | 0.259 | 0.345 | 0.368 | no |
-| 0 | west | 36 | 1.320 | 2.388 | 2.805 | no |
-| 10 | east | 71 | 0.321 | 0.495 | 1.085 | no |
-| 10 | west | 71 | 0.749 | 1.194 | 1.506 | no |
-| 20 | east | 72 | 0.432 | 0.661 | 0.900 | yes |
-| 20 | west | 73 | 0.787 | 1.224 | 1.454 | yes |
+| 0 | west | 37 | 1.303 | 2.388 | 2.805 | no |
+| 10 | east | 72 | 0.324 | 0.502 | 1.085 | no |
+| 10 | west | 72 | 0.748 | 1.194 | 1.506 | no |
+| 20 | east | 74 | 0.446 | 0.699 | 0.936 | yes |
+| 20 | west | 74 | 0.787 | 1.224 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
 | 40 | east | 41 | 0.792 | 0.940 | 1.135 | yes |
@@ -75,29 +75,29 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-09-21 | 8-18 (11) | 1.270 | 3.932 | 2.662 |
-| Gruppe 2 | 2026-09-21 | 8-18 (11) | 0.925 | 3.999 | 3.074 |
-| Gruppe 3 | 2026-09-21 | 8-18 (11) | 0.397 | 3.553 | 3.156 |
+| Gruppe 1 | 2026-09-22 | 8-18 (11) | 1.432 | 3.932 | 2.501 |
+| Gruppe 2 | 2026-09-22 | 8-18 (11) | 1.024 | 3.999 | 2.976 |
+| Gruppe 3 | 2026-09-22 | 8-18 (11) | 0.397 | 3.682 | 3.286 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 17 | 7 |
-| ghi_scaled_clearsky | 465 | 62 |
+| forecast_physics | 18 | 7 |
+| ghi_scaled_clearsky | 487 | 65 |
 
 | Clamp kind | Hits |
 |------------|------|
-| bucket_global | 100 |
-| bucket_hourly | 189 |
-| ratio | 69 |
+| bucket_global | 105 |
+| bucket_hourly | 195 |
+| ratio | 72 |
 
 
 ---
 
 ## Message from the Captain's Log
 
-> *"The needs of the many outweigh the needs of the few... use solar power. - Spock"*
+> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
 
 Live long and prosper!
 
