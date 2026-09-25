@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-09-24 23:30 | System: 18.53 kWp
+> Generated: 2026-09-25 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,9 +19,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5076.6 kWh
+**Total Production:** 5138.8 kWh
 
-**Average Accuracy:** 75.1%
+**Average Accuracy:** 75.4%
 
 ### Seasonal Production
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 57.30 kWh | 1317.9 kWh |
+| Autumn | 75.48 kWh | 57.51 kWh | 1380.2 kWh |
 
 ---
 
@@ -50,20 +50,20 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-09-24 | 923 | 40 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-09-25 | 934 | 41 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
-- elev 0 excluded from headline (elev < 20; east k_p90=0.345 west k_p90=2.388; k_p90 > 1)
+- elev 0 excluded from headline (elev < 20; east k_p90=0.345 west k_p90=2.283; k_p90 > 1)
 - elev 10 excluded from headline (elev < 20; east k_p90=0.571 west k_p90=1.194; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
 | 0 | east | 34 | 0.259 | 0.345 | 0.368 | no |
-| 0 | west | 39 | 1.280 | 2.388 | 2.805 | no |
-| 10 | east | 74 | 0.335 | 0.571 | 1.085 | no |
-| 10 | west | 74 | 0.747 | 1.194 | 1.506 | no |
-| 20 | east | 78 | 0.462 | 0.879 | 0.962 | yes |
-| 20 | west | 76 | 0.783 | 1.224 | 1.454 | yes |
+| 0 | west | 40 | 1.266 | 2.283 | 2.805 | no |
+| 10 | east | 75 | 0.337 | 0.571 | 1.085 | no |
+| 10 | west | 75 | 0.745 | 1.194 | 1.506 | no |
+| 20 | east | 80 | 0.473 | 0.879 | 0.962 | yes |
+| 20 | west | 77 | 0.785 | 1.224 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
 | 40 | east | 41 | 0.792 | 0.940 | 1.135 | yes |
@@ -75,29 +75,29 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-09-24 | 8-18 (11) | 1.371 | 3.932 | 2.561 |
-| Gruppe 2 | 2026-09-24 | 8-18 (11) | 0.969 | 4.000 | 3.031 |
-| Gruppe 3 | 2026-09-24 | 8-18 (11) | 0.503 | 3.765 | 3.262 |
+| Gruppe 1 | 2026-09-25 | 8-18 (11) | 1.371 | 3.854 | 2.483 |
+| Gruppe 2 | 2026-09-25 | 8-18 (11) | 1.032 | 4.000 | 2.968 |
+| Gruppe 3 | 2026-09-25 | 8-18 (11) | 0.503 | 3.765 | 3.262 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 19 | 7 |
-| ghi_scaled_clearsky | 543 | 73 |
+| forecast_physics | 20 | 7 |
+| ghi_scaled_clearsky | 571 | 81 |
 
 | Clamp kind | Hits |
 |------------|------|
-| bucket_global | 114 |
-| bucket_hourly | 212 |
-| ratio | 80 |
+| bucket_global | 118 |
+| bucket_hourly | 222 |
+| ratio | 88 |
 
 
 ---
 
 ## Message from the Captain's Log
 
-> *"The needs of the many outweigh the needs of the few... use solar power. - Spock"*
+> *"Logic dictates that harvesting solar energy is the most efficient course of action. - Spock"*
 
 Live long and prosper!
 
