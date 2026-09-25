@@ -809,33 +809,18 @@ template:
         device_class: power
         state_class: measurement
         icon: mdi:flash-outline
-    #   - name: "Grid Power"
-    #     unique_id: grid_power
-    #     state: >
-    #       {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-    #       {% if tibber not in ['unavailable', 'unknown', 'none'] %}
-    #         {{ tibber | float(0) }}
-    #       {% else %}
-    #         {{ states('sensor.smart_meter_mqtt_grid_power') | float(0) }}
-    #       {% endif %}
-    #     availability: >
-    #       {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-    #       {% set smart = states('sensor.smart_meter_mqtt_grid_power') %}
-    #       {{ tibber not in ['unavailable', 'unknown', 'none'] or smart not in ['unavailable', 'unknown', 'none'] }}
-    #     unit_of_measurement: "W"
-    #     device_class: power
-    #     state_class: measurement
-    #     icon: mdi:transmission-tower
       - name: "Grid Power"
         unique_id: grid_power
         variables:
-            t_id: "sensor.tibber_bridge_0100100700ff"
-            s_id: "sensor.smart_meter_mqtt_grid_power"
-            t_obj: "{{ states[t_id] if t_id in states else none }}"
-            t_age: "{{ (now() - t_obj.last_updated).total_seconds() if t_obj is not none else none }}"
-            t_fresh: "{{ has_value(t_id) and t_age is not none and t_age <= 10 }}"
-            s_valid: "{{ has_value(s_id) }}"
-            active_src: "{{ 'tibber' if t_fresh else ('smart_meter' if s_valid else 'none') }}"
+          t_id: "sensor.tibber_bridge_0100100700ff"
+          s_id: "sensor.smart_meter_mqtt_grid_power"
+          t_age: >-
+            {% set t = states[t_id] if states[t_id] is defined and states[t_id] is not none else none %}
+            {{ (now() - t.last_updated).total_seconds() if t is not none else none }}
+          t_fresh: >-
+            {{ has_value(t_id) and t_age is not none and (t_age | float(999)) <= 8 }}
+          s_valid: "{{ has_value(s_id) }}"
+          active_src: "{{ 'tibber' if t_fresh else ('smart_meter' if s_valid else 'none') }}"
         state: >
           {% if active_src == 'tibber' %}
             {{ states(t_id) | float(0) }}
@@ -847,7 +832,7 @@ template:
         availability: "{{ active_src != 'none' }}"
         attributes:
           active_source: "{{ active_src }}"
-          tibber_age_seconds: "{{ t_age | round(1) if t_age is not none else none }}"
+          tibber_age_seconds: "{{ (t_age | float) | round(1) if t_age is not none and t_age != '' else none }}"
           tibber_fresh: "{{ t_fresh }}"
           tibber_power_raw: "{{ states(t_id) | float(none) }}"
           smart_meter_power_raw: "{{ states(s_id) | float(none) }}"
@@ -855,6 +840,9 @@ template:
         device_class: power
         state_class: measurement
         icon: mdi:transmission-tower
+
+      
+
 
   # AI Beta Release Notes Summary
   - triggers:
