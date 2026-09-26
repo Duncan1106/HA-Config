@@ -6,7 +6,7 @@ esphome:
   name: ${name}
   friendly_name: ${friendly_name}
   name_add_mac_suffix: false
-
+  
 esp8266:
   board: esp01_1m
 
@@ -29,16 +29,14 @@ wifi:
         static_ip: 192.168.2.43
         subnet: 255.255.255.0
 
-  # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "GarageController"
     password: !secret ap_password
 
 captive_portal:
 
-logger:
-  baud_rate: 0
-  level: INFO
+packages:
+  - !include common/logger.yaml
 
 api:
   encryption: 
@@ -77,6 +75,14 @@ binary_sensor:
     entity_id: binary_sensor.garagedoor_zigbee_contact
     id: garagedoor_sensor
     entity_category: diagnostic
+    trigger_on_initial_state: true
+
+  - platform: copy
+    source_id: garagedoor_sensor
+    id: garagedoor_sensor_inverse
+    trigger_on_initial_state: true
+    filters: 
+      - invert:
 
   - platform: status
     name: Status
@@ -111,14 +117,34 @@ switch:
     internal: True
 
 cover:
+  - platform: feedback
+    id: garage_time_based
+    name: Garagentor
+    open_duration: 22s
+    close_duration: 16s
+    close_endstop: garagedoor_sensor_inverse
+    has_built_in_endstop: true
+    open_action:
+      - switch.turn_off: cc
+      - switch.turn_on: oc
+      - delay: 0.1s
+      - switch.turn_off: oc
+    close_action:
+      - switch.turn_off: oc
+      - switch.turn_on: cc
+      - delay: 0.1s
+      - switch.turn_off: cc
+    stop_action:
+      - switch.turn_on: oc
+      - delay: 0.1s
+      - switch.turn_off: oc
+    assumed_state: true
+    device_class: garage
+
   - platform: template
     name: "Garage Door"
     lambda: |-
-      if (id(garagedoor_sensor).state) {
-        return COVER_OPEN;
-      } else {
-        return COVER_CLOSED;
-      }
+      return id(garagedoor_sensor).state ? COVER_OPEN : COVER_CLOSED;
     open_action:
       - if: 
           condition:
@@ -126,27 +152,22 @@ cover:
           then:
             - switch.turn_on: open_confirm
           else:
-            # Cancel any previous action
             - switch.turn_off: cc
-            # Turn the OPEN switch on briefly
             - switch.turn_on: oc
             - delay: 0.1s
             - switch.turn_off: oc
             - switch.turn_off: open_confirm
     close_action:
-            # Cancel any previous action
-            - switch.turn_off: oc
-            # Turn the OPEN switch on briefly
-            - switch.turn_on: cc
-            - delay: 0.1s
-            - switch.turn_off: cc
+      - switch.turn_off: oc
+      - switch.turn_on: cc
+      - delay: 0.1s
+      - switch.turn_off: cc
     assumed_state: true
     device_class: garage
 
 text_sensor:
   - platform: wifi_info
-    ip_address: 
-      name: IP Address
+    ip_address: {name: IP Address}
 
 sensor:
   - platform: wifi_signal
@@ -154,9 +175,7 @@ sensor:
     name: Wifi Signal
     update_interval: 5s
     filters: 
-      - or: 
-        - delta: 5%
-        - throttle: 120s
+      - or: [{delta: 5%}, {throttle: 120s}]
   
   - platform: uptime
     name: Uptime
@@ -166,7 +185,5 @@ sensor:
     state_class: total
     unit_of_measurement: min
     filters:
-      - lambda: !lambda 'return x / 60;' 
-      - or:
-        - delta: 5%
-        - throttle: 120s
+      - lambda: 'return x / 60;' 
+      - or: [{delta: 5%}, {throttle: 120s}]
