@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-09-26 23:30 | System: 18.53 kWp
+> Generated: 2026-09-27 23:52 | System: 18.53 kWp
 
 ---
 
@@ -19,9 +19,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5198.8 kWh
+**Total Production:** 5255.5 kWh
 
-**Average Accuracy:** 75.6%
+**Average Accuracy:** 75.8%
 
 ### Seasonal Production
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 57.61 kWh | 1440.1 kWh |
+| Autumn | 75.48 kWh | 57.57 kWh | 1496.8 kWh |
 
 ---
 
@@ -50,20 +50,20 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-09-26 | 945 | 41 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-09-27 | 956 | 41 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.345 west k_p90=2.283; k_p90 > 1)
-- elev 10 excluded from headline (elev < 20; east k_p90=0.605 west k_p90=1.194; k_p90 > 1)
+- elev 10 excluded from headline (elev < 20; east k_p90=0.632 west k_p90=1.194; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
 | 0 | east | 34 | 0.259 | 0.345 | 0.368 | no |
-| 0 | west | 41 | 1.261 | 2.283 | 2.805 | no |
-| 10 | east | 77 | 0.348 | 0.605 | 1.085 | no |
-| 10 | west | 76 | 0.745 | 1.194 | 1.506 | no |
-| 20 | east | 81 | 0.479 | 0.879 | 0.962 | yes |
-| 20 | west | 78 | 0.785 | 1.224 | 1.454 | yes |
+| 0 | west | 42 | 1.250 | 2.283 | 2.805 | no |
+| 10 | east | 79 | 0.356 | 0.632 | 1.085 | no |
+| 10 | west | 77 | 0.745 | 1.194 | 1.506 | no |
+| 20 | east | 82 | 0.484 | 0.882 | 0.962 | yes |
+| 20 | west | 79 | 0.786 | 1.224 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
 | 40 | east | 41 | 0.792 | 0.940 | 1.135 | yes |
@@ -75,29 +75,29 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-09-26 | 8-18 (11) | 1.440 | 3.907 | 2.467 |
-| Gruppe 2 | 2026-09-26 | 8-18 (11) | 1.051 | 4.000 | 2.948 |
-| Gruppe 3 | 2026-09-26 | 8-18 (11) | 0.503 | 3.765 | 3.262 |
+| Gruppe 1 | 2026-09-27 | 8-18 (11) | 1.344 | 3.936 | 2.592 |
+| Gruppe 2 | 2026-09-27 | 8-18 (11) | 1.029 | 4.000 | 2.971 |
+| Gruppe 3 | 2026-09-27 | 8-18 (11) | 0.514 | 3.816 | 3.301 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 20 | 7 |
-| ghi_scaled_clearsky | 592 | 82 |
+| forecast_physics | 22 | 7 |
+| ghi_scaled_clearsky | 618 | 84 |
 
 | Clamp kind | Hits |
 |------------|------|
-| bucket_global | 119 |
-| bucket_hourly | 227 |
-| ratio | 89 |
+| bucket_global | 123 |
+| bucket_hourly | 237 |
+| ratio | 91 |
 
 
 ---
 
 ## Message from the Captain's Log
 
-> *"Resistance to renewable energy is futile. - The Borg"*
+> *"Infinite diversity in infinite combinations... including solar panel orientations. - Spock"*
 
 Live long and prosper!
 
