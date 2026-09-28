@@ -1,0 +1,80 @@
+template:
+  - trigger:
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        for:
+          seconds: 20
+        id: slow_update
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        for:
+          minutes: 2
+        id: power_dead
+      - trigger: numeric_state
+        entity_id: sensor.tibber_node_battery_voltage
+        below: 3.025
+        id: voltage_low
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        id: bridge_active
+      - trigger: numeric_state
+        entity_id: sensor.tibber_node_battery_voltage
+        above: 3.025
+        id: voltage_ok
+      - trigger: homeassistant
+        event: start
+        id: ha_start
+      - trigger: event
+        event_type: event_template_reloaded
+        id: template_reloaded
+
+    binary_sensor:
+      - name: "Tibber Pulse Battery Replacement"
+        unique_id: tibber_pulse_battery_replacement
+        device_class: battery
+
+        availability: >-
+          {{ has_value('sensor.tibber_node_battery_voltage') }}
+
+        variables:
+          bridge_entity: "sensor.tibber_bridge_0100100700ff"
+          voltage_entity: "sensor.tibber_node_battery_voltage"
+
+          # Voltage status
+          voltage: "{{ states(voltage_entity) | float(0) }}"
+          is_voltage_low: "{{ 0 < voltage < 3.025 }}"
+
+          # Signal loss tracking (Evaluated as a strict native boolean)
+          was_dead: "{{ this.attributes.reason == 'Complete signal loss (>2 min)' if this is defined and this.attributes is defined and 'reason' in this.attributes else false }}"
+          is_dead: "{{ trigger.id == 'power_dead' or not has_value(bridge_entity) or (was_dead and trigger.id not in ['bridge_active', 'slow_update']) }}"
+
+          # Gated slow update: strictly requires valid reporting data
+          is_slow: "{{ trigger.id == 'slow_update' and has_value(bridge_entity) }}"
+
+          # Self-referencing via restored `this` object using Unix timestamps
+          now_ts: "{{ now().timestamp() }}"
+          last_strike: "{{ this.attributes.last_slow_strike | default(0, true) | float(0) if this is defined and this.attributes is defined else 0 }}"
+          prev_strikes: "{{ this.attributes.slow_strikes | default(0, true) | int(0) if this is defined and this.attributes is defined else 0 }}"
+
+          # Rolling 10-minute (600s) strike window calculation
+          strike_age: "{{ (now_ts - last_strike) if last_strike > 0 else 999999 }}"
+          valid_strikes: "{{ prev_strikes if strike_age <= 600 else 0 }}"
+          new_strikes: "{{ (valid_strikes + 1) if is_slow else valid_strikes }}"
+          new_last_strike: "{{ now_ts | int if is_slow else last_strike }}"
+
+        state: "{{ is_voltage_low or is_dead or (new_strikes >= 3) }}"
+
+        attributes:
+          slow_strikes: "{{ new_strikes }}"
+          last_slow_strike: "{{ new_last_strike }}"
+          reason: >-
+            {% if is_dead %}
+              Complete signal loss (>2 min)
+            {% elif is_voltage_low %}
+              Voltage sag below 3.025V ({{ voltage }}V)
+            {% elif new_strikes >= 3 %}
+              Reporting delayed >20s 3 times within 10 min
+            {% else %}
+              Healthy
+            {% endif %}
+            
