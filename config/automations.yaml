@@ -13273,13 +13273,17 @@
   actions:
   - action: notify.duncan
     data:
-      title: "\U0001F6E0️ Tibber Pulse Debug"
+      title: "\U0001F6E0️️ Tibber Pulse Debug"
       message: 'State: {{ trigger.from_state.state if trigger.from_state is not none
         else ''N/A'' }} ➔ {{ trigger.to_state.state }}
 
         • Reason: {{ trigger.to_state.attributes.reason | default(''N/A'') }} • Slow
-        Strikes: {{ trigger.to_state.attributes.slow_strikes | default(0) }} • Last
-        Strike TS: {{ trigger.to_state.attributes.last_slow_strike | default(0) }}
+        Strikes: {{ trigger.to_state.attributes.slow_strikes | default(0) }} {% set
+        timestamps = trigger.to_state.attributes.strike_timestamps | default([]) %}
+        {% set strike_times = timestamps | map(''timestamp_custom'', ''%H:%M:%S'',
+        true) | list %} • Active Strike Window: {{ strike_times | join('', '') if
+        strike_times else ''None'' }}
 
         Time: {{ now().strftime(''%H:%M:%S'') }}'
   mode: parallel
+  max: 4
