@@ -2100,6 +2100,7 @@
   variables:
     text_var: ' hat Feuchtigkeit erkannt!'
   mode: single
+  max_exceeded: silent
 - id: '1716929359492'
   alias: Terrarium Climate Control
   description: "## \U0001F321️ Terrarium Climate Control Automation\n\n\n### \U0001F4CB
@@ -3257,57 +3258,6 @@
         service_data:
           transition: 0.25
   mode: restart
-- id: '1730391958900'
-  alias: Daily or Power Save Mode
-  description: Automates the transition between Daily and Power Save modes for efficient
-    energy management, including notifications and control of connected devices.
-  triggers:
-  - entity_id:
-    - input_select.smart_home_status
-    from: Daily
-    id: PowerSave
-    trigger: state
-    to: Power Save
-  - entity_id:
-    - input_select.smart_home_status
-    from: Power Save
-    id: Daily
-    trigger: state
-    to: Daily
-  conditions: []
-  actions:
-  - alias: Power Save
-    if:
-    - condition: trigger
-      id:
-      - PowerSave
-    then:
-    - action: homeassistant.turn_off
-      metadata: {}
-      data: {}
-      target:
-        label_id: optional_off_power_save
-    - action: notify.duncan
-      metadata: {}
-      data:
-        title: Power Save Mode ON
-        message: 'Smart Home '
-  - alias: Daily
-    if:
-    - condition: trigger
-      id:
-      - Daily
-    then:
-    - action: homeassistant.turn_on
-      data: {}
-      target:
-        label_id: optional_off_power_save
-    - action: notify.duncan
-      metadata: {}
-      data:
-        title: Power Save Mode OFF
-        message: 'Smart Home '
-  mode: single
 - id: '1732984794991'
   alias: 'Button Zigbee '
   description: 'Performs configured actions on button press on Duncan Schreibtisch '
@@ -7327,45 +7277,6 @@
             '
   mode: single
   max_exceeded: silent
-- id: '1752180300729'
-  alias: 'Alert: SMART Status Problem'
-  description: "## \U0001F4BE SMART Drive Status Alert Automation\n\n### \U0001F4CB
-    Purpose\nMonitors the health of your storage devices (HDDs and SSDs) via SMART
-    status.\nSends an immediate notification if any monitored drive reports a potential\nproblem,
-    allowing timely intervention before data loss occurs.\n\n---\n\n### ⏰ Triggers\n-
-    State change of `binary_sensor.nvme_ssd_status` to `on`\n\n---\n\n### ✅ Conditions\n-
-    None. Alerts are sent unconditionally upon trigger.\n\n---\n\n### \U0001F3AF Actions
-    / Workflow\n- Sends a high-priority notification via `notify.duncan`\n- Notification
-    includes:\n  - Drive friendly name from the triggered entity\n  - Clear warning
-    about potential data loss\n  - Suggestion to back up data and check the drive
-    immediately\n- Notification metadata includes `tag: hdd_alert`, `priority: high`,
-    and `ttl: 0`\n\n---\n\n### \U0001F527 Technical Specs\n- Mode: `single` to prevent
-    overlapping alerts\n- Works for multiple drives with identical logic"
-  triggers:
-  - trigger: state
-    entity_id:
-    - binary_sensor.homeassistant_fanxiang_s_m_a_r_t
-    - binary_sensor.ugreen_nas_linux_s_m_a_r_t
-    - binary_sensor.ugreen_nas_mmc32g_s_m_a_r_t
-    - binary_sensor.ugreen_nas_st3000dm007_1wy10g_s_m_a_r_t_2
-    - binary_sensor.ugreen_nas_st6000vn006_2zm186_s_m_a_r_t
-    - binary_sensor.ugreen_nas_st6000vn006_2zm186_s_m_a_r_t_2
-    - binary_sensor.server_ugreen_nas_st8000nt001_3lz101_s_m_a_r_t
-    to:
-    - 'on'
-  conditions: []
-  actions:
-  - action: notify.duncan
-    data:
-      title: 'CRITICAL: SMART Status Problem!'
-      message: The SMART status of {{ state_attr(trigger.entity_id, 'friendly_name')
-        }} in {{ device_name(trigger.entity_id) }} is reporting a problem. Data loss
-        may occur soon. Consider backing up data and checking the drive immediately!
-      data:
-        tag: hdd_alert_{{ trigger.entity_id }}
-        priority: high
-        ttl: 0
-  mode: single
 - id: '1752582553834'
   alias: Restore Spülmaschine
   description: Automatically turns on the dishwasher when powered off, ensuring the
@@ -8916,80 +8827,6 @@
           power_report_delay: 120
           power_wait_timeout: 10
     enabled: true
-  mode: single
-- id: '1762211918473'
-  alias: Ding Dong Frigate Detection Adjustments
-  description: adjustments for night
-  triggers:
-  - trigger: sun
-    event: sunrise
-    offset: +00:05:00
-    id: Sunrise
-  - trigger: sun
-    event: sunset
-    offset: +00:05:00
-    id: Sunset
-  - trigger: homeassistant
-    event: start
-    id: Start
-  conditions: []
-  actions:
-  - if:
-    - condition: trigger
-      id:
-      - Start
-    then:
-    - delay:
-        hours: 0
-        minutes: 0
-        seconds: 30
-        milliseconds: 0
-    alias: 'HA wait for successful Start-up '
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Sunrise
-        - Start
-      - condition: state
-        entity_id: sun.sun
-        state: above_horizon
-      sequence:
-      - action: number.set_value
-        metadata: {}
-        data:
-          value: '20'
-        target:
-          entity_id: number.ding_dong_tapo_contour_area
-      - action: number.set_value
-        metadata: {}
-        data:
-          value: '30'
-        target:
-          entity_id: number.ding_dong_tapo_threshold
-      alias: Sunrise
-    - conditions:
-      - condition: trigger
-        id:
-        - Sunset
-        - Start
-      - condition: state
-        entity_id: sun.sun
-        state: below_horizon
-      sequence:
-      - action: number.set_value
-        metadata: {}
-        data:
-          value: '40'
-        target:
-          entity_id: number.ding_dong_tapo_contour_area
-      - action: number.set_value
-        metadata: {}
-        data:
-          value: '60'
-        target:
-          entity_id: number.ding_dong_tapo_threshold
-      alias: Sunset
   mode: single
 - id: '1762798868790'
   alias: Fairphone 4 Location Update
@@ -10738,107 +10575,6 @@
           notify_service: notify.duncan
           target_state: 'off'
           entity_id: switch.bad_spiegellicht
-  mode: single
-- id: '1768073928361'
-  alias: Smart Meter Status Alert
-  description: "  ⚠️ **Smart Meter Status Alert**\n\n\n  ### \U0001F4CB Intelligent
-    Utility Monitoring Control\n\n  This automation provides proactive oversight of
-    the household's smart meter\n  communication and hardware health. It ensures data
-    integrity by alerting the \n  administrator if the meter reports an internal fault
-    or ceases communication, \n  and automatically clears those alerts once the system
-    recovers.\n\n\n  The operational strategy is **resilient**, utilizing a 30-second
-    verification \n  delay to filter out transient \"blips\" while ensuring that genuine
-    failures \n  are addressed before data gaps occur in the energy dashboard.\n\n\n
-    \ ---\n\n\n  ### Trigger Overview Table\n\n\n  | Type | State Change | ID | Purpose
-    |\n  | :--- | :--- | :--- | :--- |\n  | **State** | **to: \"on\"** | Problem |
-    Detects internal hardware status fault |\n  | **State** | **to: unavailable**
-    | Problem | Detects MQTT communication loss |\n  | **State** | **to: \"off\"**
-    | Solved | Confirms recovery and clears active alerts |\n\n\n  ---\n\n\n  ###
-    Operational Logic Sections\n\n\n  #### \U0001F6A8 Alert Phase (Problem ID)\n  -
-    **Hardware Fault**: Triggered if the meter reports a \"Hardware Status 0\" (`on`)
-    for 30s.\n  - **Comm Timeout**: Triggered if the MQTT stream becomes `unavailable`
-    for 30s.\n  - **Effect**: Sends a high-priority notification to **notify.duncan**
-    using dynamic \n    Jinja2 templating to specify the exact failure mode.\n\n\n
-    \ #### ✅ Recovery Phase (Solved ID)\n  - **Purpose**: To clean up the mobile notification
-    tray once the sensor returns to `off`.\n  - **Logic**: Triggered when the entity
-    moves from an error state back to `off` for 30s.\n  - **Effect**: Dispatches a
-    `clear_notification` command to remove the specific \n    **smart_meter_problem**
-    tag from the device.\n\n\n  ---\n\n\n  ### Technical Overview\n\n\n  - **Automation
-    Mode**: **single** (prevents notification \"flapping\" during rapid state changes).\n
-    \ - **Safety Mechanisms**: 30-second `for` duration on all triggers to ignore
-    broker restarts.\n  - **Notification Tagging**: Uses `tag: smart_meter_problem`
-    for both delivery and dismissal, \n    ensuring only one relevant alert exists
-    at a time.\n\n\n  ---\n\n\n  ### \U0001F4A1 Notes\n\n\n  - **Auto-Dismissal**:
-    The addition of the **Solved** trigger means you no longer \n    have to manually
-    swipe away alerts if the connection briefly drops and restores itself.\n  - **Template
-    Logic**: The notification message dynamically switches between \"Hardware status\"
-    \n    and \"Communication timeout\" based on the specific state that triggered
-    the automation.\n"
-  triggers:
-  - entity_id:
-    - binary_sensor.smart_meter_mqtt_data
-    to:
-    - 'on'
-    trigger: state
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-    id: Problem
-  - entity_id:
-    - binary_sensor.smart_meter_mqtt_data
-    to:
-    - unavailable
-    trigger: state
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-    id: Problem
-  - entity_id:
-    - binary_sensor.smart_meter_mqtt_data
-    trigger: state
-    for:
-      hours: 0
-      minutes: 0
-      seconds: 30
-    id: Solved
-    from:
-    - unavailable
-    - unknown
-    - 'on'
-    to:
-    - 'off'
-  conditions: []
-  actions:
-  - choose:
-    - conditions:
-      - condition: trigger
-        id:
-        - Problem
-      sequence:
-      - data:
-          title: ⚠️ Smart Meter Alert
-          message: "{% if trigger.to_state.state == \"on\" %}\n  The Smart Meter reports
-            a problem (Hardware status = 0).\n{% elif trigger.to_state.state == \"unavailable\"
-            %}\n  The Smart Meter stopped reporting (Communication timeout).\n{% else
-            %}\n  The Smart Meter status changed to {{ trigger.to_state.state }}.\n{%
-            endif %}\n"
-          data:
-            tag: smart_meter_problem
-        action: notify.duncan
-      alias: Problem
-    - conditions:
-      - condition: trigger
-        id:
-        - Solved
-      sequence:
-      - data:
-          data:
-            tag: smart_meter_problem
-          message: clear_notification
-        action: notify.duncan
-      alias: Clear
   mode: single
 - id: '1768908825981'
   alias: Timemachine NAS Sync (Hourly with Notifications)
