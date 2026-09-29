@@ -2363,17 +2363,25 @@ garage_door_auto_close_and_vent:
   - alias: Initial close attempt
     action: cover.close_cover
     target:
-      entity_id: cover.garage_garage_door_controller_garagentor
-  - alias: Wait for contact sensor confirmation on initial close
-    wait_for_trigger:
-    - trigger: state
+      entity_id: cover.garage_door_controller_garage_door
+    data: {}
+  - if:
+    - condition: state
       entity_id: binary_sensor.garagedoor_zigbee_contact
-      to: 'off'
-      for:
-        seconds: 3
-    timeout:
-      minutes: 1
-    continue_on_timeout: true
+      state:
+      - 'on'
+    then:
+    - alias: Wait for contact sensor confirmation on initial close
+      wait_for_trigger:
+      - trigger: state
+        entity_id: binary_sensor.garagedoor_zigbee_contact
+        to: 'off'
+        for:
+          seconds: 3
+      timeout:
+        minutes: 1
+      continue_on_timeout: true
+    alias: 'Wait for closed if not already closed '
   - alias: Recovery routine if door failed to close
     if:
     - condition: state
@@ -2383,7 +2391,8 @@ garage_door_auto_close_and_vent:
     - alias: Open door fully to reset mechanical state
       action: cover.open_cover
       target:
-        entity_id: cover.garage_garage_door_controller_garagentor
+        entity_id: cover.garage_door_controller_garage_door
+      data: {}
     - alias: Wait until motor stops (power < 30W while LED stays on)
       wait_for_trigger:
       - trigger: numeric_state
