@@ -37,7 +37,7 @@ template:
           {{ has_value('sensor.tibber_node_battery_voltage') }}
 
         variables:
-          self: "binary_sensor.tibber_pulse_battery_replacement"
+          this_id: "binary_sensor.tibber_pulse_battery_replacement"
           bridge_entity: "sensor.tibber_bridge_0100100700ff"
           voltage_entity: "sensor.tibber_node_battery_voltage"
 
@@ -46,7 +46,7 @@ template:
           is_voltage_low: "{{ 0 < voltage < 3.025 }}"
 
           # Signal loss tracking
-          was_dead: "{{ state_attr(self, 'reason') == 'Complete signal loss (>2 min)' }}"
+          was_dead: "{{ state_attr(this_id, 'reason') == 'Complete signal loss (>2 min)' }}"
           is_dead: "{{ trigger.id == 'power_dead' or not has_value(bridge_entity) or (was_dead and trigger.id not in ['bridge_active', 'slow_update']) }}"
 
           # Gated slow update
@@ -54,7 +54,7 @@ template:
 
           # Sliding 10-minute window array management
           now_ts: "{{ now().timestamp() | int }}"
-          raw_timestamps: "{{ state_attr(self, 'strike_timestamps') }}"
+          raw_timestamps: "{{ state_attr(this_id, 'strike_timestamps') }}"
           prev_timestamps: "{{ raw_timestamps if raw_timestamps is list else [] }}"
 
           # Purge timestamps older than 600 seconds
