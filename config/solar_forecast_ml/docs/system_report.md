@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-09-30 23:30 | System: 18.53 kWp
+> Generated: 2026-10-01 07:30 | System: 18.53 kWp
 
 ---
 
@@ -97,7 +97,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
+> *"I'm giving her all she's got, Captain! The panels are at maximum output! - Scotty"*
 
 Live long and prosper!
 
