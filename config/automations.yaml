@@ -1655,6 +1655,7 @@
     id: On early
     alias: 'Frühes Einschalten: Triggert alle 2 Min., ABER NUR wenn die Pumpe AUS
       ist'
+    enabled: false
   - trigger: template
     alias: 'Erzwungener Start: Prüft im Zeitfenster alle 2 Min. nur solange die Pumpe
       AUS ist'
@@ -8537,6 +8538,7 @@
   triggers:
   - trigger: time
     at: '12:00:00'
+    enabled: true
   - trigger: numeric_state
     entity_id: sensor.tibber_node_bridge_status
     attribute: uptime_days
@@ -10915,11 +10917,11 @@
     low_battery_threshold: 15
     exclude:
     - sensor.fp4_battery_level
-    - sensor.iphone_von_enya_battery_level
     - sensor.enyas_iphone_battery
-    - sensor.stephans_iphone_battery_status
+    - sensor.stephans_iphone_battery
     - sensor.poco_f7_battery_level
     - sensor.mi_9t_battery_level
+    - sensor.ab2000_06718_soc_level
     battery_alert_list: "{%- set entities =\n    (states.sensor\n      | selectattr('attributes.device_class',
       'defined')\n      | selectattr('attributes.device_class', 'eq', 'battery')\n
       \     | rejectattr('entity_id', 'search', '_battery_plus$')\n      | list)\n
@@ -13181,12 +13183,22 @@
     from: 'on'
     to: 'off'
     id: clear_smart_drive
+  - trigger: state
+    entity_id: binary_sensor.tibber_pulse_battery_replacement
+    to: 'on'
+    id: error_tibber_battery
+  - trigger: state
+    entity_id: binary_sensor.tibber_pulse_battery_replacement
+    from: 'on'
+    to: 'off'
+    id: clear_tibber_battery
   actions:
   - variables:
       is_error: '{{ trigger.id.startswith(''error'') }}'
       tag_id: '{% if ''smart_meter'' in trigger.id %}smart_meter_problem {% elif ''terrarium''
-        in trigger.id %}dht_sensor_problem {% elif ''smart_drive'' in trigger.id %}hdd_alert_{{
-        trigger.entity_id }} {% endif %}'
+        in trigger.id %}dht_sensor_problem {% elif ''smart_drive'' in trigger.id%}hdd_alert_{{
+        trigger.entity_id }} {% elif ''tibber_battery'' in trigger.id %}tibber_battery_problem
+        {% endif %}'
   - choose:
     - conditions:
       - condition: template
@@ -13226,6 +13238,14 @@
                 'friendly_name') }} in {{ device_name(trigger.entity_id) }} is reporting
                 a problem. Data loss may occur soon. Consider backing up data and
                 checking the drive immediately!
+        - conditions:
+          - condition: template
+            value_template: '{{ ''tibber_battery'' in trigger.id }}'
+          sequence:
+          - variables:
+              notify_title: "\U0001FAAB Tibber Pulse Battery Warning"
+              notify_message: 'Tibber Pulse needs attention. Reason: {{ trigger.to_state.attributes.reason
+                | default(''Battery replacement or voltage sag detected'') }}'
       - action: notify.duncan
         data:
           title: '{{ notify_title }}'
@@ -13274,26 +13294,3 @@
         }}'
       notification_id: fire_alert
   mode: single
-- id: '1790689305306'
-  alias: 'DEBUG: Tibber Pulse Sensor Monitor'
-  description: Temporary automation to monitor state and attribute changes for debugging.
-  triggers:
-  - trigger: state
-    entity_id: binary_sensor.tibber_pulse_battery_replacement
-  actions:
-  - action: notify.duncan
-    data:
-      title: "\U0001F6E0️️ Tibber Pulse Debug"
-      message: 'State: {{ trigger.from_state.state if trigger.from_state is not none
-        else ''N/A'' }} ➔ {{ trigger.to_state.state }}
-
-        • Reason: {{ trigger.to_state.attributes.reason | default(''N/A'') }} • Slow
-        Strikes: {{ trigger.to_state.attributes.slow_strikes | default(0) }} {% set
-        timestamps = trigger.to_state.attributes.strike_timestamps | default([]) %}
-        {% set strike_times = timestamps | map(''timestamp_custom'', ''%H:%M:%S'',
-        true) | list %} • Active Strike Window: {{ strike_times | join('', '') if
-        strike_times else ''None'' }}
-
-        Time: {{ now().strftime(''%H:%M:%S'') }}'
-  mode: parallel
-  max: 4
