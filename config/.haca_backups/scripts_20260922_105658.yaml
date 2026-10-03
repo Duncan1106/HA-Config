@@ -511,8 +511,7 @@ create_timelapse:
     metadata: {}
     data: {}
     enabled: true
-  description: Calls a timelapse script using a job name sensor, waits 5 seconds,
-    and then triggers a webcam cleanup shell command.
+  description: ''
   mode: queued
   max: 10
 boiler_save_energy_script:
@@ -2355,85 +2354,3 @@ laundry_reminder_loop:
       data:
         tag: '{{ tag }}'
       message: clear_notification
-garage_door_auto_close_and_vent:
-  alias: Garage door auto close and vent
-  description: Closes the garage door. If closing fails, fully opens to reset, retries
-    close once motor stops (power < 30W), and then opens to 15% for ventilation.
-  sequence:
-  - alias: Initial close attempt
-    action: cover.close_cover
-    target:
-      entity_id: cover.garage_door_controller_garage_door
-    data: {}
-  - if:
-    - condition: state
-      entity_id: binary_sensor.garagedoor_zigbee_contact
-      state:
-      - 'on'
-    then:
-    - alias: Wait for contact sensor confirmation on initial close
-      wait_for_trigger:
-      - trigger: state
-        entity_id: binary_sensor.garagedoor_zigbee_contact
-        to: 'off'
-        for:
-          seconds: 3
-      timeout:
-        minutes: 1
-      continue_on_timeout: true
-    alias: 'Wait for closed if not already closed '
-  - alias: Recovery routine if door failed to close
-    if:
-    - condition: state
-      entity_id: binary_sensor.garagedoor_zigbee_contact
-      state: 'on'
-    then:
-    - alias: Open door fully to reset mechanical state
-      action: cover.open_cover
-      target:
-        entity_id:
-        - cover.garage_garage_door_controller_garagentor
-      data: {}
-    - alias: Wait until motor stops (power < 30W while LED stays on)
-      wait_for_trigger:
-      - trigger: numeric_state
-        entity_id: sensor.garagentor_energy_power
-        below: 30
-        for:
-          seconds: 3
-      timeout:
-        minutes: 1
-      continue_on_timeout: true
-    - alias: Retry closing garage door
-      action: cover.close_cover
-      target:
-        entity_id: cover.garage_door_controller_garage_door
-      data: {}
-    - alias: Wait for contact sensor confirmation on retry
-      wait_for_trigger:
-      - trigger: state
-        entity_id: binary_sensor.garagedoor_zigbee_contact
-        to: 'off'
-        for:
-          seconds: 3
-      timeout:
-        minutes: 2
-      continue_on_timeout: true
-  - alias: Handle ventilation or alert based on final closed state
-    if:
-    - condition: state
-      entity_id: binary_sensor.garagedoor_zigbee_contact
-      state: 'off'
-    then:
-    - alias: Set garage door to 15% ventilation position
-      action: cover.set_cover_position
-      target:
-        entity_id: cover.garage_garage_door_controller_garagentor
-      data:
-        position: 15
-    else:
-    - alias: Send failure notification if retry failed
-      action: notify.duncan
-      data:
-        title: Garage Door Alert
-        message: Garage door failed to auto-close after recovery reset attempt.

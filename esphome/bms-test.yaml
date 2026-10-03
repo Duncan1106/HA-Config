@@ -50,15 +50,8 @@ wifi:
 
 captive_portal:
 
-# Enable logging
-logger:
-  level: DEBUG
-  initial_level: INFO
-
-select:
-  - platform: logger
-    id: logger_select
-    name: Logger Level
+packages:
+  - !include common/logger.yaml
 
 button: 
   - platform: restart
@@ -95,6 +88,46 @@ modbus_controller:
   update_interval: 10s
 
 binary_sensor:
+  - platform: template
+    name: Bat1 Breaker Popped
+    id: bat1_breaker_popped_switch
+    device_id: bms_bat1
+    entity_category: diagnostic
+    lambda: |-
+      float b1 = id(bat1_curr).state;
+      float b2 = id(bat2_curr).state;
+      float b1_soc = id(bat1_soc).state;
+      float b2_soc = id(bat2_soc).state;
+      float b1_volt = id(bat1_volt).state;
+      float b2_volt = id(bat2_volt).state;
+
+      // Check for valid numbers (no NANs)
+      if (isnan(b1) || isnan(b2) || isnan(b1_soc) || isnan(b2_soc) || isnan(b1_volt) || isnan(b2_volt)) {
+        return false;
+      }
+
+      // True if Bat1 is dead/isolated while Bat2 is working and has lower potential
+      return (b1 == 0.00f && b2 != 0.00f && b1_soc > b2_soc && b1_volt > b2_volt);
+
+  - platform: template
+    name: Bat2 Breaker Popped
+    id: bat2_breaker_popped_switch
+    device_id: bms_bat2
+    entity_category: diagnostic
+    lambda: |-
+      float b1 = id(bat1_curr).state;
+      float b2 = id(bat2_curr).state;
+      float b1_soc = id(bat1_soc).state;
+      float b2_soc = id(bat2_soc).state;
+      float b1_volt = id(bat1_volt).state;
+      float b2_volt = id(bat2_volt).state;
+
+      if (isnan(b1) || isnan(b2) || isnan(b1_soc) || isnan(b2_soc) || isnan(b1_volt) || isnan(b2_volt)) {
+        return false;
+      }
+
+      return (b2 == 0.00f && b1 != 0.00f && b2_soc > b1_soc && b2_volt > b1_volt);
+
   - platform: status
     id: status_connected
     name: Status
@@ -386,6 +419,7 @@ sensor:
     address: 0x130D
     skip_updates: 100
     unit_of_measurement: "cycles"
+    state_class: total_increasing
     value_type: U_WORD
     accuracy_decimals: 0
     device_id: bms_bat1
@@ -398,6 +432,7 @@ sensor:
     skip_updates: 100
     value_type: U_WORD
     unit_of_measurement: "%"
+    state_class: measurement
     icon: "mdi:heart-pulse"
     device_id: bms_bat1
 
@@ -501,6 +536,7 @@ sensor:
     address: 0x130D
     skip_updates: 100
     unit_of_measurement: "cycles"
+    state_class: total_increasing
     value_type: U_WORD
     accuracy_decimals: 0
     device_id: bms_bat2
@@ -513,6 +549,7 @@ sensor:
     register_type: holding
     value_type: U_WORD
     unit_of_measurement: "%"
+    state_class: measurement
     icon: "mdi:heart-pulse"
     device_id: bms_bat2
 
@@ -1389,6 +1426,7 @@ sensor:
     type: sum
     accuracy_decimals: 2
     state_class: measurement
+    device_class: power
     sources: 
       - source: bat1_power
       - source: bat2_power
@@ -1400,3 +1438,14 @@ sensor:
       - or:
         - throttle: 30s
         - delta: 0.5
+          
+  - platform: copy
+    source_id: bat_power_sum
+    id: bat_power_sum_inverse
+    name: Power Sum Inverse
+    accuracy_decimals: 2
+    state_class: measurement
+    device_class: power
+    entity_category: diagnostic
+    filters: 
+      - multiply: -1

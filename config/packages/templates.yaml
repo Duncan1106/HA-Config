@@ -417,186 +417,6 @@ template:
             {% endif %}
           updated_by: "{{ trigger.description | default('manual') }}"
 
-  # Kellervorraete
-  - trigger:
-      - platform: event
-        event_type: event_template_reloaded
-      - platform: homeassistant
-        event: start
-    sensor:
-      - name: "Todo Lists Config"
-        unique_id: todo_lists_config
-        state: "static"
-        attributes:
-          todo_lists: >-
-            {{ ['todo.kellervorrate', 'todo.kellervorrate_katzenfutter', 'todo.kellervorrate_safe', 'todo.kellervorrate_marmelade_selbstgemachtes', 'todo.kuhltruhe_keller', 'todo.kuhltruhe_garage'] }}
-  - trigger:
-      - platform: event
-        event_type: event_template_reloaded
-      - platform: homeassistant
-        event: start
-      - platform: state
-        entity_id: input_text.search_todo_list
-      - platform: state
-        entity_id: input_button.update_kellervorrate
-      - platform: state
-        entity_id: &todo_lists
-          - todo.kellervorrate
-          - todo.kellervorrate_katzenfutter
-          - todo.kellervorrate_safe
-          - todo.kellervorrate_marmelade_selbstgemachtes
-          - todo.kuhltruhe_keller
-          - todo.kuhltruhe_garage
-    actions:
-      - action: todo.get_items
-        data:
-          status: needs_action
-        target:
-          entity_id: *todo_lists
-        response_variable: all_todo_items
-    sensor:
-      - name: "Kellervorrate Combined Filtered Items"
-        unique_id: kellervorrate_combined_filtered_items
-        state: >
-            {% set input = states('input_text.search_todo_list') | default('') | lower %}
-            {% set has_filter = 'todo:' in input %}
-            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
-            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
-            
-            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
-            {% if all_todo_items is not defined or all_todo_items is not mapping %}
-              unknown
-            {% else %}
-              {% set available = all_todo_items.keys() | list %}
-              {% set missing = lists | reject('in', available) | list %}
-              {% if missing | length > 0 %}
-                unknown
-              {% else %}
-                {% set filtered_lists = lists  
-                  | select('search', filter_key)  
-                  | list if filter_key else lists %}  
-                
-                {% if filtered_lists | length == 0 %}
-                  {% set filtered_lists = lists %}
-                {% endif %}
-                  {% set count = namespace(total=0) %}
-                  {% set terms = search_term.split() %}
-                  {% for list_id in filtered_lists %}
-                    {% set items = all_todo_items[list_id].get('items', []) %}
-                    {% for item in items %}
-                      {% if item.summary is defined and item.summary is string %}
-                        {% if search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count) %}
-                          {% set count.total = count.total + 1 %}
-                        {% endif %}
-                      {% endif %}
-                    {% endfor %}
-                  {% endfor %}
-                  
-                  {{ count.total }}
-                {% endif %}
-            {% endif %}
-        attributes:
-          source_map: >
-            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
-
-            {% set ns = namespace(source_map={}) %}
-
-            {% for entity_id in lists %}
-              {# get raw friendly name (or build fallback from entity_id) #}
-              {% set fn_raw = state_attr(entity_id, 'friendly_name')
-                | default(entity_id.split('.')[-1] | replace('_', ' ') | title, true) %}
-
-              {# remove straight and smart quotes, collapse double spaces and trim #}
-              {% set fn = fn_raw
-                | replace('"', '')
-                | replace("'", '')
-                | replace('“', '')
-                | replace('”', '')
-                | replace('’', '')
-                | regex_replace('\\s+', ' ')
-                | trim %}
-
-              {% set ns.source_map = ns.source_map | combine({
-                (loop.index|string): {
-                  'entity_id': entity_id,
-                  'friendly_name': fn
-                }
-              }) %}
-            {% endfor %}
-
-            {{ ns.source_map | to_json }}
-          filtered_items: >
-            {% set input = states('input_text.search_todo_list') | default('') | lower %}
-            {% set has_filter = 'todo:' in input %}
-            {% set filter_key = (input.split('todo:')[1].split(' ')[0]) if has_filter else '' %}
-            {% set search_term = input.split('todo:' ~ filter_key)[1] | trim if has_filter else input %}
-
-            {% set lists = state_attr('sensor.todo_lists_config', 'todo_lists') | default([]) %}
-            {% if all_todo_items is not defined or all_todo_items is not mapping %}
-              []
-            {% else %}
-              {% set available = all_todo_items.keys() | list %}
-              {% set missing = lists | reject('in', available) | list %}
-              {% if missing | length > 0 %}
-                []
-              {% else %}
-                {% set ns2 = namespace(index_map={}) %}
-                {% for entity_id in lists %}
-                  {% set ns2.index_map = ns2.index_map | combine({ (entity_id): loop.index|string }) %}
-                {% endfor %}
-                {% set list_index = ns2.index_map %}
-                {% set filtered_lists = lists
-                  | select('search', filter_key)
-                  | list if filter_key else lists %}
-                {% if filtered_lists | length == 0 %}
-                  {% set filtered_lists = lists %}
-                {% endif %}
-                {% set combined = namespace(items=[]) %}
-                {% set terms = search_term.split() %}
-                {% for list_id in filtered_lists %}
-                  {% set items = all_todo_items[list_id].get('items', []) %}
-                  {% for item in items %}
-                    {% if item.summary is defined and item.summary is string %}
-                      {% if (search_term == '' or (terms | select('in', (item.summary | lower)) | list | count == terms | count)) %}
-                        {% set minimal_item = {
-                          'u': item.uid,
-                          's': item.summary,
-                          'd': item.get('description', '') | string,
-                          'c': list_index[list_id]
-                        } %}
-                        {% set combined.items = combined.items + [minimal_item] %}
-                      {% endif %}
-                    {% endif %}
-                  {% endfor %}
-                {% endfor %}
-                {# combined.items #}
-                {# ---- SORTING STEP ---- #}
-                {% set sorted_items = combined.items | sort(attribute='s', case_sensitive=False) %}
-                {{ sorted_items | to_json}}
-              {% endif %}
-            {% endif %}
-  - trigger: 
-      - platform: state
-        entity_id: sensor.kellervorrate_combined_filtered_items
-      - platform: state
-        entity_id: sensor.kellervorrate_combined_filtered_items
-        attribute: filtered_items
-      - platform: homeassistant
-        event: start
-      - platform: event
-        event_type: event_template_reloaded
-    sensor:
-      - name: "Kellervorrate Combined Filtered Items Hash"
-        unique_id: kellervorrate_combined_filtered_items_hash
-        state: >-
-            {{ 
-                (
-                  (state_attr('sensor.kellervorrate_combined_filtered_items', 'filtered_items') | default([]) | to_json) 
-                    ~
-                  (state_attr('sensor.kellervorrate_combined_filtered_items', 'source_map') | default({}) | to_json) 
-                ) | md5
-            }}
-
   # Rollo Sommer
   - triggers:
       - platform: state
@@ -615,17 +435,17 @@ template:
         variables:
           sunrise_open_delay_minutes: 15
           sunset_close_delay_minutes: 15
-          sun_window_azimuth_threshold: 150
-          sun_window_elevation_threshold: 16
+          sun_window_azimuth_threshold: 148
+          sun_window_elevation_threshold: 15
           rain_rate_threshold: 0.1
-          uv_index_threshold_strong: 4.0
+          uv_index_threshold_strong: 5.0
           temp_outside_threshold: 22.0
           uv_threshold_temp_diff: 25000.0
-          uv_threshold_strong: 60000.0
+          uv_threshold_strong: 80000.0
           temp_diff_threshold: 2.5
           baseline: 20.0
-          extreme_temp_threshold: 28.0
-          heat_risk_score: 1.9
+          extreme_temp_threshold: 30.0
+          heat_risk_score: 2.2
           current_time: "{{ now() | as_timestamp | timestamp_local | as_datetime }}"
           relevant_sunrise_dt: >
             {% set current_time_dt = as_datetime(current_time) %}
@@ -933,7 +753,7 @@ template:
         state_class: measurement
         icon: mdi:solar-power
 
-  # Known Power, Unmonitored Power, Grid Power, Power Consumption Ranking
+  # Known Power, Unmonitored Power, Grid Power
   - trigger:
       - platform: time_pattern
         seconds: "/5"
@@ -991,17 +811,37 @@ template:
         icon: mdi:flash-outline
       - name: "Grid Power"
         unique_id: grid_power
+        variables:
+          t_id: "sensor.tibber_bridge_0100100700ff"
+          s_id: "sensor.smart_meter_mqtt_grid_power"
+          t_age: >-
+            {% set t = states[t_id] if states[t_id] is defined and states[t_id] is not none else none %}
+            {{ (now() - t.last_updated).total_seconds() if t is not none else none }}
+          t_fresh: >-
+            {{ has_value(t_id) and t_age is not none and (t_age | float(999)) <= 8 }}
+          s_valid: "{{ has_value(s_id) }}"
+          active_src: "{{ 'tibber' if t_fresh else ('smart_meter' if s_valid else 'none') }}"
         state: >
-          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-          {% if tibber not in ['unavailable', 'unknown', 'none'] %}
-            {{ tibber | float(0) }}
+          {% if active_src == 'tibber' %}
+            {{ states(t_id) | float(0) }}
+          {% elif active_src == 'smart_meter' %}
+            {{ states(s_id) | float(0) }}
           {% else %}
-            {{ states('sensor.smart_meter_mqtt_grid_power') | float(0) }}
+            0
           {% endif %}
-        availability: >
-          {% set tibber = states('sensor.tibber_bridge_0100100700ff') %}
-          {% set smart = states('sensor.smart_meter_mqtt_grid_power') %}
-          {{ tibber not in ['unavailable', 'unknown', 'none'] or smart not in ['unavailable', 'unknown', 'none'] }}
+        availability: "{{ active_src != 'none' }}"
+        attributes:
+          # Group A: Active / Current state
+          active_source: ""
+          active_source_selected: "{{ active_src }}"
+          # Group B: Diagnostics / Analytics
+          analytics_diagnostics: ""
+          analytics_tibber_age_seconds: "{{ (t_age | float) | round(1) if t_age is not none and t_age != '' else none }}"
+          analytics_tibber_fresh: "{{ t_fresh }}"
+          # Group C: Raw Channels / Inputs
+          channel_raw_data: ""
+          channel_smart_meter_power: "{{ states(s_id) | float(none) }}"
+          channel_tibber_power: "{{ states(t_id) | float(none) }}"
         unit_of_measurement: "W"
         device_class: power
         state_class: measurement
@@ -1304,11 +1144,17 @@ template:
         unique_id: wintergarten_rolladen_dachfenster
         optimistic: false
         open_cover:
-        - action: script.wintergarten_dachfenster_rolladen_open
+            - action: script.send_ir_remote_command
+              data:
+                  button_label: rollo_open
         close_cover:
-        - action: script.wintergarten_dachfenster_rolladen_close
+            - action: script.send_ir_remote_command
+              data:
+                  button_label: rollo_close
         stop_cover:
-        - action: script.wintergarten_dachfenster_rolladen_stop
+            - action: script.send_ir_remote_command
+              data:
+                  button_label: rollo_stop
         name: Wintergarten Rolladen Dachfenster
         state: "{{ is_state('input_boolean.rollo_state', 'off') }}"
 
@@ -1329,7 +1175,7 @@ template:
         unique_id: lenovo_p11_battery
         variables:
           sources:
-            - "sensor.lenovo_tab_p11_batterie"
+            - "sensor.kuche_lenovo_lenovo_tb_j606f_battery"
             - "sensor.lenovo_tb_j606f_battery_level"
           levels: >
             {{ sources
@@ -1456,3 +1302,48 @@ template:
             {% elif is_state('input_boolean.stop_pool', 'on') %} Stop Flag Active
             {% elif not is_state('binary_sensor.pool_temperature_zigbee_pool_temp_rising', 'on') %} Temp Not Rising
             {% else %} All Conditions Met {% endif %}
+
+  # Timelapse 15s Pulse
+  - trigger:
+      - trigger: time_pattern
+        seconds: "/15"
+    binary_sensor:
+      - name: "AnkerMake Snapshot Pulse"
+        unique_id: ankermake_snapshot_pulse_15s
+        state: >-
+          {{ is_state('binary_sensor.ankerctl_lauft', 'on') 
+             and states('sensor.ankermake_power') | float(0) > 15 }}
+        auto_off: '00:00:01'
+
+  # Fire Detection
+  - binary_sensor:
+      - name: "Fire Risk Detected"
+        unique_id: fire_risk_detected
+        device_class: heat
+        icon: mdi:fire-alert
+        variables:
+          threshold: 45
+          labeled: "{{ label_entities('fire_watch') }}"
+          fire_sensors: >-
+            {% set ns = namespace(list=[]) %}
+            {% for eid in labeled %}
+              {% set u = state_attr(eid, 'unit_of_measurement') | default('', true) %}
+              {% set v = states(eid) | float(-999) %}
+              {% if v != -999 %}
+                {% set v_c = (v - 32) * 5/9 if u in ['°F','F','Fahrenheit'] else v %}
+                {% if v_c > threshold %}
+                  {% set ns.list = ns.list + [ state_attr(eid, 'friendly_name') | default(eid, true) ~ ' (' ~ (v_c | round(1)) ~ ' °C)' ] %}
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.list | join(', ') }}
+          count: >-
+            {{ fire_sensors.split(',') | map('trim') | select('!=', '') | list | length }}
+        availability: "{{ labeled | count > 0 }}"
+        state: "{{ count > 0 }}"
+        attributes:
+          triggered_sensors: "{{ fire_sensors }}"
+          triggered_count: "{{ count }}"
+          threshold: "{{ threshold }}"
+          monitored_count: "{{ labeled | count }}"
+          updated: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
