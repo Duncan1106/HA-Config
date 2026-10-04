@@ -13217,3 +13217,328 @@
         }}'
       notification_id: fire_alert
   mode: single
+- id: '1791094302810'
+  alias: Plant Light Control via Spook Timers
+  triggers:
+  - trigger: sun
+    event: sunrise
+    id: sunrise
+    offset: +00:15:00
+  - trigger: sun
+    event: sunset
+    id: sunset
+    offset: +00:15:00
+  - trigger: event
+    event_type: timer.finished
+    id: timer_finished
+  - trigger: homeassistant
+    event: start
+    id: ha_start
+  - trigger: state
+    entity_id: switch.plant_tent
+    to: 'on'
+    for: 00:02:00
+    id: manual_override
+  - trigger: state
+    entity_id:
+    - switch.bett_strip_l4
+    - switch.plant_box
+    to: 'on'
+    for: 00:01:00
+    id: manual_override
+  actions:
+  - choose:
+    - alias: '1. Sunrise: initialize timers and turn lights on'
+      conditions:
+      - condition: trigger
+        id: sunrise
+      sequence:
+      - alias: Iterate over every tracked light
+        repeat:
+          for_each: '{{ all_entities }}'
+          sequence:
+          - alias: Resolve timer entity and minimum runtime from label
+            variables:
+              timer_id: plant_light_{{ repeat.item | replace('.', '_') }}
+              timer_entity: timer.{{ timer_id }}
+              min_hours: "{{ ([0] + (labels(repeat.item)\n | select('match', '^[0-9]+h$')\n
+                | map('replace', 'h', '')\n | map('int')\n | list)) | max }}\n"
+          - alias: Create timer if it does not exist yet
+            if:
+            - condition: template
+              value_template: '{{ states(timer_entity) == ''unknown'' }}'
+            then:
+            - alias: Create Spook timer with restore enabled
+              action: timer.create
+              continue_on_error: true
+              data:
+                name: Plant Light {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item)
+                  }}
+                timer_id: '{{ timer_id }}'
+                restore: true
+                icon: mdi:leaf
+                duration: '{{ ''%02d:00:00'' % min_hours }}'
+          - alias: Turn physical switch on via retry script
+            action: script.retry_action_with_backoff
+            continue_on_error: true
+            data:
+              entity_id: '{{ repeat.item }}'
+              target_state: 'on'
+              action_domain: switch
+              action_type: turn_on
+              max_retries: 5
+              base_delay: 5
+              backoff_type: exponential
+              notify_service: notify.duncan
+              enable_power_controller: '{{ repeat.item in entities }}'
+              power_threshold_on: 2
+              power_report_delay: 120
+              power_wait_timeout: 10
+          - alias: Start timer only if idle (do not reset a running countdown)
+            if:
+            - condition: template
+              value_template: '{{ min_hours > 0 and is_state(timer_entity, ''idle'')
+                }}'
+            then:
+            - alias: Start timer for the configured minimum runtime
+              action: timer.start
+              continue_on_error: true
+              data:
+                entity_id: '{{ timer_entity }}'
+                duration: '{{ ''%02d:00:00'' % min_hours }}'
+          - alias: Small delay to avoid hammering the switches
+            delay:
+              milliseconds: 500
+    - alias: '2. Sunset: turn off any light whose quota is already met'
+      conditions:
+      - condition: trigger
+        id: sunset
+      sequence:
+      - alias: Iterate over every tracked light
+        repeat:
+          for_each: '{{ all_entities }}'
+          sequence:
+          - alias: Resolve timer entity
+            variables:
+              timer_entity: timer.plant_light_{{ repeat.item | replace('.', '_') }}
+          - alias: Turn off if timer is idle or paused (quota met)
+            if:
+            - condition: template
+              value_template: '{{ is_state(timer_entity, ''idle'') or is_state(timer_entity,
+                ''paused'') }}'
+            then:
+            - alias: Turn switch off via retry script
+              action: script.retry_action_with_backoff
+              continue_on_error: true
+              data:
+                entity_id: '{{ repeat.item }}'
+                target_state: 'off'
+                action_domain: switch
+                action_type: turn_off
+                max_retries: 5
+                base_delay: 5
+                backoff_type: exponential
+                notify_service: notify.duncan
+                enable_power_controller: '{{ repeat.item in entities }}'
+                power_threshold_off: 5
+                power_report_delay: 120
+                power_wait_timeout: 10
+          - alias: Small delay to avoid hammering the switches
+            delay:
+              milliseconds: 500
+    - alias: '3. Timer finished: turn off if sunset has passed'
+      conditions:
+      - condition: trigger
+        id: timer_finished
+      - alias: Only act on our own plant_light_ timers
+        condition: template
+        value_template: '{{ trigger.event.data.entity_id.startswith(''timer.plant_light_'')
+          }}'
+      sequence:
+      - alias: Reverse-map timer id back to the switch entity
+        variables:
+          switch_entity: '{{ trigger.event.data.entity_id | replace(''timer.plant_light_'',
+            '''') | replace(''_'', ''.'', 1) }}'
+      - alias: Turn off if it is night and the switch is still tracked
+        if:
+        - alias: Night window check (sunset +15m to sunrise +15m)
+          condition: sun
+          after: sunset
+          after_offset: +00:15:00
+          before: sunrise
+          before_offset: +00:15:00
+        - alias: Guard against stale timers for removed entities
+          condition: template
+          value_template: '{{ switch_entity in all_entities }}'
+        then:
+        - alias: Turn switch off via retry script
+          action: script.retry_action_with_backoff
+          continue_on_error: true
+          data:
+            entity_id: '{{ switch_entity }}'
+            target_state: 'off'
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 5
+            base_delay: 5
+            backoff_type: exponential
+            notify_service: notify.duncan
+            enable_power_controller: '{{ switch_entity in entities }}'
+            power_threshold_off: 5
+            power_report_delay: 120
+            power_wait_timeout: 10
+    - alias: '4. Nighttime manual override: turn back off if quota is met'
+      conditions:
+      - condition: trigger
+        id: manual_override
+      sequence:
+      - alias: Resolve timer entity for the switch that was turned on
+        variables:
+          timer_entity: timer.plant_light_{{ trigger.entity_id | replace('.', '_')
+            }}
+      - alias: Turn off if it is night and the timer is idle
+        if:
+        - alias: Night window check (sunset +15m to sunrise +15m)
+          condition: sun
+          after: sunset
+          after_offset: +00:15:00
+          before: sunrise
+          before_offset: +00:15:00
+        - alias: Quota already met (timer is idle)
+          condition: template
+          value_template: '{{ is_state(timer_entity, ''idle'') }}'
+        then:
+        - alias: Turn switch off via retry script (power monitoring)
+          action: script.retry_action_with_backoff_power_monitoring
+          continue_on_error: true
+          data:
+            entity_id: '{{ trigger.entity_id }}'
+            target_state: 'off'
+            action_domain: switch
+            action_type: turn_off
+            max_retries: 5
+            base_delay: 5
+            backoff_type: exponential
+            notify_service: notify.duncan
+            enable_power_controller: true
+            power_threshold_off: 5
+            power_report_delay: 120
+            power_wait_timeout: 10
+    - alias: '5. Restart sync: self-heal timers and physical state'
+      conditions:
+      - condition: trigger
+        id: ha_start
+      sequence:
+      - alias: Iterate over every tracked light
+        repeat:
+          for_each: '{{ all_entities }}'
+          sequence:
+          - alias: Resolve timer, runtime, and quota state
+            variables:
+              timer_id: plant_light_{{ repeat.item | replace('.', '_') }}
+              timer_entity: timer.{{ timer_id }}
+              min_hours: "{{ ([0] + (labels(repeat.item)\n | select('match', '^[0-9]+h$')\n
+                | map('replace', 'h', '')\n | map('int')\n | list)) | max }}\n"
+              last_rise: '{{ (state_attr(''sun.sun'', ''next_rising'')  | as_datetime
+                | as_local) - timedelta(days=1) }}'
+              last_set: '{{ (state_attr(''sun.sun'', ''next_setting'') | as_datetime
+                | as_local) - timedelta(days=1) }}'
+              elapsed: '{{ (now() - (last_rise | as_datetime)).total_seconds() }}'
+              remaining: '{{ (min_hours * 3600) - elapsed }}'
+              day_started: '{{ now() >= ((last_rise | as_datetime) + timedelta(minutes=15))
+                }}'
+              day_ended: '{{ now() >= ((last_set  | as_datetime) + timedelta(minutes=15))
+                }}'
+              belongs_on: '{{ day_started and (not day_ended or remaining > 0) }}'
+          - alias: Create timer if it does not exist yet
+            if:
+            - condition: template
+              value_template: '{{ states(timer_entity) == ''unknown'' }}'
+            then:
+            - alias: Create Spook timer with restore enabled
+              action: timer.create
+              continue_on_error: true
+              data:
+                name: Plant Light {{ state_attr(repeat.item, 'friendly_name') | default(repeat.item)
+                  }}
+                timer_id: '{{ timer_id }}'
+                restore: true
+                icon: mdi:leaf
+                duration: '{{ ''%02d:00:00'' % min_hours }}'
+          - alias: Enforce the calculated state
+            if:
+            - condition: template
+              value_template: '{{ belongs_on }}'
+            then:
+            - alias: Turn switch on if it is off
+              if:
+              - alias: Switch is currently off
+                condition: template
+                value_template: '{{ is_state(repeat.item, ''off'') }}'
+              then:
+              - alias: Turn switch on via retry script
+                action: script.retry_action_with_backoff
+                continue_on_error: true
+                data:
+                  entity_id: '{{ repeat.item }}'
+                  target_state: 'on'
+                  action_domain: switch
+                  action_type: turn_on
+                  max_retries: 5
+                  base_delay: 5
+                  backoff_type: exponential
+                  notify_service: notify.duncan
+                  enable_power_controller: '{{ repeat.item in entities }}'
+                  power_threshold_on: 2
+                  power_report_delay: 120
+                  power_wait_timeout: 10
+            - alias: Resume or jumpstart timer with exact remaining seconds
+              if:
+              - condition: template
+                value_template: "{{ min_hours > 0 and remaining > 0\n   and (is_state(timer_entity,
+                  'idle') or is_state(timer_entity, 'paused')) }}\n"
+              then:
+              - alias: Start timer with remaining seconds
+                action: timer.start
+                continue_on_error: true
+                data:
+                  entity_id: '{{ timer_entity }}'
+                  duration: '{{ remaining | int }}'
+            else:
+            - alias: Turn switch off if it is on
+              if:
+              - alias: Switch is currently on
+                condition: template
+                value_template: '{{ is_state(repeat.item, ''on'') }}'
+              then:
+              - alias: Turn switch off via retry script
+                action: script.retry_action_with_backoff
+                continue_on_error: true
+                data:
+                  entity_id: '{{ repeat.item }}'
+                  target_state: 'off'
+                  action_domain: switch
+                  action_type: turn_off
+                  max_retries: 5
+                  base_delay: 5
+                  backoff_type: exponential
+                  notify_service: notify.duncan
+                  enable_power_controller: '{{ repeat.item in entities }}'
+                  power_threshold_off: 5
+                  power_report_delay: 120
+                  power_wait_timeout: 10
+  mode: queued
+  max: 10
+  variables:
+    entities:
+    - switch.bett_strip_l4
+    - switch.plant_box
+    - switch.plant_tent
+    paludarium:
+    - switch.bett_strip_l3
+    - switch.kallax_plant_light_zigbee_l3
+    - switch.kallax_plant_light_zigbee_l2
+    - switch.regal_planzen_1
+    - switch.bett_strip_l2
+    - switch.bett_strip_l5
+    all_entities: '{{ entities + paludarium }}'
