@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-10-04 23:30 | System: 18.53 kWp
+> Generated: 2026-10-05 23:43 | System: 18.53 kWp
 
 ---
 
@@ -19,9 +19,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5557.8 kWh
+**Total Production:** 5604.4 kWh
 
-**Average Accuracy:** 77.4%
+**Average Accuracy:** 77.5%
 
 ### Seasonal Production
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 54.52 kWh | 1799.1 kWh |
+| Autumn | 75.48 kWh | 54.29 kWh | 1845.8 kWh |
 
 ---
 
@@ -50,7 +50,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-10-04 | 1029 | 44 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-10-05 | 1039 | 45 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.479 west k_p90=2.283; k_p90 > 1)
@@ -58,12 +58,12 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 39 | 0.308 | 0.479 | 0.956 | no |
+| 0 | east | 40 | 0.316 | 0.479 | 0.956 | no |
 | 0 | west | 45 | 1.235 | 2.283 | 2.805 | no |
-| 10 | east | 88 | 0.395 | 0.670 | 1.480 | no |
-| 10 | west | 84 | 0.741 | 1.157 | 1.506 | no |
-| 20 | east | 89 | 0.503 | 0.900 | 0.962 | yes |
-| 20 | west | 86 | 0.780 | 1.224 | 1.454 | yes |
+| 10 | east | 89 | 0.397 | 0.670 | 1.480 | no |
+| 10 | west | 85 | 0.742 | 1.157 | 1.506 | no |
+| 20 | east | 90 | 0.508 | 0.900 | 0.962 | yes |
+| 20 | west | 87 | 0.781 | 1.224 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
 | 40 | east | 41 | 0.792 | 0.940 | 1.135 | yes |
@@ -75,29 +75,29 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-10-04 | 8-18 (11) | 0.976 | 3.956 | 2.980 |
-| Gruppe 2 | 2026-10-04 | 8-18 (11) | 0.494 | 4.000 | 3.506 |
-| Gruppe 3 | 2026-10-04 | 8-18 (11) | 0.501 | 3.973 | 3.471 |
+| Gruppe 1 | 2026-10-05 | 8-18 (11) | 1.339 | 3.794 | 2.455 |
+| Gruppe 2 | 2026-10-05 | 8-18 (11) | 0.483 | 4.000 | 3.517 |
+| Gruppe 3 | 2026-10-05 | 8-18 (11) | 0.501 | 3.981 | 3.479 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
 | forecast_physics | 23 | 8 |
-| ghi_scaled_clearsky | 799 | 118 |
+| ghi_scaled_clearsky | 824 | 120 |
 
 | Clamp kind | Hits |
 |------------|------|
-| bucket_global | 163 |
-| bucket_hourly | 296 |
-| ratio | 126 |
+| bucket_global | 170 |
+| bucket_hourly | 304 |
+| ratio | 128 |
 
 
 ---
 
 ## Message from the Captain's Log
 
-> *"Engage... maximum solar absorption! - Captain Picard"*
+> *"Resistance to renewable energy is futile. - The Borg"*
 
 Live long and prosper!
 
