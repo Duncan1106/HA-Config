@@ -13410,3 +13410,33 @@
           milliseconds: 500
   mode: queued
   max: 5
+- id: '1791318675976'
+  alias: 'Plant Lights: Dynamic Schedule Control with Retry'
+  description: Triggers when the Plant Lights Out of Sync sensor detects an incorrect
+    state, and corrects only the entities that need fixing using the retry script.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.plant_lights_out_of_sync
+    to: 'on'
+  - trigger: homeassistant
+    event: start
+  actions:
+  - repeat:
+      for_each: '{{ state_attr(''binary_sensor.plant_lights_out_of_sync'', ''actions_needed'')
+        | default([]) }}'
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        data:
+          entity_id: '{{ repeat.item.entity_id }}'
+          target_state: '{{ repeat.item.state }}'
+          action_domain: switch
+          action_type: '{{ repeat.item.action }}'
+          max_retries: 5
+          base_delay: 5
+          backoff_type: exponential
+          notify_service: notify.duncan
+      - delay:
+          milliseconds: 500
+  mode: queued
+  max: 5
