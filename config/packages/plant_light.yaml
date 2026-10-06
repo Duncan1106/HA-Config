@@ -4,6 +4,9 @@ template:
         at: "00:00:01"
       - platform: homeassistant
         event: start
+      - platform: event
+        event_type: event_template_reloaded
+        id: template_reloaded
     sensor:
       - name: "Plant Light Schedule"
         unique_id: plant_light_schedule
@@ -20,38 +23,40 @@ template:
               {% endif %}
             {% endfor %}
             {{ ns.ents | unique | list }}
-
           ent_sched: >
             {% set ns = namespace(d={}) %}
             {% for ent in discovered_entities %}
               {% set max_h = ([0] + (labels(ent) | default([]) | select('match', '^[0-9]+h$') | map('replace', 'h', '') | map('int') | list)) | max %}
               {% if max_h > 0 %}
-                {% set _ = ns.d.update({ent: max_h}) %}
+                {% set ns.d = ns.d | combine({ent: max_h}) %}
               {% endif %}
             {% endfor %}
             {{ ns.d }}
+          sr_ts: >
+            {% set raw = state_attr('sun.sun', 'next_rising') | as_datetime | as_local %}
+            {% set today = raw if raw.date() == now().date() else raw - timedelta(days=1) %}
+            {{ (today + timedelta(minutes=15)).timestamp() }}
+          ss_ts: >
+            {% set raw = state_attr('sun.sun', 'next_setting') | as_datetime | as_local %}
+            {% set today = raw if raw.date() == now().date() else raw - timedelta(days=1) %}
+            {{ (today + timedelta(minutes=15)).timestamp() }}
 
-          sr_raw: "{{ state_attr('sun.sun', 'next_rising') | as_datetime | as_local }}"
-          ss_raw: "{{ state_attr('sun.sun', 'next_setting') | as_datetime | as_local }}"
-          sr_today: "{{ sr_raw if sr_raw.date() == now().date() else sr_raw - timedelta(days=1) }}"
-          ss_today: "{{ ss_raw if ss_raw.date() == now().date() else ss_raw - timedelta(days=1) }}"
-          sr: "{{ sr_today + timedelta(minutes=15) }}"
-          ss: "{{ ss_today + timedelta(minutes=15) }}"
-          dl_hours: "{{ (ss - sr).total_seconds() / 3600 }}"
-
+          dl_hours: "{{ ((ss_ts | float) - (sr_ts | float)) / 3600 }}"
           unique_hours: "{{ ent_sched.values() | unique | list | sort }}"
           sched_dict: >
             {% set ns = namespace(d={}) %}
+            {% set sr = as_datetime(sr_ts | float) %}
+            {% set ss = as_datetime(ss_ts | float) %}
             {% for h in unique_hours %}
               {% set diff = (h - dl_hours) if (h > dl_hours) else 0 %}
               {% set s_time = (sr - timedelta(hours=diff / 2)) %}
               {% set e_time = (ss + timedelta(hours=diff / 2)) if (h > dl_hours) else (sr + timedelta(hours=h)) %}
-              {% set _ = ns.d.update({ h | string: { 'start': s_time.isoformat(), 'end': e_time.isoformat() } }) %}
+              {% set ns.d = ns.d | combine({ h | string: { 'start': s_time.isoformat(), 'end': e_time.isoformat() } }) %}
             {% endfor %}
             {{ ns.d }}
-
         attributes:
           day_length_hours: "{{ dl_hours | round(2) }}"
           entities: "{{ discovered_entities }}"
           entity_schedules: "{{ ent_sched }}"
           schedules: "{{ sched_dict }}"
+          
