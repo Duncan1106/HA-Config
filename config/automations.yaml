@@ -13351,14 +13351,10 @@
     nutzt das Retry-Skript.
   triggers:
   - value_template: "{% set sched = state_attr('sensor.plant_light_schedule', 'schedules')
-      %} {% if sched %}\n  {% set ns = namespace(match=false) %}\n  {% for h, times
-      in sched.items() %}\n    {% set start_str = times.get('start') %}\n    {% set
-      end_str = times.get('end') %}\n    {% if start_str and end_str %}\n      {%
-      set start_local = as_datetime(start_str) | as_local %}\n      {% set end_local
-      = as_datetime(end_str) | as_local %}\n      {% if now().strftime('%Y-%m-%d %H:%M')
-      in start_local.strftime('%Y-%m-%d %H:%M') \n         or now().strftime('%Y-%m-%d
-      %H:%M') in end_local.strftime('%Y-%m-%d %H:%M') %}\n        {% set ns.match
-      = true %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n  {{ ns.match
+      %} {% if sched %}\n  {% set ns = namespace(match=false) %}\n  {% set current_time
+      = now().strftime('%Y-%m-%d %H:%M') %}\n  {% for h, times in sched.items() %}\n
+      \   {% if current_time == times.get('start') or current_time == times.get('end')
+      %}\n      {% set ns.match = true %}\n    {% endif %}\n  {% endfor %}\n  {{ ns.match
       }}\n{% else %}\n  false\n{% endif %}\n"
     trigger: template
   - event: start
@@ -13375,9 +13371,10 @@
           scheds: '{{ state_attr(''sensor.plant_light_schedule'', ''schedules'') |
             default({}) }}'
           times: '{{ scheds.get(ent_scheds.get(ent) | string, {}) }}'
-          should_be_on: '{{ times is mapping and times.get(''start'') not in [None,
-            ''''] and times.get(''end'') not in [None, ''''] and as_datetime(times.get(''start''))
-            <= now() and now() < as_datetime(times.get(''end'')) }}'
+          current_time: '{{ now().strftime(''%Y-%m-%d %H:%M'') }}'
+          should_be_on: "{{ times is mapping \n   and times.get('start') not in [None,
+            ''] \n   and times.get('end') not in [None, '']\n   and times.get('start')
+            <= current_time \n   and current_time < times.get('end') }}\n"
       - choose:
         - conditions:
           - condition: template
