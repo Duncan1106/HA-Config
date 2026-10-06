@@ -13352,12 +13352,14 @@
   triggers:
   - value_template: "{% set sched = state_attr('sensor.plant_light_schedule', 'schedules')
       %} {% if sched %}\n  {% set ns = namespace(match=false) %}\n  {% for h, times
-      in sched.items() %}\n    {% set start_local = as_datetime(times.start) | as_local
-      %}\n    {% set end_local = as_datetime(times.end) | as_local %}\n    {% if now().strftime('%Y-%m-%d
-      %H:%M') in start_local.strftime('%Y-%m-%d %H:%M') \n       or now().strftime('%Y-%m-%d
-      %H:%M') in end_local.strftime('%Y-%m-%d %H:%M') %}\n      {% set ns.match =
-      true %}\n    {% endif %}\n  {% endfor %}\n  {{ ns.match }}\n{% else %}\n  false\n{%
-      endif %}\n"
+      in sched.items() %}\n    {% set start_str = times.get('start') %}\n    {% set
+      end_str = times.get('end') %}\n    {% if start_str and end_str %}\n      {%
+      set start_local = as_datetime(start_str) | as_local %}\n      {% set end_local
+      = as_datetime(end_str) | as_local %}\n      {% if now().strftime('%Y-%m-%d %H:%M')
+      in start_local.strftime('%Y-%m-%d %H:%M') \n         or now().strftime('%Y-%m-%d
+      %H:%M') in end_local.strftime('%Y-%m-%d %H:%M') %}\n        {% set ns.match
+      = true %}\n      {% endif %}\n    {% endif %}\n  {% endfor %}\n  {{ ns.match
+      }}\n{% else %}\n  false\n{% endif %}\n"
     trigger: template
   - event: start
     trigger: homeassistant
@@ -13372,10 +13374,10 @@
             | default({}) }}'
           scheds: '{{ state_attr(''sensor.plant_light_schedule'', ''schedules'') |
             default({}) }}'
-          h: '{{ ent_scheds.get(ent) | string }}'
-          times: '{{ scheds.get(h, {}) }}'
-          should_be_on: "{% if times.start and times.end %}\n  {{ as_datetime(times.start)
-            <= now() < as_datetime(times.end) }}\n{% else %}\n  false\n{% endif %}\n"
+          times: '{{ scheds.get(ent_scheds.get(ent) | string, {}) }}'
+          should_be_on: '{{ times is mapping and times.get(''start'') not in [None,
+            ''''] and times.get(''end'') not in [None, ''''] and as_datetime(times.get(''start''))
+            <= now() and now() < as_datetime(times.get(''end'')) }}'
       - choose:
         - conditions:
           - condition: template
