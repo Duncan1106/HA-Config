@@ -59,4 +59,42 @@ template:
           entities: "{{ discovered_entities }}"
           entity_schedules: "{{ ent_sched }}"
           schedules: "{{ sched_dict }}"
+
+  - binary_sensor:
+      - name: "Plant Lights Out of Sync"
+        unique_id: plant_lights_out_of_sync
+        device_class: problem
+        variables:
+          actions_needed: >-
+            {% set sched_sensor = 'sensor.plant_light_schedule' %}
+            {% set entities = state_attr(sched_sensor, 'entities') | default([]) %}
+            {% if not entities %}
+              []
+            {% else %}
+              {% set states_list = expand(entities) %}
+              {% set ent_scheds = state_attr(sched_sensor, 'entity_schedules') | default({}) %}
+              {% set scheds = state_attr(sched_sensor, 'schedules') | default({}) %}
+              {% set current_time = now().strftime('%Y-%m-%d %H:%M') %}
+              {% set ns = namespace(fixes=[]) %}
+              
+              {% for state_obj in states_list %}
+                {% set ent = state_obj.entity_id %}
+                {% set target_hours = ent_scheds.get(ent) | string %}
+                {% set times = scheds.get(target_hours, {}) %}
+                {% if times %}
+                  {% set should_be_on = times.get('start') <= current_time and current_time < times.get('end') %}
+                  {% set is_on = state_obj.state == 'on' %}
+                  {% if should_be_on and not is_on %}
+                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_on", "state": "on"}] %}
+                  {% elif not should_be_on and is_on %}
+                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_off", "state": "off"}] %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              
+              {{ ns.fixes }}
+            {% endif %}
+        state: "{{ actions_needed | length > 0 }}"
+        attributes:
+          actions_needed: "{{ actions_needed }}"
           
