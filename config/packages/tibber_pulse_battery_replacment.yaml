@@ -21,9 +21,9 @@ template:
         entity_id: sensor.tibber_node_battery_voltage
         above: 3.025
         id: voltage_ok
-      - trigger: homeassistant
-        event: start
-        id: ha_start
+      - trigger: state
+        entity_id: sensor.tibber_node_bridge_status
+        id: bridge_status_update
       - trigger: event
         event_type: event_template_reloaded
         id: template_reloaded
@@ -40,6 +40,24 @@ template:
           this_id: "binary_sensor.tibber_pulse_battery_replacement"
           bridge_entity: "sensor.tibber_bridge_0100100700ff"
           voltage_entity: "sensor.tibber_node_battery_voltage"
+          bridge_status_entity: "sensor.tibber_node_bridge_status"
+
+          # Hardware bridge uptime check (in seconds)
+          bridge_uptime: "{{ state_attr(bridge_status_entity, 'uptime') | float(9999) }}"
+          is_bridge_booting: "{{ bridge_uptime <= 180 }}"
+
+          # HA auto-restart automation check (converted to local timezone)
+          restart_trig: "{{ state_attr('automation.tibber_pulse_bridge_auto_restart', 'last_triggered') }}"
+          is_auto_restarted: >-
+            {% if restart_trig is not none %}
+              {% set trig_time = restart_trig | as_datetime | as_local %}
+              {{ (now() - trig_time).total_seconds() <= 180 }}
+            {% else %}
+              false
+            {% endif %}
+
+          # Combined 3-minute grace period
+          is_recently_restarted: "{{ is_bridge_booting or is_auto_restarted }}"
 
           # Voltage status
           voltage: "{{ states(voltage_entity) | float(0) }}"
@@ -65,13 +83,15 @@ template:
           new_timestamps: "{{ (valid_timestamps + [now_ts]) if is_slow else valid_timestamps }}"
           strike_count: "{{ new_timestamps | count }}"
 
-        state: "{{ is_voltage_low or is_dead or (strike_count >= 3) }}"
+        state: "{{ not is_recently_restarted and (is_voltage_low or is_dead or (strike_count >= 3)) }}"
 
         attributes:
           strike_timestamps: "{{ new_timestamps }}"
           slow_strikes: "{{ strike_count }}"
           reason: >-
-            {% if is_dead %}
+            {% if is_recently_restarted %}
+              Grace period active (Bridge uptime: {{ bridge_uptime | int }}s)
+            {% elif is_dead %}
               Complete signal loss (>2 min)
             {% elif is_voltage_low %}
               Voltage sag below 3.025V ({{ voltage }}V)
