@@ -11,6 +11,8 @@ template:
         event_type: entity_registry_updated
       - platform: event
         event_type: label_registry_updated
+      - platform: state
+        entity_id: input_boolean.plant_light_use_max_daylight
     sensor:
       - name: "Plant Light Schedule"
         unique_id: plant_light_schedule
@@ -21,24 +23,7 @@ template:
           {{ state_attr('sun.sun', 'next_rising') is not none
              and state_attr('sun.sun', 'next_setting') is not none }}
         variables:
-          discovered_entities: >
-            {% set ns = namespace(ents=[]) %}
-            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
-              {% set ns.ents = ns.ents + (label_entities(lbl)
-                                          | select('match', '^switch\\.')
-                                          | list) %}
-            {% endfor %}
-            {{ ns.ents | unique | list }}
-
-          ent_sched: >
-            {% set ns = namespace(d={}) %}
-            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
-              {% set h = lbl | replace('h', '') | int %}
-              {% for ent in label_entities(lbl) | select('match', '^switch\\.') %}
-                {% set ns.d = ns.d | combine({ ent: [ns.d.get(ent, 0), h] | max }) %}
-              {% endfor %}
-            {% endfor %}
-            {{ ns.d }}
+          use_max_daylight: "{{ is_state('input_boolean.plant_light_use_max_daylight', 'on') }}"
 
           sr_ts: >
             {% set raw = state_attr('sun.sun', 'next_rising') %}
@@ -55,23 +40,47 @@ template:
             {% endif %}
 
           dl_hours: "{{ ((ss_ts | float) - (sr_ts | float)) / 3600 }}"
+
+          discovered_entities: >
+            {% set ns = namespace(ents=[]) %}
+            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
+              {% set ns.ents = ns.ents + (label_entities(lbl)
+                                          | select('match', '^switch\\.')
+                                          | list) %}
+            {% endfor %}
+            {{ ns.ents | unique | list }}
+
+          ent_sched: >
+            {% set ns = namespace(d={}) %}
+            {% set dl = dl_hours | round(2) %}
+            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
+              {% set h = lbl | replace('h', '') | int %}
+              {% for ent in label_entities(lbl) | select('match', '^switch\\.') %}
+                {% set labeled = [ns.d.get(ent, 0), h] | max %}
+                {% set effective = ([labeled, dl] | max) if use_max_daylight else labeled %}
+                {% set ns.d = ns.d | combine({ ent: effective }) %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.d }}
+
           unique_hours: "{{ ent_sched.values() | unique | list | sort }}"
 
           sched_dict: >
-            {% set ns = namespace(d={}) %}
-            {% set sr = as_datetime(sr_ts | float) | as_local %}
-            {% set ss = as_datetime(ss_ts | float) | as_local %}
-            {% for h in unique_hours %}
-              {% set diff = (h - dl_hours) if (h > dl_hours) else 0 %}
-              {% set s_time = (sr - timedelta(hours=diff / 2)) %}
-              {% set e_time = (ss + timedelta(hours=diff / 2)) if (h > dl_hours) else (sr + timedelta(hours=h)) %}
-              {% set ns.d = ns.d | combine({ h | string: { 'start': s_time.strftime('%Y-%m-%d %H:%M'), 'end': e_time.strftime('%Y-%m-%d %H:%M') } }) %}
-            {% endfor %}
-            {{ ns.d }}
+              {% set ns = namespace(d={}) %}
+              {% set sr = as_datetime(sr_ts | float) | as_local %}
+              {% set ss = as_datetime(ss_ts | float) | as_local %}
+              {% set mid = sr + (ss - sr) / 2 %}
+              {% for h in unique_hours %}
+                {% set s_time = mid - timedelta(hours=h / 2) %}
+                {% set e_time = mid + timedelta(hours=h / 2) %}
+                {% set ns.d = ns.d | combine({ h | string: { 'start': s_time.strftime('%Y-%m-%d %H:%M'), 'end': e_time.strftime('%Y-%m-%d %H:%M') } }) %}
+              {% endfor %}
+              {{ ns.d }}
         attributes:
           entity_schedules: "{{ ent_sched }}"
           schedules: "{{ sched_dict }}"
           unique_hours: "{{ unique_hours }}"
+          use_max_daylight: "{{ use_max_daylight }}"
           sunrise: "{{ (as_datetime(sr_ts | float) | as_local).strftime('%H:%M') }}"
           sunset: "{{ (as_datetime(ss_ts | float) | as_local).strftime('%H:%M') }}"
 
