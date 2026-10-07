@@ -6176,6 +6176,52 @@ config:
           entity: sensor.desk_paludarium_turm_links_linkquality
           state_not: unavailable
         type: conditional
+      - content: "{%- set sensor = 'sensor.plant_light_schedule' -%} {%- set ent_scheds\
+          \ = state_attr(sensor, 'entity_schedules') | default({}) -%} {%- set scheds\
+          \ = state_attr(sensor, 'schedules') | default({}) -%} {%- set dl = states(sensor)\
+          \ | float(0) -%} {%- set sr = state_attr(sensor, 'sunrise') | default('\u2014\
+          ') -%} {%- set ss = state_attr(sensor, 'sunset') | default('\u2014') -%}\
+          \ {%- set max_dl = state_attr(sensor, 'use_max_daylight') | default(false)\
+          \ -%} {%- set now_dt = now() -%} {%- set ns = namespace(out='', bad=0) -%}\
+          \ {%- set ns.out = '**Tag (' ~ (dl | round(1)) ~ 'h Licht, ' ~ sr ~ '\u2013\
+          ' ~ ss ~ ' Uhr)'\n                 ~ (' \xB7 \U0001F31E Max-Tag aktiv' if\
+          \ max_dl else '') ~ '**\\n\\n' -%}\n{%- set ns.out = ns.out ~ '| Lampe |\
+          \ Status | Ziel | Zeitfenster & Restzeit |\\n' -%} {%- set ns.out = ns.out\
+          \ ~ '| :--- | :---: | :---: | :--- |\\n' -%} {%- for ent, h_eff in ent_scheds.items()\
+          \ -%}\n  {%- set name = state_attr(ent, 'friendly_name') | default(ent)\
+          \ -%}\n  {%- set cur = states(ent) -%}\n  {%- set h_eff_s = h_eff | string\
+          \ -%}\n  {%- set h_labels = labels(ent) | select('match', '^[0-9]+h$')\n\
+          \                     | map('replace', 'h', '') | map('int') | list -%}\n\
+          \  {%- set h_labeled = ([0] + h_labels) | max -%}\n  {%- set times = scheds.get(h_eff_s,\
+          \ {}) -%}\n  {%- if times and times.get('start') and times.get('end') -%}\n\
+          \    {%- set start_dt = as_datetime(times.get('start')).replace(tzinfo=now_dt.tzinfo)\
+          \ -%}\n    {%- set end_dt = as_datetime(times.get('end')).replace(tzinfo=now_dt.tzinfo)\
+          \ -%}\n    {%- set should_be_on = start_dt <= now_dt < end_dt -%}\n    {%-\
+          \ set actual_on = cur == 'on' -%}\n    {%- set is_bad = should_be_on !=\
+          \ actual_on -%}\n    {%- if is_bad -%}\n      {%- set ns.bad = ns.bad +\
+          \ 1 -%}\n    {%- endif -%}\n    {%- set status_icon = ('\U0001F7E2 An' if\
+          \ actual_on else ('\U0001F534 Aus' if cur == 'off' else '\u26AA ' ~ cur))\n\
+          \                          ~ (' \u26A0\uFE0F' if is_bad else '') -%}\n \
+          \   {%- if should_be_on -%}\n      {%- set sec = (end_dt - now_dt).total_seconds()\
+          \ -%}\n      {%- set time_info = 'noch **' ~ (sec // 3600) | int ~ 'h '\n\
+          \                          ~ ((sec % 3600) // 60) | int ~ 'm** (bis '\n\
+          \                          ~ end_dt.strftime('%H:%M') ~ ')' -%}\n    {%-\
+          \ elif now_dt < start_dt -%}\n      {%- set sec = (start_dt - now_dt).total_seconds()\
+          \ -%}\n      {%- set time_info = 'in ' ~ (sec // 3600) | int ~ 'h '\n  \
+          \                        ~ ((sec % 3600) // 60) | int ~ 'm (ab '\n     \
+          \                     ~ start_dt.strftime('%H:%M') ~ ')' -%}\n    {%- else\
+          \ -%}\n      {%- set sec = (start_dt + timedelta(days=1) - now_dt).total_seconds()\
+          \ -%}\n      {%- set time_info = 'beendet \xB7 n\xE4chster Start in '\n\
+          \                          ~ (sec // 3600) | int ~ 'h '\n              \
+          \            ~ ((sec % 3600) // 60) | int ~ 'm' -%}\n    {%- endif -%}\n\
+          \    {%- set ns.out = ns.out ~ '| **' ~ name ~ '** | ' ~ status_icon\n \
+          \                   ~ ' | ' ~ h_labeled ~ 'h | ' ~ time_info ~ ' |\\n' -%}\n\
+          \  {%- endif -%}\n{%- endfor -%} {%- if ns.bad > 0 -%}\n  {%- set ns.out\
+          \ = ns.out ~ '\\n**\u26A0\uFE0F ' ~ ns.bad ~ ' Lampe'\n                \
+          \  ~ ('n' if ns.bad != 1 else '') ~ ' nicht synchron**' -%}\n{%- endif -%}\
+          \ {{ ns.out }}\n"
+        title: "\U0001F33F Pflanzenlicht Status"
+        type: markdown
       type: grid
     subview: true
     title: Smart
