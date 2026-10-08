@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-10-07 23:30 | System: 18.53 kWp
+> Generated: 2026-10-08 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,7 +19,7 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5699.3 kWh
+**Total Production:** 5711.7 kWh
 
 **Average Accuracy:** 77.9%
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 53.91 kWh | 1940.6 kWh |
+| Autumn | 75.48 kWh | 52.78 kWh | 1953.0 kWh |
 
 ---
 
@@ -39,7 +39,7 @@
 Diagnosis only. Living correction factors are unchanged.
 This section is the support evidence channel for fleet step-3 gates.
 
-**Learning contract:** physics_calibration_sensor_ghi_v1 (3 groups)
+**Learning contract:** physics_calibration_raw_forecast_v3 (3 groups)
 
 ### GHI sensor geometry (diagnosis a)
 
@@ -50,7 +50,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-10-07 | 1059 | 45 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-10-08 | 1069 | 45 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.628 west k_p90=2.283; k_p90 > 1)
@@ -58,12 +58,12 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 42 | 0.337 | 0.628 | 0.956 | no |
+| 0 | east | 43 | 0.336 | 0.628 | 0.956 | no |
 | 0 | west | 45 | 1.235 | 2.283 | 2.805 | no |
-| 10 | east | 91 | 0.410 | 0.754 | 1.480 | no |
-| 10 | west | 87 | 0.744 | 1.157 | 1.506 | no |
-| 20 | east | 92 | 0.517 | 0.908 | 0.962 | yes |
-| 20 | west | 89 | 0.780 | 1.224 | 1.454 | yes |
+| 10 | east | 92 | 0.407 | 0.754 | 1.480 | no |
+| 10 | west | 88 | 0.741 | 1.157 | 1.506 | no |
+| 20 | east | 93 | 0.512 | 0.908 | 0.962 | yes |
+| 20 | west | 90 | 0.774 | 1.212 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
 | 40 | east | 41 | 0.792 | 0.940 | 1.135 | yes |
@@ -75,9 +75,9 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-10-07 | 8-18 (11) | 1.365 | 3.919 | 2.554 |
-| Gruppe 2 | 2026-10-07 | 8-18 (11) | 0.427 | 4.000 | 3.573 |
-| Gruppe 3 | 2026-10-07 | 8-18 (11) | 0.501 | 3.981 | 3.479 |
+| Gruppe 1 | 2026-10-08 | 8-18 (11) | 0.725 | 2.231 | 1.506 |
+| Gruppe 2 | 2026-10-08 | 8-18 (11) | 0.618 | 1.985 | 1.367 |
+| Gruppe 3 | 2026-10-08 | 8-18 (11) | 0.660 | 1.637 | 0.977 |
 
 ### Sample ledger
 
@@ -97,7 +97,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
+> *"Today is a good day to generate clean energy! - Worf"*
 
 Live long and prosper!
 
