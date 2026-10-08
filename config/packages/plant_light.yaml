@@ -1,5 +1,5 @@
 template:
-  - trigger:
+    - trigger:
       - platform: time
         at: "00:00:01"
       - platform: homeassistant
@@ -13,7 +13,7 @@ template:
         event_type: label_registry_updated
       - platform: state
         entity_id: input_boolean.plant_light_use_max_daylight
-    sensor:
+      sensor:
       - name: "Plant Light Schedule"
         unique_id: plant_light_schedule
         icon: mdi:lightbulb-variant-outline
@@ -24,23 +24,23 @@ template:
              and state_attr('sun.sun', 'next_setting') is not none }}
         variables:
           use_max_daylight: "{{ is_state('input_boolean.plant_light_use_max_daylight', 'on') }}"
-
+    
           sr_ts: >
             {% set raw = state_attr('sun.sun', 'next_rising') %}
             {% set nr = raw | as_datetime | as_local if raw else none %}
             {% if nr %}
               {{ (today_at(nr.strftime('%H:%M:%S')) + timedelta(minutes=15)).timestamp() }}
             {% endif %}
-
+    
           ss_ts: >
             {% set raw = state_attr('sun.sun', 'next_setting') %}
             {% set ns_ = raw | as_datetime | as_local if raw else none %}
             {% if ns_ %}
               {{ (today_at(ns_.strftime('%H:%M:%S')) + timedelta(minutes=15)).timestamp() }}
             {% endif %}
-
+    
           dl_hours: "{{ ((ss_ts | float) - (sr_ts | float)) / 3600 }}"
-
+    
           discovered_entities: >
             {% set ns = namespace(ents=[]) %}
             {% for lbl in labels() | select('match', '^[0-9]+h$') %}
@@ -49,7 +49,7 @@ template:
                                           | list) %}
             {% endfor %}
             {{ ns.ents | unique | list }}
-
+    
           ent_sched: >
             {% set ns = namespace(d={}) %}
             {% set dl = dl_hours | round(2) %}
@@ -62,9 +62,9 @@ template:
               {% endfor %}
             {% endfor %}
             {{ ns.d }}
-
+    
           unique_hours: "{{ ent_sched.values() | unique | list | sort }}"
-
+    
           sched_dict: >
               {% set ns = namespace(d={}) %}
               {% set sr = as_datetime(sr_ts | float) | as_local %}
@@ -84,51 +84,51 @@ template:
           sunrise: "{{ (as_datetime(sr_ts | float) | as_local).strftime('%H:%M') }}"
           sunset: "{{ (as_datetime(ss_ts | float) | as_local).strftime('%H:%M') }}"
 
-  - trigger:
-      - trigger: time_pattern
-        minutes: "/5"
-      - trigger: state
-        entity_id: sensor.plant_light_schedule
-      - trigger: state
-        entity_id: binary_sensor.plant_lights_out_of_sync
-        to: "off"
-    binary_sensor:
-      - name: "Plant Lights Out of Sync"
-        unique_id: plant_lights_out_of_sync
-        device_class: problem
-        auto_off:
-          seconds: 30
-        variables:
-          actions_needed: >-
-            {% set sched_sensor = 'sensor.plant_light_schedule' %}
-            {% set ent_scheds = state_attr(sched_sensor, 'entity_schedules') | default({}) %}
-            {% if not ent_scheds %}
-              []
-            {% else %}
-              {% set states_list = expand(ent_scheds.keys() | list) %}
-              {% set scheds = state_attr(sched_sensor, 'schedules') | default({}) %}
-              {% set now_dt = now() %}
-              {% set ns = namespace(fixes=[]) %}
-
-              {% for state_obj in states_list %}
-                {% set ent = state_obj.entity_id %}
-                {% set target_hours = ent_scheds.get(ent) | string %}
-                {% set times = scheds.get(target_hours, {}) %}
-                {% if times %}
-                  {% set start_dt = times.get('start') | as_datetime %}
-                  {% set end_dt   = times.get('end')   | as_datetime %}
-                  {% set should_be_on = start_dt <= now_dt < end_dt %}
-                  {% set is_on = state_obj.state == 'on' %}
-                  {% if should_be_on and not is_on %}
-                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_on", "state": "on"}] %}
-                  {% elif not should_be_on and is_on %}
-                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_off", "state": "off"}] %}
+    - trigger:
+        - trigger: time_pattern
+          minutes: "/5"
+        - trigger: state
+          entity_id: sensor.plant_light_schedule
+        - trigger: state
+          entity_id: binary_sensor.plant_lights_out_of_sync
+          to: "off"
+      binary_sensor:
+        - name: "Plant Lights Out of Sync"
+          unique_id: plant_lights_out_of_sync
+          device_class: problem
+          auto_off:
+            seconds: 30
+          variables:
+            actions_needed: >-
+              {% set sched_sensor = 'sensor.plant_light_schedule' %}
+              {% set ent_scheds = state_attr(sched_sensor, 'entity_schedules') | default({}) %}
+              {% if not ent_scheds %}
+                []
+              {% else %}
+                {% set states_list = expand(ent_scheds.keys() | list) %}
+                {% set scheds = state_attr(sched_sensor, 'schedules') | default({}) %}
+                {% set now_dt = now() %}
+                {% set ns = namespace(fixes=[]) %}
+    
+                {% for state_obj in states_list %}
+                  {% set ent = state_obj.entity_id %}
+                  {% set target_hours = ent_scheds.get(ent) | string %}
+                  {% set times = scheds.get(target_hours, {}) %}
+                  {% if times %}
+                    {% set start_dt = (times.get('start') | as_datetime).replace(tzinfo=now_dt.tzinfo) %}
+                    {% set end_dt   = (times.get('end')   | as_datetime).replace(tzinfo=now_dt.tzinfo) %}
+                    {% set should_be_on = start_dt <= now_dt < end_dt %}
+                    {% set is_on = state_obj.state == 'on' %}
+                    {% if should_be_on and not is_on %}
+                      {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_on", "state": "on"}] %}
+                    {% elif not should_be_on and is_on %}
+                      {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_off", "state": "off"}] %}
+                    {% endif %}
                   {% endif %}
-                {% endif %}
-              {% endfor %}
-
-              {{ ns.fixes }}
-            {% endif %}
-        state: "{{ actions_needed | length > 0 }}"
-        attributes:
-          actions_needed: "{{ actions_needed }}"
+                {% endfor %}
+    
+                {{ ns.fixes }}
+              {% endif %}
+          state: "{{ actions_needed | length > 0 }}"
+          attributes:
+            actions_needed: "{{ actions_needed }}"
