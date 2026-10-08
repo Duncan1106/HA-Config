@@ -132,3 +132,131 @@ template:
           state: "{{ actions_needed | length > 0 }}"
           attributes:
             actions_needed: "{{ actions_needed }}"
+            
+    
+    - trigger:
+      - platform: time
+        at: "00:00:01"
+      - platform: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: event
+        event_type: entity_registry_updated
+      - platform: event
+        event_type: label_registry_updated
+      - platform: state
+        entity_id: input_boolean.plant_light_use_max_daylight
+      - platform: template
+        value_template: >
+          {% set ns = namespace(l=[]) %}
+          {% for lbl in labels() | select('match', '^[0-9]+h$') %}
+            {% set ns.l = ns.l + (label_entities(lbl)
+                                  | select('match', '^switch\\.') | list) %}
+          {% endfor %}
+          {% set resolved = expand(ns.l | unique | list) %}
+          {% set sig = resolved | map(attribute='entity_id') | list | join(',')
+                       ~ '|' ~ resolved | map(attribute='state') | list | join(',') %}
+          {{ sig != state_attr('binary_sensor.plant_lights_out_of_sync_combined', 'switch_sig') | default('', true) }}
+      - platform: time_pattern
+        minutes: "/15"
+      - platform: state
+        entity_id: binary_sensor.plant_lights_out_of_sync
+        to: "off"
+      binary_sensor:
+      - name: "Plant Lights Out of Sync Combined"
+        unique_id: plant_lights_out_of_sync_combined
+        device_class: problem
+        auto_off:
+          seconds: 30
+        availability: >
+          {{ state_attr('sun.sun', 'next_rising') is not none
+             and state_attr('sun.sun', 'next_setting') is not none }}
+        variables:
+          use_max_daylight: "{{ is_state('input_boolean.plant_light_use_max_daylight', 'on') }}"
+          sr_ts: >
+            {% set raw = state_attr('sun.sun', 'next_rising') %}
+            {% set nr = raw | as_datetime | as_local if raw else none %}
+            {% if nr %}
+              {{ (today_at(nr.strftime('%H:%M:%S')) + timedelta(minutes=15)).timestamp() }}
+            {% endif %}
+          ss_ts: >
+            {% set raw = state_attr('sun.sun', 'next_setting') %}
+            {% set ns_ = raw | as_datetime | as_local if raw else none %}
+            {% if ns_ %}
+              {{ (today_at(ns_.strftime('%H:%M:%S')) + timedelta(minutes=15)).timestamp() }}
+            {% endif %}
+          dl_hours: "{{ ((ss_ts | float) - (sr_ts | float)) / 3600 }}"
+          ent_sched: >
+            {% set ns = namespace(d={}) %}
+            {% set dl = dl_hours | round(2) %}
+            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
+              {% set h = lbl | replace('h', '') | int %}
+              {% for ent in label_entities(lbl) | select('match', '^switch\\.') %}
+                {% set labeled = [ns.d.get(ent, 0), h] | max %}
+                {% set effective = ([labeled, dl] | max) if use_max_daylight else labeled %}
+                {% set ns.d = ns.d | combine({ ent: effective }) %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.d }}
+          unique_hours: "{{ ent_sched.values() | unique | list | sort }}"
+          sched_dict: >
+            {% set ns = namespace(d={}) %}
+            {% set sr = as_datetime(sr_ts | float) | as_local %}
+            {% set ss = as_datetime(ss_ts | float) | as_local %}
+            {% set mid = sr + (ss - sr) / 2 %}
+            {% for h in unique_hours %}
+              {% set s_time = mid - timedelta(hours=h / 2) %}
+              {% set e_time = mid + timedelta(hours=h / 2) %}
+              {% set ns.d = ns.d | combine({ h | string: {
+                'start': s_time.strftime('%Y-%m-%d %H:%M'),
+                'end':   e_time.strftime('%Y-%m-%d %H:%M'),
+                'start_ts': s_time.timestamp(),
+                'end_ts':   e_time.timestamp()
+              } }) %}
+            {% endfor %}
+            {{ ns.d }}
+          actions_needed: >-
+            {% if not ent_sched %}
+              []
+            {% else %}
+              {% set states_list = expand(ent_sched.keys() | list) %}
+              {% set now_ts = now().timestamp() %}
+              {% set ns = namespace(fixes=[]) %}
+              {% for state_obj in states_list %}
+                {% set ent = state_obj.entity_id %}
+                {% set target_hours = ent_sched.get(ent) | string %}
+                {% set times = sched_dict.get(target_hours, {}) %}
+                {% if times %}
+                  {% set start_ts = times.get('start_ts') | float(0) %}
+                  {% set end_ts   = times.get('end_ts')   | float(0) %}
+                  {% set should_be_on = start_ts <= now_ts < end_ts %}
+                  {% set is_on = state_obj.state == 'on' %}
+                  {% if should_be_on and not is_on %}
+                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_on", "state": "on"}] %}
+                  {% elif not should_be_on and is_on %}
+                    {% set ns.fixes = ns.fixes + [{"entity_id": ent, "action": "turn_off", "state": "off"}] %}
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.fixes }}
+            {% endif %}
+        state: "{{ actions_needed | length > 0 }}"
+        attributes:
+          day_length: "{{ dl_hours | round(2) }}"
+          entity_schedules: "{{ ent_sched }}"
+          schedules: "{{ sched_dict }}"
+          unique_hours: "{{ unique_hours }}"
+          use_max_daylight: "{{ use_max_daylight }}"
+          sunrise: "{{ (as_datetime(sr_ts | float) | as_local).strftime('%H:%M') }}"
+          sunset: "{{ (as_datetime(ss_ts | float) | as_local).strftime('%H:%M') }}"
+          actions_needed: "{{ actions_needed }}"
+          switch_sig: >
+            {% set ns = namespace(l=[]) %}
+            {% for lbl in labels() | select('match', '^[0-9]+h$') %}
+              {% set ns.l = ns.l + (label_entities(lbl)
+                                    | select('match', '^switch\\.') | list) %}
+            {% endfor %}
+            {% set resolved = expand(ns.l | unique | list) %}
+            {{ resolved | map(attribute='entity_id') | list | join(',')
+               ~ '|' ~ resolved | map(attribute='state') | list | join(',') }}
