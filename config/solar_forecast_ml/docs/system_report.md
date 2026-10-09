@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-10-08 23:30 | System: 18.53 kWp
+> Generated: 2026-10-09 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,7 +19,7 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5711.7 kWh
+**Total Production:** 5736.7 kWh
 
 **Average Accuracy:** 77.9%
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 52.78 kWh | 1953.0 kWh |
+| Autumn | 75.48 kWh | 52.05 kWh | 1978.0 kWh |
 
 ---
 
@@ -50,19 +50,19 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-10-08 | 1069 | 45 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-10-09 | 1079 | 46 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.628 west k_p90=2.283; k_p90 > 1)
-- elev 10 excluded from headline (elev < 20; east k_p90=0.754 west k_p90=1.157; k_p90 > 1)
+- elev 10 excluded from headline (elev < 20; east k_p90=0.761 west k_p90=1.155; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 43 | 0.336 | 0.628 | 0.956 | no |
+| 0 | east | 44 | 0.341 | 0.628 | 0.956 | no |
 | 0 | west | 45 | 1.235 | 2.283 | 2.805 | no |
-| 10 | east | 92 | 0.407 | 0.754 | 1.480 | no |
-| 10 | west | 88 | 0.741 | 1.157 | 1.506 | no |
-| 20 | east | 93 | 0.512 | 0.908 | 0.962 | yes |
+| 10 | east | 93 | 0.412 | 0.761 | 1.480 | no |
+| 10 | west | 90 | 0.733 | 1.155 | 1.506 | no |
+| 20 | east | 94 | 0.514 | 0.908 | 0.962 | yes |
 | 20 | west | 90 | 0.774 | 1.212 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
 | 30 | west | 62 | 0.908 | 1.181 | 1.478 | yes |
@@ -75,15 +75,15 @@ Headline exclusions:
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-10-08 | 8-18 (11) | 0.725 | 2.231 | 1.506 |
-| Gruppe 2 | 2026-10-08 | 8-18 (11) | 0.618 | 1.985 | 1.367 |
-| Gruppe 3 | 2026-10-08 | 8-18 (11) | 0.660 | 1.637 | 0.977 |
+| Gruppe 1 | 2026-10-09 | 8-18 (11) | 0.725 | 2.556 | 1.832 |
+| Gruppe 2 | 2026-10-09 | 8-18 (11) | 0.618 | 1.946 | 1.327 |
+| Gruppe 3 | 2026-10-09 | 8-18 (11) | 0.660 | 1.637 | 0.977 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 23 | 8 |
+| forecast_physics | 36 | 8 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
@@ -97,7 +97,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"Today is a good day to generate clean energy! - Worf"*
+> *"The sun is the source of all life. Even in the 24th century, we still look to the stars. - Captain Picard"*
 
 Live long and prosper!
 
