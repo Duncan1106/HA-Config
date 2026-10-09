@@ -6225,21 +6225,21 @@ config:
       - content: "{%- set sensor = 'binary_sensor.plant_lights_out_of_sync' -%} {%-\
           \ set ent_scheds = state_attr(sensor, 'entity_schedules') | default({})\
           \ -%} {%- set scheds = state_attr(sensor, 'schedules') | default({}) -%}\
-          \ \n{%- set dl = state_attr(sensor, \"day_light_hours\") | float(0) -%}\
-          \ {%- set sr = state_attr(sensor, 'sunrise') | default('\u2014') -%} {%-\
-          \ set ss = state_attr(sensor, 'sunset') | default('\u2014') -%} {%- set\
-          \ max_dl = state_attr(sensor, 'use_max_daylight') | default(false) -%} {%-\
-          \ set now_dt = now() -%} {%- set ns = namespace(out='', bad=0) -%} {%- set\
-          \ ns.out = '**Tag (' ~ (dl | round(1)) ~ 'h Licht, ' ~ sr ~ '\u2013' ~ ss\
-          \ ~ ' Uhr)'\n                 ~ (' \xB7 \U0001F31E Max-Tag aktiv' if max_dl\
-          \ else '') ~ '**\\n\\n' -%}\n{%- set ns.out = ns.out ~ '| Lampe | Status\
-          \ | Ziel | Zeitfenster & Restzeit |\\n' -%} {%- set ns.out = ns.out ~ '|\
-          \ :--- | :---: | :---: | :--- |\\n' -%} {%- for ent, h_eff in ent_scheds.items()\
-          \ -%}\n  {%- set name = state_attr(ent, 'friendly_name') | default(ent)\
-          \ -%}\n  {%- set cur = states(ent) -%}\n  {%- set h_eff_s = h_eff | string\
-          \ -%}\n  {%- set h_labels = labels(ent) | select('match', '^[0-9]+h$')\n\
-          \                     | map('replace', 'h', '') | map('int') | list -%}\n\
-          \  {%- set h_labeled = ([0] + h_labels) | max -%}\n  {%- set times = scheds.get(h_eff_s,\
+          \ \n{%- set dl = state_attr(sensor, \"day_length\") | float(0) -%} {%- set\
+          \ sr = state_attr(sensor, 'sunrise') | default('\u2014') -%} {%- set ss\
+          \ = state_attr(sensor, 'sunset') | default('\u2014') -%} {%- set max_dl\
+          \ = state_attr(sensor, 'use_max_daylight') | default(false) -%} {%- set\
+          \ now_dt = now() -%} {%- set ns = namespace(out='', bad=0) -%} {%- set ns.out\
+          \ = '**Tag (' ~ (dl | round(1)) ~ 'h Licht, ' ~ sr ~ '\u2013' ~ ss ~ ' Uhr)'\n\
+          \                 ~ (' \xB7 \U0001F31E Max-Tag aktiv' if max_dl else '')\
+          \ ~ '**\\n\\n' -%}\n{%- set ns.out = ns.out ~ '| Lampe | Status | Ziel |\
+          \ Zeitfenster & Restzeit |\\n' -%} {%- set ns.out = ns.out ~ '| :--- | :---:\
+          \ | :---: | :--- |\\n' -%} {%- for ent, h_eff in ent_scheds.items() -%}\n\
+          \  {%- set name = state_attr(ent, 'friendly_name') | default(ent) -%}\n\
+          \  {%- set cur = states(ent) -%}\n  {%- set h_eff_s = h_eff | string -%}\n\
+          \  {%- set h_labels = labels(ent) | select('match', '^[0-9]+h$')\n     \
+          \                | map('replace', 'h', '') | map('int') | list -%}\n  {%-\
+          \ set h_labeled = ([0] + h_labels) | max -%}\n  {%- set times = scheds.get(h_eff_s,\
           \ {}) -%}\n  {%- if times and times.get('start') and times.get('end') -%}\n\
           \    {%- set start_dt = as_datetime(times.get('start')).replace(tzinfo=now_dt.tzinfo)\
           \ -%}\n    {%- set end_dt = as_datetime(times.get('end')).replace(tzinfo=now_dt.tzinfo)\
