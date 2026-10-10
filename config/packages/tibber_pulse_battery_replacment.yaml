@@ -1,0 +1,103 @@
+template:
+  - trigger:
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        for:
+          seconds: 20
+        id: slow_update
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        for:
+          minutes: 2
+        id: power_dead
+      - trigger: numeric_state
+        entity_id: sensor.tibber_node_battery_voltage
+        below: 3.025
+        id: voltage_low
+      - trigger: state
+        entity_id: sensor.tibber_bridge_0100100700ff
+        id: bridge_active
+      - trigger: numeric_state
+        entity_id: sensor.tibber_node_battery_voltage
+        above: 3.025
+        id: voltage_ok
+      - trigger: state
+        entity_id: sensor.tibber_node_bridge_status
+        id: bridge_status_update
+      - trigger: event
+        event_type: event_template_reloaded
+        id: template_reloaded
+
+    binary_sensor:
+      - name: "Tibber Pulse Battery Replacement"
+        unique_id: tibber_pulse_battery_replacement
+        device_class: battery
+
+        availability: >-
+          {{ has_value('sensor.tibber_node_battery_voltage') }}
+
+        variables:
+          this_id: "binary_sensor.tibber_pulse_battery_replacement"
+          bridge_entity: "sensor.tibber_bridge_0100100700ff"
+          voltage_entity: "sensor.tibber_node_battery_voltage"
+          bridge_status_entity: "sensor.tibber_node_bridge_status"
+
+          # Hardware bridge uptime check (in seconds)
+          bridge_uptime: "{{ state_attr(bridge_status_entity, 'uptime') | float(9999) }}"
+          is_bridge_booting: "{{ bridge_uptime <= 180 }}"
+
+          # HA auto-restart automation check (converted to local timezone)
+          restart_trig: "{{ state_attr('automation.tibber_pulse_bridge_auto_restart', 'last_triggered') }}"
+          is_auto_restarted: >-
+            {% if restart_trig is not none %}
+              {% set trig_time = restart_trig | as_datetime | as_local %}
+              {{ (now() - trig_time).total_seconds() <= 180 }}
+            {% else %}
+              false
+            {% endif %}
+
+          # Combined 3-minute grace period
+          is_recently_restarted: "{{ is_bridge_booting or is_auto_restarted }}"
+
+          # Voltage status
+          voltage: "{{ states(voltage_entity) | float(0) }}"
+          is_voltage_low: "{{ 0 < voltage < 3.025 }}"
+
+          # Signal loss tracking
+          was_dead: "{{ state_attr(this_id, 'reason') == 'Complete signal loss (>2 min)' }}"
+          is_dead: "{{ trigger.id == 'power_dead' or not has_value(bridge_entity) or (was_dead and trigger.id not in ['bridge_active', 'slow_update']) }}"
+
+          # Gated slow update
+          is_slow: "{{ trigger.id == 'slow_update' and has_value(bridge_entity) }}"
+
+          # Sliding 10-minute window array management
+          now_ts: "{{ now().timestamp() | int }}"
+          raw_timestamps: "{{ state_attr(this_id, 'strike_timestamps') }}"
+          prev_timestamps: "{{ raw_timestamps if raw_timestamps is list else [] }}"
+
+          # Purge timestamps older than 600 seconds
+          cutoff: "{{ now_ts - 600 }}"
+          valid_timestamps: "{{ prev_timestamps | select('>=', cutoff) | list }}"
+
+          # Append new timestamp if a slow update occurred
+          new_timestamps: "{{ (valid_timestamps + [now_ts]) if is_slow else valid_timestamps }}"
+          strike_count: "{{ new_timestamps | count }}"
+
+        state: "{{ not is_recently_restarted and (is_voltage_low or is_dead or (strike_count >= 3)) }}"
+
+        attributes:
+          strike_timestamps: "{{ new_timestamps }}"
+          slow_strikes: "{{ strike_count }}"
+          reason: >-
+            {% if is_recently_restarted %}
+              Grace period active (Bridge uptime: {{ bridge_uptime | int }}s)
+            {% elif is_dead %}
+              Complete signal loss (>2 min)
+            {% elif is_voltage_low %}
+              Voltage sag below 3.025V ({{ voltage }}V)
+            {% elif strike_count >= 3 %}
+              Reporting delayed >20s 3 times within 10 min
+            {% else %}
+              Healthy
+            {% endif %}
+            

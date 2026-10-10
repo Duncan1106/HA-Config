@@ -28,9 +28,10 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: ${fallback_ap} 
+    ssid: ${fallback_ap}
     password: !secret ap_password
-
+  enable_btm: true
+  enable_rrm: true
 esphome:
   name: "esp32-c3-mini--goe22-controll"
   friendly_name: "esp32 c3 mini - goe22-controll"
@@ -52,15 +53,8 @@ ota:
   - platform: esphome
     password: !secret ota_password
 
-# Enable logging
-logger:
-  level: VERY_VERBOSE
-  initial_level: INFO
-
-select:
-  - platform: logger
-    id: logger_select
-    name: Logger Level ${variant}
+packages:
+  - !include common/logger.yaml
 
 captive_portal:
 
@@ -68,10 +62,12 @@ mqtt:
   broker: 192.168.2.205
   username: !secret mqtt_user
   password: !secret mqtt_pwd
-  discovery: true
+  discovery: "true"
   client_id: goe22_controll
   id: broker
-
+  discovery_unique_id_generator: mac
+  idf_send_async: true
+  wait_for_connection: true
 time:
   - platform: sntp
     timezone: Europe/Berlin
@@ -410,11 +406,12 @@ sensor:
     topic: ${main_topic}trx
     name: Card Used ${variant}
     id: card_used
-    filters: 
+    accuracy_decimals: 0
+    filters:
       - filter_out: 
         - nan
       - round: 0
-    on_value_range: 
+    on_value_range:
       - above: 1.5
         below: 2.5
         then:
@@ -537,6 +534,7 @@ sensor:
     internal: False
     update_interval: 1s
     lambda: |-
+      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return ((id(grid_power).state - id(buffer_power).state) / id(goe_voltage).state);
 
   - platform: copy
@@ -548,6 +546,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return (id(available_battery_power).state / id(goe_voltage).state);
 
   - platform: copy
@@ -559,6 +558,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(solar_power).state / id(goe_voltage).state;
 
   - platform: copy
@@ -570,6 +570,7 @@ sensor:
     internal: true
     filters: 
       - lambda: |-
+          if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
           return id(battery_discharge_power).state / id(goe_voltage).state;
 
   - platform: template
@@ -581,6 +582,7 @@ sensor:
     update_interval: 1s
     internal: false
     lambda: |-
+      if (std::isnan(id(goe_voltage).state) || id(goe_voltage).state == 0.0f) return {};
       return (id(goe_power).state / id(goe_voltage).state);
 
   - platform: template
@@ -591,6 +593,7 @@ sensor:
     internal: False
     update_interval: 1s
     lambda: |-
+      if (std::isnan(id(goe_amp_divider).state) || id(goe_amp_divider).state == 0.0f) return {};
       return (id(available_grid_amps).state + id(goe_amps).state + id(available_battery_amps).state) / id(goe_amp_divider).state;
     filters: 
       - clamp: 

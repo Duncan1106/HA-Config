@@ -2,7 +2,7 @@ config:
   kiosk_mode:
     user_settings:
     - hide_header: true
-      hide_sidebar: true
+      hide_sidebar: false
       ignore_entity_settings: true
       users:
       - tablet
@@ -10,7 +10,7 @@ config:
   - background:
       image: /api/image/serve/20d387a70a84fe685bab259da8b4b726/original
     badges:
-    - entity: sensor.lenovo_p11_battery
+    - entity: sensor.kuche_lenovo_lenovo_tb_j606f_battery
       hide:
       - name
       name: Battery
@@ -21,24 +21,9 @@ config:
         users:
         - 4f7767cac0c342edb25e991662a2f56c
       - condition: state
-        entity: sensor.lenovo_p11_battery
+        entity: sensor.kuche_lenovo_lenovo_tb_j606f_battery
         state_not: unavailable
-    - entity: sensor.lenovo_tb_j606f_battery_power
-      hide:
-      - name
-      icon: mdi:power-plug-battery
-      max_value: 10
-      min_value: -10
-      theme: optimal_when_low
-      type: custom:entity-progress-badge
-      visibility:
-      - condition: user
-        users:
-        - 4f7767cac0c342edb25e991662a2f56c
-      - condition: state
-        entity: sensor.lenovo_tb_j606f_battery_power
-        state_not: unavailable
-    - entity: switch.lenovo_tab_p11_bildschirm
+    - entity: light.kuche_lenovo_lenovo_tb_j606f_screen
       name: Bildschirm
       show_icon: true
       show_name: true
@@ -49,9 +34,9 @@ config:
         users:
         - 4f7767cac0c342edb25e991662a2f56c
       - condition: state
-        entity: switch.lenovo_tab_p11_bildschirm
+        entity: light.kuche_lenovo_lenovo_tb_j606f_screen
         state_not: unavailable
-    - entity: switch.lenovo_tab_p11_bildschirmschoner
+    - entity: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
       name: Bildschirmschoner
       show_icon: true
       show_name: true
@@ -62,9 +47,9 @@ config:
         users:
         - 4f7767cac0c342edb25e991662a2f56c
       - condition: state
-        entity: switch.lenovo_tab_p11_bildschirmschoner
+        entity: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
         state_not: unavailable
-    - entity: button.lenovo_tab_p11_browser_neu_starten
+    - entity: button.kuche_lenovo_lenovo_tb_j606f_reload_page
       icon: mdi:restart
       show_icon: true
       show_name: false
@@ -74,7 +59,7 @@ config:
         data: {}
         perform_action: button.press
         target:
-          entity_id: button.lenovo_tab_p11_browser_neu_starten
+          entity_id: button.kuche_lenovo_lenovo_tb_j606f_reload_page
       type: entity
       visibility:
       - condition: user
@@ -97,15 +82,14 @@ config:
     - cards:
       - auto_hide_pagination: 0
         cards:
-        - entity: weather.micro_weather_station
+        - entity: weather.weather_fusion_ai_home
           forecast_type: daily
           secondary_info_attribute: wind_speed
           show_current: true
           show_forecast: true
           type: weather-forecast
-        - entity: weather.irauen33
+        - entity: weather.forecast_home
           forecast_type: daily
-          name: Weatherunderground
           secondary_info_attribute: wind_speed
           show_current: true
           show_forecast: true
@@ -170,6 +154,9 @@ config:
             navigation_path: '#og'
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.og_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: button
         double_tap_action:
           action: navigate
@@ -178,60 +165,46 @@ config:
         hold_action:
           action: navigate
           navigation_path: '#og'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.og_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: OG
-        show_state: false
         slider_fill_orientation: left
         slider_value_position: right
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.og_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.og_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        state_content: []
         sub_button:
           bottom: []
           main:
           - entity: binary_sensor.duncan_fenster_contact
-            show_attribute: false
             show_background: false
             show_icon: false
-            show_last_changed: false
             show_name: true
-            show_state: false
             state_background: true
             visibility:
             - condition: state
               entity: binary_sensor.duncan_fenster_contact
               state_not: 'off'
           - entity: binary_sensor.kinderbad_fenster_contact
-            show_attribute: false
             show_background: false
             show_icon: false
-            show_last_changed: false
             show_name: true
-            show_state: false
             state_background: true
             visibility:
             - condition: state
               entity: binary_sensor.kinderbad_fenster_contact
               state_not: 'off'
           - entity: binary_sensor.bad_fenster_contact
-            show_attribute: false
             show_background: false
             show_icon: false
-            show_last_changed: false
             show_name: true
-            show_state: false
             state_background: true
             visibility:
             - condition: state
               entity: binary_sensor.bad_fenster_contact
               state_not: 'off'
           - entity: binary_sensor.schlafzimmer_fenster_contact
-            show_attribute: false
             show_background: false
             show_icon: false
-            show_last_changed: false
             show_name: true
-            show_state: false
             state_background: true
             visibility:
             - condition: state
@@ -242,8 +215,8 @@ config:
             name: ''
             show_background: false
             show_icon: false
-            show_state: true
             state_background: false
+            state_content: state
             visibility:
             - condition: state
               entity: binary_sensor.og_sicher
@@ -252,8 +225,7 @@ config:
           action: navigate
           navigation_path: '#og'
         type: custom:bubble-card
-      - attribute: friendly_name
-        button_action:
+      - button_action:
           hold_action:
             action: navigate
             navigation_path: '#eg'
@@ -262,6 +234,9 @@ config:
             navigation_path: '#eg'
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.eg_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: button
         double_tap_action:
           action: navigate
@@ -271,50 +246,43 @@ config:
         hold_action:
           action: navigate
           navigation_path: '#eg'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.eg_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: EG
         scrolling_effect: true
-        show_attribute: false
-        show_last_changed: false
-        show_state: false
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.eg_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.eg_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        state_content: []
         sub_button:
-        - entity: binary_sensor.gasteklo_fenster_contact
-          show_attribute: false
-          show_background: false
-          show_icon: false
-          show_last_changed: false
-          show_name: true
-          show_state: false
-          state_background: true
-          visibility:
-          - condition: state
-            entity: binary_sensor.gasteklo_fenster_contact
-            state_not: 'off'
-        - entity: binary_sensor.wintergarten_tur_contact
-          show_attribute: false
-          show_background: false
-          show_icon: false
-          show_last_changed: false
-          show_name: true
-          state_background: true
-          visibility:
-          - condition: state
-            entity: binary_sensor.wintergarten_tur_contact
-            state_not: 'off'
-        - entity: sensor.eg_temperatur
-          icon: ''
-          name: ''
-          show_background: false
-          show_icon: false
-          show_state: true
-          state_background: false
-          visibility:
-          - condition: state
-            entity: binary_sensor.eg_sicher
-            state: 'off'
+          bottom: []
+          main:
+          - entity: binary_sensor.gasteklo_fenster_contact
+            show_background: false
+            show_icon: false
+            show_name: true
+            state_background: true
+            visibility:
+            - condition: state
+              entity: binary_sensor.gasteklo_fenster_contact
+              state_not: 'off'
+          - entity: binary_sensor.wintergarten_tur_contact
+            show_background: false
+            show_icon: false
+            show_name: true
+            state_background: true
+            visibility:
+            - condition: state
+              entity: binary_sensor.wintergarten_tur_contact
+              state_not: 'off'
+          - entity: sensor.eg_temperatur
+            icon: ''
+            name: ''
+            show_background: false
+            show_icon: false
+            state_background: false
+            state_content: state
+            visibility:
+            - condition: state
+              entity: binary_sensor.eg_sicher
+              state: 'off'
         tap_action:
           action: navigate
           navigation_path: '#eg'
@@ -328,6 +296,9 @@ config:
             navigation_path: '#kg'
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.kg_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: button
         double_tap_action:
           action: navigate
@@ -336,23 +307,18 @@ config:
         hold_action:
           action: navigate
           navigation_path: '#kg'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.kg_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: KG
         scrolling_effect: true
-        show_state: false
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.kg_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.kg_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        state_content: []
         sub_button:
           bottom: []
           main:
           - entity: binary_sensor.waschkuche_fenster_contact
-            show_attribute: false
             show_background: false
             show_icon: false
-            show_last_changed: false
             show_name: true
-            show_state: false
             state_background: true
             tap_action:
               action: more-info
@@ -374,8 +340,8 @@ config:
             name: ''
             show_background: false
             show_icon: false
-            show_state: true
             state_background: false
+            state_content: state
             visibility:
             - condition: state
               entity: binary_sensor.kg_sicher
@@ -384,8 +350,20 @@ config:
           action: navigate
           navigation_path: '#kg'
         type: custom:bubble-card
-      - card_layout: large
-        card_type: cover
+      - button_action:
+          tap_action:
+            action: navigate
+            navigation_path: '#garage'
+        button_type: name
+        card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.garagedoor_zigbee_contact','on')\
+            \ else 'green' }} !important;\n}\n.bubble-sub-button-1 {\n  background:\
+            \ {{ 'green' if states('sensor.t_h_garage_gefrierschrank_zigbee_temperature')\
+            \ | float(0) <= -12 else 'red' }} !important;\n}\n.bubble-sub-button-2\
+            \ {\n  background: none !important;\n}\n.bubble-sub-button-3 {\n  background:\
+            \ none !important;\n}\n* {\n  font-size: 16px !important;\n}\n"
+        card_type: button
         double_tap_action:
           action: navigate
           navigation_path: '#garage'
@@ -397,49 +375,74 @@ config:
         name: Garage
         rows: 1
         show_name: true
-        show_state: false
-        styles: ".bubble-icon {\n  color: ${hass.states['binary_sensor.garagedoor_zigbee_contact'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n.bubble-sub-button-1 {\n \
-          \ background: ${hass.states['sensor.t_h_garage_gefrierschrank_zigbee_temperature'].state\
-          \ <= -12 ? 'green' : 'red'} !important;\n}\n.bubble-sub-button-2 {\n  background:\
-          \ none !important;\n}\n.bubble-sub-button-3 {\n  background: none !important;\n\
-          }\n* { \n  font-size: 16px !important;\n}"
         sub_button:
-        - entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
-          icon: mdi:snowflake
-          show_icon: true
-          show_name: false
-          show_state: true
-          state_background: false
-          tap_action:
-            action: navigate
-            navigation_path: '#garage'
-          visibility:
-          - above: -12
-            condition: numeric_state
-            entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
-        - entity: sensor.t_h_garage_zigbee_temperature
-          show_attribute: false
-          show_icon: true
-          show_last_changed: false
-          show_name: false
-          show_state: true
-          state_background: false
-          tap_action:
-            action: navigate
-            navigation_path: '#garage'
-          visibility:
-          - below: -12
-            condition: numeric_state
-            entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
-        - entity: sensor.t_h_garage_zigbee_humidity
-          show_icon: true
-          show_name: false
-          show_state: true
-          state_background: false
-          tap_action:
-            action: navigate
-            navigation_path: '#garage'
+          bottom: []
+          main:
+          - entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
+            icon: mdi:snowflake
+            show_icon: true
+            show_name: false
+            state_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#garage'
+            visibility:
+            - above: -12
+              condition: numeric_state
+              entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
+          - entity: sensor.t_h_garage_zigbee_temperature
+            show_icon: true
+            show_name: false
+            state_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#garage'
+            visibility:
+            - below: -12
+              condition: numeric_state
+              entity: sensor.t_h_garage_gefrierschrank_zigbee_temperature
+          - entity: sensor.t_h_garage_zigbee_humidity
+            show_icon: true
+            show_name: false
+            state_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#garage'
+          - entity: script.garage_door_auto_close_and_vent
+            hide_when_parent_unavailable: false
+            icon: mdi:cat
+            scrolling_effect: false
+            tap_action:
+              action: perform-action
+              confirmation: true
+              perform_action: script.garage_door_auto_close_and_vent
+              target: {}
+            visibility:
+            - condition: state
+              entity: sun.sun
+              state: above_horizon
+          - entity: cover.garage_door_controller_garage_door
+            icon: mdi:arrow-up-bold
+            scrolling_effect: false
+            state_background: false
+            tap_action:
+              action: perform-action
+              perform_action: cover.open_cover
+              target:
+                entity_id: cover.garage_door_controller_garage_door
+          - entity: cover.garage_door_controller_garage_door
+            icon: mdi:arrow-down-bold
+            scrolling_effect: false
+            state_background: false
+            tap_action:
+              action: perform-action
+              perform_action: cover.close_cover
+              target:
+                entity_id:
+                - cover.garage_door_controller_garage_door
         tap_action:
           action: navigate
           navigation_path: '#garage'
@@ -453,6 +456,9 @@ config:
             navigation_path: '#boiler'
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'green' if is_state('switch.zirkulationspumpe_zigbee','on')\
+            \ else '' }} !important;\n}\n* {\n  font-size: 16px !important;\n}\n"
         card_type: button
         double_tap_action:
           action: perform-action
@@ -465,47 +471,46 @@ config:
           navigation_path: '#boiler'
         icon: mdi:water-boiler
         name: Boiler
-        show_state: false
-        styles: ".bubble-icon {\n color: ${hass.states['switch.zirkulationspumpe_zigbee'].state\
-          \ === 'on' ? 'green' : ''} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }"
+        state_content: []
         sub_button:
-        - entity: sensor.boiler_remaining_time
-          hide_when_parent_unavailable: true
-          icon: none
-          show_background: false
-          show_state: true
-          tap_action:
-            action: navigate
-            navigation_path: '#boiler'
-          visibility:
-          - condition: state
-            entity: sensor.boiler_remaining_time
-            state_not: 00:00
-        - entity: sensor.boiler_temperature
-          show_background: false
-          show_state: true
-          tap_action:
-            action: navigate
-            navigation_path: '#boiler'
-        - entity: sensor.watermeter_wasserverbrauch
-          icon: mdi:water-circle
-          show_background: false
-          show_state: true
-          tap_action:
-            action: navigate
-            navigation_path: '#boiler'
-          visibility:
-          - above: 0
-            condition: numeric_state
-            entity: sensor.watermeter_wasserverbrauch
-        - entity: sensor.daily_waterusage
-          icon: mdi:sun-clock-outline
-          show_background: false
-          show_state: true
-          tap_action:
-            action: navigate
-            navigation_path: '#boiler'
+          bottom: []
+          main:
+          - entity: timer.boiler_on_demand
+            hide_when_parent_unavailable: true
+            icon: none
+            show_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#boiler'
+            visibility:
+            - condition: state
+              entity: timer.boiler_on_demand
+              state: active
+          - entity: sensor.boiler_temperature
+            show_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#boiler'
+          - entity: sensor.watermeter_wasserverbrauch
+            icon: mdi:water-circle
+            show_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#boiler'
+            visibility:
+            - above: 0
+              condition: numeric_state
+              entity: sensor.watermeter_wasserverbrauch
+          - entity: sensor.daily_waterusage
+            icon: mdi:sun-clock-outline
+            show_background: false
+            state_content: state
+            tap_action:
+              action: navigate
+              navigation_path: '#boiler'
         tap_action:
           action: navigate
           navigation_path: '#boiler'
@@ -519,6 +524,9 @@ config:
             navigation_path: '#internet'
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'green' if is_state('binary_sensor.internet_connection','on')\
+            \ else '' }} !important;\n}\n* {\n  font-size: 16px !important;\n}\n"
         card_type: button
         entity: binary_sensor.internet_connection
         hold_action:
@@ -526,12 +534,9 @@ config:
           navigation_path: '#internet'
         icon: mdi:connection
         name: Internet
-        show_state: false
         slider_fill_orientation: left
         slider_value_position: right
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.internet_connection'].state\
-          \ === 'on' ? 'green' : ''} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }"
+        state_content: []
         tap_action:
           action: navigate
           navigation_path: '#internet'
@@ -544,10 +549,9 @@ config:
         days_to_show: 7
         entities:
         - color: '#ff6c92'
-          entity: calendar.looping
+          entity: calendar.familie
           show_time: true
           split_multiday_events: true
-        - entity: calendar.google_family
         event_font_size: 12px
         event_spacing: 3px
         filter_duplicates: true
@@ -592,6 +596,14 @@ config:
             action: none
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.garagedoor_zigbee_contact','on')\
+            \ else 'green' }} !important;\n}\n.bubble-sub-button-1 {\n  background:\
+            \ {{ 'green' if states('sensor.t_h_garage_gefrierschrank_zigbee_temperature')\
+            \ | float(0) <= -12 else 'red' }} !important;\n}\n.bubble-sub-button-2\
+            \ {\n  display: {{ '' if states('sensor.t_h_garage_gefrierschrank_zigbee_temperature')\
+            \ | float(0) <= -12 else 'none' }} !important;\n}\n* {\n  font-size: 16px\
+            \ !important;\n}\n"
         card_type: pop-up
         cards:
         - double_tap_action:
@@ -681,21 +693,17 @@ config:
         double_tap_action:
           action: none
         entity: binary_sensor.garagedoor_zigbee_contact
+        full_width_on_mobile: true
         hash: '#garage'
         hold_action:
           action: none
         icon_down: mdi:arrow-down-bold
         icon_up: mdi:arrow-up-bold
         name: Garage
+        popup_mode: centered
+        popup_style: classic
         rows: 1
-        show_state: false
-        styles: ".bubble-icon {\n  color: ${hass.states['binary_sensor.garagedoor_zigbee_contact'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n.bubble-sub-button-1 {\n \
-          \ background: ${hass.states['sensor.t_h_garage_gefrierschrank_zigbee_temperature'].state\
-          \ <= -12 ? 'green' : 'red'} !important;\n}\n.bubble-sub-button-2 {\n  display:\
-          \ ${hass.states['sensor.t_h_garage_gefrierschrank_zigbee_temperature'].state\
-          \ <= -12 ? '' : 'none'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }"
+        state_content: []
         sub_button:
           bottom: []
           main:
@@ -703,24 +711,24 @@ config:
             icon: mdi:snowflake
             show_icon: true
             show_name: false
-            show_state: true
             state_background: false
+            state_content: state
             tap_action:
               action: navigate
               navigation_path: '#garage'
           - entity: sensor.t_h_garage_zigbee_temperature
             show_icon: true
             show_name: false
-            show_state: true
             state_background: false
+            state_content: state
             tap_action:
               action: navigate
               navigation_path: '#garage'
           - entity: sensor.t_h_garage_zigbee_humidity
             show_icon: true
             show_name: false
-            show_state: true
             state_background: false
+            state_content: state
             tap_action:
               action: navigate
               navigation_path: '#garage'
@@ -736,6 +744,11 @@ config:
             action: none
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'green' if is_state('switch.zirkulationspumpe_zigbee','on')\
+            \ else '' }} !important;\n}\n.bubble-sub-button-3 {\n  display: {% if\
+            \ is_state('sensor.watermeter_wasserverbrauch','0') %}none{% endif %}\
+            \ !important;\n}\n* {\n  font-size: 16px !important;\n}\n"
         card_type: pop-up
         cards:
         - entity: schedule.boiler_pumpe
@@ -823,49 +836,45 @@ config:
           target:
             entity_id: timer.boiler_on_demand
         entity: switch.zirkulationspumpe_zigbee
+        full_width_on_mobile: true
         hash: '#boiler'
         hold_action:
           action: none
         icon: mdi:water-boiler
         name: Boiler
-        show_state: false
+        popup_mode: centered
         slider_fill_orientation: left
         slider_value_position: right
-        styles: ".bubble-icon {\n color: ${hass.states['switch.zirkulationspumpe_zigbee'].state\
-          \ === 'on' ? 'green' : ''} !important;\n}\n.bubble-sub-button-1 {\n  display:\
-          \ ${hass.states['sensor.boiler_remaining_time'].state === '00:00' ? 'none'\
-          \ : ''} !important;\n}\n.bubble-sub-button-3 {\n  display: ${hass.states['sensor.watermeter_wasserverbrauch'].state\
-          \ === '0' ? 'none' : ''} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }"
+        state_content: []
         sub_button:
           bottom: []
           main:
-          - entity: sensor.boiler_remaining_time
+          - entity: timer.boiler_on_demand
             hide_when_parent_unavailable: true
             icon: none
             show_background: false
-            show_state: true
+            state_content: state
             tap_action:
               action: more-info
             visibility:
             - condition: state
-              entity: sensor.boiler_remaining_time
-              state_not: 00:00
+              entity: timer.boiler_on_demand
+              state: active
           - entity: sensor.boiler_temperature
             show_background: false
-            show_state: true
+            state_content: state
             tap_action:
               action: more-info
           - entity: sensor.watermeter_wasserverbrauch
             icon: mdi:water-circle
             show_background: false
-            show_state: true
+            state_content: state
             tap_action:
               action: more-info
           - entity: sensor.daily_waterusage
             icon: mdi:sun-clock-outline
             show_background: false
-            show_state: true
+            state_content: state
             tap_action:
               action: more-info
         tap_action:
@@ -876,6 +885,9 @@ config:
         background_update: true
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.og_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: pop-up
         cards:
         - entity: binary_sensor.bad_fenster_contact
@@ -894,15 +906,15 @@ config:
           layout: vertical
           type: custom:mushroom-entity-card
         entity: binary_sensor.og_sicher
+        full_width_on_mobile: true
         hash: '#og'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.og_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: OG
-        show_state: false
+        popup_mode: centered
         slider_fill_orientation: left
         slider_value_position: right
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.og_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.og_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        state_content: []
         sub_button:
           bottom: []
           main:
@@ -911,13 +923,16 @@ config:
             name: ''
             show_background: false
             show_icon: false
-            show_state: true
             state_background: false
+            state_content: state
         type: custom:bubble-card
       - auto_close: '60000'
         background_update: true
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.eg_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: pop-up
         cards:
         - entity: binary_sensor.gasteklo_fenster_contact
@@ -928,13 +943,13 @@ config:
           layout: vertical
           type: custom:mushroom-entity-card
         entity: binary_sensor.eg_sicher
+        full_width_on_mobile: true
         hash: '#eg'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.eg_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: EG
-        show_state: false
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.eg_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.eg_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        popup_mode: centered
+        state_content: []
         sub_button:
           bottom: []
           main:
@@ -943,13 +958,16 @@ config:
             name: ''
             show_background: false
             show_icon: false
-            show_state: true
             state_background: false
+            state_content: state
         type: custom:bubble-card
       - auto_close: '60000'
         background_update: true
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'red' if is_state('binary_sensor.kg_sicher','on')\
+            \ else 'green' }} !important;\n}\n* { font-size: 16px !important; }\n"
         card_type: pop-up
         cards:
         - entity: binary_sensor.waschkuche_fenster_contact
@@ -960,13 +978,13 @@ config:
           layout: vertical
           type: custom:mushroom-entity-card
         entity: binary_sensor.kg_sicher
+        full_width_on_mobile: true
         hash: '#kg'
+        icon: "{{ 'mdi:shield-alert' if is_state('binary_sensor.kg_sicher','on')\n\
+          \   else 'mdi:shield-check' }}"
         name: KG
-        show_state: false
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.kg_sicher'].state\
-          \ === 'on' ? 'red' : 'green'} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }\n${icon.setAttribute(\"icon\",\nhass.states['binary_sensor.kg_sicher'].state\
-          \ === 'on' ?\n'mdi:shield-alert' : 'mdi:shield-check')}"
+        popup_mode: centered
+        state_content: []
         sub_button:
           bottom: []
           main:
@@ -975,8 +993,8 @@ config:
             name: ''
             show_background: false
             show_icon: false
-            show_state: true
             state_background: false
+            state_content: state
         type: custom:bubble-card
       - auto_close: '60000'
         background_update: false
@@ -987,6 +1005,9 @@ config:
             action: none
         button_type: state
         card_layout: large
+        card_mod:
+          style: ".bubble-icon {\n  color: {{ 'green' if is_state('binary_sensor.internet_connection','on')\
+            \ else '' }} !important;\n}\n* {\n  font-size: 16px !important;\n}\n"
         card_type: pop-up
         cards:
         - alignment:
@@ -1027,17 +1048,16 @@ config:
         double_tap_action:
           action: none
         entity: binary_sensor.internet_connection
+        full_width_on_mobile: true
         hash: '#internet'
         hold_action:
           action: none
         icon: mdi:connection
         name: Internet
-        show_state: false
+        popup_mode: centered
         slider_fill_orientation: left
         slider_value_position: right
-        styles: ".bubble-icon {\n color: ${hass.states['binary_sensor.internet_connection'].state\
-          \ === 'on' ? 'green' : ''} !important;\n}\n* { \n  font-size: 16px !important;\n\
-          }"
+        state_content: []
         sub_button:
           bottom: []
           main: []
@@ -1593,12 +1613,6 @@ config:
               icon: mdi:current-ac
               text: Allowed Current
               unit_show: true
-            - entity_id: switch.esp32_c3_mini_goe11_controll_enable_surplus_charging_11kw
-              icon: mdi:solar-power-variant
-              text: Surplus Charging
-            - entity_id: sensor.esp32_c3_mini_goe11_controll_calculated_amperage_rounded_11kw
-              icon: mdi:current-ac
-              text: Theoretical Current
             info_right:
             - entity_id: sensor.go_echarger_270862_nrg
               text: Voltage
@@ -1749,10 +1763,10 @@ config:
               icon: mdi:current-ac
               text: Allowed Current
               unit_show: true
-            - entity_id: switch.esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
+            - entity_id: switch.duncan_zimmer_esp32_c3_mini_goe22_controll_enable_surplus_charging_22kw
               icon: mdi:solar-power-variant
               text: Surplus Charging
-            - entity_id: sensor.esp32_c3_mini_goe22_controll_calculated_amperage_rounded_22kw
+            - entity_id: sensor.duncan_zimmer_esp32_c3_mini_goe22_controll_calculated_amperage_rounded_22kw
               icon: mdi:current-ac
               text: Theoretical Current
             info_right:
@@ -1821,6 +1835,9 @@ config:
               perform_action: input_boolean.turn_off
               target:
                 entity_id: input_boolean.waschmaschine_fertig
+            time_format:
+              style: short
+              type: relative
             type: tile
             vertical: true
           conditions:
@@ -1845,6 +1862,9 @@ config:
               perform_action: input_boolean.turn_off
               target:
                 entity_id: input_boolean.trockner_fertig
+            time_format:
+              style: short
+              type: relative
             type: tile
             vertical: true
           conditions:
@@ -1869,11 +1889,72 @@ config:
               perform_action: input_boolean.turn_off
               target:
                 entity_id: input_boolean.etwas_ist_imbriefkasten
+            time_format:
+              style: short
+              type: relative
             type: tile
             vertical: true
           conditions:
           - condition: state
             entity: input_boolean.etwas_ist_imbriefkasten
+            state: 'on'
+          type: conditional
+        - card:
+            entity: input_boolean.salz_nachgefullt
+            features_position: bottom
+            hide_state: false
+            icon_tap_action:
+              action: perform-action
+              perform_action: input_boolean.turn_off
+              target:
+                entity_id: input_boolean.salz_nachgefullt
+            name: "Salz nachf\xFCllen"
+            state_content:
+            - state
+            - last_changed
+            tap_action:
+              action: perform-action
+              perform_action: input_boolean.turn_off
+              target:
+                entity_id: input_boolean.salz_nachgefullt
+            time_format:
+              style: short
+              type: relative
+            type: tile
+            vertical: true
+          conditions:
+          - condition: state
+            entity: input_boolean.salz_nachgefullt
+            state: 'on'
+          type: conditional
+        - card:
+            entity: input_boolean.dreame_d9_max_gen_2_behalter_entleeren
+            features_position: bottom
+            hide_state: false
+            icon_tap_action:
+              action: perform-action
+              perform_action: input_boolean.turn_off
+              target:
+                entity_id:
+                - input_boolean.dreame_d9_max_gen_2_behalter_entleeren
+            name: 'Dreame entleert? '
+            state_content:
+            - state
+            - last_changed
+            tap_action:
+              action: perform-action
+              perform_action: input_boolean.turn_off
+              target:
+                entity_id:
+                - input_boolean.dreame_d9_max_gen_2_behalter_entleeren
+            time_format:
+              style: short
+              type: relative
+            type: tile
+            vertical: true
+          conditions:
+          - condition: state
+            entity: input_boolean.dreame_d9_max_gen_2_behalter_entleeren
             state: 'on'
           type: conditional
         type: horizontal-stack
@@ -1888,6 +1969,12 @@ config:
             state: 'on'
           - condition: state
             entity: input_boolean.etwas_ist_imbriefkasten
+            state: 'on'
+          - condition: state
+            entity: input_boolean.salz_nachgefullt
+            state: 'on'
+          - condition: state
+            entity: input_boolean.dreame_d9_max_gen_2_behalter_entleeren
             state: 'on'
       - active_color:
         - 33
@@ -1908,6 +1995,9 @@ config:
             \ rotate(360deg); }\n}\n"
         display_mode: time
         entity: sensor.washing_machine_state
+        grid_options:
+          columns: full
+          rows: 1
         icon: mdi:washing-machine
         program_entity: sensor.washing_machine_program
         show_details: true
@@ -1939,6 +2029,8 @@ config:
             \ rotate(360deg); }\n}\n"
         display_mode: time
         entity: sensor.trockner_state
+        grid_options:
+          columns: full
         icon: mdi:tumble-dryer
         program_entity: sensor.trockner_program
         show_details: true
@@ -1970,6 +2062,8 @@ config:
             \ rotate(360deg); }\n}\n"
         display_mode: time
         entity: sensor.spulmaschine_state
+        grid_options:
+          columns: full
         icon: mdi:dishwasher
         program_entity: sensor.spulmaschine_program
         show_details: true
@@ -1984,7 +2078,8 @@ config:
           state: 'on'
       type: grid
     - cards:
-      - card_mod:
+      - base_decimals: 0
+        card_mod:
           style: "ha-card {\n  height: 435px !important;\n  font-size: 30px !important;\n\
             }\n"
         clickable_entities: true
@@ -2114,14 +2209,13 @@ config:
               unit_of_measurement: kWh
               unit_white_space: true
             use_metadata: false
-        kw_decimals: 1
+        kilo_decimals: 1
+        kilo_threshold: 1100
         max_expected_power: 15000
         min_expected_power: 100
         sort_individual_devices: true
         type: custom:power-flow-card-plus
         use_new_flow_rate_model: false
-        w_decimals: 0
-        watt_threshold: 1100
       - dwd_device: 931bd0c9c07a5088087333446ad50cd0
         dwd_map_land: baw
         dwd_map_position: none
@@ -2131,6 +2225,7 @@ config:
         hide_when_no_warnings: true
         map_pin_zone: zone.home
         max_warnings: 2
+        nina_entity_prefix: []
         separate_advance_warnings: false
         suppress_warning_text: true
         theme_mode: auto
@@ -2161,39 +2256,24 @@ config:
         visibility:
         - condition: and
           conditions:
-          - below: 1
-            condition: numeric_state
-            entity: sensor.stadt_rauenberg_aktuelle_warnstufe
-          - entity: sensor.stadt_rauenberg_aktuelle_warnstufe
-            state_not: unavailable
-          - entity: sensor.stadt_rauenberg_aktuelle_warnstufe
-            state_not: unknown
+          - condition: and
+            conditions:
+            - entity: sensor.stadt_rauenberg_vorwarnstufe
+              state_not: unknown
+            - entity: sensor.stadt_rauenberg_vorwarnstufe
+              state_not: unavailable
+          - condition: and
+            conditions:
+            - entity: sensor.stadt_rauenberg_aktuelle_warnstufe
+              state_not: unavailable
+            - entity: sensor.stadt_rauenberg_aktuelle_warnstufe
+              state_not: unknown
           - below: 1
             condition: numeric_state
             entity: sensor.stadt_rauenberg_vorwarnstufe
-          - entity: sensor.stadt_rauenberg_vorwarnstufe
-            state_not: unavailable
-          - entity: sensor.stadt_rauenberg_vorwarnstufe
-            state_not: unknown
-      - columns:
-        - from
-        - to
-        - duration
-        - distance
-        - icon
-        - route
-        destinations:
-        - entity: sensor.papa_to_arbeit_travel_time
-          from: Zuhause
-          to: Arbeit
-        header: false
-        name: Route von ... nach
-        type: custom:ha-card-waze-travel-time
-        unit: km
-        visibility:
-        - condition: state
-          entity: binary_sensor.show_papa_travel_dashboard
-          state: 'on'
+          - below: 1
+            condition: numeric_state
+            entity: sensor.stadt_rauenberg_aktuelle_warnstufe
       column_span: 1
       type: grid
     title: Home
@@ -2239,7 +2319,7 @@ config:
         loop_mode: infinite
         show_pagination: true
         type: custom:simple-swipe-card
-      type: custom:vertical-stack-in-card
+      type: vertical-stack
     path: energy
     subview: true
     title: Energy
@@ -2261,7 +2341,10 @@ config:
               navigation_path: /fire-hd-8/fire
             type: entity
           type: custom:mushroom-chips-card
-        - clock_size: medium
+        - clock_size: small
+          clock_style: digital
+          face_style: markers
+          no_background: true
           show_seconds: true
           type: clock
         - type: custom:mushroom-empty-card
@@ -2316,3 +2399,491 @@ config:
     subview: true
     title: Camera
     type: panel
+  - cards:
+    - cards:
+      - alignment: start
+        chips:
+        - content_info: none
+          double_tap_action:
+            action: none
+          entity: person.duncan
+          hold_action:
+            action: none
+          icon: mdi:arrow-left
+          tap_action:
+            action: navigate
+            navigation_path: /fire-hd-8/fire
+          type: entity
+        type: custom:mushroom-chips-card
+      - bleed: true
+        dashboard: lovelace
+        ha_card: false
+        mode: static
+        type: custom:embedded-view-card
+        view: ev
+      type: vertical-stack
+    path: evs
+    subview: true
+    title: EVs
+    type: panel
+  - cards: []
+    max_columns: 4
+    path: xyz-test
+    sections:
+    - cards:
+      - auto_height: false
+        auto_hide_pagination: 0
+        card_spacing: 1
+        cards:
+        - images:
+          - image: /local/pycupra/image_VSSZZZKRXSA024881_side.png
+          indicator_rows:
+          - global_icon_size: 16
+            row_items:
+            - entity: sensor.cupra_tavascan_odometer
+              name: Kilometerstand
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ is_state(''switch.cupra_tavascan_charging'',''off'')
+                }}'
+            - entity: sensor.tavascan_kwh_100km
+              icon: mdi:speedometer-slow
+              name: Verbrauch
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.tavascan_max_range
+              icon: mdi:arrow-collapse-up
+              name: Max Reichweite
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.cupra_tavascan_battery_level'') | float(0)
+                < 100}}'
+          - global_icon_size: 16
+            row_items:
+            - entity: sensor.cupra_tavascan_charging_power
+              name: Ladeleistung
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.cupra_tavascan_charging_power'') | float(0)
+                > 0}}'
+            - entity: binary_sensor.cupra_tavascan_vehicle_moving
+              include_state_template: true
+              name: Auto bewegt sich?
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_content:
+              - state_template
+              state_template: '{{ "Ja" if is_state(''binary_sensor.cupra_tavascan_vehicle_moving'',''on'')
+                else "Nein" }}'
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ is_state(''binary_sensor.cupra_tavascan_vehicle_moving'',''on'')}}'
+            - entity: sensor.tavascan_remaining_charging_time
+              name: Verbleibende Ladezeit
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.cupra_tavascan_charging_time_left'')
+                | int(0) > 0 }}'
+            - entity: device_tracker.cupra_tavascan_position
+              name: Standort
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ (not is_state(''device_tracker.cupra_tavascan_position'',''home''))
+                and (not is_state(''device_tracker.cupra_tavascan_position'',''unknown''))
+                }}'
+            - double_tap_action:
+                action: none
+              entity: binary_sensor.cupra_tavascan_doors_locked
+              hold_action:
+                action: none
+              icon: mdi:car
+              include_state_template: true
+              name: Auto verriegelt?
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_content:
+              - state_template
+              state_template: '{{ "Nein" if is_state(''binary_sensor.cupra_tavascan_doors_locked'',''on'')
+                else "Ja"}}'
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ is_state(''binary_sensor.cupra_tavascan_doors_locked'',''on'')
+                }}'
+          layout_config:
+            button_grid:
+              columns: 2
+              rows: 2
+              swipe: true
+            images_swipe:
+              height: 100
+            range_info_config:
+              layout: row
+            section_order:
+            - images
+            - indicators
+            - range_info
+            theme_config:
+              mode: auto
+              theme: default
+          range_info:
+          - bar_height: 10
+            bar_radius: 5
+            bar_width: 100
+            charge_target_entity: ''
+            charge_target_tooltip: ''
+            charge_target_visibility: ''
+            charging_entity: switch.cupra_tavascan_charging
+            energy_level:
+              entity: sensor.cupra_tavascan_battery_level
+              icon: ' '
+              tap_action:
+                action: more-info
+            progress_color: hsl(141, 64%, 52%)
+            range_level:
+              entity: sensor.cupra_tavascan_electric_range
+              tap_action:
+                action: more-info
+          type: custom:vehicle-status-card
+          visibility:
+          - condition: state
+            entity: sensor.cupra_tavascan_electric_range
+            state_not: unavailable
+          - condition: state
+            entity: sensor.cupra_tavascan_electric_range
+            state_not: unknown
+        - images:
+          - image: /local/renault-zoe-leasing-header.png
+          indicator_rows:
+          - alignment: center
+            global_icon_size: 16
+            no_wrap: true
+            row_items:
+            - entity: sensor.renault_zoe_kilometerstand
+              name: Kilometerstand
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.zoe_kwh_100km
+              icon: mdi:speedometer-slow
+              name: Verbrauch
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.zoe_max_range
+              icon: mdi:arrow-collapse-up
+              name: Max Reichweite
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.renault_zoe_batterie'') | float(0) <
+                100 }}'
+          - global_icon_size: 16
+            row_items:
+            - entity: sensor.zoe_remaining_charging_time
+              name: Verbleibende Ladezeit
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.renault_zoe_verbleibende_ladezeit'')
+                | float(0) > 15 and is_state(''binary_sensor.renault_zoe_stecker'',''on'')
+                }}'
+            - entity: device_tracker.renault_zoe_standort
+              name: Standort
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ not is_state(''device_tracker.renault_zoe_standort'',''home'')}}'
+            - entity: binary_sensor.renault_zoe_ladestatus
+              include_state_template: true
+              name: Ladezustand
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_content:
+              - state_template
+              state_template: '{{ ''Charging'' if is_state(''binary_sensor.renault_zoe_ladestatus'',''on'')
+                else ''''}}'
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ is_state(''binary_sensor.renault_zoe_ladestatus'',''on'')
+                }}'
+          layout_config:
+            button_grid:
+              columns: 2
+              rows: 2
+              swipe: false
+            images_swipe:
+              height: 100
+            range_info_config:
+              layout: row
+            section_order:
+            - images
+            - indicators
+            - range_info
+            theme_config:
+              mode: auto
+              theme: default
+          range_info:
+          - bar_height: 10
+            bar_radius: 5
+            bar_width: 100
+            charge_target_color: ''
+            charge_target_entity: ''
+            charge_target_tooltip: true
+            charge_target_visibility: ''
+            charging_entity: binary_sensor.renault_zoe_ladestatus
+            energy_level:
+              attribute: ''
+              entity: sensor.renault_zoe_batterie
+              tap_action:
+                action: more-info
+              value_position: outside
+            progress_color: hsl(141, 64%, 52%)
+            range_level:
+              entity: sensor.renault_zoe_batterieautonomie
+              tap_action:
+                action: more-info
+              value_position: outside
+          type: custom:vehicle-status-card
+          visibility:
+          - condition: state
+            entity: sensor.renault_zoe_batterie
+            state_not: unavailable
+          - condition: state
+            entity: sensor.renault_zoe_batterie
+            state_not: unknown
+        - images:
+          - image: /api/image/serve/795eafbc866c92925053fae9ff1defbd/original
+          indicator_rows:
+          - global_icon_size: 16
+            row_items:
+            - entity: sensor.lsjwh4097rn105299_mileage
+              name: Kilometerstand
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.mg4_kwh_100km
+              icon: mdi:speedometer-slow
+              name: Verbrauch
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+            - entity: sensor.mg4_max_range
+              icon: mdi:arrow-collapse-up
+              name: Max Reichweite
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.lsjwh4097rn105299_soc'') | float(0)
+                < 100 }}'
+          - global_icon_size: 16
+            row_items:
+            - entity: sensor.lsjwh4097rn105299_power
+              include_state_template: true
+              name: Ladeleistung
+              show_icon: true
+              show_name: true
+              show_state: true
+              state_content:
+              - state_template
+              state_template: '{{ states(''sensor.lsjwh4097rn105299_power'') | float(0)
+                | round(1)  * -1}}kW'
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.lsjwh4097rn105299_power'') | int(0)
+                < 0}}'
+            - entity: device_tracker.lsjwh4097rn105299_vehicle_position
+              name: Standort
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ (not is_state(''device_tracker.lsjwh4097rn105299_vehicle_position'',''home''))
+                and (not is_state(''device_tracker.lsjwh4097rn105299_vehicle_position'',''unknown''))
+                }}'
+            - double_tap_action:
+                action: none
+              entity: sensor.lsjwh4097rn105299_remaining_charging_time
+              hold_action:
+                action: none
+              name: Verbleibende Ladezeit
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.lsjwh4097rn105299_power'') | float(0)
+                < 0 and states(''sensor.lsjwh4097rn105299_remaining_charging_time'')
+                | float(0) > 0}}'
+            - double_tap_action:
+                action: none
+              entity: sensor.lsjwh4097rn105299_vehicle_speed
+              hold_action:
+                action: none
+              name: Geschwindigkeit
+              show_icon: true
+              show_name: true
+              show_state: true
+              tap_action:
+                action: more-info
+              type: entity
+              visibility: '{{ states(''sensor.lsjwh4097rn105299_vehicle_speed'') |
+                float(0) > 0 }}'
+          layout_config:
+            button_grid:
+              columns: 2
+              rows: 2
+              swipe: false
+            images_swipe:
+              height: 100
+            range_info_config:
+              layout: row
+            section_order:
+            - images
+            - indicators
+            - range_info
+            theme_config:
+              mode: auto
+              theme: default
+          range_info:
+          - bar_height: 10
+            bar_radius: 5
+            bar_width: 100
+            charging_entity: switch.lsjwh4097rn105299_charging
+            energy_level:
+              entity: sensor.lsjwh4097rn105299_soc
+              icon: ' '
+              tap_action:
+                action: more-info
+            progress_color: hsl(141, 64%, 52%)
+            range_level:
+              entity: sensor.lsjwh4097rn105299_range
+              tap_action:
+                action: more-info
+          type: custom:vehicle-status-card
+          visibility:
+          - condition: state
+            entity: sensor.lsjwh4097rn105299_soc
+            state_not: unavailable
+          - condition: state
+            entity: sensor.lsjwh4097rn105299_soc
+            state_not: unknown
+        loop_mode: loopback
+        show_pagination: false
+        type: custom:simple-swipe-card
+        visibility:
+        - condition: user
+          users: []
+      - cards:
+        - color: "{% if is_state('switch.cupra_tavascan_charging','on') %}blue {%\
+            \ else %}\n  {% set s = states('sensor.cupra_tavascan_electric_vehicles_octopus_a_10a76963_cupra_tavascan_soc')\
+            \ | int(0) %}\n  {{ 'red' if s < 20 else 'orange' if s < 50 else 'green'\
+            \ }}\n{% endif %}"
+          entity: sensor.cupra_tavascan_electric_vehicles_octopus_a_10a76963_cupra_tavascan_soc
+          features_position: bottom
+          icon: "{{ 'mdi:car-electric' if not is_state('switch.cupra_tavascan_charging','on')\n\
+            \   else 'mdi:lightning-bolt' }}"
+          primary: "Cupra {{ '\u26A1' if (states('sensor.cupra_tavascan_electric_vehicles_octopus_a_10a76963_cupra_tavascan_active_power')|float(0)\
+            \ > 0.0) else '' }}"
+          secondary: "{{ states('sensor.cupra_tavascan_electric_vehicles_octopus_a_10a76963_cupra_tavascan_soc')\
+            \ | int(0) }} % \xB7 {{ states('sensor.tavascan_geschatzte_verbleibende_reichweite')\
+            \ | int(0) }} km"
+          tap_action:
+            action: navigate
+            navigation_path: /fire-hd-8/evs
+          type: custom:mushroom-template-card
+          vertical: true
+        - entity: sensor.renault_zoe_batterie
+          icon: "{{ 'mdi:car-electric' if not is_state('binary_sensor.renault_zoe_ladestatus','on')\n\
+            \   else 'mdi:lightning-bolt' }}"
+          icon_color: "{% if is_state('binary_sensor.renault_zoe_ladestatus','on')\
+            \ %}blue {% else %}\n  {% set s = states('sensor.renault_zoe_batterie')\
+            \ | int(0) %}\n  {{ 'red' if s < 20 else 'orange' if s < 50 else 'green'\
+            \ }}\n{% endif %}"
+          layout: vertical
+          primary: "Zoe {{ '\u26A1' if is_state('binary_sensor.renault_zoe_ladestatus','on')\
+            \ else '' }}"
+          secondary: "{{ states('sensor.renault_zoe_batterie') | int(0) }} % \xB7\
+            \ {{ states('sensor.renault_zoe_batterieautonomie') | int(0) }} km"
+          tap_action:
+            action: navigate
+            navigation_path: /fire-hd-8/evs
+          type: custom:mushroom-template-card
+        - entity: sensor.lsjwh4097rn105299_soc
+          icon: "{{ 'mdi:car-electric' if not is_state('switch.lsjwh4097rn105299_charging','on')\n\
+            \   else 'mdi:lightning-bolt' }}"
+          icon_color: "{% if is_state('switch.lsjwh4097rn105299_charging','on') %}blue\
+            \ {% else %}\n  {% set s = states('sensor.lsjwh4097rn105299_soc') | int(0)\
+            \ %}\n  {{ 'red' if s < 20 else 'orange' if s < 50 else 'green' }}\n{%\
+            \ endif %}"
+          layout: vertical
+          primary: "MG4 {{ '\u26A1' if is_state('switch.lsjwh4097rn105299_charging','on')\
+            \ else '' }}"
+          secondary: "{{ states('sensor.lsjwh4097rn105299_soc') | int(0) }} % \xB7\
+            \ {{ states('sensor.lsjwh4097rn105299_range') | int(0) }} km"
+          tap_action:
+            action: navigate
+            navigation_path: /fire-hd-8/evs
+          type: custom:mushroom-template-card
+        type: horizontal-stack
+      type: grid
+    subview: true
+    title: Xyz test
+    type: sections

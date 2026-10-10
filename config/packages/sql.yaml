@@ -1,0 +1,36 @@
+sql:
+  - name: "MariaDB Info"
+    unique_id: mariadb_info
+    query: >-
+      SELECT 
+        'running' as status,
+        @@version as version,
+        ROUND(
+          (SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Queries') /
+          NULLIF((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Uptime'), 0)
+        , 2) as queries_per_sec,
+        (SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant') as db_size_mb,
+        (SELECT COUNT(*) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant') as table_count,
+        (SELECT COALESCE(TABLE_ROWS, 0) 
+         FROM information_schema.tables 
+         WHERE table_schema = 'homeassistant' AND table_name = 'states') as states_records,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Uptime') AS UNSIGNED) as uptime_seconds,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Threads_connected') AS UNSIGNED) as connections,
+        CAST((SELECT VARIABLE_VALUE FROM information_schema.GLOBAL_STATUS WHERE VARIABLE_NAME = 'Questions') AS UNSIGNED) as total_queries,
+        ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 1) as buffer_pool_gb,
+        @@max_connections as max_connections,
+        ROUND(@@innodb_log_file_size/1024/1024, 0) as log_file_mb,
+        ROUND(@@tmp_table_size/1024/1024, 0) as tmp_table_mb,
+        @@innodb_io_capacity as io_capacity,
+        @@innodb_read_io_threads as read_io_threads,
+        @@innodb_write_io_threads as write_io_threads,
+        @@table_open_cache as table_cache,
+        ROUND(@@sort_buffer_size/1024/1024, 0) as sort_buffer_mb,
+        ROUND(@@read_buffer_size/1024/1024, 0) as read_buffer_mb,
+        ROUND(@@join_buffer_size/1024/1024, 0) as join_buffer_mb;
+    column: "status"
+    value_template: "{{ value if value else 'stopped' }}"
