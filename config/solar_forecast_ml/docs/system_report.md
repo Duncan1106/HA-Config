@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-10-11 23:30 | System: 18.53 kWp
+> Generated: 2026-10-12 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,7 +19,7 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5806.4 kWh
+**Total Production:** 5848.4 kWh
 
 **Average Accuracy:** 77.5%
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 51.19 kWh | 2047.8 kWh |
+| Autumn | 75.48 kWh | 50.97 kWh | 2089.7 kWh |
 
 ---
 
@@ -50,18 +50,18 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-10-11 | 1099 | 47 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-10-12 | 1109 | 47 | 6 | 1.40 | geometry_contrast_recorded |
 
 Headline exclusions:
-- elev 0 excluded from headline (elev < 20; east k_p90=0.628 west k_p90=2.283; k_p90 > 1)
+- elev 0 excluded from headline (elev < 20; east k_p90=0.721 west k_p90=2.283; k_p90 > 1)
 - elev 10 excluded from headline (elev < 20; east k_p90=0.761 west k_p90=1.155; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 46 | 0.344 | 0.628 | 0.956 | no |
+| 0 | east | 47 | 0.352 | 0.721 | 0.956 | no |
 | 0 | west | 45 | 1.235 | 2.283 | 2.805 | no |
-| 10 | east | 95 | 0.414 | 0.761 | 1.480 | no |
-| 10 | west | 94 | 0.733 | 1.155 | 1.506 | no |
+| 10 | east | 96 | 0.415 | 0.761 | 1.480 | no |
+| 10 | west | 96 | 0.738 | 1.155 | 1.506 | no |
 | 20 | east | 94 | 0.514 | 0.908 | 0.962 | yes |
 | 20 | west | 90 | 0.774 | 1.212 | 1.454 | yes |
 | 30 | east | 71 | 0.634 | 0.845 | 0.960 | yes |
