@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-10-13 23:30 | System: 18.53 kWp
+> Generated: 2026-10-14 23:30 | System: 18.53 kWp
 
 ---
 
@@ -19,9 +19,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 5868.6 kWh
+**Total Production:** 5904.6 kWh
 
-**Average Accuracy:** 77.3%
+**Average Accuracy:** 77.2%
 
 ### Seasonal Production
 
@@ -30,7 +30,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 50.24 kWh | 2109.9 kWh |
+| Autumn | 75.48 kWh | 49.91 kWh | 2146.0 kWh |
 
 ---
 
@@ -50,7 +50,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-10-13 | 1104 | 47 | 6 | 1.40 | geometry_contrast_recorded |
+| 2026-10-14 | 1099 | 47 | 6 | 1.38 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.730 west k_p90=2.283; k_p90 > 1)
@@ -58,39 +58,39 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 47 | 0.366 | 0.730 | 0.956 | no |
-| 0 | west | 45 | 1.235 | 2.283 | 2.805 | no |
-| 10 | east | 96 | 0.416 | 0.761 | 1.480 | no |
-| 10 | west | 96 | 0.730 | 1.155 | 1.506 | no |
-| 20 | east | 93 | 0.514 | 0.908 | 0.962 | yes |
-| 20 | west | 89 | 0.770 | 1.224 | 1.454 | yes |
-| 30 | east | 70 | 0.632 | 0.845 | 0.960 | yes |
-| 30 | west | 61 | 0.911 | 1.181 | 1.478 | yes |
-| 40 | east | 40 | 0.794 | 0.940 | 1.135 | yes |
-| 40 | west | 40 | 0.966 | 1.166 | 1.371 | yes |
-| 50 | east | 18 | 0.811 | 1.018 | 1.043 | yes |
-| 50 | west | 19 | 1.011 | 1.289 | 1.365 | yes |
+| 0 | east | 47 | 0.374 | 0.730 | 0.956 | no |
+| 0 | west | 45 | 1.247 | 2.283 | 2.805 | no |
+| 10 | east | 96 | 0.417 | 0.761 | 1.480 | no |
+| 10 | west | 96 | 0.739 | 1.155 | 1.506 | no |
+| 20 | east | 92 | 0.514 | 0.908 | 0.962 | yes |
+| 20 | west | 88 | 0.769 | 1.224 | 1.454 | yes |
+| 30 | east | 69 | 0.631 | 0.855 | 0.960 | yes |
+| 30 | west | 60 | 0.918 | 1.181 | 1.478 | yes |
+| 40 | east | 39 | 0.793 | 0.947 | 1.135 | yes |
+| 40 | west | 39 | 0.975 | 1.184 | 1.371 | yes |
+| 50 | east | 17 | 0.806 | 1.018 | 1.043 | yes |
+| 50 | west | 18 | 0.991 | 1.245 | 1.289 | yes |
 
 ### Hourly physics-factor shape
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-10-13 | 8-18 (11) | 0.725 | 2.071 | 1.347 |
-| Gruppe 2 | 2026-10-13 | 8-18 (11) | 0.618 | 1.720 | 1.102 |
-| Gruppe 3 | 2026-10-13 | 8-18 (11) | 0.742 | 1.498 | 0.756 |
+| Gruppe 1 | 2026-10-14 | 8-18 (11) | 0.725 | 1.760 | 1.036 |
+| Gruppe 2 | 2026-10-14 | 8-18 (11) | 0.618 | 1.646 | 1.028 |
+| Gruppe 3 | 2026-10-14 | 8-18 (11) | 0.742 | 1.510 | 0.768 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 100 | 8 |
+| forecast_physics | 122 | 10 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
 |------------|------|
 | bucket_global | 178 |
 | bucket_hourly | 316 |
-| ratio | 135 |
+| ratio | 137 |
 
 
 ---
