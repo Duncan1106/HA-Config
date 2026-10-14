@@ -13,25 +13,29 @@ template:
         unit_of_measurement: "kWh"
         device_class: energy
         state_class: total
-        state: >
-          {{ label_entities('known_energy')
-             | map('states')
-             | map('float', 0)
-             | sum
-             | round(3) }}
-        availability: >
-          {{ label_entities('known_energy') | list | length > 0 }}
+        variables:
+          sensors: >
+            {{ label_entities('known_energy') | list }}
+          sensor_count: "{{ sensors | count }}"
+          readings: >
+            {% if sensor_count == 0 %}
+              {{ dict(total=0.0, active=0) }}
+            {% else %}
+              {% set ns = namespace(total=0.0, active=0) %}
+              {% for s in sensors %}
+                {% set v = states(s) | float(0) %}
+                {% set ns.total = ns.total + v %}
+                {% if v > 0 %}
+                  {% set ns.active = ns.active + 1 %}
+                {% endif %}
+              {% endfor %}
+              {{ dict(total=ns.total, active=ns.active) }}
+            {% endif %}
+        state: "{{ readings.total | round(3) }}"
+        availability: "{{ sensor_count > 0 }}"
         attributes:
-          total_entity_count: >
-            {{ label_entities('known_energy') | list | length }}
-          active_entity_count: >
-            {{ label_entities('known_energy')
-               | map('states')
-               | select('is_number')
-               | map('float')
-               | select('>', 0)
-               | list
-               | length }}
+          total_entity_count: "{{ sensor_count }}"
+          active_entity_count: "{{ readings.active }}"
       - name: "Unmonitored Consumption"
         unique_id: unmonitored_consumption
         state: >
@@ -182,7 +186,7 @@ template:
               {% endfor %}
               {{ dict(top1=ns.top1, top2=ns.top2, total=ns.total, active=ns.active) }}
             {% endif %}
-        state: "{{ readings.total | round(3) }}"
+        state: "{{ readings.total | round(1) }}"
         availability: "{{ sensor_count > 0 }}"
         attributes:
           top_1: "{{ readings.top1.id if readings.top1 else none }}"
