@@ -84,31 +84,48 @@ template:
         unit_of_measurement: "W"
         state_class: measurement
         device_class: power
-        availability: >
-          {% set sensors = [
-            'sensor.grid_import',
-            'sensor.grid_export',
-            'sensor.battery_charge',
-            'sensor.battery_discharge',
-            'sensor.inverter_power_losses',
-            'sensor.inverter_pv_power',
-            'sensor.scb_ac_power',
-            'sensor.known_power'
-          ] %}
-          {{ sensors | map('states') | reject('in', ['unavailable','unknown','none']) | list | length == sensors | length }}
-        state: |
-          {% set grid_import = states('sensor.grid_import') | float(0) %}
-          {% set grid_export = states('sensor.grid_export') | float(0) %}
-          {% set battery_charge = states('sensor.battery_charge') | float(0) %}
-          {% set battery_discharge = states('sensor.battery_discharge') | float(0) %}
-          {% set losses = states('sensor.inverter_power_losses') | float(0) %}
-          {% set deye = states('sensor.inverter_pv_power') | float(0) %}
-          {% set kostal = states('sensor.scb_ac_power') | float(0) %}
-          {% set solar = (deye + kostal) | round(2) %}
-          {% set bkw = states('sensor.bkw_outlet_1_energy_power') | float(0) %}
-          {% set known_power = states('sensor.known_power') | float(0) %}
-          {% set home = (solar - grid_export + grid_import + bkw - battery_charge + (battery_discharge - losses) ) | round(2) %}
-          {{ home | clamp(known_power, 33000) }}
+        variables:
+          required: >
+            {{ [
+              'sensor.grid_import',
+              'sensor.grid_export',
+              'sensor.battery_charge',
+              'sensor.battery_discharge',
+              'sensor.inverter_power_losses',
+              'sensor.inverter_pv_power',
+              'sensor.scb_ac_power'
+            ] }}
+          optional: >
+            {{ [
+              'sensor.bkw_outlet_1_energy_power',
+              'sensor.known_power'
+            ] }}
+          readings: >
+            {% set ns = namespace(ok=true, v={}) %}
+            {% for e in required %}
+              {% set raw = states(e) %}
+              {% if raw is none or raw in ['unavailable', 'unknown', 'none'] %}
+                {% set ns.ok = false %}
+              {% endif %}
+              {% set ns.v = ns.v | combine({e: raw | float(0)}) %}
+            {% endfor %}
+            {% for e in optional %}
+              {% set ns.v = ns.v | combine({e: states(e) | float(0)}) %}
+            {% endfor %}
+            {{ dict(ok=ns.ok, v=ns.v) }}
+        availability: "{{ readings.ok }}"
+        state: >
+          {% set v = readings.v %}
+          {% set solar = v['sensor.inverter_pv_power'] + v['sensor.scb_ac_power'] %}
+          {% set home = solar
+                      - v['sensor.grid_export']
+                      + v['sensor.grid_import']
+                      + v['sensor.bkw_outlet_1_energy_power']
+                      - v['sensor.battery_charge']
+                      + v['sensor.battery_discharge']
+                      - v['sensor.inverter_power_losses'] %}
+          {{ home | round(2) | clamp(v['sensor.known_power'], 33000) }}
+
       - name: "Home Consumption Total Day"
         unique_id: home_consumption_total_day
         unit_of_measurement: "kWh"
