@@ -468,7 +468,7 @@ template:
           temp_diff: "{{ (temp_outside|float - temp_inside|float) | round(2)}}"
           rain_rate: "{{states('sensor.gw1100a_rain_rate') | float(0) }}"
           rain_sunflower: "{{ is_state('binary_sensor.rain_sun_flower_rain', 'on') }}"
-          weather: "{{ states('weather.irauen33') | lower | default('') }}"
+          weather: "{{ states('weather.weather_fusion_ai_home') | lower | default('') }}"
           weather_says_rain: >
             {% set RAIN_KEYWORDS = ['rain', 'shower'] %}
             {{ RAIN_KEYWORDS | select('in', weather) | list | count > 0 }}
@@ -1121,93 +1121,55 @@ template:
                 {% endfor %}
                 {{ ns.dict }}
 
-  - cover:
-      - device_class: window
-        unique_id: wintergarten_dachfenster
-        optimistic: false
-        open_cover:
-        - action: script.send_ir_remote_command
-          data:
-              button_label: window_open
-        close_cover:
-        - action: script.send_ir_remote_command
-          data:
-              button_label: window_close
-        stop_cover:
-        - action: script.send_ir_remote_command
-          data:
-              button_label: window_stop
-        name: Wintergarten Dachfenster
-        state: '{{ is_state(''binary_sensor.dachfenster_wintergarten'',''on'')  }}'
-
-      - device_class: blind
-        unique_id: wintergarten_rolladen_dachfenster
-        optimistic: false
-        open_cover:
-            - action: script.send_ir_remote_command
-              data:
-                  button_label: rollo_open
-        close_cover:
-            - action: script.send_ir_remote_command
-              data:
-                  button_label: rollo_close
-        stop_cover:
-            - action: script.send_ir_remote_command
-              data:
-                  button_label: rollo_stop
-        name: Wintergarten Rolladen Dachfenster
-        state: "{{ is_state('input_boolean.rollo_state', 'off') }}"
-
   # Lenovo Wallpanel
-  - triggers:
-    - trigger: homeassistant
-      event: start
-    - platform: event
-      event_type: event_template_reloaded
-    - platform: state
-      entity_id:
-        - sensor.lenovo_tab_p11_batterie
-        - sensor.lenovo_tb_j606f_battery_level
-    sensor:
-      - name: "Lenovo P11 Battery"
-        unit_of_measurement: "%"
-        device_class: battery
-        unique_id: lenovo_p11_battery
-        variables:
-          sources:
-            - "sensor.kuche_lenovo_lenovo_tb_j606f_battery"
-            - "sensor.lenovo_tb_j606f_battery_level"
-          levels: >
-            {{ sources
-               | map('states')
-               | map('float', none)
-               | select('!=', none)
-               | list }}
-          level: >
-            {% if levels | length > 0 %}
-              {{ levels | min }}
-            {% else %}
-              none
-            {% endif %}
-        availability: >
-          {{ levels | length > 0 }}
-        state: "{{ level }}"
-        attributes:
-          levels: "{{ levels }}"
-          band: >
-            {% if level is none %}
-              unknown
-            {% elif level < 10 %}
-              critical
-            {% elif level < 20 %}
-              very_low
-            {% elif level < 30 %}
-              low
-            {% elif level < 39 %}
-              warn
-            {% else %}
-              ok
-            {% endif %}
+#   - triggers:
+#     - trigger: homeassistant
+#       event: start
+#     - platform: event
+#       event_type: event_template_reloaded
+#     - platform: state
+#       entity_id:
+#         - sensor.lenovo_tab_p11_batterie
+#         - sensor.lenovo_tb_j606f_battery_level
+#     sensor:
+#       - name: "Lenovo P11 Battery"
+#         unit_of_measurement: "%"
+#         device_class: battery
+#         unique_id: lenovo_p11_battery
+#         variables:
+#           sources:
+#             - "sensor.kuche_lenovo_lenovo_tb_j606f_battery"
+#           levels: >
+#             {{ sources
+#               | map('states')
+#               | map('float', none)
+#               | select('!=', none)
+#               | list }}
+#           level: >
+#             {% if levels | length > 0 %}
+#               {{ levels | min }}
+#             {% else %}
+#               none
+#             {% endif %}
+#         availability: >
+#           {{ levels | length > 0 }}
+#         state: "{{ level }}"
+#         attributes:
+#           levels: "{{ levels }}"
+#           band: >
+#             {% if level is none %}
+#               unknown
+#             {% elif level < 10 %}
+#               critical
+#             {% elif level < 20 %}
+#               very_low
+#             {% elif level < 30 %}
+#               low
+#             {% elif level < 39 %}
+#               warn
+#             {% else %}
+#               ok
+#             {% endif %}
 
   # Pellet Heating System Status
   - trigger:
@@ -1259,91 +1221,3 @@ template:
             {% elif is_ignition and not is_scheduled %} Outside Window Ignition
             {% else %} Following Schedule
             {% endif %}
-
-  # Pool Extend Logic
-  - binary_sensor:
-      - name: "Pool Extend Condition Met"
-        unique_id: pool_extend_condition_met
-        icon: mdi:arrow-expand-plus
-        state: >
-          {% set pulse_time = states('input_number.pulsetimeactualvalue') | float(0) %}
-          {% set pv_power = states('sensor.inverter_pv_power') | float(0) %}
-          {% set extend_count = states('counter.pool_extend_counter') | int(0) %}
-          {% set pump_on = is_state('switch.pool_pumpe', 'on') %}
-          {% set stop_flag = is_state('input_boolean.stop_pool', 'on') %}
-          {% set temp_rising = is_state('binary_sensor.pool_temperature_zigbee_pool_temp_rising', 'on') %}
-
-          {{ 
-            pulse_time < 410 and
-            pv_power > 1200 and
-            extend_count < 15 and
-            pump_on == true and
-            stop_flag == false and
-            temp_rising == true
-          }}
-        availability: >
-          {% set entities = [
-            'input_number.pulsetimeactualvalue',
-            'sensor.inverter_pv_power',
-            'counter.pool_extend_counter',
-            'switch.pool_pumpe',
-            'input_boolean.stop_pool',
-            'binary_sensor.pool_temperature_zigbee_pool_temp_rising'
-          ] %}
-          {{ entities | map('states') | select('in', ['unavailable', 'unknown', 'none']) | list | count == 0 }}
-        attributes:
-          last_status_change: "{{ states.binary_sensor.pool_temperature_zigbee_pool_temp_rising.last_changed if states.binary_sensor.pool_temperature_zigbee_pool_temp_rising }}"
-          reason: >
-            {% if is_state('binary_sensor.pool_extend_condition_met', 'unavailable') %} Sensor Data Offline
-            {% elif states('input_number.pulsetimeactualvalue') | float(0) >= 410 %} High Pulse Time
-            {% elif states('sensor.inverter_pv_power') | float(0) <= 1200 %} Low Solar Power
-            {% elif states('counter.pool_extend_counter') | int(0) >= 15 %} Max Extensions Reached
-            {% elif is_state('switch.pool_pumpe', 'off') %} Pump Off
-            {% elif is_state('input_boolean.stop_pool', 'on') %} Stop Flag Active
-            {% elif not is_state('binary_sensor.pool_temperature_zigbee_pool_temp_rising', 'on') %} Temp Not Rising
-            {% else %} All Conditions Met {% endif %}
-
-  # Timelapse 15s Pulse
-  - trigger:
-      - trigger: time_pattern
-        seconds: "/15"
-    binary_sensor:
-      - name: "AnkerMake Snapshot Pulse"
-        unique_id: ankermake_snapshot_pulse_15s
-        state: >-
-          {{ is_state('binary_sensor.ankerctl_lauft', 'on') 
-             and states('sensor.ankermake_power') | float(0) > 15 }}
-        auto_off: '00:00:01'
-
-  # Fire Detection
-  - binary_sensor:
-      - name: "Fire Risk Detected"
-        unique_id: fire_risk_detected
-        device_class: heat
-        icon: mdi:fire-alert
-        variables:
-          threshold: 45
-          labeled: "{{ label_entities('fire_watch') }}"
-          fire_sensors: >-
-            {% set ns = namespace(list=[]) %}
-            {% for eid in labeled %}
-              {% set u = state_attr(eid, 'unit_of_measurement') | default('', true) %}
-              {% set v = states(eid) | float(-999) %}
-              {% if v != -999 %}
-                {% set v_c = (v - 32) * 5/9 if u in ['°F','F','Fahrenheit'] else v %}
-                {% if v_c > threshold %}
-                  {% set ns.list = ns.list + [ state_attr(eid, 'friendly_name') | default(eid, true) ~ ' (' ~ (v_c | round(1)) ~ ' °C)' ] %}
-                {% endif %}
-              {% endif %}
-            {% endfor %}
-            {{ ns.list | join(', ') }}
-          count: >-
-            {{ fire_sensors.split(',') | map('trim') | select('!=', '') | list | length }}
-        availability: "{{ labeled | count > 0 }}"
-        state: "{{ count > 0 }}"
-        attributes:
-          triggered_sensors: "{{ fire_sensors }}"
-          triggered_count: "{{ count }}"
-          threshold: "{{ threshold }}"
-          monitored_count: "{{ labeled | count }}"
-          updated: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
