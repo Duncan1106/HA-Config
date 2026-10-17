@@ -1,0 +1,110 @@
+template:
+  # Humidifier
+  - trigger:
+      - trigger: homeassistant
+        event: start
+      - platform: event
+        event_type: event_template_reloaded
+      - platform: time_pattern
+        minutes: "/1"
+      - platform: state
+        entity_id:
+          - input_number.max_humidifier_activations_per_day
+    binary_sensor:
+      - name: "Luftbefeuchter On-Windows"
+        unique_id: humidifier_trigger_window
+        variables:
+          current_time: "{{ now() | as_local }}"
+          match_window_seconds: 65
+          nr_offset_hours: 2
+          ns_offset_hours: 1.25
+          nr_str: >
+            {% set current_time_dt = as_datetime(current_time) %}
+            {% set next_rising = as_datetime(state_attr('sun.sun','next_rising')) | as_local %}
+            {% set nr_today = next_rising if next_rising.day == current_time_dt.day else next_rising - timedelta(days=1) %}
+            {{ nr_today + timedelta(hours=(nr_offset_hours|float)) }}
+          ns_str: >
+            {% set current_time_dt = as_datetime(current_time) %}
+            {% set next_setting = as_datetime(state_attr('sun.sun','next_setting')) | as_local %}
+            {% set ns_today = next_setting if next_setting.day == current_time_dt.day else next_setting - timedelta(days=1) %}
+            {{ ns_today - timedelta(hours=ns_offset_hours|float) }}
+          actual_triggers_today: "{{states('sensor.daily_luftbefeuchter') | int(0)}}"
+          max_activations_per_day: "{{ states('input_number.max_humidifier_activations_per_day') | int(15) }}"
+          remaining_activations: "{{ [0, max_activations_per_day|int - actual_triggers_today|int] | max }}"
+          last_changed_utility_meter: "{{ as_datetime((states.sensor.daily_luftbefeuchter.last_changed) + timedelta(minutes=10)) | as_local }}"
+          distribution_anchor_time_str: >
+            {% set nr = as_datetime(nr_str) | as_local %}
+            {% if actual_triggers_today|int == 0 %}
+              {{ nr }}
+            {% else %}
+              {{ [as_datetime(last_changed_utility_meter) | as_local, nr] | max }}
+            {% endif %}
+          span: >
+            {% set ns = as_datetime(ns_str) | as_local %}
+            {% set distribution_anchor_time = as_datetime(distribution_anchor_time_str) | as_local %}
+            {% set span = ns - distribution_anchor_time %}
+            {{ span.total_seconds() }}
+          interval: "{{ span|int / (remaining_activations|int + 1) }}"
+          all_ptts: >
+            {% set distribution_anchor_time_str = as_datetime(distribution_anchor_time_str) | as_local %}
+            {% set count = remaining_activations|int %}
+            {% set out = namespace(items=[]) %}
+            {% if count > 0 and span|float > 0 %}
+              {% for i in range(count) %}
+                {% set ptt = distribution_anchor_time_str + timedelta(seconds=(i + 1) * interval|float) %}
+                {% set out.items = out.items + [ptt.isoformat()] %}
+              {% endfor %}
+            {% endif %}
+            {{ out.items }}
+        availability: >
+          {{ states('sun.sun') not in ['unknown', 'unavailable']
+             and state_attr('sun.sun', 'next_rising') is not none
+             and state_attr('sun.sun', 'next_setting') is not none
+             and states('sensor.daily_luftbefeuchter') not in ['unknown', 'unavailable'] }}
+        state: >
+          {% set current_time_dt = as_datetime(current_time) | as_local%}
+          {% set match_window = timedelta(seconds=match_window_seconds|int) %}
+          {% set result = namespace(match=false) %}
+          {% for t_str in all_ptts %}
+            {% set ptt = as_datetime(t_str) | as_local %}
+            {% if (ptt - match_window) <= current_time_dt <= (ptt + match_window) %}
+              {% set result.match = true %}
+            {% endif %}
+          {% endfor %}
+          {{ result.match }}
+        attributes:
+          status: >
+            {% set curr = as_datetime(current_time) %}
+            {% set nr = as_datetime(nr_str) %}
+            {% set ns = as_datetime(ns_str) %}
+            {% if curr < nr %} Outside Window: Night/Morning
+            {% elif curr > ns %} Outside Window: Night/Evening
+            {% elif remaining_activations|int <= 0 %} Outside Window: Daily Limit Reached
+            {% else %} Active: Calculating Slots {% endif %}
+          next_sunrise_offset_start: "{{ as_datetime(nr_str).strftime('%Y-%m-%d %H:%M:%S') }}"
+          next_sunset_offset_end: "{{ as_datetime(ns_str).strftime('%Y-%m-%d %H:%M:%S') }}"
+          actual_triggers_today: "{{ actual_triggers_today }}"
+          max_activations_per_day: "{{ max_activations_per_day }}"
+          remaining_activations: "{{ remaining_activations }}"
+          distribution_anchor_time: "{{ distribution_anchor_time_str }}"
+          window_duration: "{{ time_until(now() + (as_datetime(ns_str) - as_datetime(nr_str)), 2) }}"
+          trigger_interval: "{{ (time_until(now() + timedelta(seconds=interval|int), 3)) if remaining_activations|int > 0 else 'N/A' }}"
+          trigger_times: >
+            {% set current_time_dt = as_datetime(current_time) | as_local %}
+            {% set out = namespace(times=[]) %}
+            {% for t_str in all_ptts %}
+              {% set ptt = as_datetime(t_str) | as_local %}
+              {% if ptt > current_time_dt %}
+                {% set out.times = out.times + [ptt.strftime('%H:%M:%S')] %}
+              {% endif %}
+            {% endfor %}
+            {{ out.times if out.times|length > 0 else ["No future slots"] }}
+          all_trigger_times: >
+            {% set out = namespace(times=[]) %}
+            {% for t_str in all_ptts %}
+              {% set ptt = as_datetime(t_str) | as_local %}
+              {% set out.times = out.times + [ptt.strftime('%H:%M:%S')] %}
+            {% endfor %}
+            {{ out.times if out.times|length > 0 else [" No Slots Today"] }}
+          updated_at: "{{ as_datetime(current_time).strftime('%H:%M:%S') }} by {{ trigger.description | default('manual') }}"
+          

@@ -1,0 +1,65 @@
+template:
+  - select:
+      - name: Smart Home Status Control
+        unique_id: smart_home_status_control
+        options: "{{ ['Daily', 'Power Save', 'Vacation'] }}"
+        state: "{{ states('input_select.smart_home_status') }}"
+        select_option:
+          # 1. Capture previous state before changing helper
+          - variables:
+              from_mode: "{{ states('input_select.smart_home_status') }}"
+
+          # 2. Update the helper state
+          - action: input_select.select_option
+            target:
+              entity_id: input_select.smart_home_status
+            data:
+              option: "{{ option }}"
+
+          # 3. Execute actions based on selected option & previous state
+          - choose:
+              - conditions: "{{ option == 'Power Save' }}"
+                sequence:
+                  - action: homeassistant.turn_off
+                    target:
+                      label_id: optional_off_power_save
+                  - action: notify.duncan
+                    data:
+                      title: Power Save Mode ON
+                      message: Smart Home in Power Save Mode
+
+              - conditions: "{{ option == 'Vacation' }}"
+                sequence:
+                  - action: homeassistant.turn_off
+                    target:
+                      label_id: vacation_mode
+                  - action: notify.notify
+                    data:
+                      title: "Viel Spaß im Urlaub 🏖️"
+                      message: "euer Smart Home "
+
+              # Daily Mode coming from Power Save
+              - conditions:
+                  - "{{ option == 'Daily' }}"
+                  - "{{ from_mode == 'Power Save' }}"
+                sequence:
+                  - action: homeassistant.turn_on
+                    target:
+                      label_id: optional_off_power_save
+                  - action: notify.duncan
+                    data:
+                      title: Power Save Mode OFF
+                      message: Smart Home in Daily Mode
+
+              # Daily Mode coming from Vacation
+              - conditions:
+                  - "{{ option == 'Daily' }}"
+                  - "{{ from_mode == 'Vacation' }}"
+                sequence:
+                  - action: homeassistant.turn_on
+                    target:
+                      label_id: vacation_mode
+                  - action: notify.notify
+                    data:
+                      title: "Willkommen zurück "
+                      message: "Ich hoffe ihr seid erholt "

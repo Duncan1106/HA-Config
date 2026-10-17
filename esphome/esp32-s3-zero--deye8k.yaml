@@ -41,13 +41,8 @@ wifi:
 
 captive_portal:
 
-# Enable logging
-logger:
-  level: DEBUG
-  initial_level: INFO
-  logs: 
-    modbus: ERROR
-    component: ERROR
+packages:
+  - !include common/logger.yaml
 
 time:
   - platform: homeassistant
@@ -67,7 +62,7 @@ light:
     pin: GPIO21
     id: led
     name: Status LED
-    rgb_order: RGB
+    channel_colors: RGB
     chipset: WS2812
 
 script:
@@ -388,6 +383,7 @@ script:
                   - lambda: "return (id(grid_power).state > id(max_grid_power).state);"
                   - lambda: "return (id(battery_capacity).state > 99.99);"
                - switch.is_on: grid_charge
+               - lambda: "return (id(theoretical_grid_charge_current).state < 5);"
           then:
             - while:
                 condition: 
@@ -395,7 +391,6 @@ script:
                 then:
                   - switch.turn_off: grid_charge
                   - delay: 0.125s
-            - delay: 0.25s
             - switch.turn_off: enable_solar_grid_charge
             - script.execute: turn_off_time_slots_script
                
@@ -2485,10 +2480,6 @@ select:
   # 98 - 0 / 111 - 0 -> Use V
   # 98 - 0 / 111 - 1 -> Use %
   # 98 - 0 / 111 - 2 -> No Bat
-  - platform: logger
-    id: logger_select
-    name: Log Level
-
   - platform: modbus_controller
     use_write_multiple: true
     modbus_controller_id: ${modbus_controller_id}

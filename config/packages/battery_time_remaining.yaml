@@ -1,0 +1,59 @@
+template:
+  - sensor:
+      - name: "Inverter Battery Remaining Time"
+        unique_id: inverter_battery_remaining_time
+        icon: >-
+          {% set power = states('sensor.inverter_battery_power') | float(0) %}
+          {% if power < -10 %}
+            mdi:battery-charging
+          {% elif power > 10 %}
+            mdi:battery-charging-wireless-alert
+          {% else %}
+            mdi:battery
+          {% endif %}
+        unit_of_measurement: "h"
+        device_class: duration
+        state_class: measurement
+        availability: >-
+          {{ states('sensor.inverter_battery') | float(none) is not none
+             and states('sensor.inverter_battery_capacity') | float(none) is not none
+             and states('sensor.inverter_battery_power') | float(none) is not none }}
+        state: >-
+          {% set soc = states('sensor.inverter_battery') | float %}
+          {% set cap_kwh = states('sensor.inverter_battery_capacity') | float %}
+          {% set power_w = states('sensor.inverter_battery_power') | float %}
+
+          {% if power_w | abs < 10 %}
+            0
+          {% elif power_w < 0 %}
+            {# Charging: calculate time until 100% #}
+            {% set power_kw = (power_w | abs) / 1000 %}
+            {% set remaining_kwh = cap_kwh * ((100 - soc) / 100) %}
+            {{ (remaining_kwh / power_kw) | round(2) }}
+          {% else %}
+            {# Discharging: calculate runtime until 0% #}
+            {% set power_kw = power_w / 1000 %}
+            {% set available_kwh = cap_kwh * (soc / 100) %}
+            {{ (available_kwh / power_kw) | round(2) }}
+          {% endif %}
+        attributes:
+          mode: >-
+            {% set power = states('sensor.inverter_battery_power') | float(0) %}
+            {% if power < -10 %}
+              Charging
+            {% elif power > 10 %}
+              Discharging
+            {% else %}
+              Idle
+            {% endif %}
+          formatted_time: >-
+            {% set hours_float = states('sensor.inverter_battery_remaining_time') | float(none) %}
+            {% if hours_float is not none and hours_float > 0 %}
+              {% set total_seconds = (hours_float * 3600) | int %}
+              {% set h = total_seconds // 3600 %}
+              {% set m = (total_seconds % 3600) // 60 %}
+              {{ "%dh %02dm" | format(h, m) }}
+            {% else %}
+              0h 00m
+            {% endif %}
+            
