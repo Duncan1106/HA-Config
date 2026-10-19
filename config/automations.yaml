@@ -9681,8 +9681,10 @@
     \ recovery without reacting to momentary flapping."
   triggers:
   - trigger: state
-    entity_id: binary_sensor.garden_house_heating_demand
+    entity_id:
+    - binary_sensor.garden_house_heating_demand
     id: demand
+    to:
   - trigger: state
     entity_id: timer.gartenhaus_heizlufter_timer
     from: active
@@ -9706,92 +9708,99 @@
         duration: 00:15:00
         restore: true
         icon: mdi:timer-outline
-  - if:
-    - condition: trigger
-      id: timer_finished
-    then:
-    - action: script.retry_action_with_backoff
-      data:
-        action_domain: switch
-        action_type: turn_off
-        entity_id: switch.gartenhaus_technik_1
-        target_state: 'off'
-        max_retries: 10
-        base_delay: 5
-        max_delay: 60
-        backoff_type: linear
-        notify_on_failure: true
-        notify_service: notify.duncan
-    else:
-    - choose:
-      - conditions:
+    alias: Create Time if not already existing
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - timer_finished
+      sequence:
+      - action: script.retry_action_with_backoff
+        data:
+          action_domain: switch
+          action_type: turn_off
+          entity_id: switch.gartenhaus_technik_1
+          target_state: 'off'
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+      alias: Timer finished -> Heater OFF
+    - conditions:
+      - condition: template
+        value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
+          'off')\n   and is_state('switch.gartenhaus_technik_1', 'on') }}"
+      sequence:
+      - action: script.retry_action_with_backoff
+        data:
+          action_domain: switch
+          action_type: turn_off
+          entity_id: switch.gartenhaus_technik_1
+          target_state: 'off'
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+      - action: timer.cancel
+        target:
+          entity_id: timer.gartenhaus_heizlufter_timer
+      alias: Enough Heat -> Heater OFF
+    - conditions:
+      - condition: template
+        value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
+          'on')\n   and is_state('switch.gartenhaus_technik_1', 'off') }}"
+      sequence:
+      - action: script.retry_action_with_backoff
+        data:
+          action_domain: switch
+          action_type: turn_on
+          entity_id: switch.gartenhaus_technik_1
+          target_state: 'on'
+          max_retries: 10
+          base_delay: 5
+          max_delay: 60
+          backoff_type: linear
+          notify_on_failure: true
+          notify_service: notify.duncan
+      - action: timer.start
+        target:
+          entity_id: timer.gartenhaus_heizlufter_timer
+        data:
+          duration: '{{ 3600 if now().hour < 4 else 900 }}'
+      - wait_template: '{{ states(''sensor.gartenhaus_technik_power_1'') | float(0)
+          > 300 }}'
+        timeout: 00:01:00
+        continue_on_timeout: true
+        alias: Wait for actual power draw
+      - if:
         - condition: template
-          value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
-            'on')\n   and is_state('switch.gartenhaus_technik_1', 'off') }}"
-        sequence:
-        - action: script.retry_action_with_backoff
+          value_template: "{{ not wait.completed\n   or not (350 <= (states('sensor.gartenhaus_technik_power_1')
+            | float(0)) <= 650) }}"
+        then:
+        - action: notify.duncan
           data:
-            action_domain: switch
-            action_type: turn_on
-            entity_id: switch.gartenhaus_technik_1
-            target_state: 'on'
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: linear
-            notify_on_failure: true
-            notify_service: notify.duncan
-        - action: timer.start
-          target:
-            entity_id: timer.gartenhaus_heizlufter_timer
-          data:
-            duration: '{{ 3600 if now().hour < 4 else 900 }}'
-        - wait_template: '{{ states(''sensor.gartenhaus_technik_power_1'') | float(0)
-            > 300 }}'
-          timeout: 00:01:00
-          continue_on_timeout: true
-        - if:
-          - condition: template
-            value_template: "{{ not wait.completed\n   or not (350 <= (states('sensor.gartenhaus_technik_power_1')
-              | float(0)) <= 650) }}"
-          then:
-          - action: notify.duncan
-            data:
-              title: 'Garden heater: abnormal power draw'
-              message: 'Demand-driven start, but power sensor shows {{ states(''sensor.gartenhaus_technik_power_1'')
-                }} W (expected ~490 W window 350–650 W). Switch state: {{ states(''switch.gartenhaus_technik_1'')
-                }}.'
-      - conditions:
-        - condition: template
-          value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
-            'off')\n   and is_state('switch.gartenhaus_technik_1', 'on') }}"
-        sequence:
-        - action: script.retry_action_with_backoff
-          data:
-            action_domain: switch
-            action_type: turn_off
-            entity_id: switch.gartenhaus_technik_1
-            target_state: 'off'
-            max_retries: 10
-            base_delay: 5
-            max_delay: 60
-            backoff_type: linear
-            notify_on_failure: true
-            notify_service: notify.duncan
-        - action: timer.cancel
-          target:
-            entity_id: timer.gartenhaus_heizlufter_timer
-      - conditions:
-        - condition: template
-          value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
-            'on')\n   and is_state('switch.gartenhaus_technik_1', 'on')\n   and is_state('timer.gartenhaus_heizlufter_timer',
-            'idle') }}"
-        sequence:
-        - action: timer.start
-          target:
-            entity_id: timer.gartenhaus_heizlufter_timer
-          data:
-            duration: '{{ 3600 if now().hour < 4 else 900 }}'
+            title: 'Garden heater: abnormal power draw'
+            message: 'Demand-driven start, but power sensor shows {{ states(''sensor.gartenhaus_technik_power_1'')
+              }} W (expected ~490 W window 350–650 W). Switch state: {{ states(''switch.gartenhaus_technik_1'')
+              }}.'
+        alias: Notify if not started or drawing unusual power
+      alias: Heating needed -> Heater ON
+    - conditions:
+      - condition: template
+        value_template: "{{ is_state('binary_sensor.garden_house_heating_demand',
+          'on')\n   and is_state('switch.gartenhaus_technik_1', 'on')\n   and is_state('timer.gartenhaus_heizlufter_timer',
+          'idle') }}"
+      sequence:
+      - action: timer.start
+        target:
+          entity_id: timer.gartenhaus_heizlufter_timer
+        data:
+          duration: '{{ 3600 if now().hour < 4 else 900 }}'
+      alias: Heating, but Timer Idle -> Timer START
   mode: single
   max_exceeded: silent
 - id: '1767700454624'
