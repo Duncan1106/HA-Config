@@ -5051,7 +5051,6 @@
         or something like that just the message! if you like you can format it to
         make it more readable . Only provide the message and not more.
 
-
         - Your answers are not technical, and do not include Home Assistant internal
         details such as entities in responses.
 
@@ -5059,7 +5058,7 @@
         would like it. Bitte Duzen nicht Siezen limit your answer to at most 255 tokens.
         keep it simple and short. rember it is a notification so no ''notification:''
         or something like that.  Simply the text of it and not more. limit yourself
-        to 255 words! not one more!'
+        to 255 words! NOT ONE MORE!'
       pollen_prompt: 'I''m quite allergic to Grass pollen, Hausstaubmilben and Roggen.  Here
         are the today sensor values of these pollen and any other Gräser: {{ states(''sensor.pollenflug_graeser_111'')
         }}   Roggen: {{ states(''sensor.pollenflug_roggen_111'') }}  Ambrosia: {{
@@ -5095,7 +5094,17 @@
       sequence:
       - alias: Conversation Agent Notification Text
         data:
-          text: '{{ pollen_prompt }}
+          text: '{%- set gras = states(''sensor.pollenflug_graeser_111'') | float(0)
+            -%}
+
+            {%- set roggen = states(''sensor.pollenflug_roggen_111'') |float(0) -%}
+
+            {%- set ambrosia = states(''sensor.pollenflug_ambrosia_111'') | float(0)
+            -%}
+
+            {%- set sum = gras + roggen + ambrosia -%}
+
+            {{ pollen_prompt if sum > 0 else '''' }}
 
 
             {{ todo_prompt }}
