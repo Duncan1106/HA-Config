@@ -688,58 +688,6 @@
     trigger: sun
   conditions: []
   actions:
-  - alias: 'Message rise '
-    if:
-    - condition: trigger
-      id:
-      - Rise
-    - condition: state
-      entity_id: input_boolean.automation_enable_sunrise
-      state: 'on'
-    - condition: not
-      conditions:
-      - condition: or
-        conditions:
-        - condition: state
-          entity_id: sensor.energy_summary_1st_block
-          state:
-          - unknown
-        - condition: state
-          entity_id: sensor.energy_summary_1st_block
-          state:
-          - unavailable
-    then:
-    - data:
-        title: 'Daily Energy Summary:'
-        message: '{{ states(''sensor.energy_summary_1st_block'') }}
-
-
-          {{ states(''sensor.energy_summary_1st_block_2'') }}
-
-          '
-        data:
-          tag: summary_sunrise
-      action: notify.duncan
-  - alias: 'Message sunset '
-    if:
-    - condition: trigger
-      id:
-      - Set
-    - condition: state
-      entity_id: input_boolean.automation_enable_sunset
-      state: 'on'
-    then:
-    - data:
-        title: 'Daily Energy Summary:'
-        message: '{{ states(''sensor.energy_summary_1st_block'') }}
-
-
-          {{ states(''sensor.energy_summary_1st_block_2'') }}
-
-          '
-        data:
-          tag: summary_sunset
-      action: notify.duncan
   - parallel:
     - alias: 'Message midnight '
       if:
@@ -750,14 +698,53 @@
         entity_id: input_boolean.automation_enable_midnight
         state: 'on'
       then:
+      - metadata: {}
+        data: {}
+        target:
+          entity_id: counter.ev_charging_messages
+        action: counter.reset
+      - action: counter.reset
+        metadata: {}
+        data: {}
+        target:
+          entity_id:
+          - counter.db_purge_failure
+          - counter.db_purge_success
+      - action: input_boolean.turn_off
+        metadata: {}
+        target:
+          entity_id: input_boolean.luftbefeuchter_aktiv
+        data: {}
       - data:
           title: Daily Energy Summary
-          message: '{{ states(''sensor.energy_summary_1st_block'') }}
-
-
-            {{ states(''sensor.energy_summary_1st_block_2'') }}
-
-            '
+          message: "{% set solar_yield = states('sensor.daily_solar_production') |
+            float(0) | round(2) %}\n{% set solar_used = states('sensor.solar_to_home_energy_today')
+            | float(0) | round(2) %}\n{% set grid_import = states('sensor.daily_netzbezug')
+            | float(0) | round(2) %} {% set grid_export = states('sensor.daily_netzeinspeisung')
+            | float(0) | round(2) %} {% set bkw = states('sensor.bkw_outlet_1_energy_today')
+            | float(0) | round(2) %} {% set battery_charge = states('sensor.inverter_today_battery_charge')
+            | float(2) | round(2) %}\n    {% set battery_discharge = states('sensor.inverter_today_battery_discharge')
+            | float(0) | round(2) %}\n    {% set battery_percent = states('sensor.felicity_ess_soc_avg')
+            | float(0) | round(1) %}\n    {% set\n    home_usage = states('sensor.home_consumption_total_day')
+            | float(0) |\n    round(2) %} {% set solar_gen = states('sensor.daily_money_generated_solar')
+            | float(0) | round(2) %}\n    {% set solar_total_gen = states('sensor.solar_to_home_daily_energy_cost')
+            | float(0) | round(2) %}\n    {% set bkw_gen = states('sensor.today_money_generated_bkw')
+            | float(0) | round(1) %}\n{{ '  - Solar Produced: ' + solar_yield|string
+            + ' kWh (' +  solar_used|string + \" kWh / \" + solar_total_gen|string
+            + '€)\\n'  if solar_yield > 0.0001 else '' }}{{ '  - Grid Import: ' +
+            grid_import|string + 'kWh, Export: ' + grid_export|string + ' kWh' + (('
+            (' + solar_gen|string + '€)\\n') if grid_export > 0.01 else '\\n') }}{{
+            '  - BKw: ' + bkw|string + ' kWh' + ' (' + bkw_gen|string + '€)\\n' if
+            bkw > 0.0001 else '' }}{{'  - Bat(' + battery_percent|string + '%): Charge:
+            ' + battery_charge|string + 'kWh, Discharge ' + battery_discharge|string
+            + ' kWh\\n' if battery_discharge > 0.0001 else '' }}{{ '  - Home Usage:
+            ' + home_usage|string + ' kWh\\n' if home_usage > 0.0001 else '' }}\n\n{%-
+            set autarky = states('sensor.autarky') | float(0) |\n    round(2) -%}
+            {%- set self_consumption =\n    states('sensor.self_consumption') | float(0)
+            | round(2) -%}\n{{ '\\nEfficiency Metrics:\\n' if autarky > 0.0001 or
+            self_consumption > 0.0001 else '' }}{{ '  - Autarky: ' + autarky|string
+            + '%\\n' if autarky > 0.0001 else '' }}{{ '  - Self Consumption: ' + self_consumption|string
+            + '%\\n' if self_consumption > 0.0001 else '' }}"
           data:
             tag: summary_midnight
         action: notify.duncan
@@ -771,10 +758,34 @@
         state: 'on'
       then:
       - data:
-          title: 'Appliance Summary:'
-          message: '{{ states(''sensor.appliance_used'') }}
-
-            '
+          message: "{%- set global_threshold = 0.1 %}\n{%- set threshold_map = {\n
+            \ 'sensor.heizung_energy_today': 0.2,\n  'sensor.trockner_energy_today':
+            0.2,\n  'sensor.waschmaschine_energy_today': 0.01,\n  'sensor.backofen_energy_today':
+            0.2,\n  'sensor.spulmaschine_energy_today': 0.2,\n  'sensor.sauger_energy_today':
+            0.2,\n  'sensor.kaffeemaschine_energy_today': 0.05,\n  'sensor.kaffeemaschine_philips_energy_today':
+            0.0,\n  'sensor.fernseher_energy_today': 0.05,\n  'sensor.mikrowelle_energy_today':
+            0.05,\n  'sensor.herd_energy_today': 0.1,\n  'sensor.daily_energy_goe_11kw':
+            0.0,\n  'sensor.daily_energy_goe_22kw': 0.0\n} %}\n{%- set sensors = label_entities('known_energy')
+            | list %}\n{%- set detailed = namespace(items=[]) %}\n{%- for entity_id
+            in sensors %}\n  {%- set value = states(entity_id) | float(0) %}\n  {%-
+            set threshold = threshold_map.get(entity_id, global_threshold) %}\n  {%-
+            if value > threshold %}\n    {%- set raw_name = state_attr(entity_id,
+            'friendly_name') or entity_id %}\n    {%- set cleaned_name = raw_name\n
+            \     | replace('energy', '')\n      | replace('Energy', '')\n      |
+            replace('ENERGY', '')\n      | replace('today', '')\n      | replace('Today',
+            '')\n      | replace('TODAY', '')\n      | replace('daily', '')\n      |
+            replace('Daily', '')\n      | replace('DAILY', '')\n      | replace('switch',
+            '')\n      | replace('Switch', '')\n      | replace('SWITCH', '')\n      |
+            replace('  ', ' ')\n      | replace('  ', ' ')\n      | replace('  ',
+            ' ')\n      | trim() %}\n    {%- set detailed.items = detailed.items +
+            [{\n      'name': cleaned_name,\n      'consumption': value\n    }] %}\n
+            \ {%- endif %}\n{%- endfor %}\n\n{%- set sorted = detailed.items | sort(attribute='consumption',
+            reverse=true) %}\n\n{%- set output = namespace(text='') %}\n\n{%- for
+            entry in sorted %}\n  {%- set line = entry.name + ': ' + (entry.consumption
+            | round(2) | string) + 'kWh\\n' %}\n  {%- set tentative = output.text
+            + line %}\n  {%- if tentative | length <= 250 %}\n    {%- set output.text
+            = tentative %}\n  {%- else %}\n    {%- break %}\n  {%- endif %}\n{%- endfor
+            %}\n{{ output.text.rstrip('\\n') }}"
           data:
             tag: appliances
         action: notify.duncan
@@ -827,24 +838,6 @@
             data:
               tag: goe_energy_today
           action: notify.duncan
-  - alias: Reset EV Messages Counter
-    if:
-    - condition: trigger
-      id:
-      - Day End
-    then:
-    - metadata: {}
-      data: {}
-      target:
-        entity_id: counter.ev_charging_messages
-      action: counter.reset
-    - action: counter.reset
-      metadata: {}
-      data: {}
-      target:
-        entity_id:
-        - counter.db_purge_failure
-        - counter.db_purge_success
   - alias: Forecast tomorrow
     if:
     - condition: trigger
