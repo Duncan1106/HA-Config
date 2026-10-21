@@ -4562,12 +4562,6 @@
       hours: 0
       minutes: 0
       seconds: 15
-  - trigger: numeric_state
-    entity_id:
-    - sensor.kuche_lenovo_lenovo_tb_j606f_ram_available
-    id: High RAM usage
-    enabled: true
-    below: 750
   - trigger: time
     at: 02:00:00
     id: Periodic Restart
@@ -4600,10 +4594,9 @@
             state:
             - 'on'
           alias: Redo Screensaver
-    - alias: High RAM
+    - alias: Periodic Restart
       condition: trigger
       id:
-      - High RAM usage
       - Periodic Restart
   actions:
   - choose:
@@ -4623,6 +4616,12 @@
         target:
           entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
         data: {}
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.kuche_lenovo_lenovo_tb_j606f_screensaver_screen_off_after
+        data:
+          value: '2'
       alias: Mitternacht -> Bildschirm Aus
     - conditions:
       - condition: trigger
@@ -4635,6 +4634,12 @@
           entity_id: select.kuche_lenovo_lenovo_tb_j606f_screensaver_mode
         data:
           option: Local Media
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.kuche_lenovo_lenovo_tb_j606f_screensaver_screen_off_after
+        data:
+          value: '0'
       alias: Sunrise -> Bildschirm An
     - conditions:
       - condition: trigger
@@ -4658,11 +4663,16 @@
         target:
           entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
         data: {}
+      - action: number.set_value
+        metadata: {}
+        target:
+          entity_id: number.kuche_lenovo_lenovo_tb_j606f_screensaver_screen_off_after
+        data:
+          value: '2'
       alias: Bildschirm Aus wenn nach Mitternacht, vor Sonnenaufgang
     - conditions:
       - condition: trigger
         id:
-        - High RAM usage
         - Periodic Restart
       sequence:
       - action: button.press
@@ -4686,19 +4696,6 @@
           minutes: 5
           seconds: 0
           milliseconds: 0
-      - action: script.retry_action_with_backoff
-        metadata: {}
-        data:
-          action_domain: switch
-          action_type: turn_on
-          max_retries: 10
-          base_delay: 5
-          max_delay: 60
-          backoff_type: simple
-          notify_on_failure: true
-          notify_service: notify.duncan
-          entity_id: switch.kuche_lenovo_lenovo_tb_j606f_screensaver_active
-          target_state: 'on'
   mode: queued
   max_exceeded: silent
   max: 10
