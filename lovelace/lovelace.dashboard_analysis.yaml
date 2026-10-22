@@ -485,19 +485,17 @@ config:
 
               {% set stats = raw | from_json %}
 
-              | Bucket | Entities | Multiplier | Recent Drops (k) | Median (k) |
+              | Bucket | Recent Drops (k) | Median (k) | Count |
 
-              | :--- | :--- | :--- | :--- | :--- |
+              | :--- | :--- | :--- | :--- |
 
-              {% for bucket, data in stats.items() -%}
+              {% for bucket, k_list in stats.items() -%}
 
-              {% set k_list = data.k | default([]) -%}
-
-              {% set median = k_list | median | round(2) if k_list | length > 0 else
+              {% set median = k_list | median | round(0) if k_list | length > 0 else
               0 -%}
 
-              | **{{ bucket }}** | {{ data.e }} | {{ data.m }} | {{ k_list | join('',
-              '') if k_list else ''-'' }} | {{ median }} |
+              | **{{ bucket }}** | {{ k_list | join('', '') if k_list else ''-'' }}
+              | {{ median }} | {{ k_list | length }} |
 
               {% endfor %}
 
@@ -505,7 +503,9 @@ config:
 
               > *Waiting for initialization or data unavailable.*
 
-              {% endif %}'
+              {% endif %}
+
+              '
             title: Purge Bucket Statistics
             type: markdown
           - cards:
