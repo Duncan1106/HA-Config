@@ -12826,3 +12826,33 @@
           milliseconds: 125
   mode: single
   max_exceeded: silent
+- id: '1792655468823'
+  alias: Keep Alive Alarm
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.keep_alive_problem
+    attribute: entities
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.to_state is not none and (trigger.to_state.attributes.entities
+          | default([]) | length > 0) }}'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: Ausfall erkannt
+          message: '{% for f in trigger.to_state.attributes.faults -%} {{ state_attr(f.entity,
+            ''friendly_name'') or f.entity }}: {{ f.rule }} (seit {{ f.since | timestamp_custom(''%d.%m.
+            %H:%M'') }}, Wert {{ f.state }}){{ "\n" if not loop.last }} {%- endfor
+            %}'
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.from_state is not none and (trigger.from_state.attributes.entities
+          | default([]) | length > 0) }}'
+      sequence:
+      - action: notify.duncan
+        data:
+          title: Alles wieder in Ordnung
+          message: Keine Keep-Alive-Fehler mehr aktiv.
+  mode: queued
