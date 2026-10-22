@@ -2437,3 +2437,70 @@ garage_door_auto_close_and_vent:
       data:
         title: Garage Door Alert
         message: Garage door failed to auto-close after recovery reset attempt.
+pool_regenwasserpumpe_auto_shutoff:
+  alias: Pool regenwasserpumpe auto shutoff
+  description: Turns on the pool rainwater pump. Aborts and notifies if it doesn't
+    draw power at startup. Turns it off when power drops below 35W, or after 3 minutes
+    (with notification).
+  sequence:
+  - if:
+    - condition: state
+      entity_id: sensor.garten_poolregenwasserpumpe_leistung
+      state:
+      - unavailable
+      - unknown
+    then:
+    - action: notify.duncan
+      data:
+        title: Pool pump
+        message: Power sensor unavailable, pump was not started.
+    - stop: Power sensor unavailable
+  - action: switch.turn_on
+    target:
+      entity_id: switch.garten_poolregenwasserpumpe
+  - action: time.set_value
+    target:
+      entity_id: time.garten_poolregenwasserpumpe_timer
+    data:
+      time: 00:04:00
+  - wait_template: '{{ states(''sensor.garten_poolregenwasserpumpe_leistung'') | float(0)
+      > 35 }}'
+    timeout:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+    continue_on_timeout: true
+  - if:
+    - condition: template
+      value_template: '{{ not wait.completed }}'
+    then:
+    - action: switch.turn_off
+      target:
+        entity_id: switch.garten_poolregenwasserpumpe
+    - action: notify.duncan
+      data:
+        title: Pool pump
+        message: Pump did not draw enough power after start (currently {{ states('sensor.garten_poolregenwasserpumpe_leistung')
+          }} W). Switched off.
+    - stop: Pump drew no power at start
+  - wait_for_trigger:
+    - trigger: numeric_state
+      entity_id:
+      - sensor.garten_poolregenwasserpumpe_leistung
+      below: 35
+    timeout: 00:03:00
+    continue_on_timeout: true
+  - action: switch.turn_off
+    target:
+      entity_id: switch.garten_poolregenwasserpumpe
+  - if:
+    - condition: template
+      value_template: '{{ wait.trigger is none }}'
+    then:
+    - action: notify.duncan
+      data:
+        title: Pool pump
+        message: Pump ran the full 3 minutes without power dropping below 35 W. Switched
+          off by timeout.
+  mode: single
