@@ -1,0 +1,66 @@
+template:
+    - triggers:
+        - trigger: time_pattern
+          minutes: "/1"
+        - trigger: homeassistant
+          event: start
+      variables:
+        result: >-
+          {%- set me = 'binary_sensor.keep_alive_problem' -%}
+          {%- set old = state_attr(me, 'mem') or {} -%}
+          {%- set t_now = now().timestamp() -%}
+          {%- set ns = namespace(pairs=[], faults=[], bad=[]) -%}
+          {%- for lab in labels() if lab.startswith('keep_alive_') -%}
+            {%- set p = lab | regex_findall('^keep_alive_(stale|min|max)(?:_([0-9]+)(wh|w))?_([0-9]+)m$') -%}
+            {%- set valid = p | length == 1 and ((p[0][0] == 'stale') == (p[0][1] == '')) and not (p[0][0] == 'max' and p[0][2] == 'wh') -%}
+            {%- if not valid -%}
+              {%- set ns.bad = ns.bad + [lab] -%}
+            {%- else -%}
+              {%- set kind = p[0][0] -%}
+              {%- set x = p[0][1] | float(0) -%}
+              {%- set unit = p[0][2] -%}
+              {%- set n = p[0][3] | int(0) -%}
+              {%- for e in label_entities(lab) -%}
+                {%- set key = e ~ '|' ~ lab -%}
+                {%- set prev = old.get(key) -%}
+                {%- set k = namespace(ts=(prev[0] if prev else t_now), v=(prev[1] if prev else none)) -%}
+                {%- set s = states(e) -%}
+                {%- set ok = is_number(s) -%}
+                {%- set val = s | float(0) -%}
+                {%- if kind == 'stale' -%}
+                  {%- if ok and states[e].last_reported -%}
+                    {%- set k.ts = states[e].last_reported.timestamp() -%}
+                  {%- endif -%}
+                {%- elif unit == 'w' -%}
+                  {%- if ok and ((kind == 'min' and val >= x) or (kind == 'max' and val <= x)) -%}
+                    {%- set k.ts = t_now -%}
+                  {%- endif -%}
+                {%- elif unit == 'wh' -%}
+                  {%- if ok -%}
+                    {%- set f = 1000 if state_attr(e, 'unit_of_measurement') == 'kWh' else 1 -%}
+                    {%- if k.v is none or val < k.v -%}
+                      {%- set k.v = val -%}
+                    {%- elif (val - k.v) * f >= x -%}
+                      {%- set k.ts = t_now -%}
+                      {%- set k.v = val -%}
+                    {%- endif -%}
+                  {%- endif -%}
+                {%- endif -%}
+                {%- if t_now - k.ts >= n * 60 -%}
+                  {%- set ns.faults = ns.faults + [{'entity': e, 'rule': lab, 'since': k.ts | int, 'state': s}] -%}
+                {%- endif -%}
+                {%- set ns.pairs = ns.pairs + [[key, [k.ts | int, k.v]]] -%}
+              {%- endfor -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ {'mem': dict(ns.pairs), 'faults': ns.faults, 'bad': ns.bad} }}
+      binary_sensor:
+        - name: Keep Alive Problem
+          unique_id: keep_alive_problem
+          device_class: problem
+          state: "{{ result.faults | length > 0 }}"
+          attributes:
+            entities: "{{ result.faults | map(attribute='entity') | unique | list }}"
+            faults: "{{ result.faults }}"
+            invalid_labels: "{{ result.bad }}"
+            mem: "{{ result.mem }}"
