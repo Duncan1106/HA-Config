@@ -12646,18 +12646,6 @@
       seconds: 30
     id: clear_smart_meter
   - trigger: state
-    entity_id: sensor.esp32_c3_mini_terra_dht_status
-    from: All Good
-    for:
-      seconds: 30
-    id: error_terrarium
-  - trigger: state
-    entity_id: sensor.esp32_c3_mini_terra_dht_status
-    to: All Good
-    for:
-      seconds: 30
-    id: clear_terrarium
-  - trigger: state
     entity_id:
     - binary_sensor.homeassistant_fanxiang_s_m_a_r_t
     - binary_sensor.ugreen_nas_linux_s_m_a_r_t
@@ -12692,10 +12680,9 @@
   actions:
   - variables:
       is_error: '{{ trigger.id.startswith(''error'') }}'
-      tag_id: '{% if ''smart_meter'' in trigger.id %}smart_meter_problem {% elif ''terrarium''
-        in trigger.id %}dht_sensor_problem {% elif ''smart_drive'' in trigger.id%}hdd_alert_{{
-        trigger.entity_id }} {% elif ''tibber_battery'' in trigger.id %}tibber_battery_problem
-        {% endif %}'
+      tag_id: '{% if ''smart_meter'' in trigger.id %}smart_meter_problem {% elif ''smart_drive''
+        in trigger.id%}hdd_alert_{{ trigger.entity_id }} {% elif ''tibber_battery''
+        in trigger.id %}tibber_battery_problem {% endif %}'
   - choose:
     - conditions:
       - condition: template
@@ -12713,18 +12700,6 @@
                 == 'unavailable' %}\n  The Smart Meter stopped reporting (Communication
                 timeout).\n{% else %}\n  The Smart Meter status changed to {{ trigger.to_state.state
                 }}.\n{% endif %}\n"
-        - conditions:
-          - condition: template
-            value_template: '{{ ''terrarium'' in trigger.id }}'
-          sequence:
-          - variables:
-              notify_title: "\U0001F40D DHT Sensor Problem"
-              notify_message: "{% set broken = trigger.to_state.state %} {% if broken
-                != 'All Good' %}\n  {% set sensors = broken.split(' ') %}\n  {% if
-                sensors | length == 1 %}\n    The {{ sensors[0] }} DHT sensor is broken.
-                Check the wiring.\n  {% else %}\n    The {{ sensors[:-1] | join(',
-                ') }} & {{ sensors[-1] }} DHT sensors are broken. Check the wiring.\n
-                \ {% endif %}\n{% endif %}\n"
         - conditions:
           - condition: template
             value_template: '{{ ''smart_drive'' in trigger.id }}'
@@ -12878,7 +12853,7 @@
       - action: notify.duncan
         data:
           title: '✅ Keep Alive: all clear'
-          message: All keep-alive faults resolved at {{ now().strftime('%Y-%m-%d %H:%M:%S')
+          message: All keep-alive faults resolved at {{ now().strftime('%d.%m. %H:%M:%S')
             }}.
           data:
             tag: keep_alive_problem
@@ -12891,10 +12866,10 @@
         data:
           title: '⚠️ Keep Alive: {{ fault_count }} fault(s)'
           message: '{% for f in faults.values() %} • {{ f.entity }} — {{ f.rule }}
-            ({{ f.state }}) since {{ f.since | as_datetime | as_local | string }}
-            {% endfor %} {% if has_recovery %} Attempting recovery on: {% for sw in
-            recoverable_switches %}• {{ sw }} {% endfor %} {% else %} No automatic
-            recovery possible. {% endif %}'
+            ({{ f.state }}) since {{ f.since | as_datetime | as_local | timestamp_custom(''%d.%m.
+            %H:%M:%S'') }} {% endfor %} {% if has_recovery %} Attempting recovery
+            on: {% for sw in recoverable_switches %}• {{ sw }} {% endfor %} {% else
+            %} No automatic recovery possible. {% endif %}'
           data:
             tag: keep_alive_problem
             notification_icon: mdi:alert

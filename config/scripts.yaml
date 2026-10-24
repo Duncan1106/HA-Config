@@ -44,20 +44,14 @@ luftbefeuchter:
   - alias: If air moist -> humidifier off
     if:
     - condition: template
-      value_template: '{% set hum1 = states(''sensor.esp32_c3_mini_terra_terrarium_humidity_average'')
-        | float(0) %}
-
-        {% set hum2 = states(''sensor.t_h_terrarium_humidity'') | float(0) %}
-
-        {% set offset = states(''input_number.terrarium_humidity_control_threshold_offset'')
-        | float(0) %}
-
-        {% set threshold = (states(''input_number.terrarium_humidity_control_threshold'')
+      value_template: '{% set humidity = states(''sensor.t_h_terrarium_humidity'')
+        | float(0) %} {% set offset = states(''input_number.terrarium_humidity_control_threshold_offset'')
+        | float(0) %} {% set threshold = (states(''input_number.terrarium_humidity_control_threshold'')
         | float(0) ) %}
 
         {% set compare = threshold + offset %}
 
-        {{ hum1 >= compare or hum2 >= compare }}'
+        {{ humidity >= compare }}'
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
@@ -90,9 +84,8 @@ luftbefeuchter:
         - 'off'
       - condition: template
         value_template: "  {% set threshold = states('input_number.terrarium_humidity_control_threshold')
-          | float(0) %}\n  {% set hum1 = states('sensor.esp32_c3_mini_terra_terrarium_humidity_average')
-          | float(0) %}\n  {% set hum2 = states('sensor.t_h_terrarium_humidity') |
-          float(0) %}\n  {{ (hum1 <= threshold) or (hum2 <= threshold) }}"
+          | float(0) %}\n  {% set humidity = states('sensor.t_h_terrarium_humidity')
+          | float(0) %}\n  {{ humidity <= threshold }}"
     then:
     - action: input_boolean.turn_on
       metadata: {}
@@ -192,7 +185,7 @@ warmelampe:
   - alias: If Temp < 24 -> heat on
     if:
     - condition: numeric_state
-      entity_id: sensor.esp32_c3_mini_terra_terrarium_temperature_average
+      entity_id: sensor.t_h_terrarium_temperature
       below: 25
     then:
     - action: script.retry_action_with_backoff
@@ -211,14 +204,9 @@ warmelampe:
       continue_on_error: true
   - alias: If Temp > 32 -> heat off
     if:
-    - condition: or
-      conditions:
-      - condition: numeric_state
-        entity_id: sensor.esp32_c3_mini_terra_terrarium_temperature_average
-        above: 33
-      - condition: numeric_state
-        entity_id: sensor.t_h_terrarium_temperature
-        above: 27
+    - condition: numeric_state
+      entity_id: sensor.t_h_terrarium_temperature
+      above: 28
     then:
     - action: script.retry_action_with_backoff
       metadata: {}
