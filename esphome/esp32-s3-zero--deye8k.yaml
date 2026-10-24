@@ -22,7 +22,7 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    encryption:
 
 wifi:
   ssid: !secret wifi_ssid
@@ -43,6 +43,7 @@ captive_portal:
 
 packages:
   - !include common/logger.yaml
+  - !include common/common_things.yaml
 
 time:
   - platform: homeassistant
@@ -477,11 +478,6 @@ uart:
   stop_bits: 1
 
 button:
-  - platform: restart
-    id: restart_btn
-    #state_topic: null
-    name: Restart
-
   - platform: template
     #state_topic: null
     id: select_time_slot
@@ -515,15 +511,6 @@ button:
         - number.set: 
             id: grid_charge_buffer_power
             value: !lambda return id(set_grid_charge_power_to_when_grid_charge).state;  
-
-# mqtt:
-#   broker: 192.168.2.205
-#   discovery: False
-#   port: 1883
-#   log_topic: null
-#   reboot_timeout: 0s
-#   username: !secret mqtt_user
-#   password: !secret mqtt_pwd
 
 modbus:
   id: modbus1
@@ -866,11 +853,7 @@ binary_sensor:
      disabled_by_default: True
      #state_topic: null
  
-text_sensor:
-  - platform: wifi_info
-    ip_address: 
-      name: IP Address
-          
+text_sensor:        
   - platform: modbus_controller
     modbus_controller_id: ${modbus_controller_id}
     skip_updates: 2
@@ -1510,28 +1493,6 @@ one_wire:
     id: onewire
 
 sensor:
-  - platform: wifi_signal
-    accuracy_decimals: 1
-    name: Wifi Signal
-    update_interval: 5s
-    filters: 
-      - or: 
-        - delta: 5%
-        - throttle: 120s
-  
-  - platform: uptime
-    name: Uptime
-    update_interval: 3s
-    device_class: duration
-    accuracy_decimals: 1
-    state_class: total
-    unit_of_measurement: min
-    filters:
-      - lambda: !lambda 'return x / 60;' 
-      - or:
-        - delta: 5%
-        - throttle: 120s
-
   - platform: dallas_temp
     address: 0x1cf024b60a646128
     name: Air Temperature
