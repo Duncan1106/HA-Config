@@ -1,61 +1,110 @@
 template:
   - triggers:
-      - trigger: time_pattern
-        minutes: "/5"
-      - trigger: homeassistant
-        event: start
+      # === min_2w_30m ===
+      - trigger: numeric_state
+        entity_id: &heizung
+          - sensor.heizungsverteiler_eg_power
+          - sensor.heizungsverteiler_og_power
+        below: 1.99
+        for: "00:30:00"
+        id: "min_2w_30m:fault"
+      - trigger: numeric_state
+        entity_id: *heizung
+        above: 2.01
+        id: "min_2w_30m:ok"
+
+      # === min_60w_70m ===
+      - trigger: numeric_state
+        entity_id: &fridge
+          - sensor.gefrierschrank_energy_power
+          - sensor.kuhlschrank_drinnen_energy_power
+        below: 59.99
+        for: "01:10:00"
+        id: "min_60w_70m:fault"
+      - trigger: numeric_state
+        entity_id: *fridge
+        above: 60.01
+        id: "min_60w_70m:ok"
+
+      # === max_60w_45m ===
+      - trigger: numeric_state
+        entity_id: &freezer
+          - sensor.gefrierschrank_energy_power
+        above: 60.01
+        for: "00:45:00"
+        id: "max_60w_45m:fault"
+      - trigger: numeric_state
+        entity_id: *freezer
+        below: 59.99
+        id: "max_60w_45m:ok"
+
+      # === gone_15m (power sensors) ===
+      - trigger: state
+        entity_id: &power_sensors
+          - sensor.heizungsverteiler_eg_power
+          - sensor.heizungsverteiler_og_power
+          - sensor.gefrierschrank_energy_power
+          - sensor.kuhlschrank_draussen_energy_power
+          - sensor.kuhlschrank_drinnen_energy_power
+        to: [unavailable, unknown]
+        for: "00:15:00"
+        id: "gone_15m:fault"
+      - trigger: state
+        entity_id: *power_sensors
+        from: [unavailable, unknown]
+        not_to: [unavailable, unknown]
+        id: "gone_15m:ok"
+
+      # === switch_off: off for 1 min, unavailable/unknown for 5 min ===
+      - trigger: state
+        entity_id: &switches
+          - switch.heizungsverteiler_og
+          - switch.heizungsverteiler_eg
+          - switch.gefrierschrank_tasmota
+          - switch.kuhlschrank_draussen_tasmota
+          - switch.kuhlschrank_drinnen_tasmota
+        to: "off"
+        for: "00:01:00"
+        id: "switch_off:fault"
+      - trigger: state
+        entity_id: *switches
+        to: [unavailable, unknown]
+        for: "00:05:00"
+        id: "switch_off:fault"
+      - trigger: state
+        entity_id: *switches
+        to: "on"
+        id: "switch_off:ok"
+
     variables:
-      result: >-
-        {%- set old = state_attr('binary_sensor.keep_alive_problem', 'mem') or {} -%}
-        {%- set t_now = now().timestamp() -%}
-        {%- set ns = namespace(pairs=[], faults=[], bad=[]) -%}
-        {%- for lab in labels() if lab.startswith('keep_alive_') -%}
-          {%- set p = lab | regex_findall('^keep_alive_(stale|min|max)(?:_([0-9]+)(wh|w))?_([0-9]+)m$') -%}
-          {%- if p | length != 1 or ((p[0][0] == 'stale') != (p[0][1] == '')) or (p[0][0] == 'max' and p[0][2] == 'wh') -%}
-            {%- set ns.bad = ns.bad + [lab] -%}
-          {%- else -%}
-            {%- set kind = p[0][0] -%}
-            {%- set x = p[0][1] | float(0) -%}
-            {%- set unit = p[0][2] -%}
-            {%- set lim = t_now - (p[0][3] | int(0)) * 60 -%}
-            {%- for e in label_entities(lab) -%}
-              {%- set st = states[e] -%}
-              {%- set s = st.state if st else 'unavailable' -%}
-              {%- set key = e ~ '|' ~ lab -%}
-              {%- set prev = old.get(key) -%}
-              {%- set k = namespace(ts=(prev[0] if prev else t_now), v=(prev[1] if prev else none)) -%}
-              {%- if kind == 'stale' -%}
-                {%- if is_number(s) and st.last_reported -%}
-                  {%- set k.ts = st.last_reported.timestamp() -%}
-                {%- endif -%}
-              {%- elif is_number(s) -%}
-                {%- set val = s | float -%}
-                {%- if unit == 'w' -%}
-                  {%- if (kind == 'min' and val >= x) or (kind == 'max' and val <= x) -%}
-                    {%- set k.ts = t_now -%}
-                  {%- endif -%}
-                {%- elif k.v is none or val < k.v -%}
-                  {%- set k.v = val -%}
-                {%- elif (val - k.v) * (1000 if st.attributes.unit_of_measurement == 'kWh' else 1) >= x -%}
-                  {%- set k.ts = t_now -%}
-                  {%- set k.v = val -%}
-                {%- endif -%}
-              {%- endif -%}
-              {%- if k.ts <= lim -%}
-                {%- set ns.faults = ns.faults + [{'entity': e, 'rule': lab, 'since': k.ts | int, 'state': s}] -%}
-              {%- endif -%}
-              {%- set ns.pairs = ns.pairs + [[key, [k.ts | int, k.v]]] -%}
-            {%- endfor -%}
-          {%- endif -%}
-        {%- endfor -%}
-        {{ {'mem': dict(ns.pairs), 'faults': ns.faults, 'bad': ns.bad} }}
+      rule: "{{ trigger.id.split(':')[0] }}"
+      action: "{{ trigger.id.split(':')[-1] }}"
+      key: "{{ trigger.entity_id ~ '|' ~ rule }}"
+      faults: >-
+        {%- set cur = state_attr('binary_sensor.keep_alive_problem', 'faults') or {} -%}
+        {%- if action == 'fault' -%}
+          {%- set prev = cur.get(key) -%}
+          {{ cur | combine({key: {
+               'entity': trigger.entity_id,
+               'rule': rule,
+               'since': prev.since if prev else (now() - (trigger.for | default(timedelta(0), true))).isoformat(),
+               'state': trigger.to_state.state}}) }}
+        {%- elif action == 'ok' -%}
+          {%- set ns = namespace(f={}) -%}
+          {%- for k, v in cur.items() if k != key -%}
+            {%- set ns.f = ns.f | combine({k: v}) -%}
+          {%- endfor -%}
+          {{ ns.f }}
+        {%- else -%}
+          {{ cur }}
+        {%- endif -%}
+
     binary_sensor:
       - name: Keep Alive Problem
         unique_id: keep_alive_problem
         device_class: problem
-        state: "{{ result.faults | length > 0 }}"
+        state: "{{ faults | length > 0 }}"
         attributes:
-          entities: "{{ result.faults | map(attribute='entity') | unique | list }}"
-          faults: "{{ result.faults }}"
-          invalid_labels: "{{ result.bad }}"
-          mem: "{{ result.mem }}"
+          entities: "{{ faults.values() | map(attribute='entity') | unique | list }}"
+          turn_on: "{{ faults.values() | selectattr('rule', 'eq', 'switch_off') | map(attribute='entity') | list }}"
+          faults: "{{ faults }}"
