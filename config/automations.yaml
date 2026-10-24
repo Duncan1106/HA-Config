@@ -12827,32 +12827,96 @@
   mode: single
   max_exceeded: silent
 - id: '1792655468823'
-  alias: Keep Alive Alarm
+  alias: Keep Alive - Notify and Recover
+  description: 'Notify when keep-alive faults appear and recover switches listed in
+    the sensor''s turn_on attribute. Notifies all-clear when the problem sensor goes
+    off.
+
+    '
   triggers:
   - trigger: state
     entity_id: binary_sensor.keep_alive_problem
-    attribute: entities
+    to: 'on'
+    id: fault
+  - trigger: state
+    entity_id: binary_sensor.keep_alive_problem
+    attribute: faults
+    id: fault
+  - trigger: state
+    entity_id: binary_sensor.keep_alive_problem
+    to: 'off'
+    id: clear
+  - trigger: homeassistant
+    event: start
+    id: startup
+  conditions:
+  - condition: template
+    alias: Process new faults and clear events, ignore recovery-driven shrink
+    value_template: "{%- if trigger.id in ['clear', 'startup'] -%}\n  true\n{%- elif
+      trigger.from_state is none -%}\n  true\n{%- elif trigger.from_state.state !=
+      'on' -%}\n  true\n{%- else -%}\n  {%- set old = trigger.from_state.attributes.faults
+      | default({}) | length -%}\n  {%- set new = trigger.to_state.attributes.faults
+      | default({}) | length -%}\n  {{ new > old }}\n{%- endif -%}"
   actions:
+  - alias: Compute state used by the steps below
+    variables:
+      faults: '{{ state_attr(''binary_sensor.keep_alive_problem'', ''faults'') or
+        {} }}'
+      recoverable_switches: '{{ state_attr(''binary_sensor.keep_alive_problem'', ''turn_on'')
+        or [] }}'
+      fault_count: '{{ faults | length }}'
+      has_faults: '{{ (faults | length) > 0 }}'
+      has_recovery: '{{ (recoverable_switches | length) > 0 }}'
+      was_faulted: "{{ trigger.from_state is not none and (\n     trigger.from_state.state
+        == 'on' or \n     (trigger.from_state.attributes.faults | default({}) | length
+        > 0)\n   ) }}"
   - choose:
     - conditions:
       - condition: template
-        value_template: '{{ trigger.to_state is not none and (trigger.to_state.attributes.entities
-          | default([]) | length > 0) }}'
+        value_template: '{{ not has_faults and was_faulted }}'
       sequence:
       - action: notify.duncan
         data:
-          title: Ausfall erkannt
-          message: '{% for f in trigger.to_state.attributes.faults -%} {{ state_attr(f.entity,
-            ''friendly_name'') or f.entity }}: {{ f.rule }} (seit {{ f.since | timestamp_custom(''%d.%m.
-            %H:%M'') }}, Wert {{ f.state }}){{ "\n" if not loop.last }} {%- endfor
-            %}'
+          title: '✅ Keep Alive: all clear'
+          message: All keep-alive faults resolved at {{ now().strftime('%Y-%m-%d %H:%M:%S')
+            }}.
+          data:
+            tag: keep_alive_problem
+            notification_icon: mdi:check-circle
     - conditions:
       - condition: template
-        value_template: '{{ trigger.from_state is not none and (trigger.from_state.attributes.entities
-          | default([]) | length > 0) }}'
+        value_template: '{{ has_faults }}'
       sequence:
       - action: notify.duncan
         data:
-          title: Alles wieder in Ordnung
-          message: Keine Keep-Alive-Fehler mehr aktiv.
+          title: '⚠️ Keep Alive: {{ fault_count }} fault(s)'
+          message: '{% for f in faults.values() %} • {{ f.entity }} — {{ f.rule }}
+            ({{ f.state }}) since {{ f.since | as_datetime | as_local | string }}
+            {% endfor %} {% if has_recovery %} Attempting recovery on: {% for sw in
+            recoverable_switches %}• {{ sw }} {% endfor %} {% else %} No automatic
+            recovery possible. {% endif %}'
+          data:
+            tag: keep_alive_problem
+            notification_icon: mdi:alert
+      - if:
+        - condition: template
+          value_template: '{{ has_recovery }}'
+        then:
+        - repeat:
+            for_each: '{{ recoverable_switches }}'
+            sequence:
+            - action: script.retry_action_with_backoff
+              continue_on_error: true
+              data:
+                entity_id: '{{ repeat.item }}'
+                target_state: 'on'
+                action_domain: switch
+                action_type: turn_on
+                max_retries: 3
+                base_delay: 10
+                max_delay: 60
+                backoff_type: exponential
+                notify_on_failure: true
+                notify_service: notify.duncan
   mode: queued
+  max: 5
