@@ -1,41 +1,37 @@
 template: 
   # AI Beta Release Notes Summary
   - triggers:
-      - trigger: homeassistant
-        event: start
-      - platform: event
-        event_type: event_template_reloaded
-      - trigger: state
-        entity_id:
-         - input_button.update_beta_release_notes
-         - input_select.conversation_agents
+    - trigger: homeassistant
+      event: start
+    - trigger: time
+      at: "00:00:01"
+      weekday: [wed, thu]
+    - trigger: state
+      entity_id:
+        - input_button.update_beta_release_notes
     binary_sensor:
-      - unique_id: home_assistant_beta_release_notes_window
-        name: Home Assistant Beta Release Notes Window
-        icon: mdi:home-assistant
-        state: >
-            {% set today = now().date() %}
-            {% if today.day <= 7 %}
-              {% set fdom = today.replace(day=1) %}
-            {% else %}
-              {% set fdom = (today.replace(day=28) + timedelta(days=5)).replace(day=1) %}
-            {% endif %}
-            {% set first_wed = fdom + timedelta(days=(2 - fdom.weekday() + 7) % 7) %}
-            {{ first_wed - timedelta(days=7) <= today <= first_wed }}
+    - unique_id: home_assistant_beta_release_notes_window
+      name: Home Assistant Beta Release Notes Window
+      icon: mdi:home-assistant
+      state: >
+        {% set today = now().date() %}
+        {% set nxt = today + timedelta(days=(2 - today.weekday()) % 7) %}
+        {{ nxt.day <= 7
+           or (nxt == today and (today + timedelta(days=7)).day <= 7) }}
+  
   - triggers:
       - trigger: homeassistant
         event: start
-      - platform: event
+      - trigger: event
         event_type: event_template_reloaded
       - trigger: state
         entity_id:
-         - input_button.update_beta_release_notes
-         - input_select.conversation_agents
+          - input_button.update_beta_release_notes
+          - input_select.conversation_agents
     conditions:
       - condition: state
         entity_id: binary_sensor.home_assistant_beta_release_notes_window
-        state:
-          - "on"
+        state: "on"
     actions:
       - action: multiscrape.scrape
         response_variable: beta_scrape
@@ -51,141 +47,61 @@ template:
                 {!{ value | trim | replace('www.home','rc.home') }!}
             - unique_id: beta_notes_content
               name: Beta Notes Content
-              select: body
+              select: article
               value_template: |
                 {!{ value | trim | replace('\n', ' ') }!}
+      - variables:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
+          release_url: >-
+            {{ (beta_scrape.get('beta_url', {}).get('value') or '') | trim }}
+          version: >-
+            {% set m = release_url | regex_findall('release-([0-9]{4})([0-9]+)') %}
+            {% if not release_url %}
+              Unknown
+            {% elif m %}
+              {{ m[0][0] ~ '.' ~ '%02d' | format(m[0][1] | int) ~ '.0' }}
+            {% else %}
+              Invalid URL
+            {% endif %}
       - action: conversation.process
         response_variable: agent
         data:
-          agent_id: "{{ states('input_select.conversation_agents') }}"
-          text: >-
+          agent_id: "{{ agent_id }}"
+          text: |-
             You are an expert software release notes summarizer.
+            The release notes below are for the Home Assistant release at this URL: {{ release_url }}
 
-            The release notes below are for the Home Assistant release found at
-            this URL: {{ beta_scrape.beta_url.value }}
+            From the raw release notes text, extract only points actually mentioned.
+            Be concise but informative, avoid filler.
+            Output markdown only, with no introduction or closing remarks, using exactly these headings, each followed by a bullet list:
 
-            Based on the following raw release notes text, please:
+            **New Features:**
+            **Breaking Changes:** (changes that require user attention because they may break existing setups)
+            **Backward-Incompatible Changes:** (including deprecations)
+            **Other Notes:** (bug fixes, notable improvements)
 
-            1. Extract and list **New Features** introduced in this release. 2.
-            Identify and list any **Breaking Changes** (features or behaviors
-            that require user attention because they may break existing setups).
-            3. Highlight **Backward-Incompatible Changes** or deprecations. 4.
-            Optionally include other important notes, like bug fixes or notable
-            improvements.
-
-            Structure your output in a clear, organized format with headings
-            like this:
-
-            **New Features:**   \n- Feature 1   \n- Feature 2 ...
-
-            **Breaking Changes:**   \n- Change 1   \n- Change 2 ...
-
-            **Backward-Incompatible Changes:**   \n- Change 1   \n- Change 2 ...
-
-            **Other Notes:**   \n- Note 1   \n- Note 2 ...
-
-            Only include points actually mentioned in the release notes. Be
-            concise but informative, avoid filler.
-            The summary is intended to be used in a markdown display.
-            Only provide the summary and nothing else like heres the summary or any other form of introduction.
-
-            Here is the release notes text:   
-            
-            {{ beta_scrape.beta_notes_content }}
-      - action: conversation.process
-        response_variable: agent_short_try
-        data:
-          agent_id: "{{ states('input_select.conversation_agents') }}"
-          text: >-
-            Summarize the provided text to a maximum of 250 words or 750 characters — whichever is shorter.
-            Extract and retain only the core concepts and essential information.
-            Aggressively remove all filler words, redundant phrases, and secondary details.
-            Ensure the summary is grammatically correct, coherent, and preserves the original meaning.
-            Do not exceed the limit under any circumstance.
-             
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
-              {% set url = beta_scrape.beta_url.value|string|trim %}
-              {% if 'release-' in url %}
-                {% set build = url.split('/')[-2]|trim %}
-                {% set year = build.split('-')[1][0:4] %}
-                {% set month = build.split('-')[1][4:]|int %}
-                Homeassistant {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
-              {% else %}
-                Invalid URL
-              {% endif %}
-            {% else %}
-              Unknown
-            {% endif %}
-            
-            {{ agent.response.speech.plain.speech }}
+            Release notes text:
+            {{ beta_scrape.beta_notes_content.value }}
       - action: conversation.process
         response_variable: agent_short
         data:
-          agent_id: "{{ states('input_select.conversation_agents') }}"
-          text: >-
-            Summarize the following text to a maximum of 250 words or 750 characters — whichever is shorter.
+          agent_id: "{{ agent_id }}"
+          text: |-
+            Summarize the following text to a maximum of 250 words or 750 characters, whichever is shorter.
             Extract only the most critical features, integrations, and breaking changes.
             Remove all filler, examples, UI details, minor notes, and secondary information.
             Preserve clarity and grammar.
-            Do not explain, justify, or comment.
-            Do not include any text before or after the summary.
-            Output ONLY the condensed summary.
-            
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
-              {% set url = beta_scrape.beta_url.value|string|trim %}
-              {% if 'release-' in url %}
-                {% set build = url.split('/')[-2]|trim %}
-                {% set year = build.split('-')[1][0:4] %}
-                {% set month = build.split('-')[1][4:]|int %}
-                Homeassistant {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
-              {% else %}
-                Invalid URL
-              {% endif %}
-            {% else %}
-              Unknown
-            {% endif %}
-            
-            {{ agent_short_try.response.speech.plain.speech }}
+            Output ONLY the condensed summary, with no text before or after it.
+
+            Home Assistant {{ version }}
+
+            {{ agent.response.speech.plain.speech }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
         icon: mdi:home-assistant
-        state: >
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined and beta_scrape.beta_url.value %}
-              {% set url = beta_scrape.beta_url.value|string|trim %}
-              {% if 'release-' in url %}
-                {% set build = url.split('/')[-2]|trim %}
-                {% set year = build.split('-')[1][0:4] %}
-                {% set month = build.split('-')[1][4:]|int %}
-                {{ year ~ '.' ~ ('%02d'|format(month)) ~ '.0'}}
-              {% else %}
-                Invalid URL
-              {% endif %}
-            {% else %}
-              Unknown
-            {% endif %}
+        state: "{{ version }}"
         attributes:
-          beta_url: >
-            {% if beta_scrape is defined and beta_scrape.beta_url is defined %}
-              {{ beta_scrape.beta_url.value }}
-            {% else %}
-              {{ state_attr('sensor.home_assistant_beta_release_notes', 'beta_url') }}
-            {% endif %}
-          ai_summary: >
-            {% if agent is defined %}
-              {{ agent.response.speech.plain.speech }}
-            {% else %}
-              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary') | default('Pending...') }}
-            {% endif %}
-          ai_summar_short_try: >
-            {% if agent_short_try is defined %}
-              {{ agent_short_try.response.speech.plain.speech }}
-            {% else %}
-              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summar_short_try') | default('Pending...') }}
-            {% endif %}
-          ai_summary_short: >
-            {% if agent_short is defined %}
-              {{ agent_short.response.speech.plain.speech }}
-            {% else %}
-              {{ state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary_short') | default('Pending...') }}
-            {% endif %}
+          beta_url: "{{ release_url }}"
+          ai_summary: "{{ agent.response.speech.plain.speech }}"
+          ai_summary_short: "{{ agent_short.response.speech.plain.speech }}"
