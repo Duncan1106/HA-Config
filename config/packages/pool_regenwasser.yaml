@@ -1,0 +1,121 @@
+template:
+  - triggers:
+      - trigger: state
+        entity_id: sensor.gw1100a_total_rain
+        id: rain
+      - trigger: state
+        entity_id: sensor.rain_sun_flower_rain_intensity
+        id: wet
+      - trigger: state
+        entity_id: sensor.gw1100a_rain_rate
+        id: wet
+      - trigger: time_pattern
+        minutes: "/1"
+        id: tick
+      - trigger: homeassistant
+        event: start
+        id: start
+      - trigger: event
+        event_type: pool_rain_pump_reset
+        id: reset
+    variables:
+      # ---- tuning ----
+      me: binary_sensor.pool_regenwasserpumpe_erforderlich
+      area_m2: 27               # 3 x 9 m
+      flow_l_min: 60            # Jebao FTP-4600: 75 l/min max, calibrate!
+      collection_factor: 0.75
+      startup_overhead_s: 10
+      min_rain_mm: 1.0
+      max_runtime_s: 180
+      wet_mv: 1500              # conductivity above this = wet
+      dry_hold_s: 600           # must stay dry this long before pump may run
+      # ---- rain amount / runtime ----
+      unit: "{{ state_attr('sensor.gw1100a_total_rain', 'unit_of_measurement') }}"
+      total_ok: "{{ is_number(states('sensor.gw1100a_total_rain')) }}"
+      total_mm: >-
+        {%- if total_ok -%}
+          {%- set v = states('sensor.gw1100a_total_rain') | float(0) -%}
+          {{ (v * 25.4) if unit == 'in' else v }}
+        {%- else -%}
+          {{ state_attr(me, 'total_rain_mm') | float(0) }}
+        {%- endif -%}
+      baseline_mm: >-
+        {%- set pb = state_attr(me, 'baseline_mm') | float(none) -%}
+        {%- if trigger.id == 'reset' or pb is none -%}
+          {{ total_mm | float(0) }}
+        {%- elif total_mm | float(0) < pb -%}
+          0
+        {%- else -%}
+          {{ pb }}
+        {%- endif -%}
+      rain_mm: "{{ [total_mm | float(0) - baseline_mm | float(0), 0] | max }}"
+      volume_l: "{{ rain_mm | float(0) * area_m2 * collection_factor }}"
+      runtime_s: >-
+        {%- if rain_mm | float(0) < min_rain_mm -%}
+          0
+        {%- else -%}
+          {{ (volume_l | float(0) / flow_l_min * 60 + startup_overhead_s) | round(0) }}
+        {%- endif -%}
+      runtime_capped_s: "{{ [runtime_s | float(0), max_runtime_s] | min | int }}"
+      timer_s: "{{ (runtime_capped_s | int + 60) if runtime_capped_s | int > 0 else 0 }}"
+      # ---- rain gate ----
+      mv: "{{ states('sensor.rain_sun_flower_rain_intensity') }}"
+      rate: "{{ states('sensor.gw1100a_rain_rate') }}"
+      wet_now: >-
+        {{ not is_number(mv)
+           or (mv | float(0)) > wet_mv
+           or (is_number(rate) and (rate | float(0)) > 0) }}
+      last_wet: >-
+        {%- if wet_now -%}
+          {{ now().isoformat() }}
+        {%- else -%}
+          {{ state_attr(me, 'last_wet') or '' }}
+        {%- endif -%}
+      dry_s: >-
+        {%- if wet_now -%}
+          0
+        {%- elif (last_wet | string) | length == 0 -%}
+          99999
+        {%- else -%}
+          {{ (now() - as_datetime(last_wet)).total_seconds() | int }}
+        {%- endif -%}
+    binary_sensor:
+      - name: Pool Regenwasserpumpe erforderlich
+        unique_id: pool_regenwasserpumpe_erforderlich
+        icon: mdi:pump
+        state: >-
+          {{ runtime_s | float(0) > 0 and not wet_now and dry_s | int(0) >= dry_hold_s }}
+        attributes:
+          block_reason: >-
+            {%- if runtime_s | float(0) <= 0 -%}no pumping needed
+            {%- elif not is_number(mv) -%}conductivity sensor unavailable
+            {%- elif (mv | float(0)) > wet_mv -%}sensor wet
+            {%- elif is_number(rate) and (rate | float(0)) > 0 -%}rain rate above 0
+            {%- elif dry_s | int(0) < dry_hold_s -%}waiting for dry hold
+            {%- else -%}ok
+            {%- endif -%}
+          pumping_needed: "{{ runtime_s | float(0) > 0 }}"
+          exceeds_max: "{{ runtime_s | float(0) > max_runtime_s }}"
+          rain_since_reset_mm: "{{ rain_mm | float(0) | round(1) }}"
+          volume_l: "{{ volume_l | float(0) | round(0) }}"
+          runtime_seconds: "{{ runtime_s | float(0) | int }}"
+          runtime_capped_seconds: "{{ runtime_capped_s | int }}"
+          runtime_time: >-
+            {{ '%02d:%02d:%02d' | format(runtime_capped_s | int // 3600, (runtime_capped_s | int % 3600) // 60, runtime_capped_s | int % 60) }}
+          timer_time: >-
+            {{ '%02d:%02d:%02d' | format(timer_s | int // 3600, (timer_s | int % 3600) // 60, timer_s | int % 60) }}
+          conductivity_mv: "{{ mv }}"
+          rain_rate: "{{ rate }}"
+          wet_now: "{{ wet_now }}"
+          last_wet: "{{ last_wet }}"
+          dry_for_min: "{{ ([dry_s | int(0), 99999] | min / 60) | round(1) }}"
+          wet_threshold_mv: "{{ wet_mv }}"
+          dry_hold_min: "{{ (dry_hold_s / 60) | round(0) }}"
+          baseline_mm: "{{ baseline_mm | float(0) | round(3) }}"
+          total_rain_mm: "{{ total_mm | float(0) | round(3) }}"
+          area_m2: "{{ area_m2 }}"
+          flow_l_min: "{{ flow_l_min }}"
+          collection_factor: "{{ collection_factor }}"
+          last_reset: >-
+            {{ now().isoformat() if trigger.id == 'reset' else state_attr(me, 'last_reset') }}
+          last_update: "{{ now().isoformat() }}"
