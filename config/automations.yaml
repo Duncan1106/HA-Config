@@ -12886,3 +12886,138 @@
                 notify_service: notify.duncan
   mode: queued
   max: 5
+- id: '1793085268083'
+  alias: Pool Regenwasserpumpe automatisch
+  description: Runs the pool rainwater pump automatically when the pump binary sensor
+    turns on. The power sensor reports only once a minute, so the start check only
+    applies to runs of 90 s or more, and short runs are timed by the calculated runtime.
+    Sends the measured runtime with the reset event for calibration, and reports partially
+    pumped amounts so the counter stays correct.
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.pool_regenwasserpumpe_erforderlich
+    from: 'off'
+    to: 'on'
+  - trigger: state
+    entity_id: binary_sensor.pool_regenwasserpumpe_erforderlich
+    to: 'on'
+    for:
+      hours: 1
+  conditions:
+  - condition: state
+    entity_id: binary_sensor.pool_regenwasserpumpe_erforderlich
+    state: 'on'
+  actions:
+  - variables:
+      gate: binary_sensor.pool_regenwasserpumpe_erforderlich
+      runtime_s: '{{ state_attr(gate, ''runtime_capped_seconds'') | int(0) }}'
+      timer_time: '{{ state_attr(gate, ''timer_time'') | default(''00:04:30'', true)
+        }}'
+      rain_mm: '{{ state_attr(gate, ''rain_since_reset_mm'') | float(0) }}'
+      report_s: 60
+      feedback_min_s: 90
+      long_run: '{{ runtime_s >= feedback_min_s }}'
+  - if:
+    - condition: template
+      value_template: '{{ runtime_s <= 0 }}'
+    then:
+    - stop: Nothing to pump
+  - if:
+    - condition: state
+      entity_id: sensor.garten_poolregenwasserpumpe_leistung
+      state:
+      - unavailable
+      - unknown
+    then:
+    - action: notify.duncan
+      data:
+        title: Pool pump
+        message: Power sensor unavailable, pump was not started.
+    - stop: Power sensor unavailable
+  - action: switch.turn_on
+    target:
+      entity_id: switch.garten_poolregenwasserpumpe
+  - variables:
+      run_start: '{{ now().timestamp() }}'
+  - action: time.set_value
+    target:
+      entity_id: time.garten_poolregenwasserpumpe_timer
+    data:
+      time: '{{ timer_time }}'
+  - if:
+    - condition: template
+      value_template: '{{ long_run }}'
+    then:
+    - wait_template: '{{ states(''sensor.garten_poolregenwasserpumpe_leistung'') |
+        float(0) > 35 }}'
+      timeout:
+        seconds: 100
+      continue_on_timeout: true
+    - if:
+      - condition: template
+        value_template: '{{ not wait.completed }}'
+      then:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.garten_poolregenwasserpumpe
+      - action: notify.duncan
+        data:
+          title: Pool pump
+          message: Pump did not draw enough power after start (currently {{ states('sensor.garten_poolregenwasserpumpe_leistung')
+            }} W). Switched off.
+      - stop: Pump drew no power at start
+  - wait_for_trigger:
+    - trigger: numeric_state
+      id: dry
+      entity_id:
+      - sensor.garten_poolregenwasserpumpe_leistung
+      below: 35
+    - trigger: state
+      id: blocked
+      entity_id:
+      - binary_sensor.pool_regenwasserpumpe_erforderlich
+      from: 'on'
+      to: 'off'
+    timeout: '{{ runtime_s + (report_s if long_run else 0) }}'
+    continue_on_timeout: true
+  - variables:
+      run_s: '{{ (now().timestamp() - run_start) | round(0) }}'
+  - action: switch.turn_off
+    target:
+      entity_id: switch.garten_poolregenwasserpumpe
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is none and long_run }}'
+      sequence:
+      - event: pool_rain_pump_partial
+        event_data:
+          removed_s: '{{ run_s }}'
+      - action: notify.duncan
+        data:
+          title: Pool pump
+          message: Pump ran {{ run_s | int }} s without a power drop below 35 W. Switched
+            off by timeout, counter reduced by the pumped part.
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger is none }}'
+      sequence:
+      - event: pool_rain_pump_reset
+    - conditions:
+      - condition: template
+        value_template: '{{ wait.trigger.id == ''blocked'' }}'
+      sequence:
+      - event: pool_rain_pump_partial
+        event_data:
+          removed_s: '{{ run_s }}'
+      - action: notify.duncan
+        data:
+          title: Pool pump
+          message: 'Pump switched off early: {{ state_attr(gate, ''block_reason'')
+            }}. Counter reduced by the pumped part.'
+    default:
+    - event: pool_rain_pump_reset
+      event_data:
+        actual_s: '{{ [run_s - report_s / 2, 0] | max }}'
+        rain_mm: '{{ rain_mm }}'
+  mode: single
