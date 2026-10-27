@@ -1,0 +1,111 @@
+template:
+  - triggers:
+      # === min_2w_30m ===
+      - trigger: numeric_state
+        entity_id: &heizung
+          - sensor.heizungsverteiler_eg_power
+          - sensor.heizungsverteiler_og_power
+        below: 1.99
+        for: "00:30:00"
+        id: "min_2w_30m:fault"
+      - trigger: numeric_state
+        entity_id: *heizung
+        above: 2.01
+        id: "min_2w_30m:ok"
+
+      # === min_60w_70m ===
+      - trigger: numeric_state
+        entity_id: &fridge
+          - sensor.gefrierschrank_energy_power
+          - sensor.kuhlschrank_drinnen_energy_power
+        below: 59.99
+        for: "01:10:00"
+        id: "min_60w_70m:fault"
+      - trigger: numeric_state
+        entity_id: *fridge
+        above: 60.01
+        id: "min_60w_70m:ok"
+
+      # === max_60w_45m ===
+      - trigger: numeric_state
+        entity_id: &freezer
+          - sensor.gefrierschrank_energy_power
+        above: 60.01
+        for: "00:45:00"
+        id: "max_60w_45m:fault"
+      - trigger: numeric_state
+        entity_id: *freezer
+        below: 59.99
+        id: "max_60w_45m:ok"
+
+      # === gone_15m (power sensors) ===
+      - trigger: state
+        entity_id: &power_sensors
+          - sensor.heizungsverteiler_eg_power
+          - sensor.heizungsverteiler_og_power
+          - sensor.gefrierschrank_energy_power
+          - sensor.kuhlschrank_draussen_energy_power
+          - sensor.kuhlschrank_drinnen_energy_power
+        to: [unavailable, unknown]
+        for: "00:15:00"
+        id: "gone_15m:fault"
+      - trigger: state
+        entity_id: *power_sensors
+        from: [unavailable, unknown]
+        not_to: [unavailable, unknown]
+        id: "gone_15m:ok"
+
+      # === switch_off: off for 1 min, unavailable/unknown for 5 min ===
+      - trigger: state
+        entity_id: &switches
+          - switch.heizungsverteiler_og
+          - switch.heizungsverteiler_eg
+          - switch.gefrierschrank_tasmota
+          - switch.kuhlschrank_draussen_tasmota
+          - switch.kuhlschrank_drinnen_tasmota
+        to: "off"
+        for: "00:01:00"
+        id: "switch_off:fault"
+      - trigger: state
+        entity_id: *switches
+        to: [unavailable, unknown]
+        for: "00:05:00"
+        id: "switch_off:fault"
+      - trigger: state
+        entity_id: *switches
+        to: "on"
+        for: "00:00:30"
+        id: "switch_off:ok"
+
+    variables:
+      rule: "{{ trigger.id.split(':')[0] }}"
+      action: "{{ trigger.id.split(':')[-1] }}"
+      key: "{{ trigger.entity_id ~ '|' ~ rule }}"
+      faults: >-
+        {%- set cur = state_attr('binary_sensor.keep_alive_problem', 'faults') or {} -%}
+        {%- if action == 'fault' -%}
+          {%- set prev = cur.get(key) -%}
+          {{ cur | combine({key: {
+               'entity': trigger.entity_id,
+               'rule': rule,
+               'since': prev.since if prev else (now() - (trigger.for | default(timedelta(0), true))).isoformat(),
+               'state': trigger.to_state.state}}) }}
+        {%- elif action == 'ok' -%}
+          {%- set ns = namespace(f={}) -%}
+          {%- for k, v in cur.items() if k != key -%}
+            {%- set ns.f = ns.f | combine({k: v}) -%}
+          {%- endfor -%}
+          {{ ns.f }}
+        {%- else -%}
+          {{ cur }}
+        {%- endif -%}
+
+    binary_sensor:
+      - name: Keep Alive Problem
+        unique_id: keep_alive_problem
+        device_class: problem
+        state: "{{ faults | length > 0 }}"
+        attributes:
+          entities: "{{ faults.values() | map(attribute='entity') | unique | list }}"
+          turn_on: "{{ faults.values() | selectattr('rule', 'eq', 'switch_off') | map(attribute='entity') | list }}"
+          faults: "{{ faults }}"
