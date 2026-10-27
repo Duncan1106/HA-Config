@@ -78,7 +78,8 @@ template:
           
           # Use standard boolean (True/False)
           is_scheduled: "{{ is_state('schedule.heating_schedule', 'on') }}"
-    
+          is_water_scheduled: "{{ is_state('schedule.boiler_pumpe', 'on') }}"
+          
           # Physical Thresholds (Using 60W to avoid the 55W flickering found in logs)
           is_transport: "{{ power >= 1600 }}"
           is_ignition: "{{ power >= 600 and power < 1600 }}"
@@ -107,7 +108,7 @@ template:
     
         attributes:
           raw_wattage: "{{ states('sensor.heizung_power') }}"
-          heating_scheduled: "{{ is_scheduled }}"
+          heating_scheduled: "{{ is_scheduled or is_water_scheduled }}"
           status_note: >
             {% if is_heating and not is_scheduled %} Overtime Burn
             {% elif is_ready and not is_scheduled %} Outside Heating Window
