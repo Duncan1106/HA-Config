@@ -103,4 +103,353 @@ template:
             {% endfor %}
             {{ out.times if out.times|length > 0 else [" No Slots Today"] }}
           updated_at: "{{ as_datetime(current_time).strftime('%H:%M:%S') }} by {{ trigger.description | default('manual') }}"
-          
+
+  - triggers:
+      - trigger: homeassistant
+        event: start
+        id: ha_start
+      - trigger: time
+        at: "00:00:01"
+        id: day_start
+      - trigger: time
+        at: "12:00:00"                 # = cfg.force_hour
+        id: daily_run_check
+      - trigger: time_pattern
+        minutes: "/15"                 # the ONLY periodic trigger (watchdog)
+        id: watchdog
+      - trigger: numeric_state
+        entity_id: sun.sun
+        attribute: elevation
+        above: 3                       # = cfg.day_elevation_deg
+        id: day_on
+      - trigger: numeric_state
+        entity_id: sun.sun
+        attribute: elevation
+        below: 3                       # = cfg.day_elevation_deg
+        id: day_off
+      - trigger: state
+        entity_id:
+          - sensor.t_h_terrarium_temperature
+          - sensor.t_h_terrarium_humidity
+        id: climate
+      - trigger: state
+        entity_id:
+          - switch.terrarium_light
+          - input_boolean.terrarium_on
+          - input_number.terrarium_humidity_control_threshold
+          - input_number.terrarium_humidity_control_threshold_offset
+          - input_number.max_humidifier_activations_per_day
+        id: devices
+      - trigger: state
+        entity_id: switch.terrarium_humidifier
+        from: "off"
+        to: "on"
+        id: humidifier_on
+      - trigger: state
+        entity_id: switch.terrarium_humidifier
+        from: "on"
+        to: "off"
+        id: humidifier_off
+      - trigger: state
+        entity_id: switch.terrarium_humidifier
+        to: "on"
+        for: "00:01:45"                # empty-tank check (power settled)
+        id: humidifier_check
+      - trigger: state
+        entity_id: switch.terrarium_humidifier
+        to: "on"
+        for: "00:11:00"                # = cfg.max_runtime_min (overrun backstop)
+        id: humidifier_overrun
+      - trigger: state
+        entity_id: switch.terrarium_humidifier
+        to: "off"
+        for: "00:20:10"                # = cfg.min_pause_min (+10 s)
+        id: pause_over
+      - trigger: state
+        entity_id: switch.terrarium_heater
+        from: "off"
+        to: "on"
+        id: heater_on
+      - trigger: state
+        entity_id: switch.terrarium_heater
+        from: "on"
+        to: "off"
+        id: heater_off
+      - trigger: event
+        event_type: terrarium_humidifier_refilled
+        id: refilled
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: TERRARIUM_HUMIDIFIER_REFILLED
+        id: refilled
+
+    binary_sensor:
+      - name: "Terrarium Control"
+        unique_id: terrarium_control
+        icon: mdi:snake
+        variables:
+          # ------------------------------------------------------------------
+          # 1) CONFIG
+          # ------------------------------------------------------------------
+          me: binary_sensor.terrarium_control
+          warm_pos: ['_lo_', '_ro_']  # heater: the two upper sensors
+          cool_pos: ['_lu_', '_ru_']  # floor sensors: too-cold alert
+          hum_pos: ['_lu_', '_ru_']   # humidity control: lower sensors
+          cfg:
+            stale_min: 90             # reading older than this = ignored
+            day_elevation_deg: 3      # day = sun elevation above this (~ sunrise+30 min)
+            heat_cutoff: 32           # DAY: heater off if LO/RO this hot (deg C), summer
+            heat_resume: 30.5         # DAY: heater back on below this
+            warm_min_when_on: 26      # heater on > lamp_check_min but LO/RO below -> alert
+            lamp_check_min: 150       # (cold start needs ~90 min to reach 28)
+            cool_min_day: 20          # alert below (floor sensors, day)
+            night_min: 18             # alert below (floor sensors, night)
+            hard_max: 35              # ANY sensor -> heater off + alert
+            hum_low_alert: 35
+            hum_high_alert: 80
+            min_pause_min: 20         # min minutes between humidifier runs
+            max_runtime_min: 11       # backstop; Shelly auto-off (10 min) is the offline fail-safe
+            force_hour: 12            # forced daily run from this hour if none yet today
+            min_run_power: 3          # W: humidifier below this while on = no water
+            min_heater_power: 10      # W: heater on but below this = defective
+            min_light_power: 5        # W: light on but below this = defective
+            refill_warn_ratio: 0.85   # "refill soon" at 85% of tank capacity
+            tank_capacity_default: 40 # runs per fill until learned from the first empty tank
+
+          # ------------------------------------------------------------------
+          # 2) SENSORS from the group sensors (attribute entity_id)
+          # ------------------------------------------------------------------
+          temp_ids: "{{ state_attr('sensor.t_h_terrarium_temperature', 'entity_id') or [] }}"
+          hum_ids: "{{ state_attr('sensor.t_h_terrarium_humidity', 'entity_id') or [] }}"
+          warm_t: |-
+            {% set ns = namespace(v=[]) %}
+            {% for e in temp_ids if warm_pos | select('in', e) | list | length > 0 %}
+              {% set s = states[e] %}
+              {% if s is not none and s.state | is_number and (now() - s.last_reported).total_seconds() < cfg.stale_min * 60 %}
+                {% set ns.v = ns.v + [s.state | float] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.v }}
+          cool_t: |-
+            {% set ns = namespace(v=[]) %}
+            {% for e in temp_ids if cool_pos | select('in', e) | list | length > 0 %}
+              {% set s = states[e] %}
+              {% if s is not none and s.state | is_number and (now() - s.last_reported).total_seconds() < cfg.stale_min * 60 %}
+                {% set ns.v = ns.v + [s.state | float] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.v }}
+          all_t: |-
+            {% set ns = namespace(v=[]) %}
+            {% for e in temp_ids %}
+              {% set s = states[e] %}
+              {% if s is not none and s.state | is_number and (now() - s.last_reported).total_seconds() < cfg.stale_min * 60 %}
+                {% set ns.v = ns.v + [s.state | float] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.v }}
+          hum_v: |-
+            {% set ns = namespace(v=[]) %}
+            {% for e in hum_ids if hum_pos | select('in', e) | list | length > 0 %}
+              {% set s = states[e] %}
+              {% if s is not none and s.state | is_number and (now() - s.last_reported).total_seconds() < cfg.stale_min * 60 %}
+                {% set ns.v = ns.v + [s.state | float] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.v }}
+          warm_avg: "{{ (warm_t | average | round(1)) if warm_t | length > 0 else none }}"
+          warm_max: "{{ (warm_t | max) if warm_t | length > 0 else none }}"
+          cool_avg: "{{ (cool_t | average | round(1)) if cool_t | length > 0 else none }}"
+          hum_avg: "{{ (hum_v | average | round(1)) if hum_v | length > 0 else none }}"
+          t_max: "{{ (all_t | max) if all_t | length > 0 else none }}"
+
+          # ------------------------------------------------------------------
+          # 3) DEVICES, DAY WINDOW, HELPERS
+          # ------------------------------------------------------------------
+          master: "{{ is_state('input_boolean.terrarium_on', 'on') }}"
+          hum_state: "{{ states('switch.terrarium_humidifier') }}"
+          light_state: "{{ states('switch.terrarium_light') }}"
+          heat_state: "{{ states('switch.terrarium_heater') }}"
+          day: "{{ true if trigger.id == 'day_on' else (false if trigger.id == 'day_off' else ((state_attr('sun.sun', 'elevation') | float(-90)) > cfg.day_elevation_deg)) }}"
+          hum_target: "{{ states('input_number.terrarium_humidity_control_threshold') | float(50) }}"
+          hum_off_at: "{{ hum_target + states('input_number.terrarium_humidity_control_threshold_offset') | float(5) }}"
+          max_runs: "{{ states('input_number.max_humidifier_activations_per_day') | int(15) }}"
+          l2_minutes: "{{ ((now() - states.switch.terrarium_light.last_changed).total_seconds() / 60) | round(1) }}"
+
+          # ------------------------------------------------------------------
+          # 4) STORED STATE (carried in this sensor's own attributes)
+          # ------------------------------------------------------------------
+          today: "{{ now().strftime('%Y-%m-%d') }}"
+          reset_prev: "{{ state_attr(me, 'daily_reset_at') or '' }}"
+          is_new_day: "{{ trigger.id == 'day_start' or not reset_prev or (reset_prev | as_datetime | as_local).strftime('%Y-%m-%d') != today }}"
+          daily_reset_at: "{{ now().isoformat() if is_new_day else reset_prev }}"
+          inc_run: "{{ 1 if trigger.id == 'humidifier_on' else 0 }}"
+          runs_today: "{{ (0 if is_new_day else (state_attr(me, 'runs_today') | int(0))) + inc_run }}"
+          runs_total: "{{ (state_attr(me, 'runs_total') | int(0)) + inc_run }}"
+          runs_tank: "{{ 0 if trigger.id == 'refilled' else (state_attr(me, 'runs_since_refill') | int(0)) + inc_run }}"
+          last_run: "{{ now().isoformat() if trigger.id == 'humidifier_on' else (state_attr(me, 'last_run') or '') }}"
+          last_run_end: "{{ now().isoformat() if trigger.id == 'humidifier_off' else (state_attr(me, 'last_run_end') or '') }}"
+          heater_since: "{{ now().isoformat() if trigger.id == 'heater_on' else (state_attr(me, 'heater_on_since') or '') }}"
+          last_refill: "{{ now().isoformat() if trigger.id == 'refilled' else (state_attr(me, 'last_refill') or '') }}"
+          hum_mode_prev: "{{ state_attr(me, 'humidifier_run_mode') or '' }}"
+          l1_minutes: |-
+            {% set ref = last_run if hum_state == 'on' else last_run_end %}
+            {% if ref %}{{ ((now() - (ref | as_datetime)).total_seconds() / 60) | round(1) }}
+            {% elif hum_state == 'on' %}{{ ((now() - states.switch.terrarium_humidifier.last_changed).total_seconds() / 60) | round(1) }}
+            {% else %}{{ 9999 }}{% endif %}
+          l3_minutes: |-
+            {% if heater_since %}{{ ((now() - (heater_since | as_datetime)).total_seconds() / 60) | round(1) }}
+            {% else %}{{ ((now() - states.switch.terrarium_heater.last_changed).total_seconds() / 60) | round(1) }}{% endif %}
+
+          # ------------------------------------------------------------------
+          # 5) TANK: empty detection via outlet power, learned capacity, forecast
+          # ------------------------------------------------------------------
+          hum_power: "{{ states('sensor.terrarium_humidifier_power') | float if states('sensor.terrarium_humidifier_power') | is_number else none }}"
+          heat_power: "{{ states('sensor.terrarium_heater_power') | float if states('sensor.terrarium_heater_power') | is_number else none }}"
+          light_power: "{{ states('sensor.terrarium_light_power') | float if states('sensor.terrarium_light_power') | is_number else none }}"
+          empty_now: "{{ hum_state == 'on' and hum_power is not none and 1.5 <= l1_minutes <= 12 and hum_power < cfg.min_run_power }}"
+          empty_prev: "{{ state_attr(me, 'empty_flag') | bool(false) }}"
+          empty_flag: "{{ false if trigger.id == 'refilled' else (true if empty_now else empty_prev) }}"
+          empty_started: "{{ empty_flag and not empty_prev }}"
+          last_empty: "{{ now().isoformat() if empty_started else (state_attr(me, 'last_empty') or '') }}"
+          tank_cap: "{{ (runs_tank - 1) if (empty_started and runs_tank > 5) else (state_attr(me, 'tank_capacity_runs') | int(cfg.tank_capacity_default)) }}"
+          runs_left: "{{ [tank_cap - runs_tank, 0] | max }}"
+          refill: "{{ 'now' if empty_flag else ('soon' if runs_tank >= tank_cap * cfg.refill_warn_ratio else 'ok') }}"
+          days_since_refill: |-
+            {% if last_refill %}{{ ((now() - (last_refill | as_datetime)).total_seconds() / 86400) | round(2) }}{% else %}0{% endif %}
+          refill_eta: |-
+            {% if refill == 'now' %}now
+            {% elif days_since_refill >= 1 and runs_tank > 0 %}
+              {{ (now() + timedelta(days=runs_left / (runs_tank / days_since_refill))).strftime('%Y-%m-%d') }}
+            {% else %}unknown{% endif %}
+
+          # ------------------------------------------------------------------
+          # 6) DECISIONS  ("wanted|reason"; wanted = on / off / hold)
+          # ------------------------------------------------------------------
+          heat_eval: |-
+            {% if heat_state not in ['on', 'off'] %}hold|Heater switch unavailable
+            {% elif not master %}off|Master switch off
+            {% elif not day %}off|Night: nothing runs
+            {% elif warm_avg is none %}off|Fail-safe: no fresh LO/RO reading
+            {% elif t_max >= cfg.hard_max %}off|Overheat protection ({{ t_max }} °C >= {{ cfg.hard_max }} °C)
+            {% elif warm_max >= cfg.heat_cutoff %}off|Too hot: LO/RO at {{ warm_max }} °C >= {{ cfg.heat_cutoff }} °C
+            {% elif heat_state == 'off' and warm_max >= cfg.heat_resume %}hold|Cooling down ({{ warm_max }} °C), resumes below {{ cfg.heat_resume }} °C
+            {% else %}on|Day: heater runs all day
+            {% endif %}
+          heat_wanted: "{{ (heat_eval.split('|')[0]) | trim }}"
+          heat_why: "{{ (heat_eval.split('|')[1]) | trim }}"
+          heat_action: "{{ 'none' if (heat_wanted == 'hold' or heat_wanted == heat_state or heat_state not in ['on', 'off']) else 'turn_' ~ heat_wanted }}"
+
+          forced_due: "{{ runs_today == 0 and day and now().hour >= cfg.force_hour }}"
+          hum_eval: |-
+            {% if hum_state not in ['on', 'off'] %}hold|Humidifier switch unavailable
+            {% elif hum_state == 'on' %}
+              {% if not master %}off|Master switch off
+              {% elif empty_flag %}off|Tank empty
+              {% elif l1_minutes >= cfg.max_runtime_min %}off|Max runtime of {{ cfg.max_runtime_min }} min exceeded
+              {% elif not day %}off|Day window ended
+              {% elif hum_mode_prev == 'forced' %}hold|Daily minimum run, {{ l1_minutes }} min
+              {% elif hum_avg is none %}off|Fail-safe: no fresh humidity reading
+              {% elif hum_avg >= hum_off_at %}off|Humidity {{ hum_avg }} % reached {{ hum_off_at }} %
+              {% else %}hold|Running for {{ l1_minutes }} min
+              {% endif %}
+            {% else %}
+              {% if not master or not day %}hold|Idle (night or master off)
+              {% elif empty_flag %}hold|Blocked: tank empty
+              {% elif l1_minutes < cfg.min_pause_min %}hold|Waiting for pause ({{ (cfg.min_pause_min - l1_minutes) | round(0) }} min left)
+              {% elif forced_due %}on|Daily minimum run: none yet today
+              {% elif hum_avg is none %}hold|No fresh humidity reading
+              {% elif hum_avg > hum_target %}hold|Humidity {{ hum_avg }} % is above {{ hum_target }} %
+              {% elif runs_today >= max_runs %}hold|Daily limit reached ({{ runs_today }}/{{ max_runs }})
+              {% else %}on|Humidity {{ hum_avg }} % <= {{ hum_target }} %
+              {% endif %}
+            {% endif %}
+          hum_wanted: "{{ (hum_eval.split('|')[0]) | trim }}"
+          hum_why: "{{ (hum_eval.split('|')[1]) | trim }}"
+          hum_action: "{{ 'none' if (hum_wanted == 'hold' or hum_wanted == hum_state or hum_state not in ['on', 'off']) else 'turn_' ~ hum_wanted }}"
+          hum_mode: "{{ ('forced' if forced_due else 'auto') if hum_wanted == 'on' else (hum_mode_prev if hum_state == 'on' else '') }}"
+
+          light_wanted: "{{ 'on' if (master and day) else 'off' }}"
+          light_why: "{{ 'Day window active' if (master and day) else ('Master switch off' if not master else 'Night') }}"
+          light_action: "{{ 'none' if (light_wanted == light_state or light_state not in ['on', 'off']) else 'turn_' ~ light_wanted }}"
+
+          # ------------------------------------------------------------------
+          # 7) REPORT
+          # ------------------------------------------------------------------
+          changes: |-
+            {% set ns = namespace(c=[]) %}
+            {% if heat_action != 'none' %}{% set ns.c = ns.c + ['Heater ' ~ heat_wanted ~ ': ' ~ heat_why] %}{% endif %}
+            {% if hum_action != 'none' %}{% set ns.c = ns.c + ['Humidifier ' ~ hum_wanted ~ ': ' ~ hum_why] %}{% endif %}
+            {% if light_action != 'none' %}{% set ns.c = ns.c + ['Light ' ~ light_wanted ~ ': ' ~ light_why] %}{% endif %}
+            {{ ns.c }}
+          # Alert texts are static on purpose (no numbers) so notifications do not spam
+          alerts: |-
+            {% set ns = namespace(a=[]) %}
+            {% if warm_avg is none %}{% set ns.a = ns.a + ['LO/RO sensors stale or missing, heater forced off'] %}{% endif %}
+            {% if cool_avg is none %}{% set ns.a = ns.a + ['Floor sensors stale or missing'] %}{% endif %}
+            {% if hum_avg is none %}{% set ns.a = ns.a + ['Humidity sensors stale or missing'] %}{% endif %}
+            {% if t_max is not none and t_max >= cfg.hard_max %}{% set ns.a = ns.a + ['Overheat: heater forced off'] %}{% endif %}
+            {% if cool_avg is not none and cool_avg < (cfg.cool_min_day if day else cfg.night_min) %}{% set ns.a = ns.a + ['Floor level too cold'] %}{% endif %}
+            {% if heat_state == 'on' and l3_minutes > cfg.lamp_check_min and warm_max is not none and warm_max < cfg.warm_min_when_on %}{% set ns.a = ns.a + ['Heater is on but LO/RO are not heating up'] %}{% endif %}
+            {% if heat_state == 'on' and l3_minutes > 5 and heat_power is not none and heat_power < cfg.min_heater_power %}{% set ns.a = ns.a + ['Heater is on but draws no power: check emitter'] %}{% endif %}
+            {% if light_state == 'on' and l2_minutes > 5 and light_power is not none and light_power < cfg.min_light_power %}{% set ns.a = ns.a + ['Light is on but draws no power: check grow light bar'] %}{% endif %}
+            {% if hum_avg is not none and hum_avg < cfg.hum_low_alert %}{% set ns.a = ns.a + ['Humidity too low'] %}{% endif %}
+            {% if hum_avg is not none and hum_avg > cfg.hum_high_alert %}{% set ns.a = ns.a + ['Humidity too high, ventilate'] %}{% endif %}
+            {% if heat_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Heater switch unavailable'] %}{% endif %}
+            {% if hum_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Humidifier switch unavailable'] %}{% endif %}
+            {% if light_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Light switch unavailable'] %}{% endif %}
+            {% if refill == 'now' %}{% set ns.a = ns.a + ['Humidifier tank empty: refill now'] %}{% endif %}
+            {% if refill == 'soon' %}{% set ns.a = ns.a + ['Humidifier tank: refill soon'] %}{% endif %}
+            {{ ns.a }}
+
+        state: "{{ (changes | length > 0) or (alerts | length > 0) }}"
+        attributes:
+          reason: |-
+            {% set items = changes + alerts %}
+            {{ items | join(' | ') if items | length > 0 else 'All good, nothing to adjust' }}
+          changes: "{{ changes }}"
+          alerts: "{{ alerts }}"
+          heat_action: "{{ heat_action }}"
+          heat_why: "{{ heat_why }}"
+          humidifier_action: "{{ hum_action }}"
+          humidifier_why: "{{ hum_why }}"
+          humidifier_run_mode: "{{ hum_mode }}"
+          light_action: "{{ light_action }}"
+          light_why: "{{ light_why }}"
+          day: "{{ day }}"
+          warm_temp: "{{ warm_avg }}"
+          warm_temp_max: "{{ warm_max }}"
+          cool_temp: "{{ cool_avg }}"
+          temp_max: "{{ t_max }}"
+          humidity: "{{ hum_avg }}"
+          humidity_target: "{{ hum_target }}"
+          humidifier_power: "{{ hum_power }}"
+          heater_power: "{{ heat_power }}"
+          light_power: "{{ light_power }}"
+          # ---- stored state (counters, timestam
+          daily_reset_at: "{{ daily_reset_at }}"
+          runs_today: "{{ runs_today }}"
+          runs_total: "{{ runs_total }}"
+          runs_since_refill: "{{ runs_tank }}"
+          runs_max: "{{ max_runs }}"
+          tank_capacity_runs: "{{ tank_cap }}"
+          runs_summary: "{{ runs_today }}/{{ max_runs }} today, {{ runs_tank }}/{{ tank_cap }} since refill, {{ runs_total }} total"
+          last_run: "{{ last_run }}"
+          last_run_end: "{{ last_run_end }}"
+          heater_on_since: "{{ heater_since }}"
+          last_refill: "{{ last_refill }}"
+          last_empty: "{{ last_empty }}"
+          empty_flag: "{{ empty_flag }}"
+          refill: "{{ refill }}"
+          refill_runs_left: "{{ runs_left }}"
+          refill_eta: "{{ refill_eta | trim }}"
+          last_event: |-
+            {% if trigger.id in ['devices', 'humidifier_on', 'humidifier_off', 'heater_on', 'heater_off'] and trigger.to_state is not none %}
+              {{ now().strftime('%H:%M') }} {{ trigger.to_state.name }} -> {{ trigger.to_state.state }}
+            {% elif trigger.id == 'refilled' %}
+              {{ now().strftime('%H:%M') }} tank refilled
+            {% else %}
+              {{ state_attr('binary_sensor.terrarium_control', 'last_event') or '-' }}
+            {% endif %}
+          updated_at: "{{ now().strftime('%H:%M:%S') }} ({{ trigger.id }})"
