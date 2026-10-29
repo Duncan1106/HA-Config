@@ -174,6 +174,9 @@ template:
       - trigger: homeassistant
         event: start
         id: ha_start
+      - trigger: event
+        event_type: event_template_reloaded
+        id: template_reload
       - trigger: time
         at: "00:00:01"
         id: day_start
@@ -436,4 +439,87 @@ template:
           hum_action: "{{ 'none' if (hum_wanted == 'hold' or hum_wanted == hum_state or hum_state not in ['on', 'off']) else 'turn_' ~ hum_wanted }}"
           hum_mode: "{{ ('forced' if forced_due else 'auto') if hum_wanted == 'on' else (hum_mode_prev if hum_state == 'on' else '') }}"
 
-          light_wanted: "{{ 'on
+          light_wanted: "{{ 'on' if (master and day) else 'off' }}"
+          light_why: "{{ 'Day window active' if (master and day) else ('Master switch off' if not master else 'Night') }}"
+          light_action: "{{ 'none' if (light_wanted == light_state or light_state not in ['on', 'off']) else 'turn_' ~ light_wanted }}"
+
+          # ------------------------------------------------------------------
+          # 7) REPORT
+          # ------------------------------------------------------------------
+          changes: |-
+            {% set ns = namespace(c=[]) %}
+            {% if heat_action != 'none' %}{% set ns.c = ns.c + ['Heater ' ~ heat_wanted ~ ': ' ~ heat_why] %}{% endif %}
+            {% if hum_action != 'none' %}{% set ns.c = ns.c + ['Humidifier ' ~ hum_wanted ~ ': ' ~ hum_why] %}{% endif %}
+            {% if light_action != 'none' %}{% set ns.c = ns.c + ['Light ' ~ light_wanted ~ ': ' ~ light_why] %}{% endif %}
+            {{ ns.c }}
+          # Alert texts are static on purpose (no numbers) so notifications do not spam
+          alerts: |-
+            {% set ns = namespace(a=[]) %}
+            {% if warm_avg is none %}{% set ns.a = ns.a + ['LO/RO sensors stale or missing, heater forced off'] %}{% endif %}
+            {% if cool_avg is none %}{% set ns.a = ns.a + ['Floor sensors stale or missing'] %}{% endif %}
+            {% if hum_avg is none %}{% set ns.a = ns.a + ['Humidity sensors stale or missing'] %}{% endif %}
+            {% if t_max is not none and t_max >= cfg.hard_max %}{% set ns.a = ns.a + ['Overheat: heater forced off'] %}{% endif %}
+            {% if cool_avg is not none and cool_avg < (cfg.cool_min_day if day else cfg.night_min) %}{% set ns.a = ns.a + ['Floor level too cold'] %}{% endif %}
+            {% if heat_state == 'on' and l3_minutes > cfg.lamp_check_min and warm_max is not none and warm_max < cfg.warm_min_when_on %}{% set ns.a = ns.a + ['Heater is on but LO/RO are not heating up'] %}{% endif %}
+            {% if heat_state == 'on' and l3_minutes > 5 and heat_power is not none and heat_power < cfg.min_heater_power %}{% set ns.a = ns.a + ['Heater is on but draws no power: check emitter'] %}{% endif %}
+            {% if light_state == 'on' and l2_minutes > 5 and light_power is not none and light_power < cfg.min_light_power %}{% set ns.a = ns.a + ['Light is on but draws no power: check grow light bar'] %}{% endif %}
+            {% if hum_avg is not none and hum_avg < cfg.hum_low_alert %}{% set ns.a = ns.a + ['Humidity too low'] %}{% endif %}
+            {% if hum_avg is not none and hum_avg > cfg.hum_high_alert %}{% set ns.a = ns.a + ['Humidity too high, ventilate'] %}{% endif %}
+            {% if heat_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Heater switch unavailable'] %}{% endif %}
+            {% if hum_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Humidifier switch unavailable'] %}{% endif %}
+            {% if light_state not in ['on', 'off'] %}{% set ns.a = ns.a + ['Light switch unavailable'] %}{% endif %}
+            {% if refill == 'now' %}{% set ns.a = ns.a + ['Humidifier tank empty: refill now'] %}{% endif %}
+            {% if refill == 'soon' %}{% set ns.a = ns.a + ['Humidifier tank: refill soon'] %}{% endif %}
+            {{ ns.a }}
+
+        state: "{{ (changes | length > 0) or (alerts | length > 0) }}"
+        attributes:
+          reason: |-
+            {% set items = changes + alerts %}
+            {{ items | join(' | ') if items | length > 0 else 'All good, nothing to adjust' }}
+          changes: "{{ changes }}"
+          alerts: "{{ alerts }}"
+          heat_action: "{{ heat_action }}"
+          heat_why: "{{ heat_why }}"
+          humidifier_action: "{{ hum_action }}"
+          humidifier_why: "{{ hum_why }}"
+          humidifier_run_mode: "{{ hum_mode }}"
+          light_action: "{{ light_action }}"
+          light_why: "{{ light_why }}"
+          day: "{{ day }}"
+          warm_temp: "{{ warm_avg }}"
+          warm_temp_max: "{{ warm_max }}"
+          cool_temp: "{{ cool_avg }}"
+          temp_max: "{{ t_max }}"
+          humidity: "{{ hum_avg }}"
+          humidity_target: "{{ hum_target }}"
+          humidifier_power: "{{ hum_power }}"
+          heater_power: "{{ heat_power }}"
+          light_power: "{{ light_power }}"
+          # ---- stored state (counters, timestamps) ----
+          daily_reset_at: "{{ daily_reset_at }}"
+          runs_today: "{{ runs_today }}"
+          runs_total: "{{ runs_total }}"
+          runs_since_refill: "{{ runs_tank }}"
+          runs_max: "{{ max_runs }}"
+          tank_capacity_runs: "{{ tank_cap }}"
+          runs_summary: "{{ runs_today }}/{{ max_runs }} today, {{ runs_tank }}/{{ tank_cap }} since refill, {{ runs_total }} total"
+          last_run: "{{ last_run }}"
+          last_run_end: "{{ last_run_end }}"
+          heater_on_since: "{{ heater_since }}"
+          last_refill: "{{ last_refill }}"
+          last_empty: "{{ last_empty }}"
+          empty_flag: "{{ empty_flag }}"
+          refill: "{{ refill }}"
+          refill_runs_left: "{{ runs_left }}"
+          refill_eta: "{{ refill_eta | trim }}"
+          last_event: |-
+            {% if trigger.id in ['devices', 'humidifier_on', 'humidifier_off', 'heater_on', 'heater_off'] and trigger.to_state is not none %}
+              {{ now().strftime('%H:%M') }} {{ trigger.to_state.name }} -> {{ trigger.to_state.state }}
+            {% elif trigger.id == 'refilled' %}
+              {{ now().strftime('%H:%M') }} tank refilled
+            {% else %}
+              {{ state_attr('binary_sensor.terrarium_control', 'last_event') or '-' }}
+            {% endif %}
+          updated_at: "{{ now().strftime('%H:%M:%S') }} ({{ trigger.id }})"
+          
