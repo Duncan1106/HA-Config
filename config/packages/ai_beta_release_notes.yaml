@@ -1,0 +1,107 @@
+template: 
+  # AI Beta Release Notes Summary
+  - triggers:
+    - trigger: homeassistant
+      event: start
+    - trigger: time
+      at: "00:00:01"
+      weekday: [wed, thu]
+    - trigger: state
+      entity_id:
+        - input_button.update_beta_release_notes
+    binary_sensor:
+    - unique_id: home_assistant_beta_release_notes_window
+      name: Home Assistant Beta Release Notes Window
+      icon: mdi:home-assistant
+      state: >
+        {% set today = now().date() %}
+        {% set nxt = today + timedelta(days=(2 - today.weekday()) % 7) %}
+        {{ nxt.day <= 7
+           or (nxt == today and (today + timedelta(days=7)).day <= 7) }}
+  
+  - triggers:
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: event_template_reloaded
+      - trigger: state
+        entity_id:
+          - input_button.update_beta_release_notes
+          - input_select.conversation_agents
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.home_assistant_beta_release_notes_window
+        state: "on"
+    actions:
+      - action: multiscrape.scrape
+        response_variable: beta_scrape
+        data:
+          name: beta_release_scraper
+          resource: https://rc.home-assistant.io/latest-release-notes/
+          sensor:
+            - unique_id: beta_url
+              name: Beta Release URL
+              select: link[rel='canonical']
+              attribute: href
+              value_template: |
+                {!{ value | trim | replace('www.home','rc.home') }!}
+            - unique_id: beta_notes_content
+              name: Beta Notes Content
+              select: article
+              value_template: |
+                {!{ value | trim | replace('\n', ' ') }!}
+      - variables:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
+          release_url: >-
+            {{ (beta_scrape.get('beta_url', {}).get('value') or '') | trim }}
+          version: >-
+            {% set m = release_url | regex_findall('release-([0-9]{4})([0-9]+)') %}
+            {% if not release_url %}
+              Unknown
+            {% elif m %}
+              {{ m[0][0] ~ '.' ~ '%02d' | format(m[0][1] | int) ~ '.0' }}
+            {% else %}
+              Invalid URL
+            {% endif %}
+      - action: conversation.process
+        response_variable: agent
+        data:
+          agent_id: "{{ agent_id }}"
+          text: |-
+            You are an expert software release notes summarizer.
+            The release notes below are for the Home Assistant release at this URL: {{ release_url }}
+
+            From the raw release notes text, extract only points actually mentioned.
+            Be concise but informative, avoid filler.
+            Output markdown only, with no introduction or closing remarks, using exactly these headings, each followed by a bullet list:
+
+            **New Features:**
+            **Breaking Changes:** (changes that require user attention because they may break existing setups)
+            **Backward-Incompatible Changes:** (including deprecations)
+            **Other Notes:** (bug fixes, notable improvements)
+
+            Release notes text:
+            {{ beta_scrape.beta_notes_content.value }}
+      - action: conversation.process
+        response_variable: agent_short
+        data:
+          agent_id: "{{ agent_id }}"
+          text: |-
+            Summarize the following text to a maximum of 250 words or 750 characters, whichever is shorter.
+            Extract only the most critical features, integrations, and breaking changes.
+            Remove all filler, examples, UI details, minor notes, and secondary information.
+            Preserve clarity and grammar.
+            Output ONLY the condensed summary, with no text before or after it.
+
+            Home Assistant {{ version }}
+
+            {{ agent.response.speech.plain.speech }}
+    sensor:
+      - unique_id: home_assistant_beta_release_notes
+        name: Home Assistant Beta Release Notes
+        icon: mdi:home-assistant
+        state: "{{ version }}"
+        attributes:
+          beta_url: "{{ release_url }}"
+          ai_summary: "{{ agent.response.speech.plain.speech }}"
+          ai_summary_short: "{{ agent_short.response.speech.plain.speech }}"
