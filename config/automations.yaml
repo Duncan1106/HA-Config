@@ -1744,7 +1744,8 @@
       metadata: {}
       data: {}
       target:
-        entity_id: switch.pool_ventil_solar
+        entity_id:
+        - switch.gartenhaus_technik_1
     - action: script.turn_on
       metadata: {}
       target:
@@ -1795,7 +1796,8 @@
       metadata: {}
       data: {}
       target:
-        entity_id: switch.pool_ventil_solar
+        entity_id:
+        - switch.gartenhaus_technik_1
     - action: script.turn_on
       metadata: {}
       target:
@@ -1994,7 +1996,8 @@
       metadata: {}
       data: {}
       target:
-        entity_id: switch.pool_ventil_solar
+        entity_id:
+        - switch.gartenhaus_technik_1
   - alias: Force Stop
     if:
     - condition: trigger
@@ -2021,7 +2024,7 @@
       target:
         entity_id:
         - switch.pool_pumpe
-        - switch.pool_ventil_solar
+        - switch.gartenhaus_technik_1
     - if:
       - condition: numeric_state
         entity_id: input_number.pulsetimeactualvalue
@@ -2222,7 +2225,7 @@
     solar valve.  \n      - Notify user via notification that heating is skipped due
     to high temperature.  \n\n  ---\n\n  ### \U0001F527 **Technical Specs**\n  - **Mode:**
     `single` (prevents overlapping operations)  \n  - Valves controlled:  \n      -
-    `switch.pool_ventil_solar` (main solar valve)  \n      - `switch.smart_valve_controller_schalter_1`
+    `switch.gartenhaus_technik_1` (main solar valve)  \n      - `switch.smart_valve_controller_schalter_1`
     (smart valve controller)  \n  - Monitored entities: solar azimuth, pool temperature
     sensors, cloud coverage, solar power, solar radiation, and pool start temperature
     input.  \n\n  ---\n\n  ### ⚡ **Best Practices / Notes**\n  - Adjust temperature
@@ -2299,14 +2302,14 @@
     - alias: If First Trigger of the day, then turn on switch
       if:
       - condition: state
-        entity_id: switch.pool_ventil_solar
+        entity_id: switch.gartenhaus_technik_1
         state: 'off'
       then:
       - action: switch.turn_on
         metadata: {}
         data: {}
         target:
-          entity_id: switch.pool_ventil_solar
+          entity_id: switch.gartenhaus_technik_1
       - wait_for_trigger:
         - trigger: state
           entity_id:
@@ -2381,7 +2384,7 @@
       data: {}
       target:
         entity_id:
-        - switch.pool_ventil_solar
+        - switch.gartenhaus_technik_1
     - action: notify.duncan
       data:
         title: Poolheizung nicht aktiviert
@@ -10459,10 +10462,10 @@
       seconds: 30
   conditions:
   - condition: template
-    value_template: "{{ trigger is defined and trigger.to_state is not none and trigger.from_state
-      is not none and \n   trigger.to_state.attributes.get('band') is not none and\n
-      \  trigger.to_state.attributes.band != trigger.from_state.attributes.get('band')
-      }}"
+    value_template: "{% set to_s = trigger.get('to_state') %} {% set from_s = trigger.get('from_state')
+      %} {{ to_s is not none and from_s is not none\n   and to_s.attributes.get('band')
+      is not none\n   and to_s.attributes.get('band') != from_s.attributes.get('band')
+      }}\n"
   actions:
   - choose:
     - conditions:
@@ -12171,8 +12174,9 @@
         entity_id: sensor.solcast_pv_forecast_prognose_heute
         above: 30
     - condition: template
-      value_template: '{{ (now() - (this.attributes.last_triggered | default(as_datetime(0),
-        true))) > timedelta(days=10) }}
+      value_template: '{% set last = state_attr(''automation.power_weekly_laptop_maintenance_solcast_fallback'',
+        ''last_triggered'') %} {{ last is none or (now() - last) > timedelta(days=10)
+        }}
 
         '
   actions:
