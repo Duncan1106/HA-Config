@@ -6380,75 +6380,209 @@ config:
     - cards:
       - badges:
         - color: state
-          entity: sensor.daily_luftbefeuchter
-          icon: mdi:air-humidifier
-          name: Luftbefeuchter
+          entity: binary_sensor.terrarium_control
+          name: Controller
           show_icon: true
           show_state: true
-          state_content:
-          - state
-          - name
           tap_action:
             action: more-info
           type: entity
-        heading: Kontrolle
-        heading_style: title
-        icon: mdi:fridge
-        type: heading
-      - cards:
-        - double_tap_action:
-            action: toggle
-          entity: switch.terrarium_zigbee_strip_l3
-          fill_container: true
-          icon: mdi:globe-light
-          layout: vertical
-          name: "W\xE4rmelampe"
-          primary_info: name
-          secondary_info: state
+        - entity: binary_sensor.terrarium_control
+          icon: mdi:air-humidifier
+          name: "L\xE4ufe heute"
+          show_icon: true
+          show_state: true
+          state_content: runs_today
           tap_action:
             action: more-info
-          type: custom:mushroom-entity-card
-        - double_tap_action:
+          type: entity
+        heading: Terrarium
+        heading_style: title
+        icon: mdi:snake
+        type: heading
+      - entity: binary_sensor.terrarium_control
+        fill_container: true
+        grid_options:
+          columns: 12
+          rows: auto
+        icon: mdi:snake
+        icon_color: '{% set c = ''binary_sensor.terrarium_control'' %} {% if states(c)
+          in [''unavailable'', ''unknown''] %}grey {% elif (state_attr(c, ''alerts'')
+          or []) | length > 0 %}red {% elif is_state(c, ''on'') %}orange {% else %}green{%
+          endif %}'
+        layout: horizontal
+        multiline_secondary: true
+        primary: "{% set c = 'binary_sensor.terrarium_control' %} {% if states(c)\
+          \ in ['unavailable', 'unknown'] %}Controller nicht verf\xFCgbar {% elif\
+          \ (state_attr(c, 'alerts') or []) | length > 0 %}Warnung {% elif is_state(c,\
+          \ 'on') %}Handlungsbedarf {% else %}Alles in Ordnung{% endif %} {{ '' if\
+          \ states(c) in ['unavailable', 'unknown'] else (' \xB7 Tag' if state_attr(c,\
+          \ 'day') else ' \xB7 Nacht') }}"
+        secondary: '{{ state_attr(''binary_sensor.terrarium_control'', ''reason'')
+          }}'
+        tap_action:
+          action: more-info
+        type: custom:mushroom-template-card
+      - cards:
+        - badge_color: orange
+          badge_icon: '{% set x = state_attr(''binary_sensor.terrarium_control'',
+            ''heat_action'') %} {{ ''mdi:arrow-up-bold'' if x == ''turn_on'' else
+            (''mdi:arrow-down-bold'' if x == ''turn_off'' else '''') }}'
+          double_tap_action:
             action: toggle
-          entity: switch.terrarium_zigbee_strip_l2
+          entity: switch.terrarium_controller_warmelampe
+          fill_container: true
+          icon: mdi:heat-wave
+          icon_color: '{{ ''red'' if is_state(''switch.terrarium_controller_warmelampe'',
+            ''on'') else ''grey'' }}'
+          layout: vertical
+          primary: "W\xE4rmelampe"
+          secondary: "{{ 'Ein' if is_state('switch.terrarium_controller_warmelampe',\
+            \ 'on') else 'Aus' }} \xB7 {{ states('sensor.terrarium_controller_power_warmelampe')\
+            \ | float(0) | round(0) | int }} W"
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+        - badge_color: orange
+          badge_icon: '{% set x = state_attr(''binary_sensor.terrarium_control'',
+            ''light_action'') %} {{ ''mdi:arrow-up-bold'' if x == ''turn_on'' else
+            (''mdi:arrow-down-bold'' if x == ''turn_off'' else '''') }}'
+          double_tap_action:
+            action: toggle
+          entity: switch.terrarium_controller_licht
           fill_container: true
           icon: mdi:light-switch
+          icon_color: '{{ ''amber'' if is_state(''switch.terrarium_controller_licht'',
+            ''on'') else ''grey'' }}'
           layout: vertical
-          name: Helligkeit
-          primary_info: name
-          secondary_info: state
+          primary: Licht
+          secondary: "{{ 'Ein' if is_state('switch.terrarium_controller_licht', 'on')\
+            \ else 'Aus' }} \xB7 {{ states('sensor.terrarium_controller_power_licht')\
+            \ | float(0) | round(0) | int }} W"
           tap_action:
             action: more-info
-          type: custom:mushroom-entity-card
-        - double_tap_action:
+          type: custom:mushroom-template-card
+        - badge_color: orange
+          badge_icon: '{% set x = state_attr(''binary_sensor.terrarium_control'',
+            ''humidifier_action'') %} {{ ''mdi:arrow-up-bold'' if x == ''turn_on''
+            else (''mdi:arrow-down-bold'' if x == ''turn_off'' else '''') }}'
+          double_tap_action:
             action: toggle
-          entity: switch.terrarium_zigbee_strip_l1
+          entity: switch.terrarium_controller_luftbefeuchter
           fill_container: true
           icon: mdi:water-percent
+          icon_color: '{{ ''blue'' if is_state(''switch.terrarium_controller_luftbefeuchter'',
+            ''on'') else ''grey'' }}'
           layout: vertical
-          name: Luftbefeuchter
-          primary_info: name
-          secondary_info: state
+          primary: Luftbefeuchter
+          secondary: "{{ 'L\xE4uft' if is_state('switch.terrarium_controller_luftbefeuchter',\
+            \ 'on') else 'Aus' }} \xB7 {{ states('sensor.terrarium_controller_power_luftbefeuchter')\
+            \ | float(0) | round(0) | int }} W"
           tap_action:
             action: more-info
-          type: custom:mushroom-entity-card
+          type: custom:mushroom-template-card
         type: horizontal-stack
-      - content: "**\u23F0 Status:** {{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'status') }}\n**\U0001F305 Offset-Zeiten**\n- Start: `{% set start = as_datetime(state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'next_sunrise_offset_start')) %}{{ start.timestamp() | timestamp_custom('%H:%M',\
-          \ true) if start else ' N/A' }}`\n- Ende: `{% set end = as_datetime(state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'next_sunset_offset_end')) %} {{ end.timestamp() | timestamp_custom('%H:%M',\
-          \ true) if end else ' N/A' }}`\n\n**\U0001F552 Zeitfenster & Intervall**\n\
-          - Zeitfenster: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'window_duration') }}`\n- Intervall: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'trigger_interval') }}`\n\n**\U0001F4CA Status** - Verbleibend: `{{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'remaining_activations') }} von {{ state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'max_activations_per_day') }}`\n**\U0001F501 Trigger-Zeiten:**  {% if\
-          \ state_attr('binary_sensor.luftbefeuchter_on_windows', 'remaining_activations')\
-          \ | int == 0 %}\n  - \U0001F6AB Tageslimit wurde erreicht. Keine Trigger\
-          \ mehr f\xFCr heute.\n{% else %}\n  {% for t in (state_attr('binary_sensor.luftbefeuchter_on_windows',\
-          \ 'trigger_times') | default([], true)) %} - `{{ t }}`{{ '\\n' }} {% endfor\
-          \ %}\n{% endif %}\n"
+      - cards:
+        - entity: binary_sensor.terrarium_control
+          fill_container: true
+          icon: mdi:thermometer-high
+          icon_color: orange
+          layout: vertical
+          primary: "{{ state_attr('binary_sensor.terrarium_control', 'warm_temp')\
+            \ }} \xB0C"
+          secondary: "Warm LO/RO \xB7 max {{ state_attr('binary_sensor.terrarium_control',\
+            \ 'warm_temp_max') }}"
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+        - entity: binary_sensor.terrarium_control
+          fill_container: true
+          icon: mdi:thermometer-low
+          icon_color: blue
+          layout: vertical
+          primary: "{{ state_attr('binary_sensor.terrarium_control', 'cool_temp')\
+            \ }} \xB0C"
+          secondary: Boden
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+        - entity: binary_sensor.terrarium_control
+          fill_container: true
+          icon: mdi:water-percent
+          icon_color: teal
+          layout: vertical
+          primary: '{{ state_attr(''binary_sensor.terrarium_control'', ''humidity'')
+            }} %'
+          secondary: "Ziel \u2264 {{ state_attr('binary_sensor.terrarium_control',\
+            \ 'humidity_target') }} %"
+          tap_action:
+            action: more-info
+          type: custom:mushroom-template-card
+        type: horizontal-stack
+      - content: "{% macro v(e, u) -%}{{ (states(e) | float | round(1) ~ ' ' ~ u)\
+          \ if states(e) | is_number else '\u2013' }}{%- endmacro %}\n**\U0001F321\
+          \uFE0F Sensoren**\n\n| | links | rechts |\n|:--|:-:|:-:|\n| **oben** | {{\
+          \ v('sensor.t_h_terra_lo_temperature', '\xB0C') }} \xB7 {{ v('sensor.t_h_terra_lo_humidity',\
+          \ '%') }} | {{ v('sensor.t_h_terra_ro_temperature', '\xB0C') }} \xB7 {{\
+          \ v('sensor.t_h_terra_ro_humidity', '%') }} |\n| **unten** | {{ v('sensor.t_h_terra_lu_temperature',\
+          \ '\xB0C') }} \xB7 {{ v('sensor.t_h_terra_lu_humidity', '%') }} | {{ v('sensor.t_h_terra_ru_temperature',\
+          \ '\xB0C') }} \xB7 {{ v('sensor.t_h_terra_ru_humidity', '%') }} |"
+        type: markdown
+      - content: "{% set c = 'binary_sensor.terrarium_control' %}\n{% macro a(x) -%}{{\
+          \ {'turn_on': '\u25B6 ein', 'turn_off': '\u25A0 aus'}.get(x, '\u2713') }}{%-\
+          \ endmacro %}\n**\U0001F9E0 Was der Controller entscheidet**\n\n| | Aktion\
+          \ | Grund |\n|:--|:-:|:--|\n| \U0001F525 W\xE4rmelampe | {{ a(state_attr(c,\
+          \ 'heat_action')) }} | {{ state_attr(c, 'heat_why') }} |\n| \U0001F4A1 Licht\
+          \ | {{ a(state_attr(c, 'light_action')) }} | {{ state_attr(c, 'light_why')\
+          \ }} |\n| \U0001F4A7 Luftbefeuchter | {{ a(state_attr(c, 'humidifier_action'))\
+          \ }} | {{ state_attr(c, 'humidifier_why') }} |\n\n{% set al = state_attr(c,\
+          \ 'alerts') or [] %}\n{% if al | length > 0 %}**\u26A0\uFE0F Warnungen**\n\
+          {% for x in al %}- {{ x }}\n{% endfor %}{% else %}\u2705 Keine Warnungen{%\
+          \ endif %}"
+        type: markdown
+      - entity: binary_sensor.terrarium_control
+        fill_container: true
+        grid_options:
+          columns: 12
+          rows: auto
+        hold_action:
+          action: more-info
+        icon: '{{ ''mdi:water-alert'' if state_attr(''binary_sensor.terrarium_control'',
+          ''refill'') in [''now'', ''soon''] else ''mdi:water-check'' }}'
+        icon_color: '{% set r = state_attr(''binary_sensor.terrarium_control'', ''refill'')
+          %} {{ ''red'' if r == ''now'' else (''orange'' if r == ''soon'' else ''green'')
+          }}'
+        layout: horizontal
+        multiline_secondary: true
+        primary: "{% set r = state_attr('binary_sensor.terrarium_control', 'refill')\
+          \ %} Tank: {{ 'LEER \u2013 bitte auff\xFCllen' if r == 'now' else ('bald\
+          \ leer' if r == 'soon' else 'ok') }}"
+        secondary: "{% set c = 'binary_sensor.terrarium_control' %} {{ state_attr(c,\
+          \ 'runs_since_refill') }} / {{ state_attr(c, 'tank_capacity_runs') }} L\xE4\
+          ufe seit Auff\xFCllen \xB7 noch {{ state_attr(c, 'refill_runs_left') }}\
+          \ \xB7 leer ca. {{ state_attr(c, 'refill_eta') }} (Tippen = aufgef\xFCllt)"
+        tap_action:
+          action: perform-action
+          confirmation:
+            text: "Tank wurde aufgef\xFCllt?"
+          perform_action: script.terrarium_tank_refilled
+        type: custom:mushroom-template-card
+      - content: "{% set c = 'binary_sensor.terrarium_control' %}\n{% macro t(x) -%}{{\
+          \ (x | as_datetime | as_local).strftime('%d.%m. %H:%M') if x else '\u2013\
+          ' }}{%- endmacro %}\n**\U0001F4A7 Luftbefeuchter**\n- L\xE4ufe heute: **{{\
+          \ state_attr(c, 'runs_today') }} / {{ state_attr(c, 'runs_max') }}** (mind.\
+          \ 1 pro Tag, Pflichtlauf ab 12:00)\n- Seit Auff\xFCllen: **{{ state_attr(c,\
+          \ 'runs_since_refill') }}** \xB7 Gesamt: {{ state_attr(c, 'runs_total')\
+          \ }}\n- Letzter Lauf: {{ t(state_attr(c, 'last_run')) }}{{ ' \xB7 l\xE4\
+          uft gerade' if is_state('switch.terrarium_controller_luftbefeuchter', 'on')\
+          \ else '' }}\n- Lauf-Modus: {{ {'forced': 'Pflichtlauf', 'auto': 'Feuchte'}.get(state_attr(c,\
+          \ 'humidifier_run_mode'), '\u2013') }}\n\n**\U0001F552 Zeiten**\n- Lampe\
+          \ an seit: {{ t(state_attr(c, 'heater_on_since')) if is_state('switch.terrarium_controller_warmelampe',\
+          \ 'on') else '\u2013' }}\n- Tank zuletzt aufgef\xFCllt: {{ t(state_attr(c,\
+          \ 'last_refill')) }}\n- Zuletzt leer: {{ t(state_attr(c, 'last_empty'))\
+          \ }}\n- Tagesz\xE4hler zur\xFCckgesetzt: {{ t(state_attr(c, 'daily_reset_at'))\
+          \ }}\n- Letztes Ereignis: {{ state_attr(c, 'last_event') }}\n- Aktualisiert:\
+          \ {{ state_attr(c, 'updated_at') }}"
         type: markdown
       - cards:
         - display_mode: buttons
@@ -6467,45 +6601,34 @@ config:
           name: Max Runs
           type: custom:mushroom-number-card
         type: horizontal-stack
-      - entity: binary_sensor.luftbefeuchter_on_windows
-        features_position: bottom
-        grid_options:
-          columns: 12
-          rows: 1
-        type: tile
-        vertical: false
-      - color: none
-        entity: switch.terrarium_zigbee_strip_l1
-        hold_action:
-          action: more-info
-        icon: mdi:air-humidifier
-        show_icon: true
-        show_name: true
-        show_state: false
-        tap_action:
-          action: perform-action
-          confirmation: true
-          perform_action: script.luftbefeuchter
-          target: {}
-        type: button
-      - color: none
-        entity: switch.terrarium_zigbee_strip_l3
-        hold_action:
-          action: more-info
-        icon: mdi:heat-wave
-        show_icon: true
-        show_name: true
-        show_state: false
-        tap_action:
-          action: perform-action
-          confirmation: true
-          perform_action: script.warmelampe
-          target: {}
-        type: button
-      - entities:
-        - entity: automation.luftbefeuchter_leer
-        - entity: automation.terra_pulsetime_control
-        type: entities
+      - cards:
+        - entity: input_boolean.terrarium_on
+          fill_container: true
+          hold_action:
+            action: more-info
+          icon: mdi:power
+          layout: vertical
+          name: Master
+          primary_info: name
+          secondary_info: state
+          tap_action:
+            action: toggle
+          type: custom:mushroom-entity-card
+        - entity: automation.terrarium_control_control_alarms_and_warnings
+          fill_container: true
+          hold_action:
+            action: more-info
+          icon: mdi:robot
+          layout: vertical
+          name: Automation
+          primary_info: name
+          secondary_info: state
+          tap_action:
+            action: toggle
+          type: custom:mushroom-entity-card
+        type: horizontal-stack
+      columns: 1
+      square: false
       type: grid
     - cards:
       - badges:
@@ -6519,30 +6642,6 @@ config:
         heading: Sensoren
         heading_style: title
         icon: mdi:greenhouse
-        type: heading
-      - cards:
-        - entity: sensor.t_h_terrarium_temperature
-          features:
-          - hours_to_show: 12
-            type: trend-graph
-          features_position: bottom
-          name: Temperature 12h
-          state_content: state
-          type: tile
-          vertical: false
-        - entity: sensor.t_h_terrarium_humidity
-          features:
-          - hours_to_show: 12
-            type: trend-graph
-          features_position: bottom
-          name: Humidity 12h
-          state_content: state
-          type: tile
-          vertical: false
-        type: horizontal-stack
-      type: grid
-    - cards:
-      - heading: New section
         type: heading
       - cards:
         - content: "{% set t_lo = states('sensor.t_h_terra_lo_temperature') | float(0)\
@@ -6675,6 +6774,28 @@ config:
             type: custom:mod-card
           type: horizontal-stack
         type: vertical-stack
+      - cards:
+        - entity: sensor.t_h_terrarium_temperature
+          features:
+          - hours_to_show: 12
+            type: trend-graph
+          features_position: bottom
+          name: Temperature 12h
+          state_content: state
+          type: tile
+          vertical: false
+        - entity: sensor.t_h_terrarium_humidity
+          features:
+          - hours_to_show: 12
+            type: trend-graph
+          features_position: bottom
+          name: Humidity 12h
+          state_content: state
+          type: tile
+          vertical: false
+        type: horizontal-stack
+      type: grid
+    - cards: []
       type: grid
     subview: true
     title: Terrarium

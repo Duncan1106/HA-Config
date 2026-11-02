@@ -13020,8 +13020,10 @@
         actual_s: '{{ [run_s - report_s / 2, 0] | max }}'
         rain_mm: '{{ rain_mm }}'
   mode: single
-- id: '1793259741092'
-  alias: Terrarium TEST - reports what would happen (does nothing)
+- id: '1793648482264'
+  alias: Terrarium Control - control, alarms and warnings
+  description: Executes heat_action / humidifier_action / light_action of binary_sensor.terrarium_control
+    and sends alarms and warnings.
   triggers:
   - trigger: state
     entity_id: binary_sensor.terrarium_control
@@ -13037,40 +13039,89 @@
     id: light
   - trigger: state
     entity_id: binary_sensor.terrarium_control
+    to: 'on'
+    for: 00:15:00
+    id: retry
+  - trigger: state
+    entity_id: binary_sensor.terrarium_control
     attribute: alerts
     for: 00:05:00
     id: alerts
   actions:
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: "{{ trigger.id in ['heat', 'humidifier', 'light']\n   and
-          state_attr(me, trigger.id ~ '_action') in ['turn_on', 'turn_off'] }}"
-      sequence:
-      - action: notify.duncan
+  - alias: Heater
+    if:
+    - condition: template
+      value_template: "{{ trigger.id in ['heat', 'retry']\n   and state_attr(me, 'heat_action')
+        in ['turn_on', 'turn_off'] }}"
+    then:
+    - action: script.retry_action_with_backoff
+      data:
+        action_domain: switch
+        action_type: '{{ state_attr(me, ''heat_action'') }}'
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: switch.terrarium_controller_warmelampe
+        target_state: '{{ ''on'' if state_attr(me, ''heat_action'') == ''turn_on''
+          else ''off'' }}'
+  - alias: Humidifier
+    if:
+    - condition: template
+      value_template: "{{ trigger.id in ['humidifier', 'retry']\n   and state_attr(me,
+        'humidifier_action') in ['turn_on', 'turn_off'] }}"
+    then:
+    - action: script.retry_action_with_backoff
+      data:
+        action_domain: switch
+        action_type: '{{ state_attr(me, ''humidifier_action'') }}'
+        max_retries: 10
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: switch.terrarium_controller_luftbefeuchter
+        target_state: '{{ ''on'' if state_attr(me, ''humidifier_action'') == ''turn_on''
+          else ''off'' }}'
+  - alias: Grow light bar
+    if:
+    - condition: template
+      value_template: "{{ trigger.id in ['light', 'retry']\n   and state_attr(me,
+        'light_action') in ['turn_on', 'turn_off'] }}"
+    then:
+    - action: script.retry_action_with_backoff
+      data:
+        action_domain: switch
+        action_type: '{{ state_attr(me, ''light_action'') }}'
+        max_retries: 5
+        base_delay: 5
+        max_delay: 60
+        backoff_type: simple
+        notify_on_failure: true
+        notify_service: notify.duncan
+        entity_id: switch.terrarium_controller_licht
+        target_state: '{{ ''on'' if state_attr(me, ''light_action'') == ''turn_on''
+          else ''off'' }}'
+  - alias: Alarms and warnings
+    if:
+    - condition: template
+      value_template: '{{ trigger.id == ''alerts'' and trigger.from_state is not none
+        and trigger.from_state.attributes.alerts is defined and state_attr(me, ''alerts'')
+        | length > 0 }}'
+    then:
+    - action: notify.duncan
+      data:
+        title: Terrarium
+        message: '{{ state_attr(me, ''alerts'') | join(''\n'') }} ({{ state_attr(me,
+          ''runs_summary'') }})'
         data:
-          title: Terrarium TEST
-          message: '{{ {''heat'': ''Heater'', ''humidifier'': ''Humidifier'', ''light'':
-            ''Grow light''}[trigger.id] }} would {{ state_attr(me, trigger.id ~ ''_action'')
-            }}{{ '' ('' ~ state_attr(me, ''humidifier_run_mode'') ~ '' run)'' if trigger.id
-            == ''humidifier'' and state_attr(me, ''humidifier_run_mode'') else ''''
-            }}: {{ state_attr(me, trigger.id ~ ''_why'') }} ({{ snapshot }})'
-    - conditions:
-      - condition: template
-        value_template: '{{ trigger.id == ''alerts'' and trigger.from_state is not
-          none and trigger.from_state.attributes.alerts is defined }}'
-      sequence:
-      - action: notify.duncan
-        data:
-          title: Terrarium TEST - alarms
-          message: '{{ (state_attr(me, ''alerts'') | join(''\n'')) if state_attr(me,
-            ''alerts'') | length > 0 else ''All alarms and warnings cleared'' }} ({{
-            snapshot }})'
-  mode: queued
+          actions: '{{ [{''action'': ''TERRARIUM_HUMIDIFIER_REFILLED'', ''title'':
+            ''Tank refilled''}] if state_attr(me, ''refill'') != ''ok'' else [] }}'
+  mode: parallel
   max: 10
   max_exceeded: silent
   variables:
     me: binary_sensor.terrarium_control
-    snapshot: LO/RO max {{ state_attr(me, 'warm_temp_max') }} °C, floor {{ state_attr(me,
-      'cool_temp') }} °C, humidity {{ state_attr(me, 'humidity') }} %, runs {{ state_attr(me,
-      'runs_summary') }}
