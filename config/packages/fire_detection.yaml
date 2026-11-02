@@ -1,6 +1,13 @@
 template:
   # Fire Detection
-  - binary_sensor:
+  - triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: homeassistant
+        event: start
+      - trigger: event
+        event_type: event_template_reloaded
+    binary_sensor:
       - name: "Fire Risk Detected"
         unique_id: fire_risk_detected
         device_class: heat
@@ -8,26 +15,30 @@ template:
         variables:
           threshold: 45
           labeled: "{{ label_entities('fire_watch') }}"
-          fire_sensors: >-
-            {% set ns = namespace(list=[]) %}
+          scan: >-
+            {% set ns = namespace(hot=[], unavailable=[], ignored=[]) %}
             {% for eid in labeled %}
-              {% set u = state_attr(eid, 'unit_of_measurement') | default('', true) %}
-              {% set v = states(eid) | float(-999) %}
-              {% if v != -999 %}
-                {% set v_c = (v - 32) * 5/9 if u in ['°F','F','Fahrenheit'] else v %}
-                {% if v_c > threshold %}
-                  {% set ns.list = ns.list + [ state_attr(eid, 'friendly_name') | default(eid, true) ~ ' (' ~ (v_c | round(1)) ~ ' °C)' ] %}
+              {% if not is_state_attr(eid, 'device_class', 'temperature') %}
+                {% set ns.ignored = ns.ignored + [eid] %}
+              {% else %}
+                {% set v = states(eid) | float(none) %}
+                {% if v is none %}
+                  {% set ns.unavailable = ns.unavailable + [eid] %}
+                {% else %}
+                  {% set c = (v - 32) * 5 / 9 if state_attr(eid, 'unit_of_measurement') == '°F' else v %}
+                  {% if c > threshold %}
+                    {% set ns.hot = ns.hot + [(state_attr(eid, 'friendly_name') or eid) ~ ' (' ~ (c | round(1)) ~ ' °C)'] %}
+                  {% endif %}
                 {% endif %}
               {% endif %}
             {% endfor %}
-            {{ ns.list | join(', ') }}
-          count: >-
-            {{ fire_sensors.split(',') | map('trim') | select('!=', '') | list | length }}
+            {{ {'hot': ns.hot, 'unavailable': ns.unavailable, 'ignored': ns.ignored} }}
         availability: "{{ labeled | count > 0 }}"
-        state: "{{ count > 0 }}"
+        state: "{{ scan.hot | count > 0 }}"
         attributes:
-          triggered_sensors: "{{ fire_sensors }}"
-          triggered_count: "{{ count }}"
+          triggered_sensors: "{{ scan.hot | join(', ') }}"
+          triggered_count: "{{ scan.hot | count }}"
           threshold: "{{ threshold }}"
           monitored_count: "{{ labeled | count }}"
-          updated: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          unavailable_sensors: "{{ scan.unavailable }}"
+          ignored_sensors: "{{ scan.ignored }}"
