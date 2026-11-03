@@ -6242,10 +6242,12 @@ config:
         filter:
           template: "{%- set ents = state_attr('binary_sensor.plant_lights_out_of_sync',\n\
             \                          'entity_schedules') | default({}) -%}\n{%-\
-            \ for ent in ents.keys() | sort -%}\n  {{\n    {\n      'type': 'custom:mushroom-entity-card',\n\
-            \      'entity': ent,\n      'name': state_attr(ent, 'friendly_name')\
-            \ | default(ent),\n      'tap_action': {'action': 'toggle'},\n      'fill_container':\
-            \ false\n    }\n  }},\n{%- endfor -%}\n"
+            \ set e = ents.keys() | sort | list -%}\n{%- for ent in (e | select('is_state',\
+            \ 'on') | list) + (e | reject('is_state', 'on') | list) -%}\n  {{\n  \
+            \  {\n      'type': 'custom:mushroom-entity-card',\n      'entity': ent,\n\
+            \      'name': state_attr(ent, 'friendly_name') | default(ent),\n    \
+            \  'tap_action': {'action': 'toggle'},\n      'fill_container': false\n\
+            \    }\n  }},\n{%- endfor -%}\n"
         show_empty: false
         type: custom:auto-entities
       type: grid
