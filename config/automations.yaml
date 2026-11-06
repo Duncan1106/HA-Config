@@ -12542,8 +12542,8 @@
       fault_count: '{{ faults | length }}'
       has_faults: '{{ (faults | length) > 0 }}'
       has_recovery: '{{ (recoverable_switches | length) > 0 }}'
-      was_faulted: "{{ trigger.from_state is not none and (\n     trigger.from_state.state
-        == 'on' or \n     (trigger.from_state.attributes.faults | default({}) | length
+      was_faulted: "{% set fs = trigger.get('from_state') %} {{ fs is not none and
+        (\n     fs.state == 'on' or\n     (fs.attributes.faults | default({}) | length
         > 0)\n   ) }}"
   - choose:
     - conditions:
@@ -12566,7 +12566,7 @@
         data:
           title: '⚠️ Keep Alive: {{ fault_count }} fault(s)'
           message: '{% for f in faults.values() %} • {{ f.entity }} — {{ f.rule }}
-            ({{ f.state }}) since {{ f.since | as_datetime | as_local | timestamp_custom(''%d.%m.
+            ({{ f.state }}) since {{ (f.since | as_datetime | as_local).strftime(''%d.%m.
             %H:%M:%S'') }} {% endfor %} {% if has_recovery %} Attempting recovery
             on: {% for sw in recoverable_switches %}• {{ sw }} {% endfor %} {% else
             %} No automatic recovery possible. {% endif %}'
