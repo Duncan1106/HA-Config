@@ -80,19 +80,19 @@ fi
 # -------------------------
 case "$TYPE" in
   hourly)
-    PATTERN="HourlyBackup*.tar"
+    PATTERN="Hourly*Backup*.tar"
     MTIME="+2"
     ;;
   daily)
-    PATTERN="DailyBackup*.tar"
+    PATTERN="Daily*Backup*.tar"
     MTIME="+7"
     ;;
   weekly)
-    PATTERN="WeeklyBackup*.tar"
+    PATTERN="Weekly*Backup*.tar"
     MTIME="+45"
     ;;
   monthly)
-    PATTERN="MonthlyBackup*.tar"
+    PATTERN="Monthly*Backup*.tar"
     MTIME="+90"
     ;;
   *)
@@ -130,7 +130,9 @@ log "Initial number of files to delete: $NUM_TO_DELETE"
 # Apply minimum file guard: Keep the N newest backups
 if (( TOTAL_FILES - NUM_TO_DELETE < MIN_FILES )); then
     NUM_TO_DELETE=$(( TOTAL_FILES - MIN_FILES ))
-    (( NUM_TO_DELETE < 0 )) && NUM_TO_DELETE=0
+    if (( NUM_TO_DELETE < 0 )); then
+        NUM_TO_DELETE=0
+    fi
     FILES_TO_DELETE=( "${FILES_TO_DELETE[@]:0:$NUM_TO_DELETE}" )
 fi
 NUM_TO_DELETE=${#FILES_TO_DELETE[@]}
@@ -158,17 +160,51 @@ SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_BYTES/1024/1024}")
 SIZE_GB=$(awk "BEGIN {printf \"%.2f\", $TOTAL_BYTES/1024/1024/1024}")
 log "Total space to free: $TOTAL_BYTES bytes ($SIZE_MB MB / $SIZE_GB GB)"
 
+# # -------------------------
+# # Dry-run vs actual deletion
+# # -------------------------
+# if [[ "$DRY_RUN" -eq 1 ]]; then
+#     RESULT_MSG="Dry-run [$TYPE]: would delete ${#FILES_TO_DELETE[@]} file(s), freeing ${SIZE_MB} MB (${SIZE_GB} GB)"
+# else
+#     for f in "${FILES_TO_DELETE[@]}"; do
+#         rm -f "$f"
+#         log "Deleted file: $f"
+#     done
+#     RESULT_MSG="Cleanup [$TYPE]: deleted ${#FILES_TO_DELETE[@]} file(s), freed ${SIZE_MB} MB (${SIZE_GB} GB)"
+# fi
+
+# if [[ "$DEBUG" -eq 1 ]]; then
+#     echo "$RESULT_MSG"
+# fi
+
 # -------------------------
 # Dry-run vs actual deletion
 # -------------------------
 if [[ "$DRY_RUN" -eq 1 ]]; then
     RESULT_MSG="Dry-run [$TYPE]: would delete ${#FILES_TO_DELETE[@]} file(s), freeing ${SIZE_MB} MB (${SIZE_GB} GB)"
 else
+    DELETED_COUNT=0
     for f in "${FILES_TO_DELETE[@]}"; do
-        rm -f "$f"
-        log "Deleted file: $f"
+        # Befehl ausführen und Fehler abfangen, um Skript-Abbruch durch 'set -e' zu verhindern
+        if ERR_MSG=$(rm -f "$f" 2>&1); then
+            log "Deleted file: $f"
+            ((++DELETED_COUNT))
+        else
+            log "Warning: rm reported an issue for $f: $ERR_MSG"
+            # 2 Sekunden warten, um dem NAS Zeit für die Synchronisation zu geben
+            sleep 2
+            
+            # Prüfen, ob der Löschvorgang serverseitig dennoch erfolgreich war
+            if [[ -e "$f" ]]; then
+                echo "ERROR: Failed to delete $f. Message: $ERR_MSG" >&2
+                exit 4
+            else
+                log "File $f was deleted successfully despite the timeout error. Proceeding."
+                ((++DELETED_COUNT))
+            fi
+        fi
     done
-    RESULT_MSG="Cleanup [$TYPE]: deleted ${#FILES_TO_DELETE[@]} file(s), freed ${SIZE_MB} MB (${SIZE_GB} GB)"
+    RESULT_MSG="Cleanup [$TYPE]: deleted $DELETED_COUNT file(s), freed ${SIZE_MB} MB (${SIZE_GB} GB)"
 fi
 
 if [[ "$DEBUG" -eq 1 ]]; then

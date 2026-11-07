@@ -1,0 +1,180 @@
+template:
+  - triggers:
+      # conductivity: wet immediately, dry only after 10 min below
+      # (keep 1500 in sync with wet_mv, and the 10 min with dry_hold_s)
+      - trigger: numeric_state
+        entity_id: sensor.rain_sun_flower_rain_intensity
+        above: 1500
+        id: wet
+      - trigger: numeric_state
+        entity_id: sensor.rain_sun_flower_rain_intensity
+        below: 1500
+        for:
+          minutes: 10
+        id: dried
+      # sensor failure counts as wet (fail-safe)
+      - trigger: state
+        entity_id: sensor.rain_sun_flower_rain_intensity
+        to:
+          - unavailable
+          - unknown
+        id: wet
+      # rain rate: wet immediately, dry after 10 min below 0.1
+      - trigger: numeric_state
+        entity_id: sensor.gw1100a_rain_rate
+        above: 0
+        id: wet
+      - trigger: numeric_state
+        entity_id: sensor.gw1100a_rain_rate
+        below: 0.1
+        for:
+          minutes: 10
+        id: dried
+      - trigger: time_pattern
+        minutes: "/5"
+        id: tick
+      - trigger: homeassistant
+        event: start
+        id: start
+      - trigger: event
+        event_type: pool_rain_pump_reset
+        id: reset
+      - trigger: event
+        event_type: pool_rain_pump_partial
+        id: partial
+    variables:
+      # ---- tuning ----
+      me: binary_sensor.pool_regenwasserpumpe_erforderlich
+      area_m2: 27               # 3 x 9 m
+      flow_l_min: 60            # only the starting guess, the sensor learns the real value
+      collection_factor: 0.75   # only the starting guess
+      startup_overhead_s: 10
+      min_rain_mm: 1.0
+      max_runtime_s: 180
+      wet_mv: 1500              # conductivity above this = wet
+      dry_hold_s: 600           # must stay dry this long before pump may run
+      learn_alpha: 0.2          # weight of each new measurement (0-1)
+      learn_min_mm: 4.0         # only learn from runs with at least this much rain
+      # ---- self-calibration: seconds of pumping per mm of rain ----
+      nominal_spm: "{{ area_m2 * collection_factor / flow_l_min * 60 }}"
+      prev_spm: "{{ state_attr(me, 'seconds_per_mm') | float(0) }}"
+      partial_runs: "{{ state_attr(me, 'partial_runs') | int(0) }}"
+      is_reset: "{{ trigger.id == 'reset' }}"
+      is_partial: "{{ trigger.id == 'partial' }}"
+      ev_actual_s: "{{ trigger.event.data.get('actual_s', 0) | float(0) if is_reset else 0 }}"
+      ev_rain_mm: "{{ trigger.event.data.get('rain_mm', 0) | float(0) if is_reset else 0 }}"
+      ev_removed_s: "{{ trigger.event.data.get('removed_s', 0) | float(0) if is_partial else 0 }}"
+      cal_reset: "{{ trigger.event.data.get('reset_calibration', false) if is_reset else false }}"
+      learn: "{{ is_reset and not cal_reset and partial_runs == 0 and ev_actual_s >= startup_overhead_s + 20 and ev_rain_mm >= learn_min_mm }}"
+      spm_base: "{{ nominal_spm if (prev_spm <= 0 or cal_reset) else prev_spm }}"
+      measured_spm: "{{ ((ev_actual_s - startup_overhead_s) / ev_rain_mm) if learn else 0 }}"
+      spm: >-
+        {%- if learn -%}
+          {%- set blended = (1 - learn_alpha) * spm_base + learn_alpha * measured_spm -%}
+          {{ [[blended, nominal_spm * 2] | min, nominal_spm * 0.5] | max }}
+        {%- else -%}
+          {{ spm_base }}
+        {%- endif -%}
+      removed_mm: "{{ (([ev_removed_s - startup_overhead_s, 0] | max) / spm_base) if is_partial else 0 }}"
+      # ---- rain amount ----
+      unit: "{{ state_attr('sensor.gw1100a_total_rain', 'unit_of_measurement') }}"
+      total_ok: "{{ is_number(states('sensor.gw1100a_total_rain')) }}"
+      total_mm: >-
+        {%- if total_ok -%}
+          {%- set v = states('sensor.gw1100a_total_rain') | float(0) -%}
+          {{ (v * 25.4) if unit == 'in' else v }}
+        {%- else -%}
+          {{ state_attr(me, 'total_rain_mm') | float(0) }}
+        {%- endif -%}
+      baseline_mm: >-
+        {%- set pb = state_attr(me, 'baseline_mm') | float(none) -%}
+        {%- if trigger.id == 'reset' or pb is none -%}
+          {{ total_mm | float(0) }}
+        {%- elif total_mm | float(0) < pb -%}
+          0
+        {%- elif is_partial -%}
+          {{ [pb + removed_mm, total_mm | float(0)] | min }}
+        {%- else -%}
+          {{ pb }}
+        {%- endif -%}
+      rain_mm: "{{ [total_mm | float(0) - baseline_mm | float(0), 0] | max }}"
+      volume_l: "{{ rain_mm | float(0) * area_m2 * collection_factor }}"
+      # ---- runtime ----
+      runtime_s: >-
+        {%- if rain_mm | float(0) < min_rain_mm -%}
+          0
+        {%- else -%}
+          {{ (rain_mm | float(0) * spm | float(0) + startup_overhead_s) | round(0) }}
+        {%- endif -%}
+      runtime_capped_s: "{{ [runtime_s | float(0), max_runtime_s] | min | int }}"
+      timer_s: "{{ (runtime_capped_s | int + 90) if runtime_capped_s | int > 0 else 0 }}"
+      # ---- rain gate ----
+      mv: "{{ states('sensor.rain_sun_flower_rain_intensity') }}"
+      rate: "{{ states('sensor.gw1100a_rain_rate') }}"
+      wet_now: >-
+        {{ not is_number(mv)
+           or (mv | float(0)) > wet_mv
+           or (is_number(rate) and (rate | float(0)) > 0) }}
+      last_wet: >-
+        {%- set prev = state_attr(me, 'last_wet') | float(0) -%}
+        {%- if wet_now -%}
+          {{ now().timestamp() | int }}
+        {%- elif trigger.id == 'dried' -%}
+          {{ [prev, now().timestamp() - dry_hold_s] | max | int }}
+        {%- else -%}
+          {{ prev | int }}
+        {%- endif -%}
+      dry_s: >-
+        {%- if wet_now -%}
+          0
+        {%- elif last_wet | int(0) == 0 -%}
+          99999
+        {%- else -%}
+          {{ (now().timestamp() - last_wet | int(0)) | int }}
+        {%- endif -%}
+    binary_sensor:
+      - name: Pool Regenwasserpumpe erforderlich
+        unique_id: pool_regenwasserpumpe_erforderlich
+        icon: mdi:pump
+        state: >-
+          {{ runtime_s | float(0) > 0 and not wet_now and dry_s | int(0) >= dry_hold_s }}
+        attributes:
+          block_reason: >-
+            {%- if runtime_s | float(0) <= 0 -%}no pumping needed
+            {%- elif not is_number(mv) -%}conductivity sensor unavailable
+            {%- elif (mv | float(0)) > wet_mv -%}sensor wet
+            {%- elif is_number(rate) and (rate | float(0)) > 0 -%}rain rate above 0
+            {%- elif dry_s | int(0) < dry_hold_s -%}waiting for dry hold
+            {%- else -%}ok
+            {%- endif -%}
+          pumping_needed: "{{ runtime_s | float(0) > 0 }}"
+          exceeds_max: "{{ runtime_s | float(0) > max_runtime_s }}"
+          rain_since_reset_mm: "{{ rain_mm | float(0) | round(2) }}"
+          volume_l: "{{ volume_l | float(0) | round(0) }}"
+          runtime_seconds: "{{ runtime_s | float(0) | int }}"
+          runtime_capped_seconds: "{{ runtime_capped_s | int }}"
+          runtime_time: >-
+            {{ '%02d:%02d:%02d' | format(runtime_capped_s | int // 3600, (runtime_capped_s | int % 3600) // 60, runtime_capped_s | int % 60) }}
+          timer_time: >-
+            {{ '%02d:%02d:%02d' | format(timer_s | int // 3600, (timer_s | int % 3600) // 60, timer_s | int % 60) }}
+          seconds_per_mm: "{{ spm | float(0) | round(2) }}"
+          nominal_seconds_per_mm: "{{ nominal_spm | float(0) | round(2) }}"
+          last_measured_s_per_mm: >-
+            {{ measured_spm | float(0) | round(2) if learn else state_attr(me, 'last_measured_s_per_mm') | float(0) }}
+          calibration_runs: >-
+            {{ 0 if cal_reset else (state_attr(me, 'calibration_runs') | int(0)) + (1 if learn else 0) }}
+          partial_runs: "{{ 0 if is_reset else partial_runs + (1 if is_partial else 0) }}"
+          conductivity_mv: "{{ mv }}"
+          rain_rate: "{{ rate }}"
+          wet_now: "{{ wet_now }}"
+          last_wet: "{{ last_wet }}"
+          dry_for_min: "{{ ([dry_s | int(0), 99999] | min / 60) | round(1) }}"
+          wet_threshold_mv: "{{ wet_mv }}"
+          dry_hold_min: "{{ (dry_hold_s / 60) | round(0) }}"
+          baseline_mm: "{{ baseline_mm | float(0) | round(3) }}"
+          total_rain_mm: "{{ total_mm | float(0) | round(3) }}"
+          area_m2: "{{ area_m2 }}"
+          flow_l_min: "{{ flow_l_min }}"
+          collection_factor: "{{ collection_factor }}"
+          last_reset: >-
+            {{ now().timestamp() | int if trigger.id == 'reset' else state_attr(me, 'last_reset') }}

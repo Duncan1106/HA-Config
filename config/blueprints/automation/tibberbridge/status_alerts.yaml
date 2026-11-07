@@ -1,0 +1,544 @@
+blueprint:
+  name: Tibber Bridge - Status Alerts
+  description: |-
+    # Tibber Bridge - Status Alerts
+
+    Told when something is wrong with the bridge or a Pulse, and when it is fine again. Built on the integration's **Status** sensor, so it goes by the same thresholds and the same order of checks as the card's status pill.
+
+    **🔔 Live alerts - once per change**
+    - One message when the status leaves "All fine" and stays that way for a hold time (5 minutes unless set otherwise), so a short Wi-Fi hiccup or a reboot of the bridge says nothing
+    - One message when it is fine again - and only if the problem lasted long enough to have been reported
+    - Never right after a restart, and nothing in between: a problem that stays is reported once
+    - On the phone and in the notification bell, "fine again" replaces the problem message rather than standing beside it
+    - A time window keeps it quiet at night
+
+    **📋 Daily report - off unless switched on**
+    - At a time of day: the status of every bridge, and for every Pulse its battery, voltage, temperature and radio link
+    - Only while something is wrong, unless you want it every day
+
+    **🎯 What is reported - shared by both**
+    - Problems only, or warnings too (a low battery, a firmware update)
+    - Each state can be left out on its own
+
+    **🔔 Notify - each its own section below**
+    - **Notification Content**: your own title and message templates
+    - **Mobile App Notify**: push to one or more phones
+    - **Notifications**: Home Assistant's own notification bell, and/or a dashboard status helper
+    - **Text-to-Speech**: speak it on one or more media players
+    - **Custom Actions**: anything else, via the normal action editor
+
+    <details>
+    <summary><b>Available template variables</b></summary>
+
+    Every message has `{{ is_live }}` (true for a live alert, false for the daily report) and `{{ is_fine }}` (true for the "fine again" message).
+
+    **A live alert** has:
+
+    - `{{ bridge }}` - the bridge's name
+    - `{{ status }}` - what the Status sensor says, in your language: "Battery low", "Bridge not answering", "All fine"
+    - `{{ status_key }}` - the same as a key: `ok`, `bridge_offline`, `cloud_offline`, `pulse_disconnected`, `no_meter_data`, `battery_critical`, `wifi_critical`, `radio_critical`, `battery_low`, `wifi_weak`, `radio_weak`, `updating`
+    - `{{ was_key }}` - the key of the state before this one; in a "fine again" message, the problem that is over
+    - `{{ level }}` - `ok`, `warn` or `bad`
+    - `{{ pulse }}` - the Pulse it is about, where it is about one: "Tibber Pulse IR 1"
+    - `{{ battery }}` - that Pulse's charge in percent, where the battery is the matter; `None` otherwise
+    - `{{ signal }}` - the signal in dBm, where the Wi-Fi or a radio link is the matter; `None` otherwise
+    - `{{ wifi_dbm }}` - the bridge's Wi-Fi signal
+    - `{{ pulses }}` - every Pulse of the bridge, each a dictionary of `name`, `battery`, `voltage`, `temperature`, `temperature_unit`, `radio_dbm`, `connected` and `usb_power`
+
+    **The daily report** has:
+
+    - `{{ bridges }}` - every bridge picked above, each a dictionary of `name`, `status`, `status_key`, `level`, `pulse`, `battery`, `signal`, `wifi_dbm` and its `pulses` as listed above
+    - `{{ problems }}` - how many of them are not fine
+
+    </details>
+  domain: automation
+  author: somansch
+  source_url: https://github.com/somansch/tibberbridge/blob/main/custom_components/tibberbridge/blueprints/automation/tibberbridge/status_alerts.yaml
+  input:
+    scope:
+      name: Bridge
+      icon: mdi:router-wireless
+      collapsed: true
+      input:
+        status_sensors:
+          name: Status sensor
+          description: >-
+            The Status sensor of the bridge - with one bridge, the one entity
+            offered here. Several bridges, several sensors.
+          selector:
+            entity:
+              multiple: true
+              filter:
+                integration: tibberbridge
+                domain: sensor
+                device_class: enum
+    live:
+      name: Live alerts
+      icon: mdi:bell-alert-outline
+      collapsed: true
+      input:
+        live_enabled:
+          name: Alert when something is wrong
+          description: >-
+            One message when the status leaves "All fine". Switch this off to
+            use the daily report below only.
+          default: true
+          selector:
+            boolean: {}
+        hold_minutes:
+          name: Hold time
+          description: >-
+            How long a problem has to last before it is reported. A Pulse that
+            misses a packet or a bridge that reboots is back within a minute
+            or two; `0` reports every change at once.
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 120
+              step: 1
+              unit_of_measurement: min
+              mode: slider
+        recovery_enabled:
+          name: Say when it is fine again
+          description: >-
+            Sent only when the problem lasted longer than the hold time - that
+            is, when it was reported in the first place.
+          default: true
+          selector:
+            boolean: {}
+        live_from:
+          name: Not before
+          description: >-
+            Live alerts are only sent between this time and the one below. Leave
+            both at 00:00:00 to allow them around the clock. A window that ends
+            before it starts, e.g. 22:00 to 06:00, spans midnight.
+          default: "00:00:00"
+          selector:
+            time: {}
+        live_to:
+          name: Not after
+          default: "00:00:00"
+          selector:
+            time: {}
+    filter:
+      name: What is reported
+      icon: mdi:filter-variant
+      collapsed: true
+      input:
+        levels:
+          name: Levels
+          description: >-
+            A problem is the bridge not answering, no connection to Tibber, a
+            Pulse not connected, or a battery, the Wi-Fi or a radio link below
+            its critical threshold. A warning is one of those three below its
+            weak or low threshold, or a firmware update running. The
+            thresholds are the integration's options.
+          default: warn
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Problems and warnings
+                  value: warn
+                - label: Problems only
+                  value: bad
+        states:
+          name: States to report
+          description: >-
+            Leave empty for every state. A weak Wi-Fi or radio signal and
+            "Firmware update running" are left out unless you add them: a
+            signal near its threshold comes and goes, and an update only says
+            that the bridge is busy for a few minutes.
+          default:
+            - bridge_offline
+            - cloud_offline
+            - pulse_disconnected
+            - no_meter_data
+            - battery_critical
+            - wifi_critical
+            - radio_critical
+            - battery_low
+          selector:
+            select:
+              multiple: true
+              mode: dropdown
+              options:
+                - label: Bridge not answering
+                  value: bridge_offline
+                - label: No connection to Tibber
+                  value: cloud_offline
+                - label: Pulse not connected
+                  value: pulse_disconnected
+                - label: No data from the meter
+                  value: no_meter_data
+                - label: Battery critical
+                  value: battery_critical
+                - label: Wi-Fi critical
+                  value: wifi_critical
+                - label: Radio signal critical
+                  value: radio_critical
+                - label: Battery low
+                  value: battery_low
+                - label: Wi-Fi weak
+                  value: wifi_weak
+                - label: Radio signal weak
+                  value: radio_weak
+                - label: Firmware update running
+                  value: updating
+    daily:
+      name: Daily report
+      icon: mdi:calendar-clock
+      collapsed: true
+      input:
+        daily_enabled:
+          name: Send a report at a time of day
+          default: false
+          selector:
+            boolean: {}
+        daily_time:
+          name: Time of day
+          description: Only used when the switch above is on.
+          default: "07:00:00"
+          selector:
+            time: {}
+        daily_only_problems:
+          name: Only while something is wrong
+          description: >-
+            Off, the report comes every day - the battery's charge and the
+            links, as a matter of course.
+          default: true
+          selector:
+            boolean: {}
+    content:
+      name: Notification Content
+      icon: mdi:pencil-outline
+      collapsed: true
+      input:
+        alert_title:
+          name: Alert title
+          description: See the blueprint description above for the variables.
+          default: "{{ bridge }}"
+          selector:
+            template: {}
+        alert_message:
+          name: Alert message
+          default: "{{ status }}{% if battery is not none %} ({{ battery }} %){% elif signal is not none %} ({{ signal }} dBm){% endif %}"
+          selector:
+            template: {}
+        recovery_title:
+          name: Title when fine again
+          default: "{{ bridge }}"
+          selector:
+            template: {}
+        recovery_message:
+          name: Message when fine again
+          default: "{{ status }}"
+          selector:
+            template: {}
+        daily_title:
+          name: Daily report title
+          default: "Tibber Bridge"
+          selector:
+            template: {}
+        daily_message:
+          name: Daily report message
+          description: >-
+            One message for every bridge picked. Loop over `bridges` and each
+            one's `pulses` yourself and lay the lines out however you like.
+          default: |-
+            {% for b in bridges %}{{ b.name }}: {{ b.status }}
+            {% for p in b.pulses %}{{ p.name }}: {{ p.battery }} % ({{ p.voltage }} V), {{ p.radio_dbm }} dBm, {{ p.temperature }} {{ p.temperature_unit }}
+            {% endfor %}{% endfor %}
+          selector:
+            template: {}
+    mobile_app_notify:
+      name: Mobile App Notify
+      icon: mdi:cellphone-message
+      collapsed: true
+      input:
+        notify_devices:
+          name: Devices to push to
+          description: >-
+            One or more devices running the Home Assistant Companion App. Leave
+            empty to skip mobile push entirely. A "fine again" message replaces
+            the alert it answers.
+          default: []
+          selector:
+            device:
+              multiple: true
+              filter:
+                integration: mobile_app
+    ha_notifications:
+      name: Notifications
+      icon: mdi:bell-ring-outline
+      collapsed: true
+      input:
+        show_in_notifications:
+          name: Show in the notification bell
+          description: A "fine again" message replaces the alert it answers.
+          default: false
+          selector:
+            boolean: {}
+        dashboard_helper:
+          name: Dashboard status helper (optional)
+          description: >-
+            An input_text helper to keep updated, so a Markdown or Entity card
+            can show the latest message. Trimmed to that helper's own maximum
+            length.
+          default: ""
+          selector:
+            entity:
+              domain: input_text
+    tts_announcement:
+      name: Text-to-Speech Announcement
+      icon: mdi:account-voice
+      collapsed: true
+      input:
+        tts_engine:
+          name: TTS engine
+          description: Required if media players are picked below.
+          default: ""
+          selector:
+            entity:
+              domain: tts
+        tts_media_players:
+          name: Media players to announce on (optional)
+          description: Leave empty to skip TTS entirely.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              domain: media_player
+    custom_actions:
+      name: Custom Actions
+      icon: mdi:cog-play-outline
+      collapsed: true
+      input:
+        user_actions:
+          name: Additional actions (optional)
+          description: >-
+            Run anything else. Email, Telegram, ntfy, a light flash. Built with
+            the normal action editor; the same variables are in scope.
+          default: []
+          selector:
+            action: {}
+
+mode: queued
+max: 10
+
+triggers:
+  - trigger: state
+    entity_id: !input status_sensors
+    not_to:
+      - ok
+      - unavailable
+      - unknown
+    for:
+      minutes: !input hold_minutes
+    id: problem
+  - trigger: state
+    entity_id: !input status_sensors
+    to: ok
+    not_from:
+      - unavailable
+      - unknown
+    id: fine
+  - trigger: time
+    at: !input daily_time
+    id: daily
+    enabled: !input daily_enabled
+
+variables:
+  in_sensors: !input status_sensors
+  in_live_enabled: !input live_enabled
+  in_hold: !input hold_minutes
+  in_recovery: !input recovery_enabled
+  in_live_from: !input live_from
+  in_live_to: !input live_to
+  in_levels: !input levels
+  in_states: !input states
+  in_daily_only_problems: !input daily_only_problems
+  in_show_notifications: !input show_in_notifications
+  in_dashboard_helper: !input dashboard_helper
+  in_tts_engine: !input tts_engine
+
+  # Started by a trigger of its own, or from elsewhere with automation.trigger:
+  # that counts as asking for the report.
+  kind: "{{ trigger.id | default('daily', true) }}"
+  is_live: "{{ kind != 'daily' }}"
+  is_fine: "{{ kind == 'fine' }}"
+  sensor: "{{ trigger.entity_id if is_live else '' }}"
+
+  # --- every bridge picked, with its Pulses -------------------------------
+  # A Pulse's device hangs off the bridge's ("via device"); that is how the
+  # two belong together. Each figure is read off the entity of that kind on
+  # the device, so a renamed entity is found all the same - sensors only:
+  # the thresholds on the bridge are number entities of the same class.
+  bridges: >-
+    {%- set ns = namespace(rows=[]) -%}
+    {%- for s in in_sensors -%}
+    {%- set dev = device_id(s) -%}
+    {%- set bname = device_attr(dev, 'name_by_user') or device_attr(dev, 'name') or s -%}
+    {%- set wifi = namespace(v=none) -%}
+    {%- for e in device_entities(dev) if e.startswith('sensor.') and state_attr(e, 'device_class') == 'signal_strength' -%}
+    {%- set wifi.v = states(e) | float(none) -%}
+    {%- endfor -%}
+    {%- set ps = namespace(rows=[], seen=[]) -%}
+    {%- for e in integration_entities('tibberbridge') -%}
+    {%- set d = device_id(e) -%}
+    {%- if d and d != dev and d not in ps.seen and device_attr(d, 'via_device_id') == dev -%}
+    {%- set ps.seen = ps.seen + [d] -%}
+    {%- set p = namespace(battery=none, voltage=none, temperature=none, unit='', radio=none, connected=none, usb=none) -%}
+    {%- for pe in device_entities(d) if pe.split('.')[0] in ['sensor', 'binary_sensor'] -%}
+    {%- set dc = state_attr(pe, 'device_class') -%}
+    {%- if dc == 'battery' -%}{%- set p.battery = states(pe) | float(none) -%}
+    {%- elif dc == 'voltage' -%}{%- set p.voltage = states(pe) | float(none) -%}
+    {%- elif dc == 'temperature' -%}{%- set p.temperature = states(pe) | float(none) -%}{%- set p.unit = state_attr(pe, 'unit_of_measurement') or '' -%}
+    {%- elif dc == 'signal_strength' -%}{%- set p.radio = states(pe) | float(none) -%}
+    {%- elif dc == 'connectivity' -%}{%- set p.connected = is_state(pe, 'on') -%}
+    {%- elif dc == 'plug' -%}{%- set p.usb = is_state(pe, 'on') -%}
+    {%- endif -%}
+    {%- endfor -%}
+    {%- set ps.rows = ps.rows + [{
+          'name': device_attr(d, 'name_by_user') or device_attr(d, 'name'),
+          'battery': p.battery,
+          'voltage': p.voltage,
+          'temperature': p.temperature,
+          'temperature_unit': p.unit,
+          'radio_dbm': p.radio,
+          'connected': p.connected,
+          'usb_power': p.usb
+        }] -%}
+    {%- endif -%}
+    {%- endfor -%}
+    {%- set ns.rows = ns.rows + [{
+          'sensor': s,
+          'name': bname,
+          'status': state_translated(s),
+          'status_key': states(s),
+          'level': state_attr(s, 'level'),
+          'pulse': state_attr(s, 'pulse'),
+          'battery': state_attr(s, 'battery'),
+          'signal': state_attr(s, 'signal'),
+          'wifi_dbm': wifi.v,
+          'pulses': ps.rows | sort(attribute='name')
+        }] -%}
+    {%- endfor -%}
+    {{ ns.rows }}
+  problems: "{{ bridges | rejectattr('status_key', 'eq', 'ok') | list | count }}"
+
+  # --- the live alert ------------------------------------------------------
+  this_bridge: >-
+    {%- set m = bridges | selectattr('sensor', 'eq', sensor) | list if is_live else [] -%}
+    {{ m[0] if m else {} }}
+  bridge: "{{ this_bridge.name | default('', true) }}"
+  status: "{{ this_bridge.status | default('', true) }}"
+  status_key: "{{ trigger.to_state.state if is_live else '' }}"
+  was_key: "{{ trigger.from_state.state if is_live else '' }}"
+  level: "{{ trigger.to_state.attributes.level | default('', true) if is_live else '' }}"
+  was_level: "{{ trigger.from_state.attributes.level | default('', true) if is_live else '' }}"
+  pulse: "{{ trigger.to_state.attributes.pulse | default('', true) if is_live else '' }}"
+  battery: "{{ trigger.to_state.attributes.battery | default(none, true) if is_live else none }}"
+  signal: "{{ trigger.to_state.attributes.signal | default(none, true) if is_live else none }}"
+  wifi_dbm: "{{ this_bridge.wifi_dbm | default(none, true) }}"
+  pulses: "{{ this_bridge.pulses | default([], true) }}"
+
+  # --- whether this run has anything to say --------------------------------
+  in_window: >-
+    {%- set f = in_live_from -%}
+    {%- set t = in_live_to -%}
+    {%- if f == t -%}{{ true }}
+    {%- else -%}
+    {%- set n = now().strftime('%H:%M:%S') -%}
+    {{ (f <= n < t) if f < t else (n >= f or n < t) }}
+    {%- endif -%}
+  passes_now: >-
+    {{ (not in_states or status_key in in_states)
+       and (in_levels == 'warn' or level == 'bad') }}
+  passes_was: >-
+    {{ (not in_states or was_key in in_states)
+       and (in_levels == 'warn' or was_level == 'bad') }}
+  # "Fine again" answers an alert, so it needs the problem to have lasted
+  # the hold time - a shorter one was never reported.
+  lasted: >-
+    {{ is_fine and (as_timestamp(now()) - as_timestamp(trigger.from_state.last_changed))
+       >= (in_hold | float(0)) * 60 }}
+
+  # --- the finished text ---------------------------------------------------
+  alert_title_text: !input alert_title
+  alert_message_text: !input alert_message
+  recovery_title_text: !input recovery_title
+  recovery_message_text: !input recovery_message
+  daily_title_text: !input daily_title
+  daily_message_text: !input daily_message
+  notify_title: >-
+    {{ alert_title_text if kind == 'problem'
+       else (recovery_title_text if is_fine else daily_title_text) }}
+  notify_message: >-
+    {{ alert_message_text if kind == 'problem'
+       else (recovery_message_text if is_fine else daily_message_text) }}
+  # One tag per bridge: "fine again" replaces the alert on the phone and in
+  # the bell, and the daily report keeps a place of its own.
+  notify_tag: "{{ ('tibberbridge_' ~ (sensor | slugify)) if is_live else 'tibberbridge_report' }}"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {%- if kind == 'problem' -%}
+      {{ in_live_enabled and in_window and passes_now }}
+      {%- elif kind == 'fine' -%}
+      {{ in_live_enabled and in_recovery and in_window and lasted and passes_was }}
+      {%- else -%}
+      {{ (not in_daily_only_problems) or (problems | int(0) > 0) }}
+      {%- endif -%}
+
+actions:
+  - repeat:
+      for_each: !input notify_devices
+      sequence:
+        - action: >-
+            notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}
+          data:
+            title: "{{ notify_title }}"
+            message: "{{ notify_message }}"
+            data:
+              tag: "{{ notify_tag }}"
+  - choose:
+      - conditions: "{{ in_show_notifications }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              title: "{{ notify_title }}"
+              message: "{{ notify_message }}"
+              notification_id: "{{ notify_tag }}"
+  - choose:
+      - conditions: "{{ in_dashboard_helper | trim != '' }}"
+        sequence:
+          - action: input_text.set_value
+            target:
+              entity_id: "{{ in_dashboard_helper }}"
+            data:
+              value: >-
+                {{ (notify_title ~ ' - ' ~ notify_message)
+                   | replace('\n', ' ')
+                   | truncate(state_attr(in_dashboard_helper, 'max') | int(255),
+                              true, '') }}
+  - choose:
+      - conditions: "{{ in_tts_engine | trim != '' }}"
+        sequence:
+          - repeat:
+              for_each: !input tts_media_players
+              sequence:
+                - action: tts.speak
+                  target:
+                    entity_id: "{{ in_tts_engine }}"
+                  data:
+                    media_player_entity_id: "{{ repeat.item }}"
+                    message: "{{ notify_title }}. {{ notify_message }}"
+                  continue_on_error: true
+                - wait_template: >-
+                    {{ is_state(repeat.item, 'idle') or is_state(repeat.item, 'off') }}
+                  timeout: "00:00:20"
+                  continue_on_timeout: true
+  - sequence: !input user_actions
