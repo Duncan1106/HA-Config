@@ -5091,36 +5091,36 @@
     Employs a backoff-retry mechanism for critical power-off commands to ensure the
     hardware reaches the desired state.\n\n---\n\n### Trigger Overview Table\n\n|
     Type | Entity / Condition | ID | Purpose |\n| :--- | :--- | :--- | :--- |\n| **State**
-    | `switch.ankermake_1` | `ON` | Detects when the printer is manually or externally
-    powered on. |\n| **State** | `switch.ankermake_1` | `OFF` | Detects when the printer
-    is powered off. |\n| **Time Pattern** | Every 2 hours | `2h` | Periodic maintenance
-    heartbeat for the control bridge. |\n| **Numeric State** | `sensor.ankermake_m5c_progress`
-    > 99.9% | `Switch Off` | Detects completion of a print job (15-minute soak). |\n|
-    **Numeric State** | `sensor.ankermake_power` < 15W | `Switch Off` | Detects idle
-    state/cooldown completion (30-minute soak). |\n| **Time Pattern** | Every 15 seconds
-    | `Timelapse` | High-frequency snapshot trigger for progress tracking. |\n\n---\n\n####
-    \U0001F680 System Initialization\n* **Purpose:** Synchronize software services
-    with hardware availability.\n* **Logic Overview:** Triggered immediately when
-    **switch.ankermake_1** transitions to **on**.\n* **Effect:** Executes a service
-    call to start the **cff83567_ankerctl** (Ankerctl) Addon.\n\n#### \U0001F4C9 Shutdown
-    & Cleanup\n* **Purpose:** Automated decommissioning of services and power.\n*
-    **Logic Overview:** Triggered by hardware power-off (**OFF** ID) or detected completion/idle
-    states (**Switch Off** ID). \n* **Effect:** Stops the **Ankerctl** Addon. If triggered
-    by completion, it initiates `script.create_timelapse` and executes a managed shutdown
-    of **switch.ankermake_1**.\n\n#### \U0001F4F8 Media Acquisition (Timelapse)\n*
-    **Purpose:** Generate a visual record of the printing process.\n* **Logic Overview:**
-    Runs every 15 seconds, but only if **binary_sensor.ankerctl_lauft** is **on**
-    and **sensor.ankermake_power** is above **15W**.\n* **Effect:** Takes a snapshot
-    from **camera.ankermake_m5c_camera_mainstream** and saves it to media storage
-    with a timestamped filename based on the current job name.\n\n#### \U0001F6E0️
-    Maintenance & Stability\n* **Purpose:** Prevent stale connections between Home
-    Assistant and the printer.\n* **Logic Overview:** Every 2 hours, provided the
-    control addon is active.\n* **Effect:** Presses **button.ankermake_m5c_reload_ankerctl**
+    | `switch.hobbyraum_technik_l3` | `ON` | Detects when the printer is manually
+    or externally powered on. |\n| **State** | `switch.hobbyraum_technik_l3` | `OFF`
+    | Detects when the printer is powered off. |\n| **Time Pattern** | Every 2 hours
+    | `2h` | Periodic maintenance heartbeat for the control bridge. |\n| **Numeric
+    State** | `sensor.ankermake_m5c_progress` > 99.9% | `Switch Off` | Detects completion
+    of a print job (15-minute soak). |\n| **Numeric State** | `sensor.ankermake_power`
+    < 15W | `Switch Off` | Detects idle state/cooldown completion (30-minute soak).
+    |\n| **Time Pattern** | Every 15 seconds | `Timelapse` | High-frequency snapshot
+    trigger for progress tracking. |\n\n---\n\n#### \U0001F680 System Initialization\n*
+    **Purpose:** Synchronize software services with hardware availability.\n* **Logic
+    Overview:** Triggered immediately when **switch.hobbyraum_technik_l3** transitions
+    to **on**.\n* **Effect:** Executes a service call to start the **cff83567_ankerctl**
+    (Ankerctl) Addon.\n\n#### \U0001F4C9 Shutdown & Cleanup\n* **Purpose:** Automated
+    decommissioning of services and power.\n* **Logic Overview:** Triggered by hardware
+    power-off (**OFF** ID) or detected completion/idle states (**Switch Off** ID).
+    \n* **Effect:** Stops the **Ankerctl** Addon. If triggered by completion, it initiates
+    `script.create_timelapse` and executes a managed shutdown of **switch.hobbyraum_technik_l3**.\n\n####
+    \U0001F4F8 Media Acquisition (Timelapse)\n* **Purpose:** Generate a visual record
+    of the printing process.\n* **Logic Overview:** Runs every 15 seconds, but only
+    if **binary_sensor.ankerctl_lauft** is **on** and **sensor.ankermake_power** is
+    above **15W**.\n* **Effect:** Takes a snapshot from **camera.ankermake_m5c_camera_mainstream**
+    and saves it to media storage with a timestamped filename based on the current
+    job name.\n\n#### \U0001F6E0️ Maintenance & Stability\n* **Purpose:** Prevent
+    stale connections between Home Assistant and the printer.\n* **Logic Overview:**
+    Every 2 hours, provided the control addon is active.\n* **Effect:** Presses **button.ankermake_m5c_reload_ankerctl**
     to refresh the integration bridge.\n\n---\n\n### Technical Overview\n* **Automation
     Mode:** `queued` (Max: 10) - Ensures sequential execution of snapshots and power
     commands without overlap interference.\n* **Execution Method:** Utilizes `script.retry_action_with_backoff`
     for power-off reliability.\n* **Key Inputs:** Power consumption (Watts), Print
-    Progress (%), and Addon Status.\n* **Controlled Entities:** `switch.ankermake_1`,
+    Progress (%), and Addon Status.\n* **Controlled Entities:** `switch.hobbyraum_technik_l3`,
     `button.ankermake_m5c_reload_ankerctl`, `camera.ankermake_m5c_camera_mainstream`.\n*
     **Safety Mechanisms:** Employs a 10-retry backoff strategy with notifications
     to **notify.duncan** if the printer fails to power off.\n\n---\n\n### \U0001F4A1
@@ -5134,12 +5134,12 @@
   triggers:
   - trigger: state
     entity_id:
-    - switch.ankermake_1
+    - switch.hobbyraum_technik_l3
     to: 'on'
     id: 'ON'
   - trigger: state
     entity_id:
-    - switch.ankermake_1
+    - switch.hobbyraum_technik_l3
     to: 'off'
     id: 'OFF'
   - trigger: time_pattern
@@ -5238,7 +5238,7 @@
         id:
         - Switch Off
       - condition: state
-        entity_id: switch.ankermake_1
+        entity_id: switch.hobbyraum_technik_l3
         state:
         - 'on'
       sequence:
@@ -5257,7 +5257,7 @@
           backoff_type: simple
           notify_on_failure: true
           notify_service: notify.duncan
-          entity_id: switch.ankermake_1
+          entity_id: switch.hobbyraum_technik_l3
           target_state: 'off'
       - action: script.create_timelapse
         metadata: {}
