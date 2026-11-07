@@ -12735,30 +12735,17 @@
   description: Executes heat_action / humidifier_action / light_action of binary_sensor.terrarium_control
     and sends alarms and warnings.
   triggers:
-  - trigger: state
-    entity_id: binary_sensor.terrarium_control
-    attribute: heat_action
-    to:
-    - turn_on
-    - turn_off
-    id: heat
-  - trigger: state
-    entity_id: binary_sensor.terrarium_control
-    attribute: humidifier_action
-    to:
-    - turn_on
-    - turn_off
-    id: humidifier
-  - trigger: state
-    entity_id: binary_sensor.terrarium_control
-    attribute: light_action
-    to:
-    - turn_on
-    - turn_off
-    id: light
-  - trigger: state
-    entity_id: binary_sensor.terrarium_control
-    to: 'on'
+  - trigger: template
+    value_template: "{{ state_attr('binary_sensor.terrarium_control', 'heat_action')
+      in ['turn_on', 'turn_off']\n   or state_attr('binary_sensor.terrarium_control',
+      'light_action') in ['turn_on', 'turn_off']\n   or state_attr('binary_sensor.terrarium_control',
+      'humidifier_action') in ['turn_on', 'turn_off'] }}"
+    id: pending
+  - trigger: template
+    value_template: "{{ state_attr('binary_sensor.terrarium_control', 'heat_action')
+      in ['turn_on', 'turn_off']\n   or state_attr('binary_sensor.terrarium_control',
+      'light_action') in ['turn_on', 'turn_off']\n   or state_attr('binary_sensor.terrarium_control',
+      'humidifier_action') in ['turn_on', 'turn_off'] }}"
     for: 00:15:00
     id: retry
   - trigger: state
@@ -12770,8 +12757,8 @@
   - alias: Heater
     if:
     - condition: template
-      value_template: "{{ trigger.id in ['heat', 'retry']\n   and state_attr(me, 'heat_action')
-        in ['turn_on', 'turn_off'] }}"
+      value_template: "{{ trigger.id in ['pending', 'retry']\n   and state_attr(me,
+        'heat_action') in ['turn_on', 'turn_off'] }}"
     then:
     - action: script.retry_action_with_backoff
       data:
@@ -12789,7 +12776,7 @@
   - alias: Humidifier
     if:
     - condition: template
-      value_template: "{{ trigger.id in ['humidifier', 'retry']\n   and state_attr(me,
+      value_template: "{{ trigger.id in ['pending', 'retry']\n   and state_attr(me,
         'humidifier_action') in ['turn_on', 'turn_off'] }}"
     then:
     - action: script.retry_action_with_backoff
@@ -12808,7 +12795,7 @@
   - alias: Grow light bar
     if:
     - condition: template
-      value_template: "{{ trigger.id in ['light', 'retry']\n   and state_attr(me,
+      value_template: "{{ trigger.id in ['pending', 'retry']\n   and state_attr(me,
         'light_action') in ['turn_on', 'turn_off'] }}"
     then:
     - action: script.retry_action_with_backoff
