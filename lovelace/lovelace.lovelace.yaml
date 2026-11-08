@@ -6801,113 +6801,137 @@ config:
     path: bkw
     sections:
     - cards:
-      - align_header: center
-        align_state: center
-        animate: true
-        color_thresholds:
-        - color: '#00FF00'
-          value: 29.2
-        - color: '#90EE90'
-          value: 27.2
-        - color: '#FFA500'
-          value: 26.5
-        - color: '#ff0050'
-          value: 22
-        - color: '#101010'
-          value: 0
-        - color: '#505050'
-          value: 50
-        - color: '#909090'
-          value: 200
-        decimals: 2
-        entities:
-        - entity: sensor.esp32_c3_zero_epever_battery_voltage
-          name: Battery Voltage
-        font_size: 75
-        font_size_header: 14
-        hour24: true
-        hours_to_show: 32
-        line_width: 2
-        min_bound_range: 1
-        name: Bkw Voltage 48h
-        points_per_hour: 30
-        show:
-          extrema: true
-          fill: true
-          icon: false
-          icon_adaptive_color: true
-          labels: true
-          name_adaptive_color: true
-          points: hover
-        show_graph: true
-        type: custom:mini-graph-card
-      - base_decimals: 2
-        clickable_entities: true
-        disable_dots: false
-        display_zero_lines:
-          grey_color:
-          - 189
-          - 189
-          - 189
-          mode: transparency
-          transparency: 80
-        entities:
-          battery:
-            color_value: false
-            display_state: one_way_no_zero
-            entity: sensor.esp32_c3_zero_epever_battery_power
-            show_state_of_charge: true
-            state_of_charge: sensor.esp32_c3_zero_epever_battery_soc
-            state_of_charge_decimals: 0
-            state_of_charge_unit_white_space: true
-            use_metadata: false
-          fossil_fuel_percentage: {}
-          home:
-            entity: sensor.esp32_c3_zero_epever_load_power
-            override_state: true
-            secondary_info:
-              decimals: 2
-              display_zero: false
-              entity: sensor.esp32_c3_zero_epever_consumed_energy_today
-              unit_of_measurement: kWh
-              unit_white_space: true
-            subtract_individual: false
-            use_metadata: false
-          individual:
-          - decimals: 2
-            entity: sensor.bkw_outlet_1_energy_power
+      - card:
+          align_header: center
+          align_state: center
+          animate: true
+          decimals: 0
+          entities:
+          - entity: sensor.solar_gesamtleistung
+            name: Gesamt
+          - entity: sensor.solar_leistung_von_p1
+            name: P1
+            show_state: false
+          - entity: sensor.solar_leistung_von_p2
+            name: P2
+            show_state: false
+          - entity: sensor.bkw_outlet_1_energy_power
             name: AC Out
-            secondary_info:
-              decimals: 2
-              entity: sensor.bkw_outlet_1_energy_today
-              unit_of_measurement: kWh
-              unit_white_space: true
-          - decimals: 1
-            display_zero: false
-            display_zero_state: true
-            entity: sensor.esp32_c3_zero_epever_epever_converter_power_losses
-            name: Loss
-            secondary_info:
-              decimals: 2
-              display_zero_tolerance: 0
-              entity: sensor.esp32_c3_zero_epever_daily_system_loss
-              unit_of_measurement: kWh
-          solar:
-            display_zero_state: true
-            entity: sensor.esp32_c3_zero_epever_pv_array_input_power
-            secondary_info:
-              decimals: 2
-              entity: sensor.esp32_c3_zero_epever_generated_energy_today
-              unit_of_measurement: kWh
-        kilo_decimals: 2
-        kilo_threshold: 1000
-        max_expected_power: 2000
-        max_flow_rate: 6
-        min_expected_power: 0
-        min_flow_rate: 0.75
-        transparency_zero_lines: 0
-        type: custom:power-flow-card-plus
-        use_new_flow_rate_model: true
+            show_state: false
+          font_size: 75
+          font_size_header: 14
+          hour24: true
+          hours_to_show: 24
+          line_width: 2
+          name: BKW Leistung 24h
+          points_per_hour: 30
+          show:
+            extrema: true
+            fill: false
+            icon: false
+            labels: true
+            legend: true
+            name_adaptive_color: true
+            points: hover
+          show_graph: true
+          type: custom:mini-graph-card
+        conditions:
+        - condition: state
+          entity: sensor.solar_gesamtleistung
+          state_not:
+          - unavailable
+          - unknown
+        type: conditional
+      - card:
+          base_decimals: 2
+          clickable_entities: true
+          disable_dots: false
+          display_zero_lines:
+            grey_color:
+            - 189
+            - 189
+            - 189
+            mode: transparency
+            transparency: 80
+          entities:
+            fossil_fuel_percentage: {}
+            home:
+              entity: sensor.bkw_outlet_1_energy_power
+              override_state: true
+              secondary_info:
+                decimals: 2
+                display_zero: false
+                entity: sensor.bkw_outlet_1_energy_today
+                unit_of_measurement: kWh
+                unit_white_space: true
+              subtract_individual: false
+              use_metadata: false
+            solar:
+              display_zero_state: true
+              entity: sensor.solar_gesamtleistung
+              secondary_info:
+                decimals: 2
+                entity: sensor.solar_heutige_erzeugung
+                unit_of_measurement: kWh
+          kilo_decimals: 2
+          kilo_threshold: 1000
+          max_expected_power: 800
+          max_flow_rate: 6
+          min_expected_power: 0
+          min_flow_rate: 0.75
+          type: custom:power-flow-card-plus
+          use_new_flow_rate_model: true
+        conditions:
+        - condition: state
+          entity: sensor.solar_gesamtleistung
+          state_not:
+          - unavailable
+          - unknown
+        type: conditional
+      - card:
+          content: "Offline seit **{{ states.sensor.solar_gesamtleistung.last_changed\
+            \ | as_timestamp | timestamp_custom('%H:%M') }} Uhr**. Tagesbilanz: \u2600\
+            \uFE0F Erzeugt: **{{ states('sensor.bkw_outlet_1_energy_today') }} kWh**\n"
+          title: "\U0001F319 Wechselrichter offline"
+          type: markdown
+        conditions:
+        - condition: state
+          entity: sensor.solar_gesamtleistung
+          state:
+          - unavailable
+          - unknown
+        type: conditional
+      - card:
+          align_header: center
+          align_state: center
+          animate: true
+          decimals: 0
+          entities:
+          - entity: sensor.bkw_outlet_1_energy_power
+            name: AC Out
+          font_size: 75
+          font_size_header: 14
+          hour24: true
+          hours_to_show: 24
+          line_width: 2
+          name: AC Out (Steckdose) 24h
+          points_per_hour: 30
+          show:
+            extrema: true
+            fill: true
+            icon: false
+            labels: true
+            name_adaptive_color: true
+            points: hover
+          show_graph: true
+          type: custom:mini-graph-card
+        conditions:
+        - condition: state
+          entity: sensor.solar_gesamtleistung
+          state:
+          - unavailable
+          - unknown
+        type: conditional
       - entities:
         - attribute: c37c_014a_ab1b_febe
           entity: sensor.solcast_pv_forecast_prognose_verbleibende_leistung_heute
@@ -6922,78 +6946,6 @@ config:
           suffix: kWh
           type: attribute
         type: entities
-      - battery:
-          auto_scale: true
-          count: 1
-          energy: 2560
-          max_power: 1040
-          remaining_energy_to_shutdown: true
-          show_absolute: true
-          show_daily: true
-          show_remaining_energy: false
-          shutdown_soc: 1
-          soc_decimal_places: 0
-          soc_end_of_charge: 100
-        cardstyle: compact
-        center_no_grid: true
-        decimal_places: 2
-        decimal_places_energy: 2
-        dynamic_line_width: true
-        entities:
-          battery_current_191: sensor.esp32_c3_zero_epever_battery_current
-          battery_power_190: sensor.esp32_c3_zero_epever_battery_power
-          battery_rated_capacity: number.esp32_c3_zero_epever_battery_capacity
-          battery_soc_184: sensor.esp32_c3_zero_epever_battery_soc
-          battery_status: sensor.esp32_c3_zero_epever_battery_status
-          battery_temp_182: sensor.esp32_c3_zero_epever_battery_temperature
-          battery_voltage_183: sensor.esp32_c3_zero_epever_battery_voltage
-          day_battery_charge_70: sensor.charged_energy_to_bkw_battery
-          day_battery_discharge_71: sensor.discharged_energy_from_bkw_battery
-          day_load_energy_84: sensor.esp32_c3_zero_epever_consumed_energy_today
-          day_pv_energy_108: sensor.esp32_c3_zero_epever_generated_energy_today
-          dc_transformer_temp_90: sensor.esp32_c3_zero_epever_device_temperature
-          environment_temp: sensor.gw1100a_outdoor_temperature
-          essential_load1: sensor.bkw_outlet_1_energy_power
-          essential_load1_extra: sensor.bkw_outlet_1_energy_today
-          essential_load2: sensor.esp32_c3_zero_epever_epever_converter_power_losses
-          essential_power: sensor.esp32_c3_zero_epever_load_power
-          inverter_power_175: sensor.esp32_c3_zero_epever_load_power
-          inverter_status_59: sensor.esp32_c3_zero_epever_discharger_status
-          inverter_voltage_154: sensor.esp32_c3_zero_epever_load_voltage
-          pv1_current_110: sensor.esp32_c3_zero_epever_pv_array_input_current
-          pv1_power_186: sensor.esp32_c3_zero_epever_pv_array_input_power
-          pv1_voltage_109: sensor.esp32_c3_zero_epever_pv_array_input_voltage
-          total_pv_generation: sensor.bkw
-        inverter:
-          autarky: 'no'
-          auto_scale: true
-          modern: true
-          three_phase: false
-        load:
-          additional_loads: 2
-          dynamic_colour: true
-          dynamic_icon: true
-          load1_name: Output
-          load2_name: Losses
-          show_aux: false
-          show_daily: true
-        max_line_width: 4
-        min_line_width: 1
-        show_battery: true
-        show_grid: false
-        show_solar: true
-        solar:
-          auto_scale: true
-          display_mode: 3
-          dynamic_colour: true
-          max_power: 1040
-          mppts: 1
-          pv1_max_power: 830
-          show_daily: true
-        type: custom:sunsynk-power-flow-card
-        wide: false
-      type: grid
-    - cards:
       - cards:
         - cards:
           - cards:
@@ -7042,50 +6994,6 @@ config:
             type: horizontal-stack
           type: vertical-stack
         type: horizontal-stack
-      - cards:
-        - entity: counter.battery_empty
-          fill_container: true
-          icon: ''
-          icon_type: none
-          layout: vertical
-          type: custom:mushroom-entity-card
-        - entity: counter.battery_full
-          fill_container: true
-          icon_type: none
-          layout: vertical
-          type: custom:mushroom-entity-card
-        type: horizontal-stack
-      - entities:
-        - entity: input_boolean.battery_full
-          secondary_info: last-changed
-        - entity: sensor.charged_energy_to_bkw_battery
-        - entity: input_number.last_charged_energy_to_bkw_battery
-        - entity: sensor.discharged_energy_from_bkw_battery
-        - entity: input_number.last_discharged_energy_from_bkw_battery
-        - entity: sensor.bkw_charge_discharge_ratio
-          secondary_info: last-changed
-        show_header_toggle: false
-        title: Gartenhaus  Total
-        type: entities
-      - entities:
-        - entity: switch.esp32_c3_zero_epever_manual_control_the_load
-          name: Manual control the load
-        - entity: switch.bkw_outlet_1_bkw_outlet_1
-        - entity: switch.gartenhaus_usb_switch_zigbee_l2
-          name: Fan
-        - entity: sensor.esp32_c3_zero_epever_device_temperature
-          name: Device Temperature
-        - entity: sensor.esp32_c3_zero_epever_battery_temperature
-          name: Battery Temperature
-        - entity: binary_sensor.epever_cooling_needed
-          name:
-            type: entity
-        - entity: sensor.esp32_c3_zero_epever_charger_status
-          name: Charger
-        - entity: sensor.esp32_c3_zero_epever_discharger_status
-          name: Discharger
-        show_header_toggle: false
-        type: entities
       type: grid
     subview: true
     title: Bkw
