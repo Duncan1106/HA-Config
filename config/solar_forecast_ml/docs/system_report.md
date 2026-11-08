@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-07 23:30 | System: 17.7 kWp
+> Generated: 2026-11-08 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,7 +18,7 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6470.0 kWh
+**Total Production:** 6486.9 kWh
 
 **Average Accuracy:** 77.6%
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 40.47 kWh | 2711.4 kWh |
+| Autumn | 75.48 kWh | 40.12 kWh | 2728.2 kWh |
 
 ---
 
@@ -49,52 +49,52 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-07 | 978 | 45 | 5 | 1.38 | geometry_contrast_recorded |
+| 2026-11-08 | 973 | 44 | 5 | 1.38 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.918 west k_p90=1.990; k_p90 > 1)
-- elev 10 excluded from headline (elev < 20; east k_p90=0.779 west k_p90=1.002; k_p90 > 1)
+- elev 10 excluded from headline (elev < 20; east k_p90=0.815 west k_p90=1.002; k_p90 > 1)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 48 | 0.463 | 0.918 | 1.299 | no |
+| 0 | east | 49 | 0.465 | 0.918 | 1.299 | no |
 | 0 | west | 48 | 0.939 | 1.990 | 2.805 | no |
-| 10 | east | 90 | 0.463 | 0.779 | 1.480 | no |
-| 10 | west | 96 | 0.677 | 1.002 | 1.506 | no |
-| 20 | east | 68 | 0.552 | 0.920 | 0.962 | yes |
-| 20 | west | 64 | 0.750 | 1.212 | 1.454 | yes |
-| 30 | east | 45 | 0.620 | 0.857 | 0.960 | yes |
-| 30 | west | 36 | 0.906 | 1.181 | 1.361 | yes |
-| 40 | east | 8 | 0.925 | 1.084 | 1.084 | yes |
-| 40 | west | 10 | 1.059 | 1.137 | 1.184 | yes |
+| 10 | east | 89 | 0.464 | 0.815 | 1.480 | no |
+| 10 | west | 96 | 0.674 | 1.002 | 1.506 | no |
+| 20 | east | 67 | 0.557 | 0.920 | 0.962 | yes |
+| 20 | west | 63 | 0.748 | 1.212 | 1.454 | yes |
+| 30 | east | 44 | 0.619 | 0.857 | 0.960 | yes |
+| 30 | west | 35 | 0.923 | 1.181 | 1.361 | yes |
+| 40 | east | 6 | 0.960 | 1.084 | 1.084 | yes |
+| 40 | west | 8 | 1.039 | 1.137 | 1.137 | yes |
 
 ### Hourly physics-factor shape
 
 | Group | Date | Hours | Min factor | Max factor | Spread |
 |-------|------|-------|------------|------------|--------|
-| Gruppe 1 | 2026-11-07 | 8-18 (11) | 0.725 | 1.161 | 0.437 |
-| Gruppe 2 | 2026-11-07 | 8-18 (11) | 0.570 | 1.540 | 0.970 |
+| Gruppe 1 | 2026-11-08 | 8-18 (11) | 0.725 | 1.287 | 0.562 |
+| Gruppe 2 | 2026-11-08 | 8-18 (11) | 0.650 | 1.540 | 0.890 |
 | Gruppe 3 | 2026-10-29 | 8-18 (11) | 0.606 | 1.302 | 0.697 |
 
 ### Sample ledger
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 440 | 22 |
+| forecast_physics | 452 | 24 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
 |------------|------|
 | bucket_global | 178 |
 | bucket_hourly | 316 |
-| ratio | 154 |
+| ratio | 158 |
 
 
 ---
 
 ## Message from the Captain's Log
 
-> *"Today is a good day to generate clean energy! - Worf"*
+> *"The sun is the source of all life. Even in the 24th century, we still look to the stars. - Captain Picard"*
 
 Live long and prosper!
 
