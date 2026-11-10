@@ -284,70 +284,215 @@ config:
             type: custom:mini-graph-card
           - cards:
             - cards:
-              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
-                  \ set hw = state_attr(e, 'hardware_score') | int(0) %} {% set app\
-                  \ = state_attr(e, 'application_score') | int(0) %} {% set score\
-                  \ = states(e) | int(0) %}\n| Hardware | Application |\n|----------------|-----------------|\n\
-                  | **{{ hw }}**/100 | **{{ app }}**/100 | \n\n**Global Formula:**\
-                  \ ({{ hw }} \xD7 0.4) + ({{ app }} \xD7 0.6) = **{{ score }}**\n"
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %}\n{%\
+                  \ if states(e) in ['unavailable', 'unknown'] %} \u26A0\uFE0F Health\
+                  \ Advisor sensor is offline ({{ states(e) }}). {% else %} {% set\
+                  \ hw = state_attr(e, 'hardware_score') | int(0) %} {% set app =\
+                  \ state_attr(e, 'application_score') | int(0) %} {% set score =\
+                  \ states(e) | int(0) %} {% set fallbacks = state_attr(e, 'pillar_fallbacks')\
+                  \ | default([], true) %} {% set cycle_failed = state_attr(e, 'update_cycle_failed')\
+                  \ | default(false, true) %} {% set conditional = state_attr(e, 'conditional_ignore_active')\
+                  \ | default(false, true) %} {% set cpu_ram = state_attr(e, 'cpu_ram_source')\
+                  \ %}\nHardware **{{ hw }}**/100 | Application **{{ app }}**/100\n\
+                  {% if cpu_ram == 'none' %} \U0001F4CA CPU/RAM not measured (no PSI,\
+                  \ no sensor selected); the hardware score uses the other components.\
+                  \ {% elif cpu_ram == 'partial' %} \U0001F4CA CPU/RAM partly measured\
+                  \ (no PSI, one sensor missing); the hardware score uses the measured\
+                  \ components. {% endif %}\nFormula: ({{ hw }} \xD7 0.4) + ({{ app\
+                  \ }} \xD7 0.6) = {{ score }}\n{% if fallbacks %} \u26A0\uFE0F Calculation\
+                  \ incomplete: {{ fallbacks | map('title') | join(', ') }}; the formula\
+                  \ uses neutral fallback values, not measurements. {% endif %}\n\
+                  {% if cycle_failed %} \u26A0\uFE0F The last update cycle failed;\
+                  \ previous results or neutral initial values are shown. {% endif\
+                  \ %}\n{% if conditional %} \U0001F3D6\uFE0F Conditional ignore labels\
+                  \ are active; some entities are hidden from the score. {% endif\
+                  \ %} {% endif %}\n"
                 title: Score Breakdown
                 type: markdown
               - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
                   \ set rec = state_attr(e, 'recommendations') | default('', true)\
-                  \ %}\n{% if states(e) in ['unavailable', 'unknown'] %}\n  \u26A0\
-                  \uFE0F **Error:** Health Advisor sensor is offline.\n{% elif rec\
-                  \ and rec not in ['unknown', 'unavailable'] and '\u2705' not in\
-                  \ rec %}\n  {{ rec }}\n{% else %}\n  \u2705 System healthy. No recommendations.\n\
-                  {% endif %}\n"
+                  \ %}\n{% if states(e) in ['unavailable', 'unknown'] %} \u26A0\uFE0F\
+                  \ Health Advisor sensor is offline ({{ states(e) }}). {% else %}{#\
+                  \ Hide recommendation lines that another card already shows with\
+                  \ a deep link. #}{% set ns_rec = namespace(kept=[]) %}{% for line\
+                  \ in (rec.splitlines() if rec is string else []) %}{% set s = line.strip()\
+                  \ %}{% if s and not s.startswith(('\U0001F4E6', '\U0001F9DF', '\U0001F50C\
+                  ', '\U0001F5C2\uFE0F', '\U0001F6E0\uFE0F', '\U0001F9E9', '\U0001F6A8\
+                  ')) %}{% set ns_rec.kept = ns_rec.kept + [s] %}{% endif %}{% endfor\
+                  \ %}\n{% if rec is string and '\u2705' in rec %} \u2705 System healthy.\
+                  \ No recommendations. {% elif ns_rec.kept %} {{ ns_rec.kept | join('\\\
+                  n') }} {% else %} \u2705 Nothing beyond the cards below. {% endif\
+                  \ %} {% endif %}\n"
                 title: "\U0001F6E1\uFE0F Advisor"
                 type: markdown
-              - card:
-                  content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
-                    \ set updates = state_attr(e, 'pending_updates') | default([],\
-                    \ true) | list %} {% set db_mb = state_attr(e, 'db_size_mb') |\
-                    \ float(0) %} {% set keep = state_attr(e, 'recorder_keep_days')\
-                    \ %} {% set filter = state_attr(e, 'recorder_filter_active') |\
-                    \ default(false, true) %} {% set psi = state_attr(e, 'psi_available')\
-                    \ | default(false, true) %}\n{% if updates | length > 0 %}  **{{\
-                    \ updates | length }} Update(s) pending:**  {% for u in updates\
-                    \ %} \n  &nbsp;&nbsp; \u2022 {{ u }}\n  \n{% endfor %} [\u2192\
-                    \ Open Updates](/config/updates) {% else %} \u2705 All updates\
-                    \ installed {% endif %}\n---\nDatabase: {% if db_mb > 2500 %}\U0001F534\
-                    {% elif db_mb > 1000 %}\U0001F7E1{% else %}\U0001F7E2{% endif\
-                    \ %} {{ db_mb | round(1) }} MB {% if db_mb == 0.0 %}*(external\
-                    \ DB detected)*{% endif %}\nRecorder: {% if keep not in [none,\
-                    \ 'unknown'] %}  Purge active ({{ keep }} days) {% else %}  No\
-                    \ purge configured \u2014 DB may grow indefinitely {% endif %}\n\
-                    {{ 'Entity filter active' if filter else ' No entity filter' }}\n\
-                    ---\n**Metric Source:** {% if psi %} \U0001F7E2 PSI active\n(CPU\
-                    \ + RAM + I/O + Disk) \u2014 Hardware score uses 4 components\
-                    \  {% else %} \u2699\uFE0F Classic sensors (CPU + RAM + Disk)\
-                    \ \u2014 Hardware score uses 3 components  {% endif %}\n"
-                  title: "\U0001F4E6 Updates & Maintenance"
-                  type: markdown
-                conditions:
-                - above: -1
-                  attribute: zombie_count
-                  condition: numeric_state
-                  entity: sensor.system_ha_global_health_score
-                type: conditional
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                  \ set r_count = state_attr(e, 'repair_count') | int(0) %} {% set\
+                  \ r_list = state_attr(e, 'repairs') | default([], true) %} {% set\
+                  \ i_count = state_attr(e, 'integration_unhealthy_count') | int(0)\
+                  \ %} {% set i_list = state_attr(e, 'integration_unhealthy_entries')\
+                  \ | default([], true) %} {% set _rep = '/config/repairs' %} {% set\
+                  \ _int = '/config/integrations' %}\n{% if states(e) in ['unavailable',\
+                  \ 'unknown'] %} \u26A0\uFE0F Health Advisor sensor is offline ({{\
+                  \ states(e) }}). {% else %}\n{% if r_count == 0 %} \u2705 No open\
+                  \ repairs {% else %} \U0001F6E0\uFE0F {{ r_count }} open repair(s),\
+                  \ {% if r_count > 0 %}[\u2192 Open Repairs]({{ _rep }}){% endif\
+                  \ %}{% if r_list %}<ul>{% for r in r_list %}<li><code>{{ r }}</code></li>{%\
+                  \ endfor %}</ul>{% endif %} {% endif %}\n<hr>\n\n{% if i_count ==\
+                  \ 0 %} \u2705 All integrations loaded normally {% else %} \U0001F9E9\
+                  \ {{ i_count }} integration entry(ies) failed to set up, [\u2192\
+                  \ Open Integrations]({{ _int }}){% if i_list %}<ul>{% for i in i_list\
+                  \ %}<li><a href=\"{{ _int }}/integration/{{ i.split(': ')[0] }}\"\
+                  >{{ i }}</a></li>{% endfor %}</ul>{% endif %}{% if i_count > i_list\
+                  \ | length and i_list | length > 0 %}<i>(showing first {{ i_list\
+                  \ | length }}, {{ i_count - i_list | length }} more hidden)</i>{%\
+                  \ endif %} {% endif %} {% endif %}\n"
+                title: "\U0001F527 Repairs & Integrations"
+                type: markdown
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %}\n{%\
+                  \ if states(e) in ['unavailable', 'unknown'] %} \u26A0\uFE0F Health\
+                  \ Advisor sensor is offline ({{ states(e) }}). {% else %} {% set\
+                  \ updates = state_attr(e, 'pending_updates') | default([], true)\
+                  \ | list %} {% set db_mb = state_attr(e, 'db_size_mb') | float(0)\
+                  \ %} {% set keep = state_attr(e, 'recorder_keep_days') %} {% set\
+                  \ filter = state_attr(e, 'recorder_filter_active') | default(false,\
+                  \ true) %} {% set bonus = state_attr(e, 'config_audit_bonus') |\
+                  \ int(0) %} {% set psi = state_attr(e, 'psi_available') | default(false,\
+                  \ true) %} {% set cpu_ram = state_attr(e, 'cpu_ram_source') %} {%\
+                  \ set backup_stale = state_attr(e, 'rec_backup_stale') | default(false,\
+                  \ true) %} {% set _upd = '/config/updates' %} {% set _bak = '/config/backup'\
+                  \ %}\n{% if updates | length > 0 %}{{ updates | length }} update(s)\
+                  \ pending: <ul>{% for u in updates %}<li>{{ u }}</li>{% endfor %}</ul>\
+                  \ <a href=\"{{ _upd }}\">\u2192 Open Updates</a> {% else %} \u2705\
+                  \ All updates installed {% endif %}\n{% if backup_stale %}<br>\U0001F6A8\
+                  \ Backup is stale, [\u2192 Open Backups]({{ _bak }}){% endif %}\n\
+                  <hr>\n\nDatabase: {{ db_mb | round(1) }} MB {% if db_mb == 0.0 %}*(external\
+                  \ DB detected)*{% endif %} <br> {% if keep not in [none, 'unknown']\
+                  \ %}Recorder keeps {{ keep }} days of history{% else %}Recorder\
+                  \ not found{% endif %} <br> {{ 'Entity filter active' if filter\
+                  \ else 'No entity filter' }} <br> Config-Audit bonus: {{ bonus }}/10\n\
+                  {% if keep in [none, 'unknown'] or keep | int(0) > 10 or not filter\
+                  \ %} \U0001F4A1 Tips to improve your score ([recorder docs](https://www.home-assistant.io/integrations/recorder/)):\n\
+                  {% if keep in [none, 'unknown'] or keep | int(0) > 10 %}- Keep `purge_keep_days`\
+                  \ at 10 days or less in your recorder configuration (+5 pts){% endif\
+                  \ %}\n{% if not filter %}- Configure an `include` / `exclude` entity\
+                  \ filter for the recorder (+5 pts){% endif %} {% endif %}\n\n---\n\
+                  **Metric source**: {% if cpu_ram in ['none', 'partial'] %}\U0001F4CA\
+                  \ No PSI and {{ 'no CPU/RAM sensor' if cpu_ram == 'none' else 'one\
+                  \ CPU/RAM sensor' }} selected: hardware score uses the measured\
+                  \ components{% elif psi %}\U0001F7E2 PSI active (CPU + RAM + Disk,\
+                  \ I/O when the kernel provides it){% else %}\u2699\uFE0F Classic\
+                  \ sensors (CPU + RAM + Disk); I/O pressure counts when the kernel\
+                  \ provides it{% endif %} {% endif %}\n"
+                title: "\U0001F4E6 Updates & Maintenance"
+                type: markdown
+              - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
+                  \ set w_list = state_attr(e, 'stale_watch_entities') | default([],\
+                  \ true) %} {% set w_count = state_attr(e, 'stale_watch_count') |\
+                  \ int(0) %} {% set c_list = state_attr(e, 'stale_candidates') |\
+                  \ default([], true) %} {% set c_count = state_attr(e, 'stale_candidate_count')\
+                  \ | int(0) %} {% set hours = state_attr(e, 'stale_threshold_hours')\
+                  \ | int(24) %} {% set _ent = '/config/entities' %}\n{% if states(e)\
+                  \ in ['unavailable', 'unknown'] %} \u26A0\uFE0F Health Advisor sensor\
+                  \ is offline ({{ states(e) }}). {% elif state_attr(e, 'stale_watch_count')\
+                  \ is none %} \u2139\uFE0F Stale reporting needs HAGHS v2.4.0 or\
+                  \ newer. {% else %}\n{% if w_count == 0 %} \u2705 No watched entity\
+                  \ is overdue (threshold {{ hours }} h). {% else %} \u23F1\uFE0F\
+                  \ {{ w_count }} watched entity(ies) not reporting for more than\
+                  \ {{ hours }} h (score impact):<ul>{% for x in w_list %}<li><a href=\"\
+                  {{ _ent }}?more-info-entity-id={{ x }}\">{{ state_attr(x, 'friendly_name')\
+                  \ or x }}</a> <code>{{ x }}</code></li>{% endfor %}</ul>{% if w_count\
+                  \ > w_list | length %}<i>(showing first {{ w_list | length }}, {{\
+                  \ w_count - w_list | length }} more hidden)</i>{% endif %} {% endif\
+                  \ %}\n{% if c_count > 0 %} <details> <summary>\u2139\uFE0F Not reporting,\
+                  \ not watched (informational, no score impact): {{ c_count }}</summary>\
+                  \ <ul>{% for x in c_list %}<li><a href=\"{{ _ent }}?more-info-entity-id={{\
+                  \ x }}\">{{ state_attr(x, 'friendly_name') or x }}</a> <code>{{\
+                  \ x }}</code></li>{% endfor %}</ul> {% if c_count > c_list | length\
+                  \ %}<i>(showing first {{ c_list | length }}, {{ c_count - c_list\
+                  \ | length }} more hidden)</i>{% endif %} </details> {% endif %}\
+                  \ {% endif %}\n"
+                title: "\u23F1\uFE0F Stale Reporting"
+                type: markdown
               - content: "{% set e = 'sensor.system_ha_global_health_score' %} {%\
                   \ set z_raw = state_attr(e, 'zombie_entities') | default([], true)\
-                  \ %} {% set z_count = state_attr(e, 'zombie_count') | int(0) %}\n\
-                  {% if z_count == 0 %}\n  \u2705 **No zombie entities detected.**\n\
-                  {% else %}\n  {% if z_raw is string %} {% set z_list = z_raw.split(',')\
-                  \ |\n  map('trim') | list %} {% else %} {% set z_list = z_raw |\
-                  \ list %} {%\n  endif %}\n  {% set expanded = expand(z_list) | list\
-                  \ %}\n  {% set grouped = expanded[:20] | groupby('domain') %}\n\n\
-                  \  **{{ z_count }} Zombie(s)** across **{{ grouped | length }}**\
-                  \ domain(s)\n  {% if z_count > 20 %}*(showing first 20 \u2014 {{\
-                  \ z_count - 20 }} more hidden)*{% endif %}\n\n  [\u2192 Check Entities](/config/entities)\n\
-                  \n  {% for domain in grouped %}\n  <details>\n  <summary><b>{{ domain[0]\
-                  \ | title }}: {{ domain[1] | count }}</b></summary>\n  {% for item\
-                  \ in domain[1] %}\n  &nbsp;&nbsp; \u2022 {{ device_attr(item.entity_id,\
-                  \ 'name') | default('unknown device', true) }} \u2014 {{ item.name\
-                  \ }}: <b>{{ item.state\n  }}</b>\n  {% endfor %}\n  </details>\n\
-                  \  {% endfor %}\n{% endif %}\n"
+                  \ %} {% set z_count = state_attr(e, 'zombie_count') | int(0) %}\
+                  \ {% set u_raw = state_attr(e, 'unregistered_entities') | default([],\
+                  \ true) %} {% set u_count = state_attr(e, 'unregistered_count')\
+                  \ | int(0) %} {% set d_raw = state_attr(e, 'dead_devices') | default([],\
+                  \ true) %} {% set d_ids = state_attr(e, 'dead_device_ids') | default([],\
+                  \ true) %} {% set d_count = state_attr(e, 'dead_device_count') |\
+                  \ int(0) %} {% set e_raw = state_attr(e, 'empty_devices') | default([],\
+                  \ true) %} {% set e_ids = state_attr(e, 'empty_device_ids') | default([],\
+                  \ true) %} {% set e_count = state_attr(e, 'empty_device_count')\
+                  \ | int(0) %} {% set reasons = state_attr(e, 'zombie_reasons') |\
+                  \ default({}, true) %} {% set since = state_attr(e, 'zombie_since')\
+                  \ | default({}, true) %} {% set per_reason = state_attr(e, 'zombie_count_per_reason')\
+                  \ | default({}, true) %} {% set per_integration = state_attr(e,\
+                  \ 'zombie_count_per_integration') | default({}, true) %} {% set\
+                  \ _dev = '/config/devices/dashboard' %} {% set _device = '/config/devices/device/'\
+                  \ %} {% set reason_labels = {'config_entry_missing': 'config entry\
+                  \ missing (strong hint)', 'integration_not_loaded': 'integration\
+                  \ not loaded', 'not_provided': 'not provided by a running integration',\
+                  \ 'unavailable': 'reported unavailable'} %}\n{% if states(e) in\
+                  \ ['unavailable', 'unknown'] %} \u26A0\uFE0F Health Advisor sensor\
+                  \ is offline ({{ states(e) }}). {% else %} {% if z_raw is string\
+                  \ %} {% set z_list = z_raw.split(',') | map('trim') | list %} {%\
+                  \ else %} {% set z_list = z_raw | list %} {% endif %} {% set grouped\
+                  \ = expand(z_list) | groupby('domain') %}\n{# Domain count: prefer\
+                  \ the HAGHS v2.3+ attribute when present, otherwise derive it from\
+                  \ z_list. #} {% set per_domain = state_attr(e, 'zombie_count_per_domain')\
+                  \ %}{% if per_domain %}{% set domain_count = per_domain | length\
+                  \ %}{% else %}{% set ns = namespace(seen=[]) %}{% for entry in z_list\
+                  \ %}{% set dom = entry.split('.')[0] %}{% if dom not in ns.seen\
+                  \ %}{% set ns.seen = ns.seen + [dom] %}{% endif %}{% endfor %}{%\
+                  \ set domain_count = ns.seen | length %}{% endif %}\n{% if z_count\
+                  \ == 0 %} \u2705 No zombie entities detected. {% else %} {{ z_count\
+                  \ }} zombie(s) across {{ domain_count }} domain(s) {% if per_domain\
+                  \ %} ({% for dom, cnt in per_domain.items() %}{{ dom }}: {{ cnt\
+                  \ }}{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}\
+                  \ {% if z_count > z_list | length %}*(showing first {{ z_list |\
+                  \ length }}, {{ z_count - z_list | length }} more hidden)*{% endif\
+                  \ %}\n{% if per_reason %}By reason: {% for reason, cnt in per_reason.items()\
+                  \ %}{{ reason_labels.get(reason, reason) }}: {{ cnt }}{% if not\
+                  \ loop.last %}, {% endif %}{% endfor %}<br>{% endif %}{% if per_integration\
+                  \ %}By integration: {% for name, cnt in per_integration.items()\
+                  \ %}{{ name }}: {{ cnt }}{% if not loop.last %}, {% endif %}{% endfor\
+                  \ %}{% endif %}\n\u2139\uFE0F A zombie is an availability signal,\
+                  \ not a deletion list. Only *config entry missing* is a strong hint\
+                  \ of an orphaned entity.\n{% set _ent = '/config/entities' %}[\u2192\
+                  \ Check Entities]({{ _ent }})\n{% for domain in grouped %} <details>\
+                  \ <summary>{{ domain[0] | title }}: {{ domain[1] | count }}</summary>\
+                  \ <ul>{% for item in domain[1] %}{% set _info = _ent ~ '?more-info-entity-id='\
+                  \ ~ item.entity_id %}{% set reason = reasons.get(item.entity_id)\
+                  \ %}{% set seen = since.get(item.entity_id) %}<li><a href=\"{{ _info\
+                  \ }}\">{{ item.name }}</a> \xB7 {{ device_attr(item.entity_id, 'name')\
+                  \ | default('unknown device', true) }}<br><code>{{ item.entity_id\
+                  \ }}</code> \xB7 {{ item.state }}{% if reason %} \xB7 {{ reason_labels.get(reason,\
+                  \ reason) }}{% endif %}{% if seen and as_datetime(seen) %} \xB7\
+                  \ for {{ relative_time(as_datetime(seen)) }}{% endif %}</li>{% endfor\
+                  \ %}</ul> </details> {% endfor %} {% endif %}\n{% if u_count > 0\
+                  \ %} <details> <summary>\u2139\uFE0F Unregistered (informational\
+                  \ only, no score impact): {{ u_count }}</summary> <ul>{% for entry\
+                  \ in (u_raw if u_raw is not string else u_raw.split(',') | map('trim')\
+                  \ | list) %}<li><a href=\"/config/entities?more-info-entity-id={{\
+                  \ entry }}\"><code>{{ entry }}</code></a></li>{% endfor %}</ul>\
+                  \ </details> {% endif %}\n{% if d_count > 0 %} <details> <summary>\U0001F480\
+                  \ Dead devices (informational, no score impact): {{ d_count }}</summary>\
+                  \ <ul>{% for d in d_raw %}{% set device_id = d_ids[loop.index0]\
+                  \ if loop.index0 < d_ids | length else none %}<li>{% if device_id\
+                  \ %}<a href=\"{{ _device ~ device_id }}\">{{ d }}</a>{% else %}{{\
+                  \ d }}{% endif %}</li>{% endfor %}</ul> <a href=\"{{ _dev }}\">\u2192\
+                  \ Open Devices</a> </details> {% endif %}\n{% if e_count > 0 %}\
+                  \ <details> <summary>\U0001F5C2\uFE0F Empty devices without any\
+                  \ entity (informational, no score impact): {{ e_count }}</summary>\
+                  \ <ul>{% for d in e_raw %}{% set device_id = e_ids[loop.index0]\
+                  \ if loop.index0 < e_ids | length else none %}<li>{% if device_id\
+                  \ %}<a href=\"{{ _device ~ device_id }}\">{{ d }}</a>{% else %}{{\
+                  \ d }}{% endif %}</li>{% endfor %}</ul> {% if e_count > e_raw |\
+                  \ length %}<i>(showing first {{ e_raw | length }}, {{ e_count -\
+                  \ e_raw | length }} more hidden)</i><br>{% endif %} <a href=\"{{\
+                  \ _dev }}\">\u2192 Open Devices</a> </details> {% endif %}\n{% endif\
+                  \ %}\n"
                 title: "\U0001F9DF Zombie Entities"
                 type: markdown
               overlay-margin: 20px
