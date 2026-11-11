@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-10 23:30 | System: 17.7 kWp
+> Generated: 2026-11-11 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6509.8 kWh
+**Total Production:** 6516.1 kWh
 
-**Average Accuracy:** 77.6%
+**Average Accuracy:** 77.8%
 
 ### Seasonal Production
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 39.30 kWh | 2751.2 kWh |
+| Autumn | 75.48 kWh | 38.84 kWh | 2757.4 kWh |
 
 ---
 
@@ -38,7 +38,7 @@
 Diagnosis only. Living correction factors are unchanged.
 This section is the support evidence channel for fleet step-3 gates.
 
-**Learning contract:** physics_calibration_raw_forecast_v3 (2 groups)
+**Learning contract:** physics_calibration_raw_forecast_v4 (2 groups)
 
 ### GHI sensor geometry (diagnosis a)
 
@@ -49,7 +49,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-10 | 963 | 41 | 4 | 1.38 | geometry_contrast_recorded |
+| 2026-11-11 | 958 | 41 | 4 | 1.37 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.809 west k_p90=1.990; k_p90 > 1)
@@ -57,16 +57,16 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 51 | 0.461 | 0.809 | 1.299 | no |
-| 0 | west | 48 | 0.939 | 1.990 | 2.805 | no |
-| 10 | east | 87 | 0.468 | 0.815 | 1.480 | no |
-| 10 | west | 96 | 0.671 | 1.002 | 1.506 | no |
-| 20 | east | 65 | 0.565 | 0.920 | 0.962 | yes |
-| 20 | west | 61 | 0.744 | 1.212 | 1.454 | yes |
-| 30 | east | 41 | 0.609 | 0.857 | 0.960 | yes |
-| 30 | west | 32 | 0.902 | 1.181 | 1.361 | yes |
-| 40 | east | 3 | 0.938 | 0.948 | 0.948 | no |
-| 40 | west | 5 | 0.986 | 1.126 | 1.126 | no |
+| 0 | east | 52 | 0.458 | 0.809 | 1.299 | no |
+| 0 | west | 49 | 0.928 | 1.990 | 2.805 | no |
+| 10 | east | 86 | 0.470 | 0.815 | 1.480 | no |
+| 10 | west | 95 | 0.672 | 1.002 | 1.506 | no |
+| 20 | east | 64 | 0.560 | 0.920 | 0.962 | yes |
+| 20 | west | 60 | 0.748 | 1.212 | 1.454 | yes |
+| 30 | east | 39 | 0.600 | 0.859 | 0.960 | yes |
+| 30 | west | 30 | 0.885 | 1.181 | 1.361 | yes |
+| 40 | east | 2 | 0.933 | 0.948 | 0.948 | no |
+| 40 | west | 4 | 0.951 | 1.119 | 1.119 | no |
 
 ### Hourly physics-factor shape
 
@@ -94,7 +94,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"Infinite diversity in infinite combinations... including solar panel orientations. - Spock"*
+> *"The needs of the many outweigh the needs of the few... use solar power. - Spock"*
 
 Live long and prosper!
 
