@@ -132,15 +132,19 @@ template:
         {%- else -%}
           {{ (now().timestamp() - last_wet | int(0)) | int }}
         {%- endif -%}
+      min_sun_elevation: 0      # degrees; raise (e.g. 5) to start later / stop earlier
+      sun_elevation: "{{ state_attr('sun.sun', 'elevation') | float(-90) }}"
+      daytime: "{{ sun_elevation > min_sun_elevation }}"
     binary_sensor:
       - name: Pool Regenwasserpumpe erforderlich
         unique_id: pool_regenwasserpumpe_erforderlich
         icon: mdi:pump
         state: >-
-          {{ runtime_s | float(0) > 0 and not wet_now and dry_s | int(0) >= dry_hold_s }}
+          {{ runtime_s | float(0) > 0 and daytime and not wet_now and dry_s | int(0) >= dry_hold_s }}
         attributes:
           block_reason: >-
             {%- if runtime_s | float(0) <= 0 -%}no pumping needed
+            {%- elif not daytime -%}night
             {%- elif not is_number(mv) -%}conductivity sensor unavailable
             {%- elif (mv | float(0)) > wet_mv -%}sensor wet
             {%- elif is_number(rate) and (rate | float(0)) > 0 -%}rain rate above 0
@@ -176,5 +180,6 @@ template:
           area_m2: "{{ area_m2 }}"
           flow_l_min: "{{ flow_l_min }}"
           collection_factor: "{{ collection_factor }}"
+          daytime: "{{ daytime }}"
           last_reset: >-
             {{ now().timestamp() | int if trigger.id == 'reset' else state_attr(me, 'last_reset') }}
