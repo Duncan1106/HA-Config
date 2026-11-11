@@ -1944,53 +1944,52 @@
   description: "\U0001F504 **Bi-Daily Scheduled Core Reboot**\n\n---\n\n### \U0001F4CB
     Intelligent Core Control\n\n* **High-Level Intent**: Executes a routine off-peak
     reboot of Home Assistant Core every second night to maintain system stability
-    and clear memory cache.\n* **Operational Strategy**: Utilizes time-based triggers
-    restricted to even-numbered calendar days during low-traffic hours (03:15).\n*
-    **Reliability Mechanisms**: Employs double-gate validation checks for system uptime
-    and UPS power integrity prior to triggering the restart action.\n\n---\n\n###
-    ⏱️ Trigger Overview\n\n| Type | Entity / Condition | Purpose |\n| :--- | :---
-    | :--- |\n| **Time** | `03:15:00` | Initiates the bi-daily maintenance evaluation
-    during off-peak hours |\n\n---\n\n### ⚙️ Operational Logic\n\n### Scheduled Maintenance
-    Mode\n\n* **Purpose**: Safely restarts Home Assistant Core when maintenance prerequisites
+    and clear memory cache.\n* **Operational Strategy**: Utilizes a time-based trigger
+    at 03:15, restricted to even-numbered calendar days via a template condition.\n*
+    **Reliability Mechanisms**: Employs triple-gate validation (even day, core uptime,
+    UPS power integrity) before triggering the restart action.\n\n---\n\n### ⏱️ Trigger
+    Overview\n\n| Type | Entity / Condition | Purpose |\n| :--- | :--- | :--- |\n|
+    **Time** | `03:15:00` | Initiates the bi-daily maintenance evaluation during off-peak
+    hours |\n\n---\n\n### ⚙️ Operational Logic\n\n### Scheduled Maintenance Mode\n\n*
+    **Purpose**: Safely restarts Home Assistant Core when maintenance prerequisites
     are met.\n* **Logic Overview**: All of the following conditions must simultaneously
-    evaluate to **True**:\n  1. **Even Calendar Day Check**: `{{ now().day | int(1)
-    % 2 == 0 }}` (Ensures execution occurs every alternate day).\n  2. **Uptime Gate**:
-    **`binary_sensor.up_longer_than_1_day`** is **`on`** (Verifies the instance has
-    been active for more than 24 hours).\n  3. **Power Integrity Gate**: **`sensor.ups0_status`**
-    is **`Online`** (Confirms the server is receiving stable mains power).\n* **Effect**:
-    Calls the **`homeassistant.restart`** service.\n\n---\n\n### \U0001F6E0️ Technical
-    Overview\n\n* **Automation Mode**: **`single`**\n* **Execution Method**: Direct
-    service call (**`homeassistant.restart`**)\n* **Key Inputs**:\n  * **`binary_sensor.up_longer_than_1_day`**\n
-    \ * **`sensor.ups0_status`**\n  * System Date / Clock (**`now().day`**)\n* **Controlled
-    Entities**: Home Assistant Core\n* **Safety Mechanisms**:\n  * **Power Interruption
-    Guard**: Halts restart execution if **`sensor.ups0_status`** is on battery or
-    offline, mitigating database corruption risks.\n  * **Redundant Loop Guard**:
-    Requires **`binary_sensor.up_longer_than_1_day`** to be **`on`**, preventing repeated
-    reboot cycles if a manual restart occurred recently.\n\n---\n\n### \U0001F4A1
-    Notes\n\n* **Bi-Daily Alternation**: The template expression `now().day % 2 ==
-    0` provides a lightweight calendar-day schedule without requiring helper entities
-    or state trackers.\n* **Database & File System Protection**: Verifying UPS online
-    status ensures disk writes during shutdown and startup sequence occur under stable
-    grid power.\n* **Off-Peak Window**: Running at 03:15:00 minimizes impact on daily
-    user automations, presence tracking, and active media playback."
+    evaluate to **True**:\n  1. **Even Calendar Day Check**: `{{ now().day % 2 ==
+    0 }}` (Ensures execution occurs on every alternate day).\n  2. **Uptime Gate**:
+    `sensor.uptime` is available and Core has been running for at least 1 day (`now()
+    - states('sensor.uptime') | as_datetime >= timedelta(days=1)`).\n  3. **Power
+    Integrity Gate**: **`sensor.ups0_status`** is **`Online`** (Confirms the server
+    is receiving stable mains power).\n* **Effect**: Calls the **`homeassistant.restart`**
+    service.\n\n---\n\n### \U0001F6E0️ Technical Overview\n\n* **Automation Mode**:
+    **`single`**\n* **Execution Method**: Direct service call (**`homeassistant.restart`**)\n*
+    **Key Inputs**:\n  * **`sensor.uptime`**\n  * **`sensor.ups0_status`**\n  * System
+    Date / Clock (**`now().day`**)\n* **Controlled Entities**: Home Assistant Core\n*
+    **Safety Mechanisms**:\n  * **Power Interruption Guard**: Halts restart execution
+    if **`sensor.ups0_status`** is on battery or offline, mitigating database corruption
+    risks.\n  * **Redundant Loop Guard**: Requires an uptime of at least 1 day, preventing
+    repeated reboot cycles if a manual restart occurred recently. An unavailable `sensor.uptime`
+    blocks the restart.\n\n---\n\n### \U0001F4A1 Notes\n\n* **Bi-Daily Alternation**:
+    The template expression `now().day % 2 == 0` provides a lightweight calendar-day
+    schedule without requiring helper entities or state trackers. At month-end (31st
+    to 1st) two odd days follow each other, so the gap can occasionally be three days.\n*
+    **Database & File System Protection**: Verifying UPS online status ensures disk
+    writes during shutdown and startup sequence occur under stable grid power.\n*
+    **Off-Peak Window**: Running at 03:15:00 minimizes impact on daily user automations,
+    presence tracking, and active media playback."
   triggers:
-  - at: 03:15:00
-    trigger: time
+  - trigger: time
+    at: 03:15:00
   conditions:
-  - condition: and
-    conditions:
-    - condition: template
-      value_template: '{{ now().day | int(1) % 2 == 0 }}'
-      enabled: true
-    - condition: state
-      entity_id: binary_sensor.up_longer_than_1_day
-      state:
-      - 'on'
-    - condition: state
-      entity_id: sensor.ups0_status
-      state:
-      - Online
-    alias: Date is even, Homeassistant Core up longer than 1 day and UPS is Online
+  - alias: Date is even
+    condition: template
+    value_template: '{{ now().day % 2 == 0 }}'
+  - alias: Core up longer than 1 day
+    condition: template
+    value_template: "{{ has_value('sensor.uptime')\n   and now() - states('sensor.uptime')
+      | as_datetime >= timedelta(days=1) }}\n"
+  - alias: UPS is Online
+    condition: state
+    entity_id: sensor.ups0_status
+    state: Online
   actions:
   - action: homeassistant.restart
     metadata: {}
