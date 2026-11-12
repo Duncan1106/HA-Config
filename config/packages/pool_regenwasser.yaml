@@ -42,31 +42,42 @@ template:
       - trigger: event
         event_type: pool_rain_pump_partial
         id: partial
+      - trigger: event
+        event_type: pool_rain_pump_adjust
+        id: adjust
     variables:
       # ---- tuning ----
       me: binary_sensor.pool_regenwasserpumpe_erforderlich
       area_m2: 27               # 3 x 9 m
-      flow_l_min: 60            # only the starting guess, the sensor learns the real value
-      collection_factor: 0.75   # only the starting guess
+      flow_l_min: 30            # starting guess, the sensor learns the real value
+      collection_factor: 0.75   # starting guess
       startup_overhead_s: 10
       min_rain_mm: 1.0
-      max_runtime_s: 3600
-      wet_mv: 1500              # conductivity above this = wet
+      max_runtime_s: 1800
+      wet_mv: 3100              # conductivity above this = wet
       dry_hold_s: 600           # must stay dry this long before pump may run
+      min_sun_elevation: 0      # degrees; pump only runs while the sun is above this
       learn_alpha: 0.2          # weight of each new measurement (0-1)
       learn_min_mm: 4.0         # only learn from runs with at least this much rain
+      force_mm: 20              # at this much rain, pump in daytime regardless of wet
+      # ---- daytime ----
+      sun_elevation: "{{ state_attr('sun.sun', 'elevation') | float(-90) }}"
+      daytime: "{{ sun_elevation > min_sun_elevation }}"
       # ---- self-calibration: seconds of pumping per mm of rain ----
       nominal_spm: "{{ area_m2 * collection_factor / flow_l_min * 60 }}"
       prev_spm: "{{ state_attr(me, 'seconds_per_mm') | float(0) }}"
+      prev_nominal: "{{ state_attr(me, 'nominal_seconds_per_mm') | float(0) }}"
+      nominal_changed: "{{ (nominal_spm - prev_nominal) | abs > 0.02 }}"
       partial_runs: "{{ state_attr(me, 'partial_runs') | int(0) }}"
       is_reset: "{{ trigger.id == 'reset' }}"
       is_partial: "{{ trigger.id == 'partial' }}"
       ev_actual_s: "{{ trigger.event.data.get('actual_s', 0) | float(0) if is_reset else 0 }}"
       ev_rain_mm: "{{ trigger.event.data.get('rain_mm', 0) | float(0) if is_reset else 0 }}"
       ev_removed_s: "{{ trigger.event.data.get('removed_s', 0) | float(0) if is_partial else 0 }}"
+      ev_adjust_mm: "{{ trigger.event.data.get('rain_mm', 0) | float(0) if trigger.id == 'adjust' else 0 }}"
       cal_reset: "{{ trigger.event.data.get('reset_calibration', false) if is_reset else false }}"
       learn: "{{ is_reset and not cal_reset and partial_runs == 0 and ev_actual_s >= startup_overhead_s + 20 and ev_rain_mm >= learn_min_mm }}"
-      spm_base: "{{ nominal_spm if (prev_spm <= 0 or cal_reset) else prev_spm }}"
+      spm_base: "{{ nominal_spm if (prev_spm <= 0 or cal_reset or nominal_changed) else prev_spm }}"
       measured_spm: "{{ ((ev_actual_s - startup_overhead_s) / ev_rain_mm) if learn else 0 }}"
       spm: >-
         {%- if learn -%}
@@ -90,6 +101,8 @@ template:
         {%- set pb = state_attr(me, 'baseline_mm') | float(none) -%}
         {%- if trigger.id == 'reset' or pb is none -%}
           {{ total_mm | float(0) }}
+        {%- elif trigger.id == 'adjust' -%}
+          {{ [total_mm | float(0) - ev_adjust_mm, 0] | max }}
         {%- elif total_mm | float(0) < pb -%}
           0
         {%- elif is_partial -%}
@@ -98,6 +111,7 @@ template:
           {{ pb }}
         {%- endif -%}
       rain_mm: "{{ [total_mm | float(0) - baseline_mm | float(0), 0] | max }}"
+      force: "{{ rain_mm | float(0) >= force_mm }}"
       volume_l: "{{ rain_mm | float(0) * area_m2 * collection_factor }}"
       # ---- runtime ----
       runtime_s: >-
@@ -132,19 +146,17 @@ template:
         {%- else -%}
           {{ (now().timestamp() - last_wet | int(0)) | int }}
         {%- endif -%}
-      min_sun_elevation: 0      # degrees; raise (e.g. 5) to start later / stop earlier
-      sun_elevation: "{{ state_attr('sun.sun', 'elevation') | float(-90) }}"
-      daytime: "{{ sun_elevation > min_sun_elevation }}"
     binary_sensor:
       - name: Pool Regenwasserpumpe erforderlich
         unique_id: pool_regenwasserpumpe_erforderlich
         icon: mdi:pump
         state: >-
-          {{ runtime_s | float(0) > 0 and daytime and not wet_now and dry_s | int(0) >= dry_hold_s }}
+          {{ runtime_s | float(0) > 0 and daytime and (force or (not wet_now and dry_s | int(0) >= dry_hold_s)) }}
         attributes:
           block_reason: >-
             {%- if runtime_s | float(0) <= 0 -%}no pumping needed
             {%- elif not daytime -%}night
+            {%- elif force -%}forced (rain above limit)
             {%- elif not is_number(mv) -%}conductivity sensor unavailable
             {%- elif (mv | float(0)) > wet_mv -%}sensor wet
             {%- elif is_number(rate) and (rate | float(0)) > 0 -%}rain rate above 0
@@ -153,6 +165,9 @@ template:
             {%- endif -%}
           pumping_needed: "{{ runtime_s | float(0) > 0 }}"
           exceeds_max: "{{ runtime_s | float(0) > max_runtime_s }}"
+          force_active: "{{ force and daytime }}"
+          daytime: "{{ daytime }}"
+          sun_elevation: "{{ sun_elevation | round(1) }}"
           rain_since_reset_mm: "{{ rain_mm | float(0) | round(2) }}"
           volume_l: "{{ volume_l | float(0) | round(0) }}"
           runtime_seconds: "{{ runtime_s | float(0) | int }}"
@@ -180,6 +195,5 @@ template:
           area_m2: "{{ area_m2 }}"
           flow_l_min: "{{ flow_l_min }}"
           collection_factor: "{{ collection_factor }}"
-          daytime: "{{ daytime }}"
           last_reset: >-
             {{ now().timestamp() | int if trigger.id == 'reset' else state_attr(me, 'last_reset') }}
