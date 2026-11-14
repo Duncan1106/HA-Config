@@ -1,0 +1,49 @@
+template:
+  # Lenovo Wallpanel Küche
+  - triggers:
+    - trigger: homeassistant
+      event: start
+    - platform: event
+      event_type: event_template_reloaded
+    - platform: state
+      entity_id:
+        - sensor.kuche_lenovo_lenovo_tb_j606f_battery
+    sensor:
+      - name: "Lenovo P11 Battery"
+        unit_of_measurement: "%"
+        device_class: battery
+        unique_id: lenovo_p11_battery
+        variables:
+          sources:
+            - "sensor.kuche_lenovo_lenovo_tb_j606f_battery"
+          levels: >
+            {{ sources
+              | map('states')
+              | map('float', none)
+              | select('!=', none)
+              | list }}
+          level: >
+            {% if levels | length > 0 %}
+              {{ levels | min }}
+            {% else %}
+              none
+            {% endif %}
+        availability: >
+          {{ levels | length > 0 }}
+        state: "{{ level }}"
+        attributes:
+          levels: "{{ levels }}"
+          band: >
+            {% if level is none %}
+              unknown
+            {% elif level < 10 %}
+              critical
+            {% elif level < 20 %}
+              very_low
+            {% elif level < 30 %}
+              low
+            {% elif level < 39 %}
+              warn
+            {% else %}
+              ok
+            {% endif %}
