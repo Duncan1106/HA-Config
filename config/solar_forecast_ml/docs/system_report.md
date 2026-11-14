@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-13 23:30 | System: 17.7 kWp
+> Generated: 2026-11-14 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6548.5 kWh
+**Total Production:** 6576.6 kWh
 
-**Average Accuracy:** 77.6%
+**Average Accuracy:** 77.8%
 
 ### Seasonal Production
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 38.22 kWh | 2789.9 kWh |
+| Autumn | 75.48 kWh | 38.08 kWh | 2817.9 kWh |
 
 ---
 
@@ -49,23 +49,23 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-13 | 948 | 40 | 4 | 1.43 | geometry_contrast_recorded |
+| 2026-11-14 | 943 | 39 | 4 | 1.43 | geometry_contrast_recorded |
 
 Headline exclusions:
-- elev 0 excluded from headline (elev < 20; east k_p90=0.809 west k_p90=1.466; k_p90 > 1)
+- elev 0 excluded from headline (elev < 20; east k_p90=0.918 west k_p90=1.466; k_p90 > 1)
 - elev 10 excluded from headline (elev < 20; east k_p90=0.815 west k_p90=0.999)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 54 | 0.467 | 0.809 | 1.299 | no |
-| 0 | west | 51 | 0.916 | 1.466 | 2.805 | no |
-| 10 | east | 84 | 0.474 | 0.815 | 1.480 | no |
-| 10 | west | 93 | 0.666 | 0.999 | 1.506 | no |
-| 20 | east | 62 | 0.571 | 0.920 | 0.962 | yes |
-| 20 | west | 57 | 0.744 | 1.224 | 1.454 | yes |
-| 30 | east | 35 | 0.581 | 0.859 | 0.960 | yes |
-| 30 | west | 27 | 0.863 | 1.231 | 1.361 | yes |
-| 40 | west | 2 | 0.801 | 1.025 | 1.025 | no |
+| 0 | east | 55 | 0.478 | 0.918 | 1.299 | no |
+| 0 | west | 52 | 0.914 | 1.466 | 2.805 | no |
+| 10 | east | 83 | 0.476 | 0.815 | 1.480 | no |
+| 10 | west | 91 | 0.665 | 0.999 | 1.506 | no |
+| 20 | east | 60 | 0.570 | 0.920 | 0.962 | yes |
+| 20 | west | 56 | 0.739 | 1.224 | 1.454 | yes |
+| 30 | east | 34 | 0.577 | 0.859 | 0.960 | yes |
+| 30 | west | 26 | 0.859 | 1.231 | 1.361 | yes |
+| 40 | west | 1 | 0.577 | 0.577 | 0.577 | no |
 
 ### Hourly physics-factor shape
 
@@ -79,7 +79,7 @@ Headline exclusions:
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 490 | 24 |
+| forecast_physics | 502 | 24 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
