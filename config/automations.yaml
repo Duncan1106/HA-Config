@@ -12434,3 +12434,68 @@
           - 7a53e8f8bd744336b1c8bfc28d096c77
           - afda060e6e240db3c39e2fc8fa8578b1
   mode: single
+- id: '1794776629629'
+  alias: T5 Window Lights
+  description: 'Schaltet alle Switches mit dem Label "T5 Fensterlicht" (ID t5_fensterlicht)
+    nach binary_sensor.t5_window_lights. Neue Lampe = Label setzen, Lampe entfernen
+    = Label entfernen. Keine Anpassung der Automation noetig.
+
+    '
+  triggers:
+  - trigger: state
+    entity_id: binary_sensor.t5_window_lights
+    to:
+    - 'on'
+    - 'off'
+    id: Schedule
+  - trigger: homeassistant
+    event: start
+    id: HA_Start
+  - trigger: event
+    event_type: entity_registry_updated
+    event_data:
+      action: update
+    id: Label_Changed
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.id != 'Label_Changed'\n   or 'labels' in (trigger.event.data.changes
+      | default({})) }}\n"
+  actions:
+  - action: script.ha_start_settle_delay
+    data:
+      delay_duration:
+        hours: 0
+        minutes: 0
+        seconds: 30
+      target_trigger_id: HA_Start
+      actual_trigger_id: '{{ trigger.id }}'
+  - condition: state
+    entity_id: binary_sensor.t5_window_lights
+    state:
+    - 'on'
+    - 'off'
+  - variables:
+      t5_entities: '{{ label_entities(''t5_fensterlicht'') | select(''match'', ''^switch\.'')
+        | list }}
+
+        '
+      want_on: '{{ is_state(''binary_sensor.t5_window_lights'', ''on'') }}'
+  - repeat:
+      for_each: '{{ t5_entities }}'
+      sequence:
+      - action: script.retry_action_with_backoff
+        continue_on_error: true
+        data:
+          entity_id: '{{ repeat.item }}'
+          target_state: '{{ ''on'' if want_on else ''off'' }}'
+          action_domain: switch
+          action_type: '{{ ''turn_on'' if want_on else ''turn_off'' }}'
+          max_retries: 5
+          base_delay: 5
+          backoff_type: exponential
+          notify_on_failure: true
+          notify_service: notify.duncan
+      - delay:
+          seconds: 1
+  mode: queued
+  max_exceeded: silent
