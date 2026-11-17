@@ -60,6 +60,7 @@ template:
       learn_alpha: 0.2          # weight of each new measurement (0-1)
       learn_min_mm: 4.0         # only learn from runs with at least this much rain
       force_mm: 20              # at this much rain, pump in daytime regardless of wet
+      timer_add: 90
       # ---- daytime ----
       sun_elevation: "{{ state_attr('sun.sun', 'elevation') | float(-90) }}"
       daytime: "{{ sun_elevation > min_sun_elevation }}"
@@ -121,7 +122,7 @@ template:
           {{ (rain_mm | float(0) * spm | float(0) + startup_overhead_s) | round(0) }}
         {%- endif -%}
       runtime_capped_s: "{{ [runtime_s | float(0), max_runtime_s] | min | int }}"
-      timer_s: "{{ (runtime_capped_s | int + 90) if runtime_capped_s | int > 0 else 0 }}"
+      timer_s: "{{ (runtime_capped_s | int + timer_add | int) if runtime_capped_s | int > 0 else 0 }}"
       # ---- rain gate ----
       mv: "{{ states('sensor.rain_sun_flower_rain_intensity') }}"
       rate: "{{ states('sensor.gw1100a_rain_rate') }}"
