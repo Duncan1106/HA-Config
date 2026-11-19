@@ -12118,10 +12118,10 @@
 - id: '1793085268083'
   alias: Pool Regenwasserpumpe automatisch
   description: Runs the pool rainwater pump automatically when the pump binary sensor
-    turns on. The power sensor reports only once a minute, so the start check only
-    applies to runs of 90 s or more, and short runs are timed by the calculated runtime.
-    Sends the measured runtime with the reset event for calibration, and reports partially
-    pumped amounts so the counter stays correct.
+    turns on. Runs past the calculated runtime (grace period) until the power drop
+    signals that the water is gone, so a calibration run is reached. The power sensor
+    reports only once a minute, so the start check only applies to runs of 90 s or
+    more. Reports partially pumped amounts so the counter stays correct.
   triggers:
   - trigger: state
     entity_id: binary_sensor.pool_regenwasserpumpe_erforderlich
@@ -12140,12 +12140,15 @@
   - variables:
       gate: binary_sensor.pool_regenwasserpumpe_erforderlich
       runtime_s: '{{ state_attr(gate, ''runtime_capped_seconds'') | int(0) }}'
-      timer_time: '{{ state_attr(gate, ''timer_time'') | default(''00:04:30'', true)
-        }}'
       rain_mm: '{{ state_attr(gate, ''rain_since_reset_mm'') | float(0) }}'
       report_s: 60
       feedback_min_s: 90
+      grace_s: 600
+      timeout_credit: 0.5
       long_run: '{{ runtime_s >= feedback_min_s }}'
+      stop_after_s: '{{ runtime_s + ((grace_s + report_s) if long_run else 0) }}'
+      timer_time: '{%- set s = (stop_after_s | int) + 60 -%} {{ ''%02d:%02d:%02d''
+        | format(s // 3600, (s % 3600) // 60, s % 60) }}'
   - if:
     - condition: template
       value_template: '{{ runtime_s <= 0 }}'
@@ -12178,7 +12181,7 @@
       value_template: '{{ long_run }}'
     then:
     - wait_template: '{{ states(''sensor.garten_poolregenwasserpumpe_leistung'') |
-        float(0) > 30 }}'
+        float(0) > 35 }}'
       timeout:
         seconds: 100
       continue_on_timeout: true
@@ -12200,14 +12203,14 @@
       id: dry
       entity_id:
       - sensor.garten_poolregenwasserpumpe_leistung
-      below: 30
+      below: 35
     - trigger: state
       id: blocked
       entity_id:
       - binary_sensor.pool_regenwasserpumpe_erforderlich
       from: 'on'
       to: 'off'
-    timeout: '{{ runtime_s + (report_s if long_run else 0) }}'
+    timeout: '{{ stop_after_s }}'
     continue_on_timeout: true
   - variables:
       run_s: '{{ (now().timestamp() - run_start) | round(0) }}'
@@ -12221,12 +12224,13 @@
       sequence:
       - event: pool_rain_pump_partial
         event_data:
-          removed_s: '{{ run_s }}'
+          removed_s: '{{ runtime_s * timeout_credit }}'
       - action: notify.duncan
         data:
           title: Pool pump
-          message: Pump ran {{ run_s | int }} s without a power drop below 35 W. Switched
-            off by timeout, counter reduced by the pumped part.
+          message: Pump ran {{ run_s | int }} s (calculated {{ runtime_s }} s plus
+            grace) without a power drop below 35 W. Switched off, counter only partly
+            reduced.
     - conditions:
       - condition: template
         value_template: '{{ wait.trigger is none }}'

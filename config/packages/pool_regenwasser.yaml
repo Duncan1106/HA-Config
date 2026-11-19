@@ -50,7 +50,7 @@ template:
       me: binary_sensor.pool_regenwasserpumpe_erforderlich
       area_m2: 27               # 3 x 9 m
       flow_l_min: 10            # starting guess, the sensor learns the real value
-      collection_factor: 0.75   # starting guess
+      collection_factor: 0.90   # starting guess
       startup_overhead_s: 10
       min_rain_mm: 1.0
       max_runtime_s: 3600
@@ -183,7 +183,7 @@ template:
             {{ measured_spm | float(0) | round(2) if learn else state_attr(me, 'last_measured_s_per_mm') | float(0) }}
           calibration_runs: >-
             {{ 0 if cal_reset else (state_attr(me, 'calibration_runs') | int(0)) + (1 if learn else 0) }}
-          partial_runs: "{{ 0 if is_reset else partial_runs + (1 if is_partial else 0) }}"
+          partial_runs: "{{ 0 if (is_reset or trigger.id == 'adjust') else partial_runs + (1 if is_partial else 0) }}"
           conductivity_mv: "{{ mv }}"
           rain_rate: "{{ rate }}"
           wet_now: "{{ wet_now }}"
