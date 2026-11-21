@@ -1,0 +1,123 @@
+template:
+    # Heizraum Lüftung
+    - trigger:
+        - trigger: homeassistant
+          event: start
+        - trigger: event
+          event_type: event_template_reloaded
+        - trigger: time_pattern
+          minutes: "/2"
+      binary_sensor:
+        - name: Heizraum Zuluft Trigger
+          unique_id: heizraum_zuluft_trigger
+          variables:
+            outdoor_temp_offset_percent: 0.8
+            inverter_temp: "{{ states('sensor.inverter_temperature') | float(0) | round(1) }}"
+            abluft_power: "{{ states('sensor.heizraum_lufter_abluft_power') | float(0) | round(1) }}"
+            heizraum_temp: "{{ states('sensor.esp32_s3_zero_deye8k_air_temperature') | float(0) | round(1) }}"
+            outdoor_temp: "{{ states('sensor.gw1100a_outdoor_temperature') | float(0) | round(1) }}"
+            heizraum_temp_offset: "{{ (heizraum_temp * outdoor_temp_offset_percent) | round(1) }}"
+            outdoor_ok: "{{ outdoor_temp >= heizraum_temp_offset }}"
+            inverter_level: >
+              {{ 'notfall' if inverter_temp >= 55
+                 else 'aktiv' if inverter_temp >= 50
+                 else 'okay' if inverter_temp >= 40
+                 else 'normal' }}
+            abluft_level: >
+              {{ 'hoch' if abluft_power >= 5
+                 else 'normal' if abluft_power >= 3
+                 else 'niedrig' }}
+            rule: >
+              {% if not outdoor_ok %}gesperrt
+              {% elif inverter_level == 'notfall' %}notfall
+              {% elif inverter_level == 'aktiv' and abluft_level == 'hoch' %}unterstuetzung
+              {% elif inverter_level == 'okay' and abluft_level in ['normal', 'hoch'] %}standard
+              {% else %}standby
+              {% endif %}
+            zuluft_needed: "{{ rule in ['notfall', 'unterstuetzung', 'standard'] }}"
+          state: "{{ zuluft_needed }}"
+          availability: >
+            {{ ['sensor.inverter_temperature',
+                'sensor.heizraum_lufter_abluft_power',
+                'sensor.esp32_s3_zero_deye8k_air_temperature',
+                'sensor.gw1100a_outdoor_temperature']
+               | reject('has_value') | list | count == 0 }}
+          attributes:
+            inverter_temp: "{{ inverter_temp }}"
+            inverter_level: "{{ inverter_level }}"
+            abluft_power: "{{ abluft_power }}"
+            abluft_level: "{{ abluft_level }}"
+            heizraum_temp: "{{ heizraum_temp }}"
+            outdoor_temp: "{{ outdoor_temp }}"
+            zuluft_needed: "{{ zuluft_needed }}"
+            decision_reason: >
+              {% if rule == 'gesperrt' %}
+                Gesperrt: Außentemperatur zu niedrig ({{ outdoor_temp }}°C < {{ heizraum_temp_offset }}°C [{{ (outdoor_temp_offset_percent * 100) | int }}% von {{ heizraum_temp }}°C])
+              {% elif rule == 'notfall' %}
+                KRITISCH: Inverter Überhitzung ({{ inverter_temp }}°C)
+              {% elif rule == 'unterstuetzung' %}
+                Unterstützung: Inverter warm ({{ inverter_temp }}°C) & Abluft Maximum
+              {% elif rule == 'standard' %}
+                Standard: Inverter okay & Abluft aktiv
+              {% else %}
+                Standby: Grenzwerte nicht erreicht
+              {% endif %}
+            updated_by: "{{ trigger.description | default('manual') }}"  
+            
+    # Pellet Heating System Status
+    - trigger:
+      - platform: state
+        entity_id:
+          - sensor.heizung_power
+      sensor:
+      - name: "ETA Heating Status"
+        unique_id: eta_heating_status
+        availability: "{{ has_value('sensor.heizung_power') }}"
+        variables:
+          power: "{{ states('sensor.heizung_power') | float(0) }}"
+          
+          # Use standard boolean (True/False)
+          is_heating_scheduled: "{{ is_state('schedule.heating_schedule', 'on') }}"
+          is_water_scheduled: "{{ is_state('schedule.boiler_pumpe', 'on') }}"
+          is_scheduled: "{{ is_heating_scheduled or is_water_scheduled }}"
+          
+          # Physical Thresholds (Using 60W to avoid the 55W flickering found in logs)
+          is_transport: "{{ power >= 1600 }}"
+          is_ignition: "{{ power >= 600 and power < 1600 }}"
+          is_heating: "{{ power >= 60 and power < 600 }}"
+          is_ready: "{{ power >= 33 and power < 60 }}"
+          is_setback: "{{ power > 15 and power < 33 }}"
+          is_off: "{{ power <= 15 }}"
+    
+        state: >
+          {% if is_transport %} Pellet Transport
+          {% elif is_ignition %} Ignition
+          {% elif is_heating %} Heating
+          {% elif is_ready %} Standby (Active)
+          {% elif is_setback %} Standby (Nacht Mode)
+          {% else %} Off / Deep Sleep
+          {% endif %}
+    
+        icon: >
+          {% if is_transport %} mdi:database-export-outline
+          {% elif is_ignition %} mdi:fire-alert
+          {% elif is_heating %} mdi:fire
+          {% elif is_ready %} mdi:power-settings
+          {% elif is_setback %} mdi:moon-waning-crescent
+          {% else %} mdi:power-off
+          {% endif %}
+    
+        attributes:
+          raw_wattage: "{{ states('sensor.heizung_power') }}"
+          heating_scheduled: "{{ is_heating_scheduled }}"
+          water_scheduled: "{{ is_water_scheduled }}"
+          status_note: >
+            {% if (is_heating or is_ignition or is_ready) and not is_scheduled %}
+              {% if is_heating %} Overtime Burn
+              {% elif is_ignition %} Outside Window Ignition
+              {% else %} Outside Heating Window
+              {% endif %}
+            {% elif is_water_scheduled and not is_heating_scheduled %} Hot Water Window
+            {% elif is_scheduled %} Following Schedule
+            {% else %} Idle
+            {% endif %}

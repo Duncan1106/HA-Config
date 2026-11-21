@@ -18,9 +18,9 @@ esp32:
   framework:
     type: arduino
 
-# Enable logging
-logger:
-  level: INFO
+packages:
+  - !include common/logger.yaml
+  - !include common/common_things.yaml
 
 # Enable Home Assistant API
 api:
@@ -30,7 +30,7 @@ api:
 # Allow Over-The-Air updates
 ota:
 - platform: esphome
-  password: !secret ota_password
+  encryption:
 
 # Allow provisioning Wi-Fi via serial
 improv_serial:
@@ -51,14 +51,7 @@ wifi:
 
 captive_portal:
 
-text_sensor:
-  - platform: wifi_info
-    ip_address:
-      name: IP Address
-
 button:
-  - platform: restart
-    name: "Restart"
   - platform: output
     id: button_led_blue
     duration: 
@@ -85,30 +78,7 @@ output:
 
 light:
   - platform: monochromatic
-    name: "Licht"
+    name: Licht
     output: light_one
     id: led_pwm
     restore_mode: RESTORE_DEFAULT_OFF
-
-sensor:
-  - platform: wifi_signal
-    accuracy_decimals: 1
-    name: Wifi Signal
-    update_interval: 5s
-    filters: 
-      - or: 
-        - delta: 5%
-        - throttle: 120s
-  
-  - platform: uptime
-    name: Uptime
-    update_interval: 3s
-    device_class: duration
-    accuracy_decimals: 1
-    state_class: total
-    unit_of_measurement: min
-    filters:
-      - lambda: !lambda 'return x / 60;' 
-      - or:
-        - delta: 5%
-        - throttle: 120s

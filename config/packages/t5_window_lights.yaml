@@ -1,0 +1,81 @@
+# Template-Sensor: T5 Fensterlicht (Soll-Zustand: an/aus)
+# on = Lampen sollen leuchten (Pflanzenfenster ODER Ambient-Fenster mit Anwesenheit)
+# Sonnenauf-/untergang des Tages werden um 00:00:05 eingefroren (sr_ts/ss_ts),
+# damit next_rising/next_setting tagsueber nicht auf den naechsten Tag springen.
+# Alle Zeiten werden als Timestamps (Zahlen) gefuehrt, weil Variablen in
+# trigger-basierten Sensoren keine datetime-Objekte halten koennen.
+template:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+        id: refresh
+      - trigger: event
+        event_type: event_template_reloaded
+        id: refresh
+      - trigger: time
+        at: "00:00:05"
+        id: refresh
+      - trigger: time_pattern
+        minutes: "/5"
+        id: tick
+      # Kanten des Pflanzenfensters an langen Tagen (Fenster = Tageslaenge, Start/Ende = SR/SS +15 min)
+      - trigger: sun
+        event: sunrise
+        offset: "+00:15:00"
+        id: tick
+      - trigger: sun
+        event: sunset
+        offset: "+00:15:00"
+        id: tick
+      - trigger: state
+        entity_id:
+          - binary_sensor.ambient_lights
+          - binary_sensor.anyone_home
+        id: tick
+    binary_sensor:
+      - name: T5 Window Lights
+        unique_id: t5_window_lights
+        icon: mdi:lightbulb-group
+        availability: >
+          {{ state_attr('sun.sun', 'next_rising') is not none
+             and state_attr('sun.sun', 'next_setting') is not none
+             and states('binary_sensor.ambient_lights') not in ['unknown', 'unavailable'] }}
+        variables:
+          # Mindest-Leuchtdauer fuer die Pflanzen; an langen Tagen = Tageslaenge
+          min_hours: 12
+          stored_sr: "{{ state_attr('binary_sensor.t5_window_lights', 'sr_ts') }}"
+          stored_ss: "{{ state_attr('binary_sensor.t5_window_lights', 'ss_ts') }}"
+          # Neu berechnen: Mitternacht, HA-Start, Template-Reload oder noch nichts gespeichert
+          refresh: >
+            {{ trigger.id == 'refresh'
+               or stored_sr | float(0) == 0
+               or stored_ss | float(0) == 0 }}
+          sr_ts: >
+            {% if refresh %}
+              {{ (today_at((state_attr('sun.sun', 'next_rising') | as_datetime | as_local).strftime('%H:%M:%S'))
+                  + timedelta(minutes=15)).timestamp() }}
+            {% else %}{{ stored_sr | float }}{% endif %}
+          ss_ts: >
+            {% if refresh %}
+              {{ (today_at((state_attr('sun.sun', 'next_setting') | as_datetime | as_local).strftime('%H:%M:%S'))
+                  + timedelta(minutes=15)).timestamp() }}
+            {% else %}{{ stored_ss | float }}{% endif %}
+          day_h: "{{ (ss_ts | float - sr_ts | float) / 3600 }}"
+          hours: "{{ [min_hours, day_h | float] | max }}"
+          mid_ts: "{{ (sr_ts | float + ss_ts | float) / 2 }}"
+          start_ts: "{{ mid_ts | float - (hours | float) * 1800 }}"
+          end_ts: "{{ mid_ts | float + (hours | float) * 1800 }}"
+          plant_on: "{{ (start_ts | float) <= now().timestamp() < (end_ts | float) }}"
+          ambient_on: >
+            {{ is_state('binary_sensor.ambient_lights', 'on')
+               and is_state('binary_sensor.anyone_home', 'on') }}
+        state: "{{ plant_on or ambient_on }}"
+        attributes:
+          sr_ts: "{{ sr_ts | float }}"
+          ss_ts: "{{ ss_ts | float }}"
+          plant_window: "{{ plant_on }}"
+          ambient_window: "{{ ambient_on }}"
+          plant_start: "{{ start_ts | float | timestamp_custom('%H:%M') }}"
+          plant_end: "{{ end_ts | float | timestamp_custom('%H:%M') }}"
+          plant_hours: "{{ hours | float | round(1) }}"
+          
