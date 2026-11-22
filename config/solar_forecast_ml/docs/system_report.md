@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-21 23:30 | System: 17.7 kWp
+> Generated: 2026-11-22 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6670.0 kWh
+**Total Production:** 6683.4 kWh
 
-**Average Accuracy:** 76.0%
+**Average Accuracy:** 76.1%
 
 ### Seasonal Production
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 35.94 kWh | 2911.3 kWh |
+| Autumn | 75.48 kWh | 35.67 kWh | 2924.7 kWh |
 
 ---
 
@@ -49,7 +49,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-21 | 908 | 37 | 4 | 1.36 | geometry_contrast_recorded |
+| 2026-11-22 | 903 | 38 | 4 | 1.36 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.922 west k_p90=1.302; k_p90 > 1)
@@ -57,14 +57,14 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 57 | 0.494 | 0.922 | 1.299 | no |
-| 0 | west | 52 | 0.872 | 1.302 | 2.805 | no |
-| 10 | east | 74 | 0.503 | 0.835 | 1.480 | no |
-| 10 | west | 84 | 0.662 | 0.955 | 1.506 | no |
-| 20 | east | 53 | 0.606 | 0.928 | 0.962 | yes |
-| 20 | west | 49 | 0.717 | 1.224 | 1.454 | yes |
-| 30 | east | 27 | 0.608 | 0.911 | 0.960 | yes |
-| 30 | west | 19 | 0.911 | 1.235 | 1.361 | yes |
+| 0 | east | 57 | 0.503 | 0.922 | 1.299 | no |
+| 0 | west | 52 | 0.882 | 1.302 | 2.805 | no |
+| 10 | east | 73 | 0.505 | 0.835 | 1.480 | no |
+| 10 | west | 83 | 0.667 | 0.955 | 1.506 | no |
+| 20 | east | 52 | 0.606 | 0.928 | 0.962 | yes |
+| 20 | west | 48 | 0.724 | 1.224 | 1.454 | yes |
+| 30 | east | 26 | 0.599 | 0.911 | 0.960 | yes |
+| 30 | west | 18 | 0.932 | 1.235 | 1.361 | yes |
 
 ### Hourly physics-factor shape
 
@@ -78,7 +78,7 @@ Headline exclusions:
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 596 | 32 |
+| forecast_physics | 611 | 32 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
@@ -92,7 +92,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
+> *"Infinite diversity in infinite combinations... including solar panel orientations. - Spock"*
 
 Live long and prosper!
 
