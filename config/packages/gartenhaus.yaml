@@ -16,8 +16,9 @@ template:
         unique_id: garden_house_heating_demand
         variables:
           # ── Thresholds (change here only) ───────────────────
-          t_freeze:   1.5    # °C — current temp at/below → emergency
+          t_freeze:   2.0    # °C — current temp at/below → emergency
           t_min:      0.5    # °C — 24h min at/below → emergency (with t_cool)
+          t_cheap:    4.0    # °C — pre-heat below this during cheap tariff (00-05h)
           t_cool:     8.0    # °C — guard: 24h-min rule only if still cooler than this
           t_warm:     6.0    # °C — upper bound for opportunistic heating window
           t_hard_off: 10.0   # °C — hard thermal cutoff
@@ -30,13 +31,12 @@ template:
             {{ is_state('automation.garden_house_freeze_protection_heating', 'on') }}
           valid: >-
             {{ auto_on
-               and states('sensor.esp32_c3_zero_epever_bme280_temperature') | is_number
-               and states('sensor.solar_power_total') | is_number
-               and states('sensor.gartenhaus_technik_energy_1') | is_number }}
+               and states('sensor.esp32_c3_zero_epever_bme280_temperature') | is_number }}
           temp:       "{{ states('sensor.esp32_c3_zero_epever_bme280_temperature') | float(99) | round(2) }}"
           tmin:       "{{ states('sensor.bme280_temperature_min') | float(99) | round(2) }}"
           solar:      "{{ states('sensor.solar_power_total') | float(0) }}"
           battery:    "{{ states('sensor.felicity_ess_soc_avg') | float(0) }}"
+          energy_ok:  "{{ states('sensor.gartenhaus_technik_energy_1') | is_number }}"
           energy_now: "{{ states('sensor.gartenhaus_technik_energy_1') | float(0) }}"
           current_on: "{{ is_state('switch.gartenhaus_technik_1', 'on') }}"
 
@@ -48,9 +48,12 @@ template:
           energy_start: >-
             {% set prev = state_attr('binary_sensor.garden_house_heating_demand',
                                      'energy_start_of_day') %}
-            {{ energy_now | float(0) if (trigger.id | default('')) == 'reset'
-               else (prev | float(0) if prev is not none else energy_now | float(0)) }}
-          energy_today: "{{ (energy_now | float(0)) - (energy_start | float(0)) }}"
+            {{ energy_now | float(0)
+               if ((trigger.id | default('')) == 'reset' and energy_ok)
+               else (prev | float(energy_now | float(0)) if prev is not none
+                     else energy_now | float(0)) }}
+          energy_today: "{{ ((energy_now | float(0)) - (energy_start | float(0))) if energy_ok else 0 }}"
+
 
           # ── Rules ───────────────────────────────────────────
           r_hard_off:   "{{ temp | float(0) >= t_hard_off | float(0) }}"
@@ -59,10 +62,17 @@ template:
             {{ tmin | float(0) <= t_min | float(0)
                and temp | float(0) < t_cool | float(0) }}
           r_opp: >-
-            {{ t_freeze | float(0) < temp | float(0) < t_warm | float(0)
+            {{ energy_ok
+               and t_freeze | float(0) < temp | float(0) < t_warm | float(0)
                and solar | float(0) >= p_solar | float(0)
                and energy_today | float(0) < e_budget | float(0)
                and battery | float(0) > soc_min | float(0) }}
+          r_cheap: >-
+            {{ now().hour < 5
+               and energy_ok
+               and t_freeze | float(0) < temp | float(0) < t_cheap | float(0)
+               and tmin | float(0) < t_cool | float(0)
+               and energy_today | float(0) < e_budget | float(0) }}
 
           # ── Outcome ─────────────────────────────────────────
           branch: >-
@@ -71,12 +81,13 @@ template:
             {%- elif r_freeze_now              -%}freeze_current
             {%- elif r_freeze_min              -%}freeze_24h_min
             {%- elif r_opp                     -%}opportunistic_solar
+            {%- elif r_cheap                   -%}cheap_preheat
             {%- elif r_hard_off                -%}above_ceiling
             {%- else                          -%}idle{%- endif -%}
           decision: >-
             {{ (current_on and not r_hard_off)
                or (not current_on and not r_hard_off
-                   and (r_freeze_now or r_freeze_min or r_opp)) }}
+                   and (r_freeze_now or r_freeze_min or r_opp or r_cheap)) }}
 
           # ── Trace metadata ──────────────────────────────────
           trig: >-
@@ -96,4 +107,4 @@ template:
           trace: |
             {{ now().strftime('%H:%M:%S') }} → {{ 'ON' if decision else 'OFF' }} [{{ branch }}] via {{ trig }}
             in: temp={{ temp }}/{{ t_freeze }} tmin={{ tmin }}/{{ t_min }} solar={{ solar }}/{{ p_solar }} batt={{ battery }}/{{ soc_min }} E={{ energy_today | round(2) }}/{{ e_budget }} sw={{ 'on' if current_on else 'off' }}
-            rules: hard_off{{ '✓' if r_hard_off else '✗' }} freeze_now{{ '✓' if r_freeze_now else '✗' }} freeze_min{{ '✓' if r_freeze_min else '✗' }} opp{{ '✓' if r_opp else '✗' }}
+            rules: hard_off{{ '✓' if r_hard_off else '✗' }} freeze_now{{ '✓' if r_freeze_now else '✗' }} freeze_min{{ '✓' if r_freeze_min else '✗' }} opp{{ '✓' if r_opp else '✗' }} cheap{{ '✓' if r_cheap else '✗'  }}
