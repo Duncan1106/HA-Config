@@ -12504,9 +12504,10 @@
   mode: single
 - id: '1794776629629'
   alias: T5 Window Lights
-  description: 'Schaltet alle Switches mit dem Label "T5 Fensterlicht" (ID t5_fensterlicht)
-    nach binary_sensor.t5_window_lights. Neue Lampe = Label setzen, Lampe entfernen
-    = Label entfernen. Keine Anpassung der Automation noetig.
+  description: 'Schaltet alle Switches mit dem Label "t5_fensterlicht" nach binary_sensor.t5_window_lights.
+    Lampen, die der Sensor in skip_entities fuehrt (Himmelsrichtung in der Sonne +
+    starke Sonne), bleiben aus bzw. gehen wieder an, sobald sie nicht mehr uebersprungen
+    werden. Lampen ohne Himmelsrichtungs-Label werden nie uebersprungen.
 
     '
   triggers:
@@ -12516,10 +12517,22 @@
     - 'on'
     - 'off'
     id: Schedule
+  - trigger: state
+    entity_id: binary_sensor.t5_window_lights
+    attribute: skip_entities
+    id: Skip
   - trigger: homeassistant
     event: start
     id: HA_Start
-  conditions: []
+  - trigger: event
+    event_type: entity_registry_updated
+    event_data:
+      action: update
+    id: Label_Changed
+  conditions:
+  - condition: template
+    value_template: "{{ trigger.id != 'Label_Changed'\n   or 'labels' in (trigger.event.data.changes
+      | default({})) }}\n"
   actions:
   - action: script.ha_start_settle_delay
     data:
@@ -12540,16 +12553,20 @@
 
         '
       want_on: '{{ is_state(''binary_sensor.t5_window_lights'', ''on'') }}'
+      skip_entities: '{{ state_attr(''binary_sensor.t5_window_lights'', ''skip_entities'')
+        or [] }}'
   - repeat:
       for_each: '{{ t5_entities }}'
       sequence:
+      - variables:
+          target_on: '{{ want_on and repeat.item not in skip_entities }}'
       - action: script.retry_action_with_backoff
         continue_on_error: true
         data:
           entity_id: '{{ repeat.item }}'
-          target_state: '{{ ''on'' if want_on else ''off'' }}'
+          target_state: '{{ ''on'' if target_on else ''off'' }}'
           action_domain: switch
-          action_type: '{{ ''turn_on'' if want_on else ''turn_off'' }}'
+          action_type: '{{ ''turn_on'' if target_on else ''turn_off'' }}'
           max_retries: 5
           base_delay: 5
           backoff_type: exponential
