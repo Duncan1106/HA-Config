@@ -17,13 +17,17 @@
 //      - Changed background gradient of body from .05 to .08 to be a little darker
 //      - Added refreshing the fname buttons to apply name changes without reloading iCloud3
 //
+//  v3.8.0 - 10/31/2026
+//      - Fixed the Event Log staying blank after an HA restart until the dashboard was
+//        reselected. The table hidden while iCloud3 was starting is now redisplayed.
+//
 /////////////////////////////////////////////////////////////////////////////
 
 class iCloud3EventLogCard extends HTMLElement {
 
     constructor() {
         super()
-        this._version        = "3.7"
+        this._version        = "3.8.1"
         this._latestVersion  = ''
         this._buttonCount    = 0
         this._thisButtonId   = ''
@@ -38,6 +42,7 @@ class iCloud3EventLogCard extends HTMLElement {
         this._screenHeight   = 0
         this._resizeObserver = null
         this._resizeRafId    = null
+        this._startupMsgFlag = false    // 'Starting'/'Not Running' msg displayed, table hidden
         this._versionSentFlag = null
         this._infoText       = ''
         this._displayUserMsgFlag = false
@@ -220,7 +225,7 @@ class iCloud3EventLogCard extends HTMLElement {
         btnAction.appendChild(btnActionOptEVL1)
 
         var btnActionOptEVL = document.createElement("option")
-        var btnActionOptEVLTxt = document.createTextNode("• Show Tracking Monitors")
+        var btnActionOptEVLTxt = document.createTextNode("• Show Apple Device RawData Traffic")
         btnActionOptEVL.setAttribute("value", "dev-log_level: monitor")
         btnActionOptEVL.setAttribute("id", "optMonitor")
         btnActionOptEVL.classList.add("btnActionOption")
@@ -346,7 +351,7 @@ class iCloud3EventLogCard extends HTMLElement {
         const btnHelp = document.createElement('A')
         btnHelp.id = "btnHelp"
         btnHelp.classList.add("btnHelp")
-        btnHelp.setAttribute('href', 'https://gcobb321.github.io/icloud3_v3_docs/#/')
+        btnHelp.setAttribute('href', 'https://gcobb321.github.io/icloud3_docs/#/')
         btnHelp.setAttribute('target', '_blank')
         btnHelp.innerHTML = `<svg fill="#ffffff" width="24px" height="24px" viewBox="-3.84 -3.84 71.68 71.68" version="1.1" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;" stroke="#ffffff" stroke-width="0.00064">
         <g stroke-width="0"><rect x="-3.84" y="-3.84" width="71.68" height="71.68" rx="35.84" fill="#316ce3" strokewidth="0"></rect></g>
@@ -360,7 +365,7 @@ class iCloud3EventLogCard extends HTMLElement {
         const btnIssues = document.createElement('A')
         btnIssues.id = "btnIssues"
         btnIssues.classList.add("btnIssues")
-        btnIssues.setAttribute('href', 'https://github.com/gcobb321/icloud3_v3/issues')
+        btnIssues.setAttribute('href', 'https://github.com/gcobb321/icloud3/issues')
         btnIssues.setAttribute('target', '_blank')
         btnIssues.innerHTML = `<svg height="24px" width="24px" viewBox="0 0 480 480" xml:space="preserve" fill="#ffffff" stroke="#ffffff"><g stroke-width="0"></g>
         <g stroke-linecap="round" stroke-linejoin="round"></g>
@@ -509,13 +514,12 @@ class iCloud3EventLogCard extends HTMLElement {
 
             /* Color for special records */
             /* DarkGoldenRod, Fushia, DeepPink, OrangeRed, #e600e6 (firebrickish), MediumVioletRed */
-            .specColor1         {color: LightSeaGreen;  border-left: 2px solid firebrick;}
-            .specColor2         {color: BlueViolet; border-left: 2px solid BlueViolet;}
-            .specColor3         {color: OrangeRed;  border-left: 2px solid OrangeRed;}
-            .specColor4         {color: DeepPink;   border-left: 2px solid SeaGreen;}
-            .specColor5         {color: MediumVioletRed; border-left: 2px solid RoyalBlue;}
-            .specColor6         {color: Var(--dark-primary-color); border-left: 2px solid var(--dark-primary-color);}
-
+            .specColor1         {color: LightSeaGreen; font-weight: 400;}
+            .specColor2         {color: BlueViolet; font-weight: 400;}
+            .specColor3         {color: OrangeRed; font-weight: 400;}
+            .specColor4         {color: DeepPink; font-weight: 400;}
+            .specColor5         {color: MediumVioletRed; font-weight: 400;}
+            .specColor6         {color: var(--secondary-text-color); font-weight: 400;}
 
             .trigger            {color: var(--primary-text-color); font-weight: 300;}
             .normalText         {color: var(--primary-text-color);}
@@ -1397,6 +1401,14 @@ class iCloud3EventLogCard extends HTMLElement {
             const userMessage  = hass.states['sensor.icloud3_event_log'].attributes['user_message']
             const btnName0     = root.getElementById("btnName0")
 
+            // The sensor did not exist on an earlier hass tick (HA/iCloud3 restarting).
+            // Clear the 'Starting' msg and redisplay the table that was hidden then.
+            if (this._startupMsgFlag) {
+                this._startupMsgFlag = false
+                statusMsgPopup.innerHTML = ''
+                tblEvlog.style.removeProperty('visibility')
+            }
+
             optiC3Version.text  = "• iCloud3 v" + iC3Version
 
             if (EvLogLatestVersion.startsWith(' Not Found')) {
@@ -1446,11 +1458,12 @@ class iCloud3EventLogCard extends HTMLElement {
                     Refreshing the Mobile App:<br>\
                     1. Open the Mobile App on the iPhone or iPad<br>\
                     2. Select `HA Settings > Companion App`<br>\
-                    3. Select `Debugging`, then select `Reset frontend cache`<br>\
-                    4. Select the Back Arrow (<)` at the top left, then select `(X)` to go back to the Settings screen<br>\
-                    5. Pull the page down to refresh the screens. The spinning wheel is displayed for a few seconds<br>\
+                    3. Scroll to the bottom, then select `Debugging`<br>\
+                    4. Select `Delete cached entiti data`, then select `Delete Entity Data`<br>\
+                    5. Select the Back Arrow (<) at the top left, then select (X) to go back to the Settings screen<br>\
+                    5. Pull the page down to refresh the screens. The HA Logo is displayed for a few seconds<br>\
                     <hr>\
-                    Select `Refresh` (above `Actions`) to hide this Update Message\
+                    Go back to the iCloud3 Dashboard and this window will not be displayed. If it is, pull down to refresh the screen again\
                     <br>'
                 } else {
                     statusMsgPopup.innerHTML = '\
@@ -1497,6 +1510,7 @@ class iCloud3EventLogCard extends HTMLElement {
                 return
             }
             tblEvlog.style.setProperty('visibility', 'hidden')
+            this._startupMsgFlag = true
             const msgStarting = '<p>iCloud3 is Starting<br><hr><br>Please wait</p>'
             const msgNotRunning = '<br><br><hr><br><b>iCLOUD3 RAN INTO A PROBLEM STARTING UP</b>\
             <p>iCloud3 is an HA Integration and probably has not been added \
@@ -1984,7 +1998,6 @@ class iCloud3EventLogCard extends HTMLElement {
         const title        = root.getElementById('title')
 
         var logs = hass.states['sensor.icloud3_event_log'].attributes['logs']
-        var startedTime = hass.states['sensor.icloud3_event_log'].attributes['started_time']
 
         /*
         The Evlog table has been built and displayed but Hass usually calls this routine a
@@ -2059,6 +2072,8 @@ class iCloud3EventLogCard extends HTMLElement {
                 var recdType = 'text'
                 var tTime = thisRecd[0].slice(1)
                 var tText = thisRecd[1].slice(0, -1)
+                //If displaying a table, the State & Interval can contain column titles
+                var txtTblFlag = tText.includes("¤s")
 
                 if (tText.startsWith("^t^")) {
                     tText = tText.slice(3)
@@ -2187,11 +2202,8 @@ class iCloud3EventLogCard extends HTMLElement {
                 tText = tText.replace(/⠟/g, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
                 tText = tText.replace(/⠿/g, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
 
-                //If displaying a table, the State & Interval can contain column titles
                 var classTable = ''
-                var txtTblFlag = false
-                if (tText.includes("¤s")) {
-                    txtTblFlag = true
+                if (txtTblFlag) {
                     classTable = ' txtTblStyle'
                 }
 
@@ -2598,28 +2610,29 @@ class iCloud3EventLogCard extends HTMLElement {
     }
 
     //---------------------------------------------------------------------------
-    _issue_evlog_version_svc_call() {
-        /* Send an 'icloud3_action evlog_started' service call to iC3 to indicated the
-        event_log has started. If this does not happen within a minute of starting iC3,
-        an error message will be displayed indicating a restart is needed.
-        */
-        const root = this.shadowRoot
-        const hass = this._hass
-
-        if (this._versionSentFlag == true) {
-            return
-        }
-        if (this._version == this._latestVersion) {
-            this._versionSentFlag = true
-            return
-        } else {
-            this._versionSentFlag = false
-        }
-
-        this._hass.callService("icloud3", "action",
-                        {command: 'event_log_version ' + this._version})
-        this._versionSentFlag = true
-    }
+    // UNUSED (11/01/2026) - not called anywhere. Commented out, delete after v3.8.0
+    // _issue_evlog_version_svc_call() {
+    //     /* Send an 'icloud3_action evlog_started' service call to iC3 to indicated the
+    //     event_log has started. If this does not happen within a minute of starting iC3,
+    //     an error message will be displayed indicating a restart is needed.
+    //     */
+    //     const root = this.shadowRoot
+    //     const hass = this._hass
+    //
+    //     if (this._versionSentFlag == true) {
+    //         return
+    //     }
+    //     if (this._version == this._latestVersion) {
+    //         this._versionSentFlag = true
+    //         return
+    //     } else {
+    //         this._versionSentFlag = false
+    //     }
+    //
+    //     this._hass.callService("icloud3", "action",
+    //                     {command: 'event_log_version ' + this._version})
+    //     this._versionSentFlag = true
+    // }
 
     //---------------------------------------------------------------------------
     _btnRefreshHandler() {
@@ -2863,9 +2876,9 @@ class iCloud3EventLogCard extends HTMLElement {
 
 
         if (logLevelDebug.includes("monitor")) {
-            optMonitor.text = "• Hide Tracking Monitors"
+            optMonitor.text = "• Hide Apple Device RawData Traffic"
         } else {
-            optMonitor.text = "• Show Tracking Monitors"
+            optMonitor.text = "• Show Apple Device RawData Traffic"
         }
         if (logLevelDebug.includes("debug")) {
             optDebug.text = "• Stop Debug Logging"
