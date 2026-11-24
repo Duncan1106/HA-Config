@@ -9,7 +9,7 @@ script:
 template:
   - triggers:
       # conductivity: wet immediately, dry only after 10 min below
-      # (keep 1500 in sync with wet_mv, and the 10 min with dry_hold_s)
+      # (keep 2500 in sync with wet_mv, and the 10 min with dry_hold_s)
       - trigger: numeric_state
         entity_id: sensor.rain_sun_flower_rain_intensity
         above: 2500
@@ -64,6 +64,14 @@ template:
       max_runtime_s: 3600
       wet_mv: 2500              # conductivity above this = wet
       dry_hold_s: 600           # must stay dry this long before pump may run
+      min_air_temp_c: 1         # no pumping below this temperature at the basin
+      ice_block_dh: 3           # ice index (degree-hours) above which water counts as frozen
+      ice_max_dh: 60            # cap of the ice index
+      melt_factor: 1.0          # <1 = ice melts slower than it forms
+      solar_deg_per_100w: 1.5   # effective temperature bonus per 100 W/m2
+      basin_offset_c: 3.0       # basin is this much colder than the weather station at night
+      rim_depth_m: 0.45         # water/cover sits this far below the rim
+      pool_width_m: 3.0         # horizontal distance the sun has to clear the wall
       min_sun_elevation: 0      # degrees; pump only runs while the sun is above this
       learn_alpha: 0.2          # weight of each new measurement (0-1)
       learn_min_mm: 4.0         # only learn from runs with at least this much rain
@@ -72,6 +80,27 @@ template:
       # ---- daytime ----
       sun_elevation: "{{ state_attr('sun.sun', 'elevation') | float(-90) }}"
       daytime: "{{ sun_elevation > min_sun_elevation }}"
+      # ---- frost gate (degree-hour ice model, cold basin) ----
+      temp_c: "{{ states('sensor.gw1100a_outdoor_temperature') | float(none) }}"
+      solar_w: "{{ states('sensor.gw1100a_solar_radiation') | float(0) }}"
+      shade_min_elev: "{{ ((rim_depth_m / pool_width_m) | atan) * 180 / pi }}"
+      sun_gain: "{{ [[(sun_elevation - shade_min_elev) / 10, 0] | max, 1] | min }}"
+      temp_basin: >-
+        {{ (temp_c - basin_offset_c * (1 - [solar_w * sun_gain / 200, 1] | min)) if temp_c is not none else none }}
+      t_eff: "{{ (temp_basin + solar_w / 100 * solar_deg_per_100w * sun_gain) if temp_c is not none else 0 }}"
+      ice_prev: "{{ state_attr(me, 'ice_index') | float(0) }}"
+      ice_ts_prev: "{{ state_attr(me, 'ice_ts') | float(0) }}"
+      ice_dt_h: >-
+        {{ ([[(now().timestamp() - ice_ts_prev) / 3600, 0] | max, 1] | min) if ice_ts_prev > 0 else 0 }}
+      ice_index: >-
+        {%- if temp_c is none -%}
+          {{ ice_prev }}
+        {%- elif t_eff < 0 -%}
+          {{ [ice_prev - t_eff * ice_dt_h, ice_max_dh] | min }}
+        {%- else -%}
+          {{ [ice_prev - t_eff * melt_factor * ice_dt_h, 0] | max }}
+        {%- endif -%}
+      frost_block: "{{ temp_basin is none or temp_basin < min_air_temp_c or ice_index | float(0) > ice_block_dh }}"
       # ---- self-calibration: seconds of pumping per mm of rain ----
       nominal_spm: "{{ area_m2 * collection_factor / flow_l_min * 60 }}"
       prev_spm: "{{ state_attr(me, 'seconds_per_mm') | float(0) }}"
@@ -160,11 +189,13 @@ template:
         unique_id: pool_regenwasserpumpe_erforderlich
         icon: mdi:pump
         state: >-
-          {{ runtime_s | float(0) > 0 and daytime and (force or (not wet_now and dry_s | int(0) >= dry_hold_s)) }}
+          {{ runtime_s | float(0) > 0 and daytime and not frost_block and (force or (not wet_now and dry_s | int(0) >= dry_hold_s)) }}
         attributes:
           block_reason: >-
             {%- if runtime_s | float(0) <= 0 -%}no pumping needed
             {%- elif not daytime -%}night
+            {%- elif temp_c is none -%}temperature sensor unavailable
+            {%- elif frost_block -%}frost / ice
             {%- elif force -%}forced (rain above limit)
             {%- elif not is_number(mv) -%}conductivity sensor unavailable
             {%- elif (mv | float(0)) > wet_mv -%}sensor wet
@@ -204,5 +235,13 @@ template:
           area_m2: "{{ area_m2 }}"
           flow_l_min: "{{ flow_l_min }}"
           collection_factor: "{{ collection_factor }}"
+          frost_block: "{{ frost_block }}"
+          ice_index: "{{ ice_index | float(0) | round(2) }}"
+          ice_ts: "{{ now().timestamp() | int }}"
+          temp_c: "{{ temp_c }}"
+          solar_w: "{{ solar_w }}"
+          t_eff: "{{ t_eff | float(0) | round(1) }}"
+          temp_basin: "{{ temp_basin | float(0) | round(1) if temp_basin is not none else none }}"
+          sun_gain: "{{ sun_gain | float(0) | round(2) }}"
           last_reset: >-
             {{ now().timestamp() | int if trigger.id == 'reset' else state_attr(me, 'last_reset') }}

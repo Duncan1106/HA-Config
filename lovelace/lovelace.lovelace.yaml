@@ -4389,31 +4389,54 @@ config:
         secondary_info: state
         type: custom:mushroom-entity-card
       - content: "{% set e = 'binary_sensor.pool_regenwasserpumpe_erforderlich' %}\n\
-          \n### {% if is_state(e, 'on') %}\U0001F534 Pumpen erforderlich{% else %}\U0001F7E2\
-          \ Kein Pumpen n\xF6tig{% endif %}\n\n**Blockgrund:** {{ state_attr(e, 'block_reason')\
-          \ }}\n\n---\n\n#### \U0001F4A7 Regen & Volumen\n- **Regen seit Reset:**\
-          \ {{ state_attr(e, 'rain_since_reset_mm') }} mm\n- **Volumen:** {{ state_attr(e,\
-          \ 'volume_l') }} L\n- **Gesamt Regen:** {{ state_attr(e, 'total_rain_mm')\
-          \ }} mm\n- **Basislinie:** {{ state_attr(e, 'baseline_mm') }} mm\n- **Regenrate:**\
-          \ {{ state_attr(e, 'rain_rate') }} mm/h\n- **Letzter Reset:** {{ state_attr(e,\
-          \ 'last_reset') | int | timestamp_custom('%d.%m.%Y %H:%M') }}\n\n---\n\n\
-          #### \u2699\uFE0F Laufzeit\n- **Laufzeit:** {{ state_attr(e, 'runtime_time')\
-          \ }}\n- **Laufzeit (gekappt):** {{ state_attr(e, 'runtime_capped_seconds')\
-          \ }} s\n- **Timer:** {{ state_attr(e, 'timer_time') }}\n\n---\n\n#### \U0001F321\
-          \uFE0F Feuchtigkeitssensor\n- **Status:** {{ '\U0001F4A6 Nass' if state_attr(e,\
+          {% macro ts(v) %}{% if v | int(0) > 0 %}{{ v | int | timestamp_custom('%d.%m.%Y\
+          \ %H:%M') }}{% else %}\u2013{% endif %}{% endmacro %}\n{% set reasons =\
+          \ {\n  'no pumping needed': 'Kein Pumpbedarf',\n  'night': 'Nacht',\n  'temperature\
+          \ sensor unavailable': 'Temperatursensor nicht verf\xFCgbar',\n  'frost\
+          \ / ice': 'Frost / Eis',\n  'forced (rain above limit)': 'Erzwungen (Regen\
+          \ \xFCber Limit)',\n  'conductivity sensor unavailable': 'Leitf\xE4higkeitssensor\
+          \ nicht verf\xFCgbar',\n  'sensor wet': 'Sensor nass',\n  'rain rate above\
+          \ 0': 'Regenrate \xFCber 0',\n  'waiting for dry hold': 'Warte auf Trockenzeit',\n\
+          \  'ok': 'OK'\n} %}\n{% set r = state_attr(e, 'block_reason') %}\n{% set\
+          \ d = state_attr(e, 'dry_for_min') | float(0) %}\n\n### {% if is_state(e,\
+          \ 'on') %}\U0001F534 Pumpen erforderlich{% if state_attr(e, 'force_active')\
+          \ %} (erzwungen){% endif %}{% elif state_attr(e, 'pumping_needed') %}\U0001F7E1\
+          \ Pumpen n\xF6tig, aktuell gesperrt{% else %}\U0001F7E2 Kein Pumpen n\xF6\
+          tig{% endif %}\n\n**Grund:** {{ reasons.get(r, r) }}\n\n---\n\n#### \U0001F4A7\
+          \ Regen & Volumen\n- **Regen seit Reset:** {{ state_attr(e, 'rain_since_reset_mm')\
+          \ }} mm\n- **Volumen:** {{ state_attr(e, 'volume_l') }} L\n- **Gesamt Regen:**\
+          \ {{ state_attr(e, 'total_rain_mm') }} mm\n- **Basislinie:** {{ state_attr(e,\
+          \ 'baseline_mm') }} mm\n- **Regenrate:** {{ state_attr(e, 'rain_rate') }}\
+          \ mm/h\n- **Letzter Reset:** {{ ts(state_attr(e, 'last_reset')) }}\n\n---\n\
+          \n#### \u2699\uFE0F Laufzeit\n- **Berechnet:** {{ state_attr(e, 'runtime_seconds')\
+          \ }} s{% if state_attr(e, 'exceeds_max') %} \u26A0\uFE0F *Limit erreicht*{%\
+          \ endif %}\n- **Geplant (gekappt):** {{ state_attr(e, 'runtime_time') }}\
+          \ *({{ state_attr(e, 'runtime_capped_seconds') }} s)*\n\n---\n\n#### \U0001F321\
+          \uFE0F Frostschutz\n- **Status:** {{ '\U0001F9CA Gesperrt' if state_attr(e,\
+          \ 'frost_block') else '\u2705 Frei' }}\n- **Au\xDFentemperatur:** {{ state_attr(e,\
+          \ 'temp_c') }} \xB0C\n- **Beckentemperatur:** {{ state_attr(e, 'temp_basin')\
+          \ }} \xB0C\n- **Einstrahlung:** {{ state_attr(e, 'solar_w') }} W/m\xB2 *(Sonne\
+          \ auf der Plane: {{ ((state_attr(e, 'sun_gain') | float(0)) * 100) | round(0)\
+          \ | int }} %)*\n- **Effektive Temperatur:** {{ state_attr(e, 't_eff') }}\
+          \ \xB0C\n- **Eis-Index:** {{ state_attr(e, 'ice_index') }} \xB0C\xB7h\n\n\
+          ---\n\n#### \U0001F324\uFE0F Tageslicht\n- **Status:** {{ '\u2600\uFE0F\
+          \ Tag' if state_attr(e, 'daytime') else '\U0001F319 Nacht' }}\n- **Sonnenh\xF6\
+          he:** {{ state_attr(e, 'sun_elevation') }}\xB0\n\n---\n\n#### \U0001F4A6\
+          \ Feuchtigkeitssensor\n- **Status:** {{ '\U0001F4A6 Nass' if state_attr(e,\
           \ 'wet_now') else '\u2600\uFE0F Trocken' }}\n- **Leitf\xE4higkeit:** {{\
           \ state_attr(e, 'conductivity_mv') }} mV *(Schwelle: {{ state_attr(e, 'wet_threshold_mv')\
-          \ }} mV)*\n- **Letzter Nass-Zustand:** {{ state_attr(e, 'last_wet') | int\
-          \ | timestamp_custom('%d.%m.%Y %H:%M') }}\n- **Trocken seit:** {{ state_attr(e,\
-          \ 'dry_for_min') }} min *(Hold: {{ state_attr(e, 'dry_hold_min') }} min)*\n\
-          \n---\n\n#### \U0001F4CA Kalibrierung\n- **Sekunden pro mm:** {{ state_attr(e,\
+          \ }} mV)*\n- **Letzter Nass-Zustand:** {{ ts(state_attr(e, 'last_wet'))\
+          \ }}\n- **Trocken seit:** {% if d >= 1440 %}\xFCber 24 h{% else %}{{ d }}\
+          \ min{% endif %} *(Hold: {{ state_attr(e, 'dry_hold_min') }} min)*\n\n---\n\
+          \n#### \U0001F4CA Kalibrierung\n- **Sekunden pro mm:** {{ state_attr(e,\
           \ 'seconds_per_mm') }} s\n- **Nominal s/mm:** {{ state_attr(e, 'nominal_seconds_per_mm')\
           \ }} s\n- **Letzte Messung:** {{ state_attr(e, 'last_measured_s_per_mm')\
           \ }} s/mm\n- **Kalibrierl\xE4ufe:** {{ state_attr(e, 'calibration_runs')\
           \ }}\n- **Teill\xE4ufe:** {{ state_attr(e, 'partial_runs') }}\n\n---\n\n\
           #### \U0001F527 Konfiguration\n- **Fl\xE4che:** {{ state_attr(e, 'area_m2')\
-          \ }} m\xB2\n- **Durchfluss:** {{ state_attr(e, 'flow_l_min') }} L/min\n\
-          - **Sammlung Faktor:** {{ state_attr(e, 'collection_factor') }}\n"
+          \ }} m\xB2\n- **Durchfluss (Startwert):** {{ state_attr(e, 'flow_l_min')\
+          \ }} L/min\n- **Sammlung Faktor:** {{ state_attr(e, 'collection_factor')\
+          \ }}\n"
         title: "\U0001F327\uFE0F Pool Regenwasserpumpe"
         type: markdown
         visibility:
@@ -6079,6 +6102,12 @@ config:
           show_color_temp_control: false
           type: custom:mushroom-light-card
           use_light_color: false
+        - collapsible_controls: true
+          entity: light.s3_zero_kallax_licht_kallax_licht
+          name:
+            type: entity
+          show_brightness_control: true
+          type: custom:mushroom-light-card
         - collapsible_controls: true
           entity: light.esp32_c3_mini_picture_light_licht
           name: Bild Licht
