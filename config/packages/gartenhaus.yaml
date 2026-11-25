@@ -20,7 +20,7 @@ template:
           t_min:      0.5    # °C — 24h min at/below → emergency (with t_cool)
           t_cheap:    4.0    # °C — pre-heat below this during cheap tariff (00-05h)
           t_cool:     8.0    # °C — guard: 24h-min rule only if still cooler than this
-          t_warm:     7.0    # °C — upper bound for opportunistic heating window
+          t_warm:     9.0    # °C — upper bound for opportunistic heating window
           t_hard_off: 10.0   # °C — hard thermal cutoff
           p_solar:    2000   # W  — solar power needed for opportunistic
           soc_min:    50     # %  — minimum battery SoC for opportunistic
@@ -54,6 +54,14 @@ template:
                      else energy_now | float(0)) }}
           energy_today: "{{ ((energy_now | float(0)) - (energy_start | float(0))) if energy_ok else 0 }}"
 
+          # ── Rule building blocks ────────────────────────────
+          o_temp:   "{{ t_freeze | float(0) < temp | float(0) < t_warm | float(0) }}"
+          o_solar:  "{{ solar | float(0) >= p_solar | float(0) }}"
+          o_budget: "{{ energy_today | float(0) < e_budget | float(0) }}"
+          o_batt:   "{{ battery | float(0) > soc_min | float(0) }}"
+          c_hour:   "{{ now().hour < 5 }}"
+          c_temp:   "{{ t_freeze | float(0) < temp | float(0) < t_cheap | float(0) }}"
+          c_cool:   "{{ tmin | float(0) < t_cool | float(0) }}"
 
           # ── Rules ───────────────────────────────────────────
           r_hard_off:   "{{ temp | float(0) >= t_hard_off | float(0) }}"
@@ -61,18 +69,8 @@ template:
           r_freeze_min: >-
             {{ tmin | float(0) <= t_min | float(0)
                and temp | float(0) < t_cool | float(0) }}
-          r_opp: >-
-            {{ energy_ok
-               and t_freeze | float(0) < temp | float(0) < t_warm | float(0)
-               and solar | float(0) >= p_solar | float(0)
-               and energy_today | float(0) < e_budget | float(0)
-               and battery | float(0) > soc_min | float(0) }}
-          r_cheap: >-
-            {{ now().hour < 5
-               and energy_ok
-               and t_freeze | float(0) < temp | float(0) < t_cheap | float(0)
-               and tmin | float(0) < t_cool | float(0)
-               and energy_today | float(0) < e_budget | float(0) }}
+          r_opp:   "{{ energy_ok and o_temp and o_solar and o_budget and o_batt }}"
+          r_cheap: "{{ energy_ok and c_hour and c_temp and c_cool and o_budget }}"
 
           # ── Outcome ─────────────────────────────────────────
           branch: >-
@@ -104,7 +102,18 @@ template:
           energy_today_kwh:     "{{ energy_today | round(3) }}"
           budget_kwh:           "{{ e_budget }}"
           branch:               "{{ branch }}"
-          trace: |
-            {{ now().strftime('%H:%M:%S') }} → {{ 'ON' if decision else 'OFF' }} \n[{{ branch }}] via {{ trig }} in: temp={{ temp }}/{{ t_freeze }} tmin={{ tmin }}/{{ t_min }}
-            \nsolar={{ solar }}/{{ p_solar }} batt={{ battery }}/{{ soc_min }} E={{ energy_today | round(2) }}/{{ e_budget }} sw={{ 'on' if current_on else 'off' }}
-            \nrules: hard_off{{ '✓' if r_hard_off else '✗' }} freeze_now{{ '✓' if r_freeze_now else '✗' }} freeze_min{{ '✓' if r_freeze_min else '✗' }} opp{{ '✓' if r_opp else '✗' }} cheap{{ '✓' if r_cheap else '✗'  }}
+          trace: |-
+            {{ now().strftime('%H:%M:%S') }} → {{ 'ON' if decision else 'OFF' }} [{{ branch }}] via {{ trig }}
+          inputs: |-
+            temp {{ temp }} °C (freeze ≤{{ t_freeze }} · cheap <{{ t_cheap }} · warm <{{ t_warm }} · off ≥{{ t_hard_off }})
+            tmin {{ tmin }} °C (≤{{ t_min }} while temp <{{ t_cool }})
+            solar {{ solar }} W (≥{{ p_solar }})
+            batt {{ battery }} % (>{{ soc_min }})
+            energy {{ energy_today | round(2) }}/{{ e_budget }} kWh (sensor {{ 'ok' if energy_ok else 'MISSING' }})
+            switch {{ 'on' if current_on else 'off' }} · automation {{ 'on' if auto_on else 'off' }}
+          rules: |-
+            hard_off   {{ '✓' if r_hard_off else '✗' }}
+            freeze_now {{ '✓' if r_freeze_now else '✗' }}
+            freeze_min {{ '✓' if r_freeze_min else '✗' }}
+            opp        {{ '✓' if r_opp else '✗' }}  (temp {{ '✓' if o_temp else '✗' }} · solar {{ '✓' if o_solar else '✗' }} · budget {{ '✓' if o_budget else '✗' }} · batt {{ '✓' if o_batt else '✗' }} · energy sensor {{ '✓' if energy_ok else '✗' }})
+            cheap      {{ '✓' if r_cheap else '✗' }}  (hour<5 {{ '✓' if c_hour else '✗' }} · temp {{ '✓' if c_temp else '✗' }} · tmin {{ '✓' if c_cool else '✗' }} · budget {{ '✓' if o_budget else '✗' }} · energy sensor {{ '✓' if energy_ok else '✗' }})
