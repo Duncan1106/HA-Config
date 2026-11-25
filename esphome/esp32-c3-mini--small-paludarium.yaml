@@ -5,7 +5,6 @@ esphome:
     board_build.flash_mode: dio  
   on_boot:
     then:
-      - deep_sleep.prevent: deep_sleep_id
       - delay: 15s
       - if:
           condition:
@@ -30,12 +29,6 @@ esp32:
 packages:
   - !include common/logger.yaml
 
-deep_sleep:
-  run_duration: 2d
-  id: deep_sleep_id 
-  sleep_duration: 
-    minutes: 15
-
 # Enable Home Assistant API
 api:
   encryption:
@@ -53,8 +46,12 @@ wifi:
     password: !secret ap_password
   enable_btm: true
   enable_rrm: true
+  
 captive_portal:
 
+power_management:
+  - platform: esp32_power_management
+  
 time:
   - platform: homeassistant
 
@@ -79,6 +76,13 @@ output:
       inverted: True
       ignore_strapping_warning: True
 
+switch:
+  - platform: template
+    id: enable_day_cycle
+    name: Enable LED Daycycle
+    optimistic: true
+    initial_state: true
+      
 light:
   - platform: esp32_rmt_led_strip
     num_leds: 7
@@ -92,6 +96,7 @@ light:
       then:
         - if: 
             condition: 
+              - switch.is_on: enable_day_cycle
               - sun.is_below_horizon: 
                   elevation: 2°
             then:
@@ -100,7 +105,8 @@ light:
     on_turn_off: 
       then:
         - if: 
-            condition: 
+            condition:
+              - switch.is_on: enable_day_cycle
               - sun.is_above_horizon:
                   elevation: 2°
             then: 
@@ -175,10 +181,6 @@ button:
             brightness: 0%
             transition_length: 300s
             state: False
-        - delay: 300s
-        - delay: 5s
-        - deep_sleep.enter: deep_sleep_id
-
 
 binary_sensor:
   - platform: status
