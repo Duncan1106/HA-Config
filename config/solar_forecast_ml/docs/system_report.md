@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-24 23:30 | System: 17.7 kWp
+> Generated: 2026-11-25 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6728.1 kWh
+**Total Production:** 6743.1 kWh
 
-**Average Accuracy:** 76.3%
+**Average Accuracy:** 76.4%
 
 ### Seasonal Production
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 35.35 kWh | 2969.4 kWh |
+| Autumn | 75.48 kWh | 35.11 kWh | 2984.4 kWh |
 
 ---
 
@@ -49,22 +49,22 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-24 | 891 | 38 | 4 | 1.36 | geometry_contrast_recorded |
+| 2026-11-25 | 885 | 37 | 4 | 1.36 | geometry_contrast_recorded |
 
 Headline exclusions:
-- elev 0 excluded from headline (elev < 20; east k_p90=0.922 west k_p90=1.302; k_p90 > 1)
+- elev 0 excluded from headline (elev < 20; east k_p90=0.922 west k_p90=1.251; k_p90 > 1)
 - elev 10 excluded from headline (elev < 20; east k_p90=0.835 west k_p90=0.949)
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 55 | 0.516 | 0.922 | 1.299 | no |
-| 0 | west | 52 | 0.881 | 1.302 | 2.805 | no |
-| 10 | east | 71 | 0.515 | 0.835 | 1.480 | no |
-| 10 | west | 81 | 0.665 | 0.949 | 1.506 | no |
-| 20 | east | 50 | 0.621 | 0.928 | 0.962 | yes |
-| 20 | west | 46 | 0.724 | 1.224 | 1.454 | yes |
-| 30 | east | 24 | 0.621 | 0.911 | 0.960 | yes |
-| 30 | west | 16 | 0.942 | 1.235 | 1.361 | yes |
+| 0 | east | 54 | 0.522 | 0.922 | 1.299 | no |
+| 0 | west | 52 | 0.872 | 1.251 | 2.805 | no |
+| 10 | east | 70 | 0.516 | 0.835 | 1.480 | no |
+| 10 | west | 80 | 0.664 | 0.949 | 1.506 | no |
+| 20 | east | 49 | 0.620 | 0.936 | 0.962 | yes |
+| 20 | west | 45 | 0.726 | 1.224 | 1.454 | yes |
+| 30 | east | 23 | 0.634 | 0.911 | 0.960 | yes |
+| 30 | west | 15 | 0.928 | 1.235 | 1.361 | yes |
 
 ### Hourly physics-factor shape
 
@@ -78,7 +78,7 @@ Headline exclusions:
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 626 | 32 |
+| forecast_physics | 640 | 32 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
@@ -92,7 +92,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"I'm giving her all she's got, Captain! The panels are at maximum output! - Scotty"*
+> *"Logic dictates that harvesting solar energy is the most efficient course of action. - Spock"*
 
 Live long and prosper!
 
