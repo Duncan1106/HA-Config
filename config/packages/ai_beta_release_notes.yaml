@@ -1,37 +1,115 @@
-template: 
-  # AI Beta Release Notes Summary
-  - triggers:
-    - trigger: homeassistant
-      event: start
-    - trigger: time
-      at: "00:00:01"
-      weekday: [wed, thu]
-    - trigger: state
-      entity_id:
-        - input_button.update_beta_release_notes
-    binary_sensor:
-    - unique_id: home_assistant_beta_release_notes_window
-      name: Home Assistant Beta Release Notes Window
-      icon: mdi:home-assistant
-      state: >
-        {% set today = now().date() %}
-        {% set nxt = today + timedelta(days=(2 - today.weekday()) % 7) %}
-        {{ nxt.day <= 7
-           or (nxt == today and (today + timedelta(days=7)).day <= 7) }}
-  
+# AI Beta Release Notes package
+# Contains: reanalyze button, retry script, window sensor, scrape sensor, AI analysis sensor
+
+input_button:
+  update_beta_release_notes:
+    name: Update Beta Release Notes
+    icon: mdi:cloud-download-outline
+  reanalyze_beta_release_notes:
+    name: Reanalyze Beta Release Notes
+    icon: mdi:robot-happy-outline
+
+script:
+  conversation_process_with_retry:
+    alias: Conversation process with retry
+    mode: queued
+    max: 5
+    fields:
+      agent_id:
+        required: true
+        selector:
+          text:
+      text:
+        required: true
+        selector:
+          text:
+            multiline: true
+      max_attempts:
+        default: 5
+        selector:
+          number:
+            min: 1
+            max: 10
+      delay:
+        description: Base delay in seconds, multiplied by the attempt number
+        default: 30
+        selector:
+          number:
+            min: 5
+            max: 300
+    sequence:
+      - repeat:
+          count: "{{ max_attempts | default(5) | int }}"
+          sequence:
+            - action: conversation.process
+              continue_on_error: true
+              response_variable: result
+              data:
+                agent_id: "{{ agent_id }}"
+                text: "{{ text }}"
+            - variables:
+                speech: >-
+                  {{ (result.response.speech.plain.speech
+                      if result is defined else '') | default('', true) }}
+                failed: >-
+                  {{ result is not defined
+                     or result.response.response_type == 'error'
+                     or (speech | trim) == ''
+                     or speech | regex_search('(?i)high demand|UNAVAILABLE|problem getting a response') }}
+            - if: "{{ not failed }}"
+              then:
+                - variables:
+                    out:
+                      speech: "{{ speech }}"
+                - stop: OK
+                  response_variable: out
+            - if: "{{ not repeat.last }}"
+              then:
+                - delay:
+                    seconds: "{{ (delay | default(30) | int) * repeat.index }}"
+      - stop: AI conversation failed after all retries
+        error: true
+template:
+  # Window in which the beta release notes are relevant
   - triggers:
       - trigger: homeassistant
         event: start
-      - trigger: event
-        event_type: event_template_reloaded
+      - trigger: time
+        at: "00:00:01"
+        weekday: [wed, thu]
       - trigger: state
         entity_id:
           - input_button.update_beta_release_notes
-          - input_select.conversation_agents
+    binary_sensor:
+      - unique_id: home_assistant_beta_release_notes_window
+        name: Home Assistant Beta Release Notes Window
+        icon: mdi:home-assistant
+        state: >
+          {% set today = now().date() %}
+          {% set nxt = today + timedelta(days=(2 - today.weekday()) % 7) %}
+          {{ nxt.day <= 7
+             or (nxt == today and (today + timedelta(days=7)).day <= 7) }}
+
+  # Scrape only (no AI)
+  - triggers:
+      - trigger: homeassistant
+        event: start
+        id: auto
+      - trigger: event
+        event_type: event_template_reloaded
+        id: auto
+      - trigger: state
+        entity_id: input_button.update_beta_release_notes
+        id: manual
     conditions:
       - condition: state
         entity_id: binary_sensor.home_assistant_beta_release_notes_window
         state: "on"
+      # auto triggers only scrape if nothing is stored yet
+      - condition: template
+        value_template: >
+          {{ trigger.id == 'manual'
+             or state_attr('sensor.home_assistant_beta_release_notes_scrape', 'content') in [none, ''] }}
     actions:
       - action: multiscrape.scrape
         response_variable: beta_scrape
@@ -51,9 +129,10 @@ template:
               value_template: |
                 {!{ value | trim | replace('\n', ' ') }!}
       - variables:
-          agent_id: "{{ states('input_select.conversation_agents') }}"
           release_url: >-
             {{ (beta_scrape.get('beta_url', {}).get('value') or '') | trim }}
+          content: >-
+            {{ (beta_scrape.get('beta_notes_content', {}).get('value') or '') | trim }}
           version: >-
             {% set m = release_url | regex_findall('release-([0-9]{4})([0-9]+)') %}
             {% if not release_url %}
@@ -63,10 +142,63 @@ template:
             {% else %}
               Invalid URL
             {% endif %}
-      - action: conversation.process
+      # a failed/empty scrape must not overwrite good stored content
+      - condition: template
+        value_template: "{{ content | length > 0 and release_url | length > 0 }}"
+    sensor:
+      - unique_id: home_assistant_beta_release_notes_scrape
+        name: Home Assistant Beta Release Notes Scrape
+        icon: mdi:spider-web
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
+        attributes:
+          version: "{{ version }}"
+          release_url: "{{ release_url }}"
+          content: "{{ content }}"
+
+  # AI analysis, reads the stored content
+  - triggers:
+      - trigger: state
+        entity_id: sensor.home_assistant_beta_release_notes_scrape
+        not_from: [unavailable, unknown]
+        not_to: [unavailable, unknown]
+        id: scraped
+      - trigger: state
+        entity_id: input_select.conversation_agents
+        id: rerun
+      - trigger: state
+        entity_id: input_button.reanalyze_beta_release_notes
+        id: rerun
+      - trigger: homeassistant
+        event: start
+        id: auto
+      - trigger: event
+        event_type: event_template_reloaded
+        id: auto
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.home_assistant_beta_release_notes_window
+        state: "on"
+      - condition: template
+        value_template: >
+          {{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'content') not in [none, ''] }}
+      # auto triggers only analyse if there is no summary yet
+      - condition: template
+        value_template: >
+          {{ trigger.id != 'auto'
+             or state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary') in [none, ''] }}
+    actions:
+      - variables:
+          agent_id: "{{ states('input_select.conversation_agents') }}"
+          release_url: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'release_url') }}"
+          version: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'version') }}"
+          content: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'content') }}"
+      - action: script.conversation_process_with_retry
         response_variable: agent
         data:
           agent_id: "{{ agent_id }}"
+          max_attempts: 5
+          delay: 30
           text: |-
             You are an expert software release notes summarizer.
             The release notes below are for the Home Assistant release at this URL: {{ release_url }}
@@ -81,11 +213,13 @@ template:
             **Other Notes:** (bug fixes, notable improvements)
 
             Release notes text:
-            {{ beta_scrape.beta_notes_content.value }}
-      - action: conversation.process
+            {{ content }}
+      - action: script.conversation_process_with_retry
         response_variable: agent_short
         data:
           agent_id: "{{ agent_id }}"
+          max_attempts: 5
+          delay: 30
           text: |-
             Summarize the following text to a maximum of 250 words or 750 characters, whichever is shorter.
             Extract only the most critical features, integrations, and breaking changes.
@@ -95,7 +229,7 @@ template:
 
             Home Assistant {{ version }}
 
-            {{ agent.response.speech.plain.speech }}
+            {{ agent.speech }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
@@ -103,5 +237,5 @@ template:
         state: "{{ version }}"
         attributes:
           beta_url: "{{ release_url }}"
-          ai_summary: "{{ agent.response.speech.plain.speech }}"
-          ai_summary_short: "{{ agent_short.response.speech.plain.speech }}"
+          ai_summary: "{{ agent.speech }}"
+          ai_summary_short: "{{ agent_short.speech }}"
