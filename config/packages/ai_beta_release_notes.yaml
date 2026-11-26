@@ -93,11 +93,12 @@ script:
                 speech: >-
                   {{ (result.response.speech.plain.speech
                       if result is defined else '') | default('', true) }}
+                # only the integration's own error text counts, never words inside a real answer
                 failed: >-
                   {{ result is not defined
                      or result.response.response_type == 'error'
                      or (speech | trim) == ''
-                     or speech | regex_search('(?i)high demand|UNAVAILABLE|problem getting a response') }}
+                     or speech | regex_search('^\s*Sorry, I had a problem getting a response') }}
             - if: "{{ not failed }}"
               then:
                 - variables:
