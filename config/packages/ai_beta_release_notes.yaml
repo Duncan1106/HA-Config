@@ -1,5 +1,14 @@
 # AI Beta Release Notes package
-# Contains: reanalyze button, retry script, window sensor, scrape sensor, AI analysis sensor
+# Contains: buttons, retry script, window sensor, scrape sensor, AI analysis sensor
+#
+# Retry design (survives restarts):
+# - the script retries a few times within minutes (short, tolerates brief 503 spikes)
+# - a periodic trigger (every 3 hours) retries the analysis until a summary exists
+# - the scraped content is stored and never re-scraped for a retry
+# - a summary that exists but has no short version only redoes the short version
+# - if the API names a wait longer than max_delay (e.g. quota reset), it is stored in
+#   input_datetime.beta_release_notes_retry_after and no automatic retry happens before it
+# - no automatic attempt starts between 02:45 and 03:15, so the 03:15 restart can't cut one off
 
 input_button:
   update_beta_release_notes:
@@ -9,9 +18,20 @@ input_button:
     name: Reanalyze Beta Release Notes
     icon: mdi:robot-happy-outline
 
+input_datetime:
+  beta_release_notes_retry_after:
+    name: Beta Release Notes AI Retry After
+    icon: mdi:timer-sand
+    has_date: true
+    has_time: true
+
 script:
   conversation_process_with_retry:
     alias: Conversation process with retry
+    description: >-
+      Returns {speech: "..."}; speech is empty if every attempt failed, then
+      retry_after is the wait in seconds requested by the API (0 if none).
+      Never raises an error, so callers can decide what to do.
     mode: queued
     max: 5
     fields:
@@ -24,22 +44,44 @@ script:
         selector:
           text:
             multiline: true
+      cached:
+        description: If not empty, returned as is without calling the agent
+        selector:
+          text:
+            multiline: true
       max_attempts:
-        default: 5
+        description: Maximum number of attempts per run
+        default: 3
         selector:
           number:
             min: 1
-            max: 10
+            max: 20
       delay:
-        description: Base delay in seconds, multiplied by the attempt number
-        default: 30
+        description: First wait in seconds, doubled after each failed attempt
+        default: 300
         selector:
           number:
             min: 5
-            max: 300
+            max: 3600
+      max_delay:
+        description: >-
+          Longest wait in seconds. If the API asks for a longer wait
+          (for example a daily quota reset), the run gives up instead.
+        default: 3600
+        selector:
+          number:
+            min: 60
+            max: 86400
     sequence:
+      - if: "{{ (cached | default('') | trim) != '' }}"
+        then:
+          - variables:
+              out:
+                speech: "{{ cached }}"
+          - stop: Returned cached result
+            response_variable: out
       - repeat:
-          count: "{{ max_attempts | default(5) | int }}"
+          count: "{{ max_attempts | default(3) | int }}"
           sequence:
             - action: conversation.process
               continue_on_error: true
@@ -63,12 +105,35 @@ script:
                       speech: "{{ speech }}"
                 - stop: OK
                   response_variable: out
-            - if: "{{ not repeat.last }}"
+            - variables:
+                # exponential backoff, capped
+                backoff: >-
+                  {{ [ (delay | default(300) | int) * (2 ** (repeat.index - 1)),
+                       (max_delay | default(3600) | int) ] | min }}
+                # "Please retry in 20h36m46s" from 429 quota errors
+                hint_parts: >-
+                  {{ speech | regex_findall('retry in (?:(\d+)h)?(?:(\d+)m)?(\d+)') }}
+                hint: >-
+                  {{ ((hint_parts[0][0] | int(0)) * 3600
+                      + (hint_parts[0][1] | int(0)) * 60
+                      + (hint_parts[0][2] | int(0)) + 60) if hint_parts | length > 0 else 0 }}
+            # last attempt, or the API wants a wait longer than we are willing to hold
+            - if: "{{ repeat.last or (hint | int) > (max_delay | default(3600) | int) }}"
               then:
-                - delay:
-                    seconds: "{{ (delay | default(30) | int) * repeat.index }}"
-      - stop: AI conversation failed after all retries
-        error: true
+                - variables:
+                    out:
+                      speech: ""
+                      retry_after: "{{ hint | int }}"
+                - stop: Giving up for now
+                  response_variable: out
+            - delay:
+                seconds: "{{ [backoff | int, hint | int] | max }}"
+      - variables:
+          out:
+            speech: ""
+      - stop: No attempts made
+        response_variable: out
+
 template:
   # Window in which the beta release notes are relevant
   - triggers:
@@ -175,6 +240,16 @@ template:
       - trigger: event
         event_type: event_template_reloaded
         id: auto
+      # exactly when the API's requested wait is over
+      - trigger: time
+        at: input_datetime.beta_release_notes_retry_after
+        id: retry
+      # periodic safety net (missed while HA was down, blocked by the 02:45-03:15 window),
+      # only does something while the analysis is incomplete
+      - trigger: time_pattern
+        hours: "/3"
+        minutes: 17
+        id: retry
     conditions:
       - condition: state
         entity_id: binary_sensor.home_assistant_beta_release_notes_window
@@ -182,23 +257,39 @@ template:
       - condition: template
         value_template: >
           {{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'content') not in [none, ''] }}
-      # auto triggers only analyse if there is no summary yet
+      # auto and retry triggers: not before the API's requested retry time and not right before the restart
       - condition: template
         value_template: >
-          {{ trigger.id != 'auto'
-             or state_attr('sensor.home_assistant_beta_release_notes', 'ai_summary') in [none, ''] }}
+          {% set t = now().strftime('%H:%M') %}
+          {{ trigger.id in ['scraped', 'rerun']
+             or (as_timestamp(states('input_datetime.beta_release_notes_retry_after'), 0) <= now().timestamp()
+                 and not ('02:45' <= t < '03:15')) }}
+      # auto and retry triggers only run while the analysis is missing or incomplete
+      - condition: template
+        value_template: >
+          {% set sc = 'sensor.home_assistant_beta_release_notes_scrape' %}
+          {% set an = 'sensor.home_assistant_beta_release_notes' %}
+          {{ trigger.id in ['scraped', 'rerun']
+             or states(an) != state_attr(sc, 'version')
+             or state_attr(an, 'ai_summary') in [none, '']
+             or state_attr(an, 'ai_summary_short') in [none, ''] }}
     actions:
       - variables:
+          an: sensor.home_assistant_beta_release_notes
+          sc: sensor.home_assistant_beta_release_notes_scrape
           agent_id: "{{ states('input_select.conversation_agents') }}"
-          release_url: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'release_url') }}"
-          version: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'version') }}"
-          content: "{{ state_attr('sensor.home_assistant_beta_release_notes_scrape', 'content') }}"
+          release_url: "{{ state_attr(sc, 'release_url') }}"
+          version: "{{ state_attr(sc, 'version') }}"
+          content: "{{ state_attr(sc, 'content') }}"
+          # a new scrape or an explicit rerun redoes everything, otherwise reuse what exists
+          reuse: "{{ trigger.id not in ['scraped', 'rerun'] and states(an) == version }}"
+          cached_summary: "{{ (state_attr(an, 'ai_summary') or '') if reuse else '' }}"
+          cached_short: "{{ (state_attr(an, 'ai_summary_short') or '') if reuse else '' }}"
       - action: script.conversation_process_with_retry
         response_variable: agent
         data:
           agent_id: "{{ agent_id }}"
-          max_attempts: 5
-          delay: 30
+          cached: "{{ cached_summary }}"
           text: |-
             You are an expert software release notes summarizer.
             The release notes below are for the Home Assistant release at this URL: {{ release_url }}
@@ -214,12 +305,22 @@ template:
 
             Release notes text:
             {{ content }}
+      - if: "{{ (agent.retry_after | default(0) | int) > 0 }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.beta_release_notes_retry_after
+            data:
+              datetime: >-
+                {{ (now() + timedelta(seconds=agent.retry_after | int)).strftime('%Y-%m-%d %H:%M:%S') }}
+      # no summary: leave the sensor as it is, the next periodic trigger tries again
+      - condition: template
+        value_template: "{{ (agent.speech | trim) != '' }}"
       - action: script.conversation_process_with_retry
         response_variable: agent_short
         data:
           agent_id: "{{ agent_id }}"
-          max_attempts: 5
-          delay: 30
+          cached: "{{ cached_short }}"
           text: |-
             Summarize the following text to a maximum of 250 words or 750 characters, whichever is shorter.
             Extract only the most critical features, integrations, and breaking changes.
@@ -230,6 +331,14 @@ template:
             Home Assistant {{ version }}
 
             {{ agent.speech }}
+      - if: "{{ (agent_short.retry_after | default(0) | int) > 0 }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.beta_release_notes_retry_after
+            data:
+              datetime: >-
+                {{ (now() + timedelta(seconds=agent_short.retry_after | int)).strftime('%Y-%m-%d %H:%M:%S') }}
     sensor:
       - unique_id: home_assistant_beta_release_notes
         name: Home Assistant Beta Release Notes
@@ -238,4 +347,6 @@ template:
         attributes:
           beta_url: "{{ release_url }}"
           ai_summary: "{{ agent.speech }}"
+          # empty if only the short version failed, the periodic retry then redoes just that
           ai_summary_short: "{{ agent_short.speech }}"
+          
