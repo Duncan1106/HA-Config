@@ -1,5 +1,5 @@
 # Solar Forecast ML - System Report
-> Generated: 2026-11-26 23:30 | System: 17.7 kWp
+> Generated: 2026-11-27 23:30 | System: 17.7 kWp
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Record Peak:** 16.40 kW (2026-08-24)
 
-**Total Production:** 6748.7 kWh
+**Total Production:** 6759.9 kWh
 
-**Average Accuracy:** 76.2%
+**Average Accuracy:** 76.4%
 
 ### Seasonal Production
 
@@ -29,7 +29,7 @@
 | Winter | - | - | - |
 | Spring | - | - | - |
 | Summer | 103.12 kWh | 76.71 kWh | 3758.7 kWh |
-| Autumn | 75.48 kWh | 34.77 kWh | 2990.0 kWh |
+| Autumn | 75.48 kWh | 34.50 kWh | 3001.3 kWh |
 
 ---
 
@@ -49,7 +49,7 @@ Headline east/west k_p90 pools raw samples per (elevation, sector); it uses elev
 
 | Computed on | Hours | Bins | Overlapping elev | Max east/west k_p90 | Diagnosis |
 |-------------|-------|------|------------------|---------------------|-----------|
-| 2026-11-26 | 879 | 36 | 4 | 1.36 | geometry_contrast_recorded |
+| 2026-11-27 | 873 | 36 | 4 | 1.35 | geometry_contrast_recorded |
 
 Headline exclusions:
 - elev 0 excluded from headline (elev < 20; east k_p90=0.922 west k_p90=1.174; k_p90 > 1)
@@ -57,14 +57,14 @@ Headline exclusions:
 
 | Elev | Sector | Hours | k_avg | k_p90 | k_max | Headline |
 |------|--------|-------|-------|-------|-------|----------|
-| 0 | east | 53 | 0.529 | 0.922 | 1.299 | no |
+| 0 | east | 52 | 0.534 | 0.922 | 1.299 | no |
 | 0 | west | 52 | 0.829 | 1.174 | 2.805 | no |
-| 10 | east | 69 | 0.519 | 0.852 | 1.480 | no |
-| 10 | west | 79 | 0.663 | 0.955 | 1.506 | no |
-| 20 | east | 48 | 0.625 | 0.936 | 0.962 | yes |
-| 20 | west | 44 | 0.730 | 1.224 | 1.454 | yes |
-| 30 | east | 22 | 0.654 | 0.911 | 0.960 | yes |
-| 30 | west | 14 | 0.937 | 1.235 | 1.361 | yes |
+| 10 | east | 68 | 0.524 | 0.852 | 1.480 | no |
+| 10 | west | 78 | 0.660 | 0.955 | 1.506 | no |
+| 20 | east | 47 | 0.624 | 0.936 | 0.962 | yes |
+| 20 | west | 43 | 0.733 | 1.224 | 1.454 | yes |
+| 30 | east | 21 | 0.647 | 0.911 | 0.960 | yes |
+| 30 | west | 13 | 0.905 | 1.231 | 1.235 | yes |
 
 ### Hourly physics-factor shape
 
@@ -78,7 +78,7 @@ Headline exclusions:
 
 | Physics ref kind | Samples | Ratio clamp hits |
 |------------------|---------|------------------|
-| forecast_physics | 654 | 36 |
+| forecast_physics | 669 | 36 |
 | ghi_scaled_clearsky | 864 | 126 |
 
 | Clamp kind | Hits |
@@ -92,7 +92,7 @@ Headline exclusions:
 
 ## Message from the Captain's Log
 
-> *"The needs of the many outweigh the needs of the few... use solar power. - Spock"*
+> *"Space: the final frontier. Solar panels: the home frontier. - Captain Kirk"*
 
 Live long and prosper!
 
