@@ -1,0 +1,275 @@
+id: main_sidebar
+title: "Hallo {{ user_name }}"
+subtitle: "Reif für die 550"
+sidebar_editable: false
+js_variables:
+  open_group: ''
+order:
+  - item: /calendar
+    match: href
+    hide: true
+  - item: /todo
+    match: href
+    hide: true
+  - item: /logbook
+    match: href
+    hide: true
+  - item: /map
+    match: href
+    hide: true
+  - item: /history
+    match: href
+    hide: true
+  - item: /chime-tts
+    match: href
+    hide: true
+  - item: /lovelace
+    order: 0
+    match: href
+  - item: /fire-hd-8
+    match: href
+    order: 1
+  - item: /energy
+    icon: mdi:home-lightning-bolt-outline
+    match: href
+    order: 2
+    info: |
+        Haus: {{states('sensor.daily_home_energy', with_unit=True)}}{{ " | Solar: " ~ states('sensor.solar_production_today', with_unit=True) }}
+  - item: /test-sankey
+    match: href
+    icon: mdi:chart-sankey
+    order: 3
+    info: |
+        Haus: {{states('sensor.home_power', with_unit=True)}}{{ " | Solar: " ~ states('sensor.solar_power_total', with_unit=True) if states("sensor.solar_power_total")|float(0) > 0 else " | Netz: " ~ states('sensor.grid_power', with_unit=True) }}
+  
+  ### SYSTEM ###
+  - item: /media-browser
+    match: href
+    bottom: true
+    order: 4
+    hide: '[[[ return ref("open_group").value !== "system" ]]]'
+    info: |
+        Size: {{ states('sensor.media_folder_size', with_unit=True) }}
+    attributes:
+      data-sidebar-group: "system"
+  - item: /dashboard-analysis
+    order: 5
+    match: href
+    bottom: true
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return ref("open_group").value !== "system" ]]]'
+  - item: Integrationen
+    icon: mdi:puzzle
+    order: 6
+    bottom: true
+    new_item: true
+    href: "/config/integrations"
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return ref("open_group").value !== "system" ]]]'
+  - item: Automationen
+    icon: mdi:robot
+    order: 7
+    bottom: true
+    new_item: true
+    href: "/config/automation"
+    attributes:
+      data-sidebar-group: "system"
+    hide: '[[[ return ref("open_group").value !== "system" ]]]'
+  - new_item: true
+    item: 'System'
+    icon: 'mdi:monitor-dashboard'
+    info: |
+        CPU: {{states('sensor.system_monitor_prozessornutzung', with_unit=True)}}{{ " | Temp: " ~ states('sensor.system_monitor_prozessortemperatur', with_unit=True) }}
+    bottom: true
+    order: 8
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const g = ref("open_group");
+        g.value = g.value === "system" ? "" : "system";
+
+  ### ZIGBEE ###
+  - item: /45df7312_zigbee2mqtt
+    match: href
+    name: Z2M
+    order: 20
+    bottom: true
+    info: |
+        CPU: {{states('sensor.zigbee2mqtt_cpu_prozent', with_unit=True)}}{{ " | RAM: " ~ states('sensor.zigbee2mqtt_arbeitsspeicher_in_prozent', with_unit=True) }}
+    attributes:
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return ref("open_group").value !== "zigbee" ]]]'
+  - item: /zigbee-map
+    match: href
+    name: Z2M Map
+    order: 21
+    bottom: true
+    attributes:
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return ref("open_group").value !== "zigbee" ]]]'
+  - item: /dashboard-zigporter
+    match: href
+    name: Zigporter Map
+    order: 22
+    bottom: true
+    attributes:
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return ref("open_group").value !== "zigbee" ]]]'
+  - item: /7066b6f6_z2m_tracker
+    match: href
+    name: Z2M Tracker
+    order: 23
+    bottom: true
+    attributes:
+      data-sidebar-group: "zigbee"
+    hide: '[[[ return ref("open_group").value !== "zigbee" ]]]'
+  - new_item: true
+    item: 'Z2M'
+    icon: 'mdi:zigbee'
+    info: |-
+          {%- set active_entities = states.sensor | selectattr('entity_id', 'search', '_linkquality$') | rejectattr('state', 'in', ['unavailable', 'unknown']) | list -%}
+          {%- set total = active_entities | count -%}
+          {%- set low = active_entities | map(attribute='state') | map('int', -1) | select('ge', 0) | select('lt', 50) | list | count -%}
+          Devices: {{ total }} | Low LQI: {{ low }}
+    bottom: true
+    order: 24
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const g = ref("open_group");
+        g.value = g.value === "zigbee" ? "" : "zigbee";
+  
+  ### ADMINS EXTERNAL ###
+  - item: /ccab4aaf_frigate-fa
+    match: href
+    order: 40
+    bottom: true
+    info: |
+      Inference: {{ states('sensor.frigate_ov_inference_speed', with_unit=True)}}
+    attributes:
+      data-sidebar-group: "admin_external"
+    hide: '[[[ return ref("open_group").value !== "admin_external" ]]]'
+  - new_item: true
+    item: 'SFML'
+    icon: mdi:solar-power
+    href: /dashboard-sfml/0
+    bottom: true
+    order: 41
+    attributes:
+      data-sidebar-group: "admin_external"
+    hide: '[[[ return ref("open_group").value !== "admin_external" ]]]'
+  - item: /ha-washdata
+    match: href
+    order: 42
+    bottom: true
+    attributes:
+      data-sidebar-group: "admin_external"
+    hide: '[[[ return ref("open_group").value !== "admin_external" ]]]'
+  - item: /ha_percyta_report
+    match: href
+    order: 43
+    attributes:
+      data-sidebar-group: "admin_external"
+    bottom: true
+    hide: '[[[ return ref("open_group").value !== "admin_external" ]]]'
+  - item: /pulse
+    match: href
+    order: 44
+    attributes:
+      data-sidebar-group: "admin_external"
+    bottom: true
+    hide: '[[[ return ref("open_group").value !== "admin_external" ]]]'
+  - new_item: true
+    item: 'Externals'
+    icon: 'mdi:tools'
+    bottom: true
+    order:  45
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const g = ref("open_group");
+        g.value = g.value === "admin_external" ? "" : "admin_external";
+        
+  ### ADMIN TOOLS ###
+  - item: /hacs
+    match: href
+    order: 50
+    attributes:
+      data-sidebar-group: "admin"
+    bottom: true
+    hide: '[[[ return ref("open_group").value !== "admin" ]]]'
+    notification: |
+      [[[
+        const outdatedHacsEntities = Object.values(entities.update).filter(
+          (entity) => entity.platform === 'hacs' && is_state(entity.entity_id, 'on')
+        );
+        return outdatedHacsEntities.length || '';
+      ]]]
+  - item: /core_configurator
+    bottom: true
+    match: href
+    order: 51
+    attributes:
+      data-sidebar-group: "admin"
+    hide: '[[[ return ref("open_group").value !== "admin" ]]]'
+  - item: 'Tools'
+    href: '/developer-tools'
+    new_item: true
+    icon: mdi:tools
+    order: 52
+    bottom: true
+    attributes:
+      data-sidebar-group: "admin"
+    hide: '[[[ return ref("open_group").value !== "admin" ]]]'
+  - new_item: true
+    item: 'Apps'
+    icon: 'mdi:puzzle'
+    href: /config/apps/installed
+    bottom: true
+    order: 53
+    hide: '[[[ return ref("open_group").value !== "admin" ]]]'
+    attributes:
+      data-sidebar-group: "admin"
+  - item: /update-manager
+    match: href
+    order: 54
+    attributes:
+      data-sidebar-group: "admin"
+    bottom: true
+    hide: '[[[ return ref("open_group").value !== "admin" ]]]'
+  - new_item: true
+    item: 'Admin Tools'
+    icon: 'mdi:shield-crown'
+    bottom: true
+    order: 55
+    hide: '[[[ !user_is_admin ]]]'
+    on_click:
+      action: 'javascript'
+      code: |
+        const g = ref("open_group");
+        g.value = g.value === "admin" ? "" : "admin";
+        
+  ### DOWN ###
+  - item: /config
+    match: href
+    order: 99
+    bottom: true
+    hide: '[[[ !user_is_admin ]]]'
+  - item: notifications
+    order: 100
+    bottom: true
+    hide: |
+      [[[
+        const notifications = states('counter.persistent_notification_count');
+        return !notifications || notifications === '0'
+      ]]]
+
+styles: |
+  :host([expanded]) ha-list-item-button[data-sidebar-group] {
+    padding-left: 15px !important;
+  }

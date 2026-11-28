@@ -1,0 +1,136 @@
+# Template-Sensor: T5 Fensterlicht
+# State: on = Zeitplan sagt "Lampen sollen leuchten" (Pflanzenfenster ODER Ambient + Anwesenheit)
+# Attribute: skip_entities = T5-Lampen, die wegen Sonne gerade uebersprungen werden
+#            (Label t5_fensterlicht + Himmelsrichtungs-Label in der Sonne + starke Sonne)
+# Alle Zeiten als Timestamps (Zahlen), weil Variablen in trigger-basierten Sensoren
+# keine datetime-Objekte halten koennen.
+template:
+  - trigger:
+      - trigger: homeassistant
+        event: start
+        id: refresh
+      - trigger: event
+        event_type: event_template_reloaded
+        id: refresh
+      - trigger: time
+        at: "00:00:05"
+        id: refresh
+      - trigger: time_pattern
+        minutes: "/5"
+        id: tick
+      - trigger: sun
+        event: sunrise
+        offset: "+00:15:00"
+        id: tick
+      - trigger: sun
+        event: sunset
+        offset: "+00:15:00"
+        id: tick
+      - trigger: state
+        entity_id:
+          - binary_sensor.ambient_lights
+          - binary_sensor.anyone_home
+        id: tick
+      # Starke Sonne: Hysterese mit Haltezeit (Werte in W)
+      - trigger: numeric_state
+        entity_id: sensor.solar_power_total
+        above: 2000
+        for: "00:05:00"
+        id: sun_on
+      - trigger: numeric_state
+        entity_id: sensor.solar_power_total
+        below: 1650
+        for: "00:15:00"
+        id: sun_off
+    binary_sensor:
+      - name: T5 Window Lights
+        unique_id: t5_window_lights
+        icon: mdi:lightbulb-group
+        availability: >
+          {{ state_attr('sun.sun', 'next_rising') is not none
+             and state_attr('sun.sun', 'next_setting') is not none
+             and states('binary_sensor.ambient_lights') not in ['unknown', 'unavailable'] }}
+        variables:
+          # ---------- ANPASSEN ----------
+          min_hours: 12          # Mindest-Leuchtdauer Pflanzen (an langen Tagen = Tageslaenge)
+          sector_width: 140      # Sektorbreite in Grad (gesamt); 140 = +-70 Grad um die Fensterrichtung
+          min_elevation: 10      # Sonne muss mindestens so hoch stehen (Grad)
+          strong_on_w: 2000      # nur fuer Neuberechnung bei Start/Reload/Mitternacht (Trigger oben: 2000 W / 5 min)
+          strong_off_w: 1650     # dito (Trigger oben: 1650 W / 15 min)
+          dir_labels:            # Label-ID: Fensterrichtung in Grad (N=0, O=90, S=180, W=270)
+            fenster_no: 55
+            fenster_so: 150
+            fenster_sw: 235
+            fenster_nw: 330
+          # ---------- Sonnenfenster fuer Pflanzen ----------
+          stored_sr: "{{ state_attr('binary_sensor.t5_window_lights', 'sr_ts') }}"
+          stored_ss: "{{ state_attr('binary_sensor.t5_window_lights', 'ss_ts') }}"
+          refresh: >
+            {{ trigger.id == 'refresh'
+               or stored_sr | float(0) == 0
+               or stored_ss | float(0) == 0 }}
+          sr_ts: >
+            {% if refresh %}
+              {{ (today_at((state_attr('sun.sun', 'next_rising') | as_datetime | as_local).strftime('%H:%M:%S'))
+                  + timedelta(minutes=15)).timestamp() }}
+            {% else %}{{ stored_sr | float }}{% endif %}
+          ss_ts: >
+            {% if refresh %}
+              {{ (today_at((state_attr('sun.sun', 'next_setting') | as_datetime | as_local).strftime('%H:%M:%S'))
+                  + timedelta(minutes=15)).timestamp() }}
+            {% else %}{{ stored_ss | float }}{% endif %}
+          day_h: "{{ (ss_ts | float - sr_ts | float) / 3600 }}"
+          hours: "{{ [min_hours, day_h | float] | max }}"
+          mid_ts: "{{ (sr_ts | float + ss_ts | float) / 2 }}"
+          start_ts: "{{ mid_ts | float - (hours | float) * 1800 }}"
+          end_ts: "{{ mid_ts | float + (hours | float) * 1800 }}"
+          plant_on: "{{ (start_ts | float) <= now().timestamp() < (end_ts | float) }}"
+          ambient_on: >
+            {{ is_state('binary_sensor.ambient_lights', 'on')
+               and is_state('binary_sensor.anyone_home', 'on') }}
+          # ---------- Starke Sonne (merkt sich den Zustand im Attribut) ----------
+          power: "{{ states('sensor.solar_power_total') | float(0) }}"
+          stored_strong: "{{ state_attr('binary_sensor.t5_window_lights', 'strong_sun') }}"
+          strong_sun: >
+            {% if trigger.id == 'sun_on' %}True
+            {% elif trigger.id == 'sun_off' %}False
+            {% elif trigger.id == 'refresh' or stored_strong is none %}{{ power > strong_on_w or (stored_strong == true and power >= strong_off_w) }}
+            {% else %}{{ stored_strong }}{% endif %}
+          # ---------- Sonnenstand -> Richtungen in der Sonne ----------
+          az: "{{ state_attr('sun.sun', 'azimuth') | float(0) }}"
+          elev: "{{ state_attr('sun.sun', 'elevation') | float(0) }}"
+          sun_labels: >
+            {% set ns = namespace(l=[]) %}
+            {% if strong_sun and elev >= min_elevation %}
+              {% for lbl, win_az in dir_labels.items() %}
+                {% if (((az - win_az + 180) % 360) - 180) | abs <= sector_width / 2 %}
+                  {% set ns.l = ns.l + [lbl] %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+            {{ ns.l }}
+          # Nur Lampen mit t5_fensterlicht UND einem besonnten Richtungs-Label
+          skip_entities: >
+            {% set t5 = label_entities('t5_fensterlicht') %}
+            {% set ns = namespace(l=[]) %}
+            {% for lbl in sun_labels %}
+              {% for e in label_entities(lbl) if e in t5 and e not in ns.l %}
+                {% set ns.l = ns.l + [e] %}
+              {% endfor %}
+            {% endfor %}
+            {{ ns.l }}
+        state: "{{ plant_on or ambient_on }}"
+        attributes:
+          sr_ts: "{{ sr_ts | float }}"
+          ss_ts: "{{ ss_ts | float }}"
+          plant_window: "{{ plant_on }}"
+          ambient_window: "{{ ambient_on }}"
+          plant_start: "{{ start_ts | float | timestamp_custom('%H:%M') }}"
+          plant_end: "{{ end_ts | float | timestamp_custom('%H:%M') }}"
+          plant_hours: "{{ hours | float | round(1) }}"
+          strong_sun: "{{ strong_sun }}"
+          sun_azimuth: "{{ az | round(0) }}"
+          sun_elevation: "{{ elev | round(0) }}"
+          sun_labels: "{{ sun_labels }}"
+          skip_entities: "{{ skip_entities }}"
+          
